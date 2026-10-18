@@ -650,7 +650,18 @@ export const constellations: Constellation[] = [
 export const getPerson = (handle: string) => people.find((p) => p.handle === handle)
 export const getResource = (slug: string) => resources.find((r) => r.slug === slug)
 export const getThread = (id: string) => threads.find((t) => t.id === id)
-export const getCategory = (slug: string) => categories.find((c) => c.slug === slug)
+/** Threads started in the first version were filed under its communities ("orbits"); each maps to a category. */
+const LEGACY_CATEGORIES: Record<string, string> = {
+  "small-models": "models",
+  "every-language": "languages",
+  "local-first": "local",
+  evals: "research",
+  "image-audio": "show",
+  "in-practice": "help",
+  "safety-policy": "policy",
+}
+export const categoryOf = (slug: string) => LEGACY_CATEGORIES[slug] ?? slug
+export const getCategory = (slug: string) => categories.find((c) => c.slug === categoryOf(slug))
 export const getNews = (id: string) => news.find((n) => n.id === id)
 export const getConstellation = (slug: string) => constellations.find((c) => c.slug === slug)
 

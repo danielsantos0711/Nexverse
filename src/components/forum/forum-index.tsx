@@ -9,7 +9,7 @@ import { categoryIcon } from "@/components/forum/category-icon"
 import { LangTag } from "@/components/hub/bits"
 import { ThreadRow } from "@/components/hub/cards"
 import { Spotlight } from "@/components/hub/motion"
-import { ago, categories, getCategory, threads, trending } from "@/lib/data"
+import { ago, categories, categoryOf, getCategory, threads, trending } from "@/lib/data"
 import { listQuestions, type Question } from "@/lib/store"
 import { cn } from "@/lib/utils"
 
@@ -30,8 +30,9 @@ export function ForumIndex() {
 
   useEffect(() => {
     let stale = false
-    listQuestions({ orbit: cat ?? undefined, limit: 20 })
-      .then((q) => !stale && setMembers(q))
+    // Older threads may carry a first-version community slug, so the category is matched here, not in the query.
+    listQuestions({ limit: 100 })
+      .then((qs) => !stale && setMembers(qs.filter((q) => !cat || categoryOf(q.orbit) === cat)))
       .catch(() => {})
     return () => {
       stale = true
@@ -42,11 +43,11 @@ export function ForumIndex() {
     const pool = threads.filter((t) => !cat || t.category === cat)
     if (view === "hot") return [...pool.filter((t) => t.pinned), ...trending(pool.filter((t) => !t.pinned))]
     if (view === "new") return [...pool].sort((a, b) => b.date.localeCompare(a.date))
-    if (view === "open") return pool.filter((t) => t.replies.length === 0 || !t.replies.some((r) => r.accepted))
+    if (view === "open") return pool.filter((t) => t.replies.length === 0)
     return pool.filter((t) => t.replies.some((r) => r.accepted))
   }, [cat, view])
 
-  const memberList = members.filter((q) => (view === "open" ? !q.acceptedAnswerId : view === "solved" ? Boolean(q.acceptedAnswerId) : true))
+  const memberList = members.filter((q) => (view === "open" ? q.answerCount === 0 : view === "solved" ? Boolean(q.acceptedAnswerId) : true))
   const setCat = (c: string | null) => router.replace(c ? `/forum?c=${c}` : "/forum", { scroll: false })
 
   return (

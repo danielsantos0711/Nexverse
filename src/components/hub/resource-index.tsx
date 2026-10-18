@@ -45,16 +45,17 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
   const [license, setLicense] = useState<string | null>(null)
   const [sort, setSort] = useState<Sort>((params.get("sort") as Sort) || "trending")
   const [shared, setShared] = useState<Submission[]>([])
+  const [sharedLimit, setSharedLimit] = useState(24)
 
   useEffect(() => {
     let stale = false
-    listSubmissions({ kind, limit: 12 })
+    listSubmissions({ kind, limit: sharedLimit + 1 })
       .then((s) => !stale && setShared(s.filter((x) => x.kind !== "news")))
       .catch(() => {})
     return () => {
       stale = true
     }
-  }, [kind])
+  }, [kind, sharedLimit])
 
   const pool = useMemo(() => resources.filter((r) => !kind || r.kind === kind), [kind])
   const tasks = TASKS.filter((t) => pool.some((r) => r.task === t))
@@ -195,7 +196,7 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
               {shared.every((s) => s.local) ? "Shared from this browser" : "Just shared by members"}
             </h2>
             <ul className="grid gap-2.5 xl:grid-cols-2">
-              {shared.map((s) => (
+              {shared.slice(0, sharedLimit).map((s) => (
                 <li key={s.id}>
                   <a href={s.url} target="_blank" rel="noopener noreferrer nofollow" className="group flex flex-col gap-1 rounded-xl border border-border bg-card/70 p-3.5 hover:bg-card">
                     <span className="flex items-center gap-2 font-medium">
@@ -213,6 +214,11 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
                 </li>
               ))}
             </ul>
+            {shared.length > sharedLimit && (
+              <button type="button" onClick={() => setSharedLimit((n) => n + 24)} className="pressable self-start rounded-full bg-secondary px-4 py-2 text-sm hover:bg-accent">
+                Show more
+              </button>
+            )}
           </section>
         )}
       </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { PageTitle } from "@/components/hub/bits"
 import { NewsCard } from "@/components/hub/cards"
+import { MemberNews } from "@/components/hub/member-news"
 import { Item, Stagger } from "@/components/hub/motion"
 import { news, NEWS_KINDS } from "@/lib/data"
 
@@ -16,6 +17,7 @@ export default function NewsPage() {
         title="News"
         lead="Releases, papers, policy and tutorials, shared by builders. Every story says why it matters, so you can skip the hype."
       />
+      <MemberNews />
       <div className="grid gap-4 lg:grid-cols-2">
         <NewsCard n={lead} big />
         <NewsCard n={second} big />
