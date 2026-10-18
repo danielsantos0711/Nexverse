@@ -18,7 +18,8 @@ function layout(c: Constellation) {
   return c.stars.map((_, i) => {
     const x = 70 + (i / Math.max(n - 1, 1)) * (W - 140) + (r() - 0.5) * 40
     const y = H / 2 + Math.sin(i * 1.7 + r() * 2) * (H * 0.28) + (r() - 0.5) * 30
-    return { x, y }
+    // Rounded so the server and the browser print the same numbers (their Math.sin can differ in the last digit).
+    return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }
   })
 }
 
@@ -52,7 +53,7 @@ export function ConstellationMap({ c, className, labels = true }: { c: Constella
         const p = pts[a]
         const q = pts[b]
         const mx = (p.x + q.x) / 2
-        const my = (p.y + q.y) / 2 - 30
+        const my = Math.round(((p.y + q.y) / 2 - 30) * 10) / 10
         return (
           <motion.path
             key={i}

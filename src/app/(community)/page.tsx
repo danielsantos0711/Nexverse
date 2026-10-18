@@ -7,6 +7,7 @@ import { ConstellationCard, FeatureCard, NewsCard, PersonCard, ThreadRow } from 
 import { ConstellationMap } from "@/components/hub/constellation-map"
 import { Item, Magnetic, Stagger } from "@/components/hub/motion"
 import { Pulse, type PulseEvent } from "@/components/hub/pulse"
+import { Spaces } from "@/components/hub/spaces"
 import { TrendingTabs } from "@/components/hub/trending"
 import {
   categories,
@@ -74,6 +75,20 @@ export default function Home() {
           ))}
         </div>
       </div>
+
+      <Spaces
+        data={{
+          kinds: Object.fromEntries((Object.keys(KINDS) as ResourceKind[]).map((k) => [k, resourcesOf(k).length])) as Record<ResourceKind, number>,
+          top: trending(resources)
+            .slice(0, 9)
+            .map((r) => ({ name: r.name, href: resourcePath(r), kind: r.kind })),
+          threads: trending(threads).slice(0, 8).map(threadTitle),
+          threadCount: threads.length,
+          rooms: ["general", "local-ai", "agents"],
+          news: [lead.title],
+          constellations: constellations.length,
+        }}
+      />
 
       <section aria-labelledby="trend-h" className="shell grid grid-cols-1 gap-10 pt-16 lg:grid-cols-[1fr_22rem]">
         <div className="min-w-0">

@@ -296,3 +296,83 @@
     animation: none;
   }
 }
+
+/* The N floats a little, and a band of light runs across its metal (masked by the artwork's own brightness). */
+.logo-float {
+  animation: logo-float 9s ease-in-out infinite;
+}
+@keyframes logo-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0) rotate(-1.2deg);
+  }
+}
+.logo-sheen {
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.55) 48%, rgb(143 180 255 / 0.4) 52%, transparent 65%) no-repeat;
+  background-size: 260% 100%;
+  mask: url(/brand/n-chrome-alpha.webp) center / contain no-repeat;
+  mix-blend-mode: overlay;
+  animation: logo-sheen 7s cubic-bezier(0.77, 0, 0.175, 1) infinite;
+}
+@keyframes logo-sheen {
+  0%,
+  30% {
+    background-position: 120% 0;
+  }
+  80%,
+  100% {
+    background-position: -20% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-float,
+  .logo-sheen {
+    animation: none;
+  }
+}
+
+/* Page changes: the old page fades and sinks slightly, the new one rises in. Skipped when motion is reduced. */
+::view-transition-old(.page) {
+  animation: 160ms cubic-bezier(0.23, 1, 0.32, 1) both page-out;
+}
+::view-transition-new(.page) {
+  animation: 320ms cubic-bezier(0.23, 1, 0.32, 1) 60ms both page-in;
+}
+@keyframes page-out {
+  to {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(2px);
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* A card's cover flying into the detail page header. */
+::view-transition-group(.morph) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
+}
+::view-transition-image-pair(.morph) {
+  animation-name: via-blur;
+}
+@keyframes via-blur {
+  30% {
+    filter: blur(3px);
+  }
+}

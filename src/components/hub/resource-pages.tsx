@@ -1,11 +1,12 @@
 import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { Suspense } from "react"
+import { Suspense, ViewTransition } from "react"
 import { DownloadIcon, FileIcon, GitForkIcon, HeartIcon, UsersIcon } from "lucide-react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { Chip, Cover, KIND_ICONS, KindTag, LangTag, PageTitle, PersonAvatar, Stat } from "@/components/hub/bits"
 import { ConstellationCard, NewsCard, ResourceCard, ThreadRow } from "@/components/hub/cards"
+import { CompareButton } from "@/components/hub/compare"
 import { CopyButton } from "@/components/hub/copy-button"
 import { LikeButton } from "@/components/hub/like-button"
 import { MotionTabs } from "@/components/hub/motion-tabs"
@@ -198,9 +199,11 @@ async function ResourceDetail({ kind, params }: { kind: ResourceKind; params: Pr
             </Link>
           </nav>
           <div className="flex flex-wrap items-center gap-4">
-            <div className="size-16 overflow-hidden rounded-2xl ring-1 ring-white/15 md:size-20">
-              <Cover seed={r.slug} kind={r.kind} />
-            </div>
+            <ViewTransition name={`cover-${r.kind}-${r.slug}`} share="morph" default="none">
+              <div className="size-16 overflow-hidden rounded-2xl ring-1 ring-white/15 md:size-20">
+                <Cover seed={r.slug} kind={r.kind} />
+              </div>
+            </ViewTransition>
             <div className="flex min-w-0 flex-col gap-1">
               <h1 className="text-2xl font-semibold tracking-[-0.03em] break-words md:text-4xl">
                 <span className="text-muted-foreground">{r.owner}/</span>
@@ -211,6 +214,7 @@ async function ResourceDetail({ kind, params }: { kind: ResourceKind; params: Pr
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <LikeButton target={`${r.kind}:${r.slug}`} base={r.likes} />
+            <CompareButton slug={r.slug} />
             <span className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-secondary/60 px-3.5 text-sm" title={reachLabel}>
               <ReachIcon aria-hidden className="size-4" /> <span className="tabular">{compact(r.reach)}</span>
               <span className="text-muted-foreground">{r.kind === "repo" ? "forks" : r.kind === "tool" ? "users" : "downloads"}</span>

@@ -2,9 +2,26 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { motion, useMotionValueEvent, useScroll } from "motion/react"
-import { useState } from "react"
-import { MenuIcon, PlusIcon, SearchIcon } from "lucide-react"
+import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react"
+import { useEffect, useRef, useState } from "react"
+import {
+  BoxIcon,
+  ChevronDownIcon,
+  DatabaseIcon,
+  FlameIcon,
+  FolderGit2Icon,
+  MenuIcon,
+  MessageSquareIcon,
+  MessagesSquareIcon,
+  NewspaperIcon,
+  PlusIcon,
+  ScrollTextIcon,
+  SearchIcon,
+  SparklesIcon,
+  UsersIcon,
+  WrenchIcon,
+  type LucideIcon,
+} from "lucide-react"
 import { AccountButton } from "@/components/account/account-button"
 import { Lockup } from "@/components/brand"
 import { useOpenCommandMenu } from "@/components/site/command-menu"
@@ -13,15 +30,37 @@ import { Kbd } from "@/components/ui/kbd"
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 
-const NAV = [
-  { href: "/models", label: "Models" },
-  { href: "/datasets", label: "Datasets" },
-  { href: "/tools", label: "Tools" },
-  { href: "/repos", label: "Repos" },
-  { href: "/forum", label: "Forum" },
-  { href: "/news", label: "News" },
-  { href: "/constellations", label: "Constellations" },
-  { href: "/people", label: "People" },
+type NavLink = { href: string; label: string; blurb: string; icon: LucideIcon; tint: string }
+
+/** Two menus, grouped by what you came to do: find things, or talk to people. */
+const MENUS: { id: string; label: string; links: NavLink[] }[] = [
+  {
+    id: "hub",
+    label: "Hub",
+    links: [
+      { href: "/models", label: "Models", blurb: "Weights you can run, tune and ship", icon: BoxIcon, tint: "text-model" },
+      { href: "/datasets", label: "Datasets", blurb: "Open data with its licence up front", icon: DatabaseIcon, tint: "text-dataset" },
+      { href: "/tools", label: "Tools", blurb: "Apps and libraries builders rely on", icon: WrenchIcon, tint: "text-tool" },
+      { href: "/repos", label: "Repos", blurb: "Code worth reading and forking", icon: FolderGit2Icon, tint: "text-repo" },
+      { href: "/trending", label: "Trending now", blurb: "Live from Hugging Face, GitHub and HN", icon: FlameIcon, tint: "text-gold" },
+      { href: "/papers", label: "Papers", blurb: "Today's research, ready to discuss", icon: ScrollTextIcon, tint: "text-ion" },
+    ],
+  },
+  {
+    id: "community",
+    label: "Community",
+    links: [
+      { href: "/forum", label: "Forum", blurb: "Threads in any language, translated", icon: MessageSquareIcon, tint: "text-ion" },
+      { href: "/chat", label: "Chat", blurb: "Live rooms for every corner of AI", icon: MessagesSquareIcon, tint: "text-gold" },
+      { href: "/news", label: "News", blurb: "What happened and why it matters", icon: NewspaperIcon, tint: "text-model" },
+      { href: "/people", label: "People", blurb: "Builders and labs to follow", icon: UsersIcon, tint: "text-dataset" },
+    ],
+  },
+]
+
+const DIRECT: NavLink[] = [
+  { href: "/constellations", label: "Constellations", blurb: "Stacks drawn as star maps", icon: SparklesIcon, tint: "text-gold" },
+  { href: "/explore", label: "Explore", blurb: "Search everything", icon: SearchIcon, tint: "text-ion" },
 ]
 
 export function SiteHeader() {
@@ -29,9 +68,7 @@ export function SiteHeader() {
   const openSearch = useOpenCommandMenu()
   const { scrollY } = useScroll()
   const [scrolled, setScrolled] = useState(false)
-  const [hover, setHover] = useState<string | null>(null)
   useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 8))
-  const active = NAV.find((n) => pathname === n.href || pathname.startsWith(n.href + "/"))?.href
 
   return (
     <header
@@ -45,38 +82,9 @@ export function SiteHeader() {
           <Lockup />
         </Link>
 
-        <nav aria-label="Main" className="hidden flex-1 justify-center xl:flex" onPointerLeave={() => setHover(null)}>
-          <ul className="flex items-center">
-            {NAV.map((n) => {
-              const on = (hover ?? active) === n.href
-              return (
-                <li key={n.href} className="relative">
-                  {on && (
-                    <motion.span
-                      layoutId="nav-pill"
-                      aria-hidden
-                      className={cn("absolute inset-0 rounded-full", hover ? "bg-white/[0.06]" : "bg-white/[0.09]")}
-                      transition={{ type: "spring", bounce: 0.15, duration: 0.45 }}
-                    />
-                  )}
-                  <Link
-                    href={n.href}
-                    onPointerEnter={() => setHover(n.href)}
-                    aria-current={active === n.href ? "page" : undefined}
-                    className={cn(
-                      "relative block rounded-full px-3 py-1.5 text-sm transition-colors duration-150",
-                      active === n.href ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {n.label}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        </nav>
+        <MainNav pathname={pathname} />
 
-        <div className="ml-auto flex items-center gap-2 xl:ml-0">
+        <div className="ml-auto flex items-center gap-2 lg:ml-0">
           <button
             type="button"
             onClick={openSearch}
@@ -96,31 +104,163 @@ export function SiteHeader() {
             Share
           </Link>
           <Sheet>
-            <SheetTrigger render={<Button variant="ghost" size="icon" className="xl:hidden" aria-label="Open menu" />}>
+            <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu" />}>
               <MenuIcon />
             </SheetTrigger>
             <SheetContent side="right" className="w-80 bg-background/95 backdrop-blur-xl">
               <SheetTitle className="sr-only">Menu</SheetTitle>
-              <ul className="flex flex-col gap-0.5 px-3 pt-14">
-                {[{ href: "/", label: "Home" }, { href: "/explore", label: "Explore" }, ...NAV, { href: "/share", label: "Share something" }].map((n) => (
-                  <li key={n.href}>
-                    <SheetClose
-                      render={<Link href={n.href} />}
-                      nativeButton={false}
-                      className={cn(
-                        "block rounded-lg px-3 py-2.5 text-lg font-medium hover:bg-muted",
-                        (active === n.href || pathname === n.href) && "bg-muted"
-                      )}
-                    >
-                      {n.label}
-                    </SheetClose>
-                  </li>
+              <div className="flex flex-col gap-6 overflow-y-auto px-3 pt-14 pb-8">
+                {[{ id: "top", label: "", links: [{ href: "/", label: "Home", blurb: "", icon: SparklesIcon, tint: "text-ion" }, ...DIRECT] }, ...MENUS].map((m) => (
+                  <div key={m.id} className="flex flex-col gap-0.5">
+                    {m.label && <p className="px-3 pb-1 text-xs font-medium text-muted-foreground">{m.label}</p>}
+                    {m.links.map((n) => {
+                      const Icon = n.icon
+                      const on = pathname === n.href || (n.href !== "/" && pathname.startsWith(n.href + "/"))
+                      return (
+                        <SheetClose
+                          key={n.href}
+                          render={<Link href={n.href} />}
+                          nativeButton={false}
+                          className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium hover:bg-muted", on && "bg-muted")}
+                        >
+                          <Icon aria-hidden className={cn("size-4", n.tint)} />
+                          {n.label}
+                        </SheetClose>
+                      )
+                    })}
+                  </div>
                 ))}
-              </ul>
+                <SheetClose render={<Link href="/share" />} nativeButton={false} className="mx-3 inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                  <PlusIcon aria-hidden className="size-4" /> Share something
+                </SheetClose>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
       </div>
     </header>
+  )
+}
+
+/**
+ * Desktop navigation. Hovering a menu opens one shared panel that glides and resizes between menus
+ * instead of closing one dropdown and opening another.
+ */
+function MainNav({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState<string | null>(null)
+  const [dir, setDir] = useState(0)
+  const reduce = useReducedMotion()
+  const closeTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const order = MENUS.map((m) => m.id)
+  const isOn = (href: string) => pathname === href || pathname.startsWith(href + "/")
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(null)
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
+  const show = (id: string) => {
+    clearTimeout(closeTimer.current)
+    setDir(open ? Math.sign(order.indexOf(id) - order.indexOf(open)) : 0)
+    setOpen(id)
+  }
+  const hide = () => {
+    clearTimeout(closeTimer.current)
+    closeTimer.current = setTimeout(() => setOpen(null), 120)
+  }
+  const menu = MENUS.find((m) => m.id === open)
+
+  return (
+    <nav aria-label="Main" className="relative hidden flex-1 justify-center lg:flex" onPointerLeave={hide} onPointerEnter={() => clearTimeout(closeTimer.current)}>
+      <ul className="flex items-center gap-0.5">
+        {MENUS.map((m) => {
+          const current = m.links.some((l) => isOn(l.href))
+          return (
+            <li key={m.id}>
+              <button
+                type="button"
+                aria-expanded={open === m.id}
+                aria-controls="nav-panel"
+                onPointerEnter={(e) => e.pointerType === "mouse" && show(m.id)}
+                onClick={() => (open === m.id ? setOpen(null) : show(m.id))}
+                className={cn(
+                  "relative flex items-center gap-1 rounded-full px-3.5 py-1.5 text-sm transition-colors duration-150",
+                  open === m.id || current ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                  current && "bg-white/[0.07]"
+                )}
+              >
+                {m.label}
+                <ChevronDownIcon aria-hidden className={cn("size-3.5 opacity-60 transition-transform duration-200", open === m.id && "rotate-180")} />
+              </button>
+            </li>
+          )
+        })}
+        {DIRECT.map((n) => (
+          <li key={n.href}>
+            <Link
+              href={n.href}
+              onPointerEnter={hide}
+              aria-current={isOn(n.href) ? "page" : undefined}
+              className={cn(
+                "block rounded-full px-3.5 py-1.5 text-sm transition-colors duration-150",
+                isOn(n.href) ? "bg-white/[0.07] text-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {n.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      <AnimatePresence>
+        {menu && (
+          <motion.div
+            id="nav-panel"
+            layout={!reduce}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, transform: "translateY(-6px) scale(0.98)" }}
+            animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, transform: "translateY(-6px) scale(0.98)" }}
+            transition={{ type: "spring", duration: 0.35, bounce: 0.1 }}
+            style={{ transformOrigin: "top center" }}
+            className="absolute top-[calc(100%+12px)] left-1/2 w-[34rem] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-popover/95 p-2 shadow-[0_30px_80px_-20px_rgb(0_0_0/0.8),0_0_0_1px_rgb(143_180_255/0.06)] backdrop-blur-2xl"
+          >
+            <AnimatePresence mode="popLayout" initial={false} custom={dir}>
+              <motion.ul
+                key={menu.id}
+                custom={dir}
+                initial={reduce ? { opacity: 0 } : { opacity: 0, transform: `translateX(${dir * 40}px)`, filter: "blur(4px)" }}
+                animate={{ opacity: 1, transform: "translateX(0px)", filter: "blur(0px)" }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, transform: `translateX(${dir * -40}px)`, filter: "blur(4px)" }}
+                transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+                className="grid grid-cols-2 gap-1"
+              >
+                {menu.links.map((l) => {
+                  const Icon = l.icon
+                  return (
+                    <li key={l.href}>
+                      <Link
+                        href={l.href}
+                        aria-current={isOn(l.href) ? "page" : undefined}
+                        onClick={() => setOpen(null)}
+                        className="group flex items-start gap-3 rounded-xl p-3 transition-colors duration-150 hover:bg-white/[0.05] aria-[current=page]:bg-white/[0.06]"
+                      >
+                        <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg bg-white/[0.05] ring-1 ring-white/10 transition-transform duration-200 group-hover:scale-105", l.tint)}>
+                          <Icon aria-hidden className="size-4" />
+                        </span>
+                        <span className="flex flex-col gap-0.5">
+                          <span className="text-sm font-medium">{l.label}</span>
+                          <span className="text-xs text-muted-foreground">{l.blurb}</span>
+                        </span>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </motion.ul>
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </nav>
   )
 }

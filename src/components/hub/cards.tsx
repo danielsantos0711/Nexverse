@@ -1,3 +1,4 @@
+import { ViewTransition } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowUpIcon, CheckCircle2Icon, DownloadIcon, EyeIcon, GitForkIcon, HeartIcon, MessageSquareIcon, PinIcon, UsersIcon } from "lucide-react"
@@ -27,7 +28,10 @@ export function ResourceCard({ r, className, rank }: { r: Resource; className?: 
     <Spotlight className={cn("group rounded-xl border border-border bg-card/70 transition-colors hover:bg-card", className)}>
       <div className="flex gap-3.5 p-3.5">
         <div className="relative size-14 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/10">
-          <Cover seed={r.slug} kind={r.kind} />
+          {/* Same name as the detail page's cover, so opening a card morphs its cover into place. */}
+          <ViewTransition name={`cover-${r.kind}-${r.slug}`} share="morph" default="none">
+            <Cover seed={r.slug} kind={r.kind} />
+          </ViewTransition>
           {rank !== undefined && (
             <span className="absolute top-1 left-1 rounded bg-black/60 px-1 font-mono text-[10px] text-white/80">#{rank}</span>
           )}

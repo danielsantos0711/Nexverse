@@ -12,12 +12,18 @@ export const useOpenCommandMenu = () => use(Ctx)
 
 const PAGES = [
   ["Explore everything", "/explore"],
+  ["Trending now", "/trending"],
+  ["Papers", "/papers"],
   ["Forum", "/forum"],
+  ["Chat rooms", "/chat"],
   ["Start a thread", "/forum/new"],
   ["News", "/news"],
   ["Constellations", "/constellations"],
   ["People", "/people"],
   ["Share something", "/share"],
+  ["Compare side by side", "/compare"],
+  ["Saved", "/saved"],
+  ["Notifications", "/notifications"],
 ] as const
 
 /** ⌘K: jump to any model, dataset, tool, repo, thread, story or person. Opens instantly, by design. */

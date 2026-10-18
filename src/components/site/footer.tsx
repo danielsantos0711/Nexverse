@@ -2,9 +2,9 @@ import Link from "next/link"
 import { Lockup } from "@/components/brand"
 
 const COLUMNS = [
-  { title: "Hub", links: [["Models", "/models"], ["Datasets", "/datasets"], ["Tools", "/tools"], ["Repos", "/repos"], ["Explore", "/explore"]] },
-  { title: "Community", links: [["Forum", "/forum"], ["News", "/news"], ["Constellations", "/constellations"], ["People", "/people"]] },
-  { title: "You", links: [["Share something", "/share"], ["Start a thread", "/forum/new"], ["Your page", "/you"], ["Sign in", "/sign-in"]] },
+  { title: "Hub", links: [["Models", "/models"], ["Datasets", "/datasets"], ["Tools", "/tools"], ["Repos", "/repos"], ["Trending now", "/trending"], ["Papers", "/papers"]] },
+  { title: "Community", links: [["Forum", "/forum"], ["Chat", "/chat"], ["News", "/news"], ["Constellations", "/constellations"], ["People", "/people"]] },
+  { title: "You", links: [["Share something", "/share"], ["Start a thread", "/forum/new"], ["Your page", "/you"], ["Saved", "/saved"], ["Notifications", "/notifications"]] },
 ] as const
 
 export function SiteFooter() {

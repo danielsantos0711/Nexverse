@@ -1,35 +1,21 @@
 "use client"
 
-import dynamic from "next/dynamic"
 import Image from "next/image"
 import Link from "next/link"
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react"
-import { useRef, useSyncExternalStore } from "react"
+import { useRef } from "react"
 import { SearchIcon } from "lucide-react"
-import { NMark } from "@/components/brand"
+import { LogoOrbit } from "@/components/hero/logo-orbit"
 import { CountUp, Magnetic } from "@/components/hub/motion"
 import { KIND_ICONS } from "@/components/hub/bits"
 import { Kbd } from "@/components/ui/kbd"
 import { KINDS, type ResourceKind } from "@/lib/data"
 
-const ChromeN = dynamic(() => import("@/components/hero/chrome-n"), { ssr: false })
-
 const EASE = [0.23, 1, 0.32, 1] as const
-
-function canRender3D() {
-  try {
-    const c = document.createElement("canvas")
-    return Boolean(c.getContext("webgl2") ?? c.getContext("webgl"))
-  } catch {
-    return false
-  }
-}
-const subscribeNoop = () => () => {}
 
 export function Hero({ counts }: { counts: { label: string; value: number }[] }) {
   const ref = useRef<HTMLElement>(null)
   const reduce = useReducedMotion()
-  const webgl = useSyncExternalStore(subscribeNoop, canRender3D, () => false)
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] })
   const earthY = useTransform(scrollYProgress, [0, 1], ["0%", "18%"])
   const earthScale = useTransform(scrollYProgress, [0, 1], [1, 1.12])
@@ -63,7 +49,7 @@ export function Hero({ counts }: { counts: { label: string; value: number }[] })
           <motion.p {...rise(0.05)} className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-black/30 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
             <span className="pulse-dot" aria-hidden /> Builders online in 40 languages right now
           </motion.p>
-          <motion.h1 {...rise(0.12)} id="hero-h" className="text-[clamp(2.6rem,1.4rem+5vw,5.6rem)] leading-[0.95] font-semibold tracking-[-0.045em]">
+          <motion.h1 {...rise(0.12)} id="hero-h" className="text-[clamp(2.25rem,1.3rem+3.2vw,4.25rem)] leading-[1] font-semibold tracking-[-0.04em]">
             <span className="chrome-text">The open universe</span>
             <br />
             <span className="ion-text">for AI builders.</span>
@@ -124,17 +110,12 @@ export function Hero({ counts }: { counts: { label: string; value: number }[] })
         </motion.div>
 
         <motion.div
-          aria-hidden
           initial={reduce ? false : { opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.4, ease: EASE }}
-          className="relative order-first -mx-4 h-60 sm:h-80 lg:order-none lg:mx-0 lg:h-[min(78vh,720px)]"
+          className="relative order-first h-72 sm:h-96 lg:order-none lg:h-auto"
         >
-          {webgl && !reduce ? (
-            <ChromeN className="size-full" />
-          ) : (
-            <NMark priority sizes="(min-width: 1024px) 45vw, 80vw" className="mx-auto aspect-square h-full max-h-[560px] rounded-[40px] mix-blend-screen lg:mt-[8vh] lg:h-auto lg:w-[min(80%,560px)]" />
-          )}
+          <LogoOrbit className="mx-auto aspect-square h-full max-w-full lg:h-auto lg:w-full lg:max-w-[640px]" />
           <div className="pointer-events-none absolute inset-x-[15%] bottom-[8%] h-20 rounded-[50%] bg-ion/25 blur-3xl" />
         </motion.div>
       </div>
