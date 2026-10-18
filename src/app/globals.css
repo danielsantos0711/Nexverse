@@ -376,3 +376,43 @@
     filter: blur(3px);
   }
 }
+
+/* Glow card (adapted from HorizonX Border Glow): a lamp on the border nearest the pointer. */
+.glow-card {
+  --glow-x: 0px;
+  --glow-y: 0px;
+  --glow-lit: 0;
+  --glow-halo: 18px;
+  --glow-wheel: conic-gradient(from -90deg at 50% 50%, #8fb4ff, #d8c59e, #b9a7ff, #8fb4ff);
+  position: relative;
+}
+.glow-lamp {
+  position: absolute;
+  inset: calc(var(--glow-halo) * -1);
+  z-index: 0;
+  pointer-events: none;
+  opacity: var(--glow-lit);
+  mask-image: radial-gradient(circle 140px at calc(var(--glow-x) + var(--glow-halo)) calc(var(--glow-y) + var(--glow-halo)), #000 0%, rgb(0 0 0 / 55%) 38%, transparent 100%);
+}
+.glow-wash,
+.glow-bloom,
+.glow-rim {
+  position: absolute;
+  inset: var(--glow-halo);
+  border-radius: var(--radius-2xl, 1rem);
+  background: var(--glow-wheel);
+}
+.glow-wash {
+  opacity: 0.1;
+  filter: blur(18px);
+}
+.glow-bloom,
+.glow-rim {
+  padding: 1px;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+.glow-bloom {
+  padding: 5px;
+  filter: blur(9px);
+}

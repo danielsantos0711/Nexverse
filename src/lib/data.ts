@@ -387,17 +387,34 @@ export const resources: Resource[] = [
 
 // Forum
 
-export type Category = { slug: string; name: string; blurb: string; icon: string }
+export type CategoryGroup = "community" | "build" | "research" | "languages"
+
+/** Categories sit in groups, the way a classic forum's index is laid out. */
+export const categoryGroups: { slug: CategoryGroup; name: string; blurb: string }[] = [
+  { slug: "community", name: "Community", blurb: "News, questions and things people made." },
+  { slug: "build", name: "Build", blurb: "Models, agents, data and running them yourself." },
+  { slug: "research", name: "Research", blurb: "Papers, evals, and doing it responsibly." },
+  { slug: "languages", name: "Languages", blurb: "AI beyond English, region by region." },
+]
+
+export type Category = { slug: string; name: string; blurb: string; icon: string; group: CategoryGroup }
 
 export const categories: Category[] = [
-  { slug: "help", name: "Help", blurb: "Stuck? Ask. Someone has done it before.", icon: "life-buoy" },
-  { slug: "show", name: "Show & tell", blurb: "Share what you built and get honest feedback.", icon: "sparkles" },
-  { slug: "models", name: "Models", blurb: "Training, fine-tuning, quantising, comparing.", icon: "box" },
-  { slug: "agents", name: "Agents", blurb: "Tools, loops, memory and agents that behave.", icon: "bot" },
-  { slug: "languages", name: "Every language", blurb: "AI beyond English, in your language.", icon: "languages" },
-  { slug: "local", name: "Local & on-device", blurb: "Phones, laptops, offline, private.", icon: "cpu" },
-  { slug: "research", name: "Research", blurb: "Papers explained by people who read them.", icon: "flask-conical" },
-  { slug: "policy", name: "Policy & safety", blurb: "Regulation, licences and doing it responsibly.", icon: "scale" },
+  { slug: "announcements", name: "Announcements", blurb: "Releases, forum news and how things work here.", icon: "megaphone", group: "community" },
+  { slug: "help", name: "Help", blurb: "Stuck? Ask. Someone has done it before.", icon: "life-buoy", group: "community" },
+  { slug: "show", name: "Show & tell", blurb: "Share what you built and get honest feedback.", icon: "sparkles", group: "community" },
+  { slug: "models", name: "Models", blurb: "Training, fine-tuning, quantising, comparing.", icon: "box", group: "build" },
+  { slug: "agents", name: "Agents", blurb: "Tools, loops, memory and agents that behave.", icon: "bot", group: "build" },
+  { slug: "local", name: "Local & on-device", blurb: "Phones, laptops, offline, private.", icon: "cpu", group: "build" },
+  { slug: "data", name: "Data & datasets", blurb: "Collecting, cleaning, documenting and sharing data.", icon: "database", group: "build" },
+  { slug: "research", name: "Research", blurb: "Papers explained by people who read them.", icon: "flask-conical", group: "research" },
+  { slug: "benchmarks", name: "Evals & benchmarks", blurb: "Measuring what matters, and catching leaks.", icon: "gauge", group: "research" },
+  { slug: "policy", name: "Policy & safety", blurb: "Regulation, licences and doing it responsibly.", icon: "scale", group: "research" },
+  { slug: "languages", name: "Every language", blurb: "Multilingual work that crosses regions: tokenisers, translation, fairness.", icon: "languages", group: "languages" },
+  { slug: "europe", name: "European languages", blurb: "Portuguese, Spanish, Swedish, Catalan and the rest of Europe.", icon: "globe", group: "languages" },
+  { slug: "africa", name: "African languages", blurb: "Yoruba, Swahili, Hausa, Amharic and more.", icon: "earth", group: "languages" },
+  { slug: "asia", name: "Asian languages", blurb: "Japanese, Korean, Hindi, Chinese and beyond.", icon: "globe", group: "languages" },
+  { slug: "arabic", name: "Arabic & Middle East", blurb: "Dialects, Arabizi, right-to-left and the region's languages.", icon: "earth", group: "languages" },
 ]
 
 export type Translation = { title?: string; body: string }
@@ -433,7 +450,7 @@ export type Thread = {
 
 export const threads: Thread[] = [
   {
-    id: "fine-tune-3b-european-portuguese", category: "languages", lang: "pt", author: "ines", date: "2026-10-12", votes: 412, views: 18200,
+    id: "fine-tune-3b-european-portuguese", category: "europe", lang: "pt", author: "ines", date: "2026-10-12", votes: 412, views: 18200,
     title: "Como fazer fine-tune de um modelo 3B em português europeu (e não brasileiro)?",
     body: "Tenho 40 mil exemplos escritos por falantes de Portugal, mas o modelo continua a responder com «você» e «ônibus». Já tentei LoRA com rank 16. O que estou a fazer mal?",
     en: { title: "How do I fine-tune a 3B model in European Portuguese (not Brazilian)?", body: "I have 40,000 examples written by speakers from Portugal, but the model keeps answering with «você» and «ônibus». I tried LoRA at rank 16. What am I doing wrong?" },
@@ -467,7 +484,7 @@ export const threads: Thread[] = [
     ],
   },
   {
-    id: "yoruba-tone-marks-asr", category: "languages", lang: "yo", author: "tunde", date: "2026-10-01", votes: 254, views: 9800,
+    id: "yoruba-tone-marks-asr", category: "africa", lang: "yo", author: "tunde", date: "2026-10-01", votes: 254, views: 9800,
     title: "Ṣé ẹnikẹ́ni ti rí ASR tí kò pa àmì ohùn rẹ́?",
     body: "Gbogbo àwọn àwòṣe tí mo ti gbìyànjú máa ń yọ àmì ohùn kúrò. Ọ̀rọ̀ di ìtumọ̀ míràn.",
     en: { title: "Has anyone seen ASR that doesn't erase tone marks?", body: "Every model I have tried strips the tone marks. Words turn into different meanings." },
@@ -508,7 +525,7 @@ export const threads: Thread[] = [
     ],
   },
   {
-    id: "kansai-dialect-eval", category: "models", lang: "ja", author: "mei", date: "2026-09-21", votes: 167, views: 6400,
+    id: "kansai-dialect-eval", category: "asia", lang: "ja", author: "mei", date: "2026-09-21", votes: 167, views: 6400,
     title: "関西弁を「間違い」と判定しない評価セットを作りました",
     body: "既存のベンチマークでは関西弁の回答が減点されます。方言のまま正しく理解できるかを測る2,400問を公開しました。",
     en: { title: "I made an eval set that does not mark Kansai dialect as 'wrong'", body: "Existing benchmarks penalise answers in Kansai dialect. I released 2,400 questions that measure whether a model understands the dialect as it is." },
@@ -547,14 +564,14 @@ export const threads: Thread[] = [
     replies: [],
   },
   {
-    id: "darija-arabizi-input", category: "help", lang: "en", author: "layla", date: "2026-10-16", votes: 64, views: 1900,
+    id: "darija-arabizi-input", category: "arabic", lang: "en", author: "layla", date: "2026-10-16", votes: 64, views: 1900,
     title: "How do you evaluate translation when the input is Arabizi?",
     body: "Users type Darija in Latin letters with numbers (3 for ع, 7 for ح). BLEU is meaningless here. What are people using?",
     tags: ["translation", "arabic", "evals"], links: ["darija-mt", "arabic-dialects-qa"],
     replies: [],
   },
   {
-    id: "orbit-8b-release-notes", category: "models", lang: "en", author: "orbitalai", date: "2026-10-16", votes: 520, views: 31800, pinned: true,
+    id: "orbit-8b-release-notes", category: "announcements", lang: "en", author: "orbitalai", date: "2026-10-16", votes: 520, views: 31800, pinned: true,
     title: "Orbit 8B is out, with every log, checkpoint and data mixture",
     body: "AMA in this thread. We will answer questions about the data, the training run and what we would do differently.",
     tags: ["release", "open-data", "ama"], links: ["orbit-8b", "orbit-1b-mobile", "guard-1b"],
@@ -565,7 +582,7 @@ export const threads: Thread[] = [
     ],
   },
   {
-    id: "first-dataset-datasheet", category: "help", lang: "en", author: "amara", date: "2026-10-11", votes: 88, views: 3300,
+    id: "first-dataset-datasheet", category: "data", lang: "en", author: "amara", date: "2026-10-11", votes: 88, views: 3300,
     title: "Publishing your first dataset? Answer these 10 questions first",
     body: "A checklist from curating Kiswahili Commons: provenance, consent, personal data, licence compatibility and more.",
     tags: ["datasets", "datasheets", "guide"], links: ["datasheet-studio", "kiswahili-commons"],
@@ -579,6 +596,276 @@ export const threads: Thread[] = [
     body: "कोड किसी भी भाषा में, समझाना हिंदी में। फीडबैक दीजिए।",
     en: { title: "A coding assistant that explains in Hindi, on an 8 GB laptop", body: "Code in any language, explanations in Hindi. Feedback welcome." },
     tags: ["code", "hindi", "show"], links: ["hindi-coder-3b"],
+    replies: [],
+  },
+  {
+    id: "forum-guide", category: "announcements", lang: "en", author: "noah", date: "2026-09-20", votes: 214, views: 9400, pinned: true,
+    title: "New here? How the forum is organised, and how to get a good answer",
+    body: "Categories sit in four groups: Community, Build, Research and Languages. Post in the one that fits best, write in any language, and say what you tried. When a reply solves your problem, mark it as the answer so the next person finds it.",
+    tags: ["guide", "welcome"], links: [],
+    replies: [
+      { id: "r1", author: "ines", date: "2026-09-21", lang: "en", votes: 31, body: "Tip for non-English posts: add a one-line English summary at the end. You get answers from both crowds." },
+    ],
+  },
+  {
+    id: "kiswahili-commons-v2", category: "announcements", lang: "en", author: "savanna", date: "2026-10-14", votes: 176, views: 5100,
+    title: "Kiswahili Commons v2: 40% more speakers, every clip with consent on file",
+    body: "The second release adds speakers from Mombasa, Zanzibar and Dar es Salaam, plus a withdrawal log that is public. Datasheet updated.",
+    tags: ["release", "swahili", "datasets"], links: ["kiswahili-commons"],
+    replies: [
+      { id: "r1", author: "tunde", date: "2026-10-14", lang: "en", votes: 22, body: "The public withdrawal log is a great idea. Stealing it for Yoruba Voices." },
+      { id: "r2", author: "amara", date: "2026-10-15", lang: "en", votes: 18, body: "Please do. The template is in the repo." },
+    ],
+  },
+  {
+    id: "lora-loss-zero", category: "help", lang: "en", author: "kai", date: "2026-10-10", votes: 72, views: 2600,
+    title: "LoRA training loss drops to zero after 200 steps. Too good to be true?",
+    body: "Fine-tuning a 1B model on 5,000 support tickets. Loss falls to ~0.01 almost immediately and the outputs are word-for-word copies of the training set.",
+    tags: ["lora", "overfitting", "fine-tuning"], links: [],
+    replies: [
+      { id: "r1", author: "sofia", date: "2026-10-10", lang: "en", votes: 54, accepted: true, body: "You are probably training on the prompt as well as the answer, and the tickets share a long template. Mask the prompt tokens, deduplicate near-identical tickets and hold out 10% to watch eval loss." },
+      { id: "r2", author: "kai", date: "2026-10-11", lang: "en", votes: 12, body: "That was it. Template was 80% of every example. Thanks!" },
+    ],
+  },
+  {
+    id: "licence-fine-tune-mixed", category: "help", lang: "pt", author: "ines", date: "2026-10-08", votes: 58, views: 2100,
+    title: "Que licença uso num fine-tune de um modelo Apache-2.0 com dados CC-BY-SA?",
+    body: "O modelo base é Apache-2.0, mas parte dos dados de treino é CC-BY-SA. O modelo resultante tem de ser CC-BY-SA?",
+    en: { title: "Which licence for a fine-tune of an Apache-2.0 model with CC-BY-SA data?", body: "The base model is Apache-2.0, but part of the training data is CC-BY-SA. Does the resulting model have to be CC-BY-SA?" },
+    tags: ["licences", "fine-tuning"], links: ["act-checker"],
+    replies: [
+      { id: "r1", author: "jonas", date: "2026-10-09", lang: "en", votes: 41, body: "Nobody has a court ruling on this yet. Most people keep the model licence and attribute the data in the model card. If in doubt, ship the CC-BY-SA data's attribution with the weights." },
+    ],
+  },
+  {
+    id: "oom-batch-one", category: "help", lang: "en", author: "leo", date: "2026-10-17", votes: 9, views: 240,
+    title: "CUDA out of memory at batch size 1 on a 24 GB card",
+    body: "Fine-tuning Lumen Foley with sequences of 30 seconds of audio. Gradient checkpointing is on. What else can I try before renting a bigger GPU?",
+    tags: ["gpu", "memory", "audio"], links: ["lumen-foley"],
+    replies: [],
+  },
+  {
+    id: "small-model-sheet", category: "models", lang: "en", author: "kitsune", date: "2026-10-06", votes: 233, views: 11200,
+    title: "Is 8B the new 3B? A comparison sheet of every open model under 10B",
+    body: "Same prompts, same hardware, same quantisation. Columns for languages, tool calling and memory use. Corrections welcome in the thread.",
+    tags: ["comparison", "small-models"], links: ["orbit-8b", "kansai-7b", "tagus-3b-pt"],
+    replies: [
+      { id: "r1", author: "priya", date: "2026-10-07", lang: "en", votes: 37, body: "Could you add first-token latency on CPU? That is what decides it for laptops." },
+      { id: "r2", author: "kitsune", date: "2026-10-08", lang: "en", votes: 25, body: "Added, with an M2 Air and a Ryzen 7 column." },
+    ],
+  },
+  {
+    id: "merge-lora-adapters", category: "models", lang: "es", author: "rafa", date: "2026-10-03", votes: 87, views: 3000,
+    title: "¿Vale la pena fusionar dos adaptadores LoRA?",
+    body: "Tengo un adaptador para español y otro para llamadas a herramientas. Fusionarlos pierde un poco de cada uno. ¿Alguien tiene números?",
+    en: { title: "Is merging two LoRA adapters worth it?", body: "I have one adapter for Spanish and another for tool calling. Merging them loses a bit of each. Does anyone have numbers?" },
+    tags: ["lora", "merging"], links: [],
+    replies: [
+      { id: "r1", author: "noah", date: "2026-10-04", lang: "en", votes: 29, body: "TIES merging kept 95% of both in our tests. Plain averaging was closer to 80%." },
+    ],
+  },
+  {
+    id: "distil-8b-to-1b", category: "models", lang: "en", author: "orbitalai", date: "2026-09-26", votes: 154, views: 6900,
+    title: "How we distilled Orbit 8B into Orbit 1B Mobile: what the logs show",
+    body: "Every run, including the three that failed. The short version: the data mixture mattered more than the loss function.",
+    tags: ["distillation", "mobile"], links: ["orbit-1b-mobile", "orbit-8b"],
+    replies: [
+      { id: "r1", author: "mei", date: "2026-09-27", lang: "en", votes: 20, body: "Thank you for publishing the failed runs. That is the useful part." },
+    ],
+  },
+  {
+    id: "agent-memory", category: "agents", lang: "en", author: "fieldnotes", date: "2026-10-12", votes: 129, views: 5400,
+    title: "Memory for long-running agents: summarise, or retrieve?",
+    body: "We traced 3,000 agent sessions. Summaries lose names and numbers; retrieval brings back stale facts. Here is what worked for us.",
+    tags: ["memory", "agents", "tracing"], links: ["tracewatch", "tiny-rag"],
+    replies: [
+      { id: "r1", author: "rafa", date: "2026-10-12", lang: "en", votes: 33, body: "We keep a small structured scratchpad (entities, numbers, decisions) and retrieve everything else. Best of both." },
+      { id: "r2", author: "noah", date: "2026-10-13", lang: "en", votes: 14, body: "Timestamps on every memory item fixed most of the stale-fact problem for us." },
+    ],
+  },
+  {
+    id: "tool-schema-size", category: "agents", lang: "en", author: "kai", date: "2026-10-16", votes: 26, views: 700,
+    title: "Fewer, bigger tools or many small ones?",
+    body: "My agent has 34 tools. Accuracy picking the right one drops after about 15. Do you group them, or route first?",
+    tags: ["tool-calling", "design"], links: [],
+    replies: [],
+  },
+  {
+    id: "orbit-1b-pixel-battery", category: "local", lang: "en", author: "priya", date: "2026-10-09", votes: 98, views: 3600,
+    title: "Orbit 1B on a Pixel 7: battery numbers after a week",
+    body: "Summaries of every notification, all on the phone. It costs about 4% of battery a day. Setup and the full log inside.",
+    tags: ["android", "battery", "on-device"], links: ["orbit-1b-mobile", "pocket-run"],
+    replies: [
+      { id: "r1", author: "kai", date: "2026-10-10", lang: "en", votes: 11, body: "Did you try running it only while charging? Curious how much that changes." },
+    ],
+  },
+  {
+    id: "dedupe-multilingual", category: "data", lang: "en", author: "amara", date: "2026-10-04", votes: 112, views: 4100,
+    title: "Deduplicating a multilingual corpus without deleting the rare languages",
+    body: "MinHash at the usual threshold removed 30% of our Kiswahili because of shared boilerplate. How do you tune dedup per language?",
+    tags: ["deduplication", "multilingual", "datasets"], links: ["kiswahili-commons"],
+    replies: [
+      { id: "r1", author: "layla", date: "2026-10-05", lang: "en", votes: 40, accepted: true, body: "Strip boilerplate before hashing, then set the threshold per language from a hand-checked sample of 200 pairs. Arabic needed a much looser one than English." },
+    ],
+  },
+  {
+    id: "synthetic-in-eval", category: "data", lang: "en", author: "mei", date: "2026-10-15", votes: 47, views: 1300,
+    title: "How do you check that synthetic data has not slipped into your eval split?",
+    body: "We generate training data with a large model and evaluate on human-written questions. I am not sure the two never overlap.",
+    tags: ["synthetic-data", "evals"], links: ["leakcheck"],
+    replies: [
+      { id: "r1", author: "noah", date: "2026-10-16", lang: "en", votes: 15, body: "leakcheck with n-gram and embedding overlap, both. N-grams alone miss paraphrases." },
+    ],
+  },
+  {
+    id: "paper-club-tokenizer-free", category: "research", lang: "en", author: "noah", date: "2026-10-16", votes: 81, views: 2200,
+    title: "Paper club: tokenizer-free models, this Friday",
+    body: "We read the byte-level paper everyone is arguing about. Bring questions; notes go in this thread afterwards.",
+    tags: ["paper-club", "tokenizers"], links: [],
+    replies: [
+      { id: "r1", author: "layla", date: "2026-10-17", lang: "en", votes: 9, body: "I will bring Arabic results. Bytes are not as neutral as the paper claims." },
+    ],
+  },
+  {
+    id: "cot-small-models", category: "research", lang: "en", author: "mei", date: "2026-10-02", votes: 140, views: 5800,
+    title: "Does chain-of-thought help small models at all?",
+    body: "Below 3B we see it hurt as often as it helps. Has anyone found a size where it reliably starts paying off?",
+    tags: ["reasoning", "small-models"], links: [],
+    replies: [
+      { id: "r1", author: "noah", date: "2026-10-03", lang: "en", votes: 44, body: "Around 7B for maths, never for short factual questions in our runs." },
+      { id: "r2", author: "priya", date: "2026-10-04", lang: "en", votes: 17, body: "Same on-device: it doubles latency for a few points at best." },
+    ],
+  },
+  {
+    id: "leakcheck-pretraining", category: "benchmarks", lang: "en", author: "mei", date: "2026-10-11", votes: 188, views: 7300,
+    title: "leakcheck found our eval in three public pretraining sets",
+    body: "We added canary strings a year ago. They now show up in three crawls. What we changed, and why every eval set should ship with one.",
+    tags: ["contamination", "evals"], links: ["leakcheck", "kansai-reading-eval"],
+    replies: [
+      { id: "r1", author: "jonas", date: "2026-10-12", lang: "en", votes: 23, body: "Worth writing to the crawl maintainers. Some of them honour removal requests." },
+    ],
+  },
+  {
+    id: "leaderboard-languages", category: "benchmarks", lang: "en", author: "layla", date: "2026-10-07", votes: 121, views: 4400,
+    title: "A leaderboard for languages, not models",
+    body: "Flip the table: rows are languages, cells show the best open model for each task. It makes the gaps impossible to ignore.",
+    tags: ["leaderboard", "multilingual"], links: ["arabic-dialects-qa"],
+    replies: [
+      { id: "r1", author: "tunde", date: "2026-10-08", lang: "en", votes: 30, body: "Please include tonal accuracy as its own column for Yoruba." },
+    ],
+  },
+  {
+    id: "swahili-hallucination", category: "benchmarks", lang: "en", author: "amara", date: "2026-10-17", votes: 14, views: 380,
+    title: "Measuring hallucination in Swahili summaries",
+    body: "Faithfulness metrics trained on English miss most errors. Has anyone built or seen a Swahili version?",
+    tags: ["hallucination", "swahili", "evals"], links: [],
+    replies: [],
+  },
+  {
+    id: "model-card-contents", category: "policy", lang: "en", author: "jonas", date: "2026-10-10", votes: 66, views: 2000,
+    title: "Model cards: what do you actually include?",
+    body: "The templates are long. Which sections do readers use, and which can be one line?",
+    tags: ["model-cards", "documentation"], links: ["datasheet-studio"],
+    replies: [
+      { id: "r1", author: "amara", date: "2026-10-11", lang: "en", votes: 19, body: "Intended use, data sources, known failure cases. Everything else people skip." },
+    ],
+  },
+  {
+    id: "tokenizer-fertility-sheet", category: "languages", lang: "en", author: "kai", date: "2026-10-14", votes: 158, views: 6100,
+    title: "Tokenizer fertility across 40 languages: a shared spreadsheet",
+    body: "Tokens per word for 14 open tokenizers. Add your language if it is missing.",
+    tags: ["tokenizers", "multilingual"], links: ["token-tax"],
+    replies: [
+      { id: "r1", author: "priya", date: "2026-10-14", lang: "en", votes: 21, body: "Added Tamil and Telugu. The gap is worse than Hindi." },
+      { id: "r2", author: "tunde", date: "2026-10-15", lang: "en", votes: 16, body: "Yoruba with tone marks added as its own row." },
+    ],
+  },
+  {
+    id: "low-resource-meaning", category: "languages", lang: "en", author: "tunde", date: "2026-09-30", votes: 92, views: 3500,
+    title: "What do we mean by 'low-resource' in 2026?",
+    body: "Yoruba has 45 million speakers. Calling it low-resource describes the internet, not the language. Should we change the words we use?",
+    tags: ["terminology", "fairness"], links: [],
+    replies: [
+      { id: "r1", author: "amara", date: "2026-10-01", lang: "en", votes: 27, body: "'Under-served' is what we use in grant applications now." },
+    ],
+  },
+  {
+    id: "subtitle-post-edit", category: "languages", lang: "fr", author: "leo", date: "2026-10-06", votes: 54, views: 1700,
+    title: "Sous-titres traduits par machine : post-édition ou réentraînement ?",
+    body: "Nos traducteurs passent plus de temps à corriger qu'à traduire. À partir de combien de corrections faut-il réentraîner ?",
+    en: { title: "Machine-translated subtitles: post-edit or retrain?", body: "Our translators spend more time fixing than translating. After how many corrections should we retrain?" },
+    tags: ["translation", "subtitles"], links: ["subtitle-forge"],
+    replies: [],
+  },
+  {
+    id: "catalan-galician-instruct", category: "europe", lang: "en", author: "tagus-lab", date: "2026-10-09", votes: 63, views: 1900,
+    title: "Catalan and Galician: anyone sharing an instruction set?",
+    body: "We have 8,000 Galician instructions written by native speakers and would like to pair with a Catalan effort.",
+    tags: ["catalan", "galician", "datasets"], links: ["pt-pt-instruct"],
+    replies: [
+      { id: "r1", author: "ines", date: "2026-10-10", lang: "en", votes: 12, body: "There is a Catalan group in Barcelona doing exactly this. I will introduce you." },
+    ],
+  },
+  {
+    id: "swedish-legal-summaries", category: "europe", lang: "sv", author: "jonas", date: "2026-10-01", votes: 41, views: 1200,
+    title: "Sammanfattning av svenska lagtexter: vilken modell klarar det?",
+    body: "De flesta modeller blandar ihop paragrafnumren. Har någon testat på riktiga domar?",
+    en: { title: "Summarising Swedish legal text: which model can do it?", body: "Most models mix up the section numbers. Has anyone tested on real court rulings?" },
+    tags: ["swedish", "legal", "summarisation"], links: [],
+    replies: [],
+  },
+  {
+    id: "sheng-tts", category: "africa", lang: "sw", author: "amara", date: "2026-10-13", votes: 77, views: 2300,
+    title: "Kiswahili TTS: tunashughulikiaje Sheng?",
+    body: "Vijana wa Nairobi huchanganya Kiswahili, Kiingereza na Sheng. Sauti yetu inasoma Sheng kama Kiingereza.",
+    en: { title: "Kiswahili TTS: how do we handle Sheng?", body: "Young people in Nairobi mix Swahili, English and Sheng. Our voice reads Sheng as if it were English." },
+    tags: ["swahili", "tts", "code-switching"], links: ["kiswahili-tts"],
+    replies: [
+      { id: "r1", author: "tunde", date: "2026-10-14", lang: "en", votes: 18, body: "A small pronunciation lexicon fixed most of this for Yoruba-English mixing. Happy to share ours." },
+    ],
+  },
+  {
+    id: "hausa-igbo-speech", category: "africa", lang: "en", author: "tunde", date: "2026-10-05", votes: 69, views: 2000,
+    title: "Hausa and Igbo speech data: who is collecting, and can we share?",
+    body: "Three groups are recording the same sentences separately. A shared consent template and a shared prompt list would save months.",
+    tags: ["hausa", "igbo", "speech"], links: ["yoruba-voices"],
+    replies: [
+      { id: "r1", author: "savanna", date: "2026-10-06", lang: "en", votes: 24, body: "We are one of the three. Let's set up a call; our prompt list is open already." },
+    ],
+  },
+  {
+    id: "korean-honorifics-chatbot", category: "asia", lang: "ko", author: "kai", date: "2026-10-11", votes: 84, views: 2700,
+    title: "존댓말을 지키는 한국어 챗봇 만들기",
+    body: "모델이 대화 중간에 반말로 바뀝니다. 시스템 프롬프트만으로는 부족했습니다.",
+    en: { title: "Building a Korean chatbot that keeps honorifics", body: "The model switches to casual speech mid-conversation. The system prompt alone was not enough." },
+    tags: ["korean", "honorifics"], links: [],
+    replies: [
+      { id: "r1", author: "mei", date: "2026-10-12", lang: "en", votes: 15, body: "Same with Japanese keigo. A few hundred DPO pairs fixed it more reliably than prompting." },
+    ],
+  },
+  {
+    id: "hinglish-tokenise", category: "asia", lang: "hi", author: "priya", date: "2026-10-03", votes: 61, views: 1800,
+    title: "हिंग्लिश: टोकनाइज़ करें या लिप्यंतरण?",
+    body: "उपयोगकर्ता हिंदी को रोमन लिपि में लिखते हैं। क्या पहले देवनागरी में बदलना बेहतर है?",
+    en: { title: "Hinglish: tokenise as is, or transliterate first?", body: "Users write Hindi in Roman script. Is it better to convert to Devanagari first?" },
+    tags: ["hindi", "code-mixing", "tokenizers"], links: ["hindi-coder-3b"],
+    replies: [],
+  },
+  {
+    id: "rtl-chat-bugs", category: "arabic", lang: "en", author: "layla", date: "2026-10-12", votes: 103, views: 3900,
+    title: "Right-to-left in chat interfaces: the bugs nobody fixes",
+    body: "Mixed Arabic and code, numbers that flip, cursors that jump. A list of the ten worst and how to fix each.",
+    tags: ["rtl", "ui", "arabic"], links: [],
+    replies: [
+      { id: "r1", author: "kai", date: "2026-10-13", lang: "en", votes: 20, body: "dir=\"auto\" on every message bubble fixed half of these in token-tax." },
+    ],
+  },
+  {
+    id: "gulf-levantine-dataset", category: "arabic", lang: "ar", author: "layla", date: "2026-09-25", votes: 57, views: 1600,
+    title: "مجموعة بيانات لتمييز اللهجة الخليجية من الشامية",
+    body: "١٢ ألف جملة موسومة من متحدثين أصليين. نبحث عن مراجعين من العراق واليمن.",
+    en: { title: "A dataset for telling Gulf from Levantine Arabic", body: "12,000 labelled sentences from native speakers. We are looking for reviewers from Iraq and Yemen." },
+    tags: ["arabic", "dialects", "datasets"], links: ["arabic-dialects-qa"],
     replies: [],
   },
 ]
@@ -655,7 +942,7 @@ const LEGACY_CATEGORIES: Record<string, string> = {
   "small-models": "models",
   "every-language": "languages",
   "local-first": "local",
-  evals: "research",
+  evals: "benchmarks",
   "image-audio": "show",
   "in-practice": "help",
   "safety-policy": "policy",
@@ -672,6 +959,12 @@ export const resourcesOf = (kind?: ResourceKind) => resources.filter((r) => !kin
 export const resourcesBy = (handle: string) => resources.filter((r) => r.owner === handle)
 export const threadsBy = (handle: string) => threads.filter((t) => t.author === handle)
 export const threadsIn = (category: string) => threads.filter((t) => t.category === category)
+export const categoriesIn = (group: CategoryGroup) => categories.filter((c) => c.group === group)
+export const getCategoryGroup = (group: CategoryGroup) => categoryGroups.find((g) => g.slug === group)
+/** Where a forum category lives. Old links used /forum?c=<slug>; the forum index redirects those here. */
+export const categoryPath = (slug: string) => `/forum/c/${categoryOf(slug)}`
+/** The date of a thread's last post: its newest reply, or the thread itself. */
+export const lastActivity = (t: Thread) => t.replies.reduce((d, r) => (r.date > d ? r.date : d), t.date)
 export const threadsAbout = (slug: string) => threads.filter((t) => t.links.includes(slug))
 export const constellationsWith = (slug: string) => constellations.filter((c) => c.stars.includes(slug))
 export const newsAbout = (slug: string) => news.filter((n) => n.links.includes(slug))

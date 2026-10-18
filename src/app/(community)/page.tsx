@@ -3,16 +3,16 @@ import Link from "next/link"
 import { Suspense } from "react"
 import { LiveHomeSection, LiveHomeSkeleton } from "@/components/live/home-section"
 import { Hero } from "@/components/hero/hero"
-import { categoryIcon } from "@/components/forum/category-icon"
 import { SectionHead } from "@/components/hub/bits"
-import { ConstellationCard, FeatureCard, NewsCard, PersonCard, ThreadRow } from "@/components/hub/cards"
+import { ConstellationCard, NewsCard, PersonCard, ThreadRow } from "@/components/hub/cards"
 import { ConstellationMap } from "@/components/hub/constellation-map"
 import { Item, Magnetic, Stagger } from "@/components/hub/motion"
 import { Pulse, type PulseEvent } from "@/components/hub/pulse"
 import { Spaces } from "@/components/hub/spaces"
 import { TrendingTabs } from "@/components/hub/trending"
 import {
-  categories,
+  categoryGroups,
+  categoriesIn,
   constellations,
   KINDS,
   LANGUAGES,
@@ -50,7 +50,6 @@ export default function Home() {
   const lists = Object.fromEntries((Object.keys(KINDS) as ResourceKind[]).map((k) => [k, trending(resourcesOf(k)).slice(0, 8)])) as Record<ResourceKind, (typeof resources)[number][]>
   const hot = trending(threads).slice(0, 6)
   const [lead, ...restNews] = [...news].sort((a, b) => b.votes - a.votes)
-  const featured = resources.filter((r) => r.featured).slice(0, 4)
   const [hero, ...moreConstellations] = constellations
   const creators = [...people].sort((a, b) => b.followers - a.followers).slice(0, 9)
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
@@ -166,15 +165,17 @@ export default function Home() {
           <h2 id="cats-h" className="font-sans text-sm font-medium tracking-normal text-muted-foreground">
             Categories
           </h2>
-          <ul className="grid grid-cols-2 gap-2">
-            {categories.map((c) => {
-              const Icon = categoryIcon(c.icon)
+          <ul className="flex flex-col gap-2">
+            {categoryGroups.map((g) => {
+              const cats = categoriesIn(g.slug)
               return (
-                <li key={c.slug}>
-                  <Link href={`/forum?c=${c.slug}`} className="pressable flex h-full flex-col gap-1.5 rounded-xl border border-border bg-card/70 p-3 transition-colors hover:border-ion/40 hover:bg-card">
-                    <Icon aria-hidden className="size-4 text-ion" />
-                    <span className="text-sm font-medium">{c.name}</span>
-                    <span className="text-xs text-muted-foreground tabular">{threadsIn(c.slug).length} threads</span>
+                <li key={g.slug}>
+                  <Link href={`/forum#${g.slug}`} className="pressable flex flex-col gap-1 rounded-xl border border-border bg-card/70 p-3 transition-colors hover:border-ion/40 hover:bg-card">
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="text-sm font-medium">{g.name}</span>
+                      <span className="text-xs text-muted-foreground tabular">{cats.reduce((n, c) => n + threadsIn(c.slug).length, 0)} threads</span>
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">{cats.map((c) => c.name).join(" · ")}</span>
                   </Link>
                 </li>
               )
@@ -198,19 +199,6 @@ export default function Home() {
             ))}
           </Stagger>
         </div>
-      </section>
-
-      <section aria-labelledby="picks-h" className="shell mt-24">
-        <SectionHead id="picks-h" title="Community picks" href="/explore?sort=likes">
-          <p className="text-sm text-muted-foreground">Chosen by the people who use them most.</p>
-        </SectionHead>
-        <Stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {featured.map((r) => (
-            <Item key={r.slug}>
-              <FeatureCard r={r} className="h-full" />
-            </Item>
-          ))}
-        </Stagger>
       </section>
 
       <section aria-labelledby="people-h" className="shell mt-24">

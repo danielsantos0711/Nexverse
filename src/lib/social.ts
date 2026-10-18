@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
-import { getCategory, getConstellation, getNews, getPerson, getResource, getThread, isQuestionId, resourcePath, threadTitle } from "@/lib/data"
+import { categoryPath, getCategory, getConstellation, getNews, getPerson, getResource, getThread, isQuestionId, resourcePath, threadTitle } from "@/lib/data"
 import { getQuestion, useSession, type Member, type Question, type Submission } from "@/lib/store"
 import { db, live } from "@/lib/supabase"
 
@@ -447,7 +447,7 @@ export function describeTarget(target: string): TargetInfo {
     case "person":
       return { type, id, label: getPerson(id)?.name ?? `@${id}`, href: `/people/${id}` }
     case "category":
-      return { type, id, label: getCategory(id)?.name ?? id, href: `/forum?c=${id}` }
+      return { type, id, label: getCategory(id)?.name ?? id, href: categoryPath(id) }
     case "room":
       return { type, id, label: `#${id}`, href: `/chat/${id}` }
     case "member":

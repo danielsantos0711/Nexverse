@@ -22,6 +22,7 @@ const PAGES = [
   ["People", "/people"],
   ["Share something", "/share"],
   ["Compare side by side", "/compare"],
+  ["For you", "/for-you"],
   ["Saved", "/saved"],
   ["Notifications", "/notifications"],
 ] as const

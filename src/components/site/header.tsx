@@ -21,6 +21,7 @@ import {
   UsersIcon,
   WrenchIcon,
   type LucideIcon,
+  HeartIcon,
 } from "lucide-react"
 import { AccountButton } from "@/components/account/account-button"
 import { NotificationBell } from "@/components/social/notification-bell"
@@ -55,6 +56,7 @@ const MENUS: { id: string; label: string; links: NavLink[] }[] = [
       { href: "/chat", label: "Chat", blurb: "Live rooms for every corner of AI", icon: MessagesSquareIcon, tint: "text-gold" },
       { href: "/news", label: "News", blurb: "What happened and why it matters", icon: NewspaperIcon, tint: "text-model" },
       { href: "/people", label: "People", blurb: "Builders and labs to follow", icon: UsersIcon, tint: "text-dataset" },
+      { href: "/for-you", label: "For you", blurb: "New from what you follow and save", icon: HeartIcon, tint: "text-gold" },
     ],
   },
 ]

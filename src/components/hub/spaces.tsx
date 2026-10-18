@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useEffect, useState } from "react"
 import { ArrowUpRightIcon, MessageSquareIcon, MessagesSquareIcon, NewspaperIcon, ScrollTextIcon, SparklesIcon, type LucideIcon } from "lucide-react"
 import { KIND_ICONS, kindText } from "@/components/hub/bits"
-import { Spotlight } from "@/components/hub/motion"
+import { GlowCard } from "@/components/hub/glow-card"
 import { KINDS, type ResourceKind } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
@@ -145,7 +145,7 @@ function Tile({
         shown: { opacity: 1, transform: "translateY(0px) scale(1)", transition: { duration: 0.6, ease: EASE } },
       }}
     >
-      <Spotlight className="group relative flex h-full min-h-40 flex-col rounded-2xl border border-border bg-card/60 p-5 transition-[border-color,transform] duration-300 hover:-translate-y-0.5 hover:border-white/15">
+      <GlowCard className="group flex h-full min-h-40 flex-col rounded-2xl border border-border bg-card/60 p-5 transition-[border-color,translate] duration-300 hover:-translate-y-0.5 hover:border-white/15">
         <div className="flex items-start gap-3">
           <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl bg-white/[0.05] ring-1 ring-white/10", tint)}>
             <Icon aria-hidden className="size-4" />
@@ -159,7 +159,7 @@ function Tile({
           <ArrowUpRightIcon aria-hidden className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground" />
         </div>
         {children}
-      </Spotlight>
+      </GlowCard>
     </motion.li>
   )
 }

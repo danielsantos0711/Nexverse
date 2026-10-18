@@ -2,163 +2,180 @@
 
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { AnimatePresence, motion } from "motion/react"
-import { useEffect, useMemo, useState } from "react"
-import { MessageSquareIcon } from "lucide-react"
-import { FollowButton } from "@/components/social/follow-button"
-import { categoryIcon } from "@/components/forum/category-icon"
-import { LangTag } from "@/components/hub/bits"
-import { ThreadRow } from "@/components/hub/cards"
-import { Spotlight } from "@/components/hub/motion"
-import { ago, categories, categoryOf, getCategory, threads, trending } from "@/lib/data"
-import { listQuestions, type Question } from "@/lib/store"
-import { cn } from "@/lib/utils"
+import { useEffect, useMemo } from "react"
+import { SquarePenIcon } from "lucide-react"
+import { CategoryIcon } from "@/components/forum/category-icon"
+import { ForumSearch } from "@/components/forum/forum-search"
+import { PosterAvatar, primaryButton, rise, riseDelay } from "@/components/forum/forum-ui"
+import { latestFirst, statsByCategory, type CategoryStats, type Topic } from "@/components/forum/topics"
+import { useForumTopics } from "@/components/forum/use-member-topics"
+import { ago, categoriesIn, categoryGroups, categoryPath, compact, getCategory, type Category } from "@/lib/data"
 
-const VIEWS = [
-  ["hot", "Hot"],
-  ["new", "New"],
-  ["open", "Unanswered"],
-  ["solved", "Solved"],
-] as const
-type View = (typeof VIEWS)[number][0]
-
+/** The forum's front page: category groups with counts and the newest post, a search box and the latest threads. */
 export function ForumIndex() {
-  const params = useSearchParams()
-  const router = useRouter()
-  const cat = params.get("c")
-  const [view, setView] = useState<View>("hot")
-  const [members, setMembers] = useState<Question[]>([])
-
-  useEffect(() => {
-    let stale = false
-    // Older threads may carry a first-version community slug, so the category is matched here, not in the query.
-    listQuestions({ limit: 100 })
-      .then((qs) => !stale && setMembers(qs.filter((q) => !cat || categoryOf(q.orbit) === cat)))
-      .catch(() => {})
-    return () => {
-      stale = true
-    }
-  }, [cat])
-
-  const list = useMemo(() => {
-    const pool = threads.filter((t) => !cat || t.category === cat)
-    if (view === "hot") return [...pool.filter((t) => t.pinned), ...trending(pool.filter((t) => !t.pinned))]
-    if (view === "new") return [...pool].sort((a, b) => b.date.localeCompare(a.date))
-    if (view === "open") return pool.filter((t) => t.replies.length === 0)
-    return pool.filter((t) => t.replies.some((r) => r.accepted))
-  }, [cat, view])
-
-  const memberList = members.filter((q) => (view === "open" ? q.answerCount === 0 : view === "solved" ? Boolean(q.acceptedAnswerId) : true))
-  const setCat = (c: string | null) => router.replace(c ? `/forum?c=${c}` : "/forum", { scroll: false })
+  const { topics, members } = useForumTopics()
+  const stats = useMemo(() => statsByCategory(topics), [topics])
+  const latest = useMemo(() => latestFirst(topics).slice(0, 6), [topics])
+  const replies = topics.reduce((n, t) => n + t.replies, 0)
+  const solved = topics.filter((t) => t.solved).length
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[15rem_1fr]">
-      <nav aria-label="Categories" className="lg:sticky lg:top-20 lg:self-start">
-        <ul className="flex gap-1.5 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0">
-          <li>
-            <CatButton on={!cat} onClick={() => setCat(null)} label="All categories" count={threads.length} icon={MessageSquareIcon} />
-          </li>
-          {categories.map((c) => (
-            <li key={c.slug}>
-              <CatButton on={cat === c.slug} onClick={() => setCat(c.slug)} label={c.name} count={threads.filter((t) => t.category === c.slug).length} icon={categoryIcon(c.icon)} />
-            </li>
-          ))}
-        </ul>
-      </nav>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <ForumSearch topics={topics} className="sm:max-w-md sm:flex-1" placeholder="Search thread titles" />
+        <Link href="/forum/new" className={`${primaryButton} sm:ml-auto`}>
+          <SquarePenIcon aria-hidden className="size-4" /> Start a thread
+        </Link>
+      </div>
 
-      <div className="flex min-w-0 flex-col gap-4">
-        {cat && getCategory(cat) && (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">{getCategory(cat)!.blurb}</p>
-            <FollowButton followee={`category:${getCategory(cat)!.slug}`} showCount={false} name={getCategory(cat)!.name} />
-          </div>
-        )}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div role="tablist" aria-label="Sort threads" className="glass flex rounded-full p-1">
-            {VIEWS.map(([v, label]) => (
-              <button
-                key={v}
-                role="tab"
-                aria-selected={view === v}
-                onClick={() => setView(v)}
-                className={cn("relative rounded-full px-3.5 py-1.5 text-sm transition-colors", view === v ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
-              >
-                {view === v && <motion.span layoutId="forum-view" className="absolute inset-0 rounded-full bg-primary" transition={{ type: "spring", bounce: 0.18, duration: 0.45 }} />}
-                <span className="relative">{label}</span>
-              </button>
-            ))}
-          </div>
-          <Link href={cat ? `/forum/new?c=${cat}` : "/forum/new"} className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground">
-            Start a thread
-          </Link>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="flex min-w-0 flex-col gap-8">
+          {categoryGroups.map((g, gi) => (
+            <section key={g.slug} id={g.slug} aria-labelledby={`${g.slug}-h`} className="scroll-mt-24">
+              <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 px-1">
+                <h2 id={`${g.slug}-h`} className="font-sans text-base font-semibold tracking-normal">
+                  {g.name}
+                </h2>
+                <p className="text-xs text-muted-foreground">{g.blurb}</p>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-border bg-card/40">
+                <div aria-hidden className="hidden grid-cols-[minmax(0,1fr)_4.5rem_4.5rem_15rem] gap-4 border-b border-border px-4 py-2 text-xs text-muted-foreground md:grid">
+                  <span>Category</span>
+                  <span className="text-right">Topics</span>
+                  <span className="text-right">Replies</span>
+                  <span>Latest post</span>
+                </div>
+                <ul aria-label={`${g.name} categories`} className="divide-y divide-border">
+                  {categoriesIn(g.slug).map((c, i) => (
+                    <li key={c.slug} className={rise} style={riseDelay(gi * 3 + i)}>
+                      <CategoryRow c={c} s={stats.get(c.slug)!} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          ))}
         </div>
 
-        {memberList.length > 0 && (
-          <section aria-labelledby="mem-h" className="flex flex-col gap-1">
-            <h2 id="mem-h" className="px-1 pt-2 font-sans text-xs font-medium tracking-normal text-muted-foreground">
-              {memberList.every((q) => q.local) ? "Saved in this browser" : "New from members"}
+        <aside aria-label="Forum overview" className="flex flex-col gap-6 lg:sticky lg:top-20 lg:self-start">
+          <section aria-labelledby="stats-h" className="glass rounded-xl p-4">
+            <h2 id="stats-h" className="mb-3 font-sans text-sm font-semibold tracking-normal">
+              Forum stats
             </h2>
-            <ul className="flex flex-col gap-1">
-              {memberList.map((q) => (
-                <li key={q.id}>
-                  <Spotlight className="relative rounded-xl hover:bg-card/80">
-                    <div className="flex flex-col gap-1.5 p-4">
-                      <Link href={`/forum/${q.id}`} lang={q.lang} className="text-[15px] font-medium after:absolute after:inset-0">
-                        {q.title}
-                      </Link>
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                        {getCategory(q.orbit) && <span className="text-ion">{getCategory(q.orbit)!.name}</span>}
-                        <LangTag lang={q.lang} />
-                        <span>{q.local ? "You" : (q.author?.name ?? "A member")}</span>
-                        <span>{ago(q.createdAt)}</span>
-                        <span className="tabular">
-                          {q.answerCount} {q.answerCount === 1 ? "reply" : "replies"}
-                        </span>
-                      </div>
-                    </div>
-                  </Spotlight>
+            <dl className="grid grid-cols-2 gap-3">
+              <Figure label="Topics" value={topics.length} />
+              <Figure label="Replies" value={replies} />
+              <Figure label="Solved" value={solved} />
+              <Figure label="Categories" value={stats.size} />
+            </dl>
+            {members.length > 0 && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                {members.every((m) => m.local) ? `Includes ${members.length} saved in this browser.` : `Includes ${members.length} started by members.`}
+              </p>
+            )}
+          </section>
+
+          <section aria-labelledby="latest-h" className="flex flex-col gap-2">
+            <h2 id="latest-h" className="px-1 font-sans text-sm font-semibold tracking-normal">
+              Latest across the forum
+            </h2>
+            <ol className="flex flex-col">
+              {latest.map((t, i) => (
+                <li key={t.id} className={rise} style={riseDelay(i)}>
+                  <LatestItem t={t} />
                 </li>
               ))}
-            </ul>
+            </ol>
           </section>
-        )}
-
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.ol
-            key={`${cat}-${view}`}
-            initial={{ opacity: 0, transform: "translateY(8px)" }}
-            animate={{ opacity: 1, transform: "translateY(0px)" }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-            className="flex flex-col gap-1"
-          >
-            {list.map((t) => (
-              <li key={t.id}>
-                <ThreadRow t={t} />
-              </li>
-            ))}
-            {list.length === 0 && <li className="rounded-xl border border-dashed border-border p-8 text-center text-muted-foreground">Nothing here yet. Be the first to start one.</li>}
-          </motion.ol>
-        </AnimatePresence>
+        </aside>
       </div>
     </div>
   )
 }
 
-function CatButton({ on, onClick, label, count, icon: Icon }: { on: boolean; onClick: () => void; label: string; count: number; icon: React.ComponentType<{ className?: string }> }) {
+function CategoryRow({ c, s }: { c: Category; s: CategoryStats }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={on ? "true" : undefined}
-      className={cn(
-        "pressable flex w-full shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm whitespace-nowrap transition-colors",
-        on ? "bg-white/[0.08] text-foreground" : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
-      )}
-    >
-      <Icon className={cn("size-4", on && "text-ion")} />
-      {label}
-      <span className="ml-auto text-xs tabular opacity-70">{count}</span>
-    </button>
+    <div className="group relative grid grid-cols-1 gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.03] md:grid-cols-[minmax(0,1fr)_4.5rem_4.5rem_15rem] md:items-center md:gap-4">
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-ion/20 bg-ion/10 text-ion transition-transform duration-200 group-hover:-translate-y-0.5 motion-reduce:transform-none">
+          <CategoryIcon name={c.icon} className="size-4" />
+        </span>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <Link
+            href={categoryPath(c.slug)}
+            className="w-fit rounded-sm text-[15px] font-medium after:absolute after:inset-0 after:rounded-[inherit] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset group-hover:text-ion"
+          >
+            {c.name}
+          </Link>
+          <p className="text-sm text-muted-foreground">{c.blurb}</p>
+          <p className="text-xs text-muted-foreground tabular md:hidden">
+            {compact(s.topics)} {s.topics === 1 ? "topic" : "topics"} · {compact(s.replies)} {s.replies === 1 ? "reply" : "replies"}
+          </p>
+        </div>
+      </div>
+      <p className="hidden text-right text-sm tabular md:block">
+        {compact(s.topics)}
+        <span className="sr-only"> {s.topics === 1 ? "topic" : "topics"}</span>
+      </p>
+      <p className="hidden text-right text-sm tabular md:block">
+        {compact(s.replies)}
+        <span className="sr-only"> {s.replies === 1 ? "reply" : "replies"}</span>
+      </p>
+      <div className="min-w-0 border-t border-border/60 pt-3 md:border-0 md:pt-0">
+        {s.latest ? (
+          <div className="flex min-w-0 items-center gap-2.5">
+            <PosterAvatar poster={s.latest.lastPoster} size={26} />
+            <div className="flex min-w-0 flex-col">
+              <span className="sr-only">Latest post: </span>
+              <Link href={s.latest.href} lang={s.latest.lang} className="relative z-10 truncate rounded-sm text-sm hover:text-ion hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+                {s.latest.english ?? s.latest.title}
+              </Link>
+              <span className="truncate text-xs text-muted-foreground">
+                {s.latest.lastPoster.name} · {ago(s.latest.activity)}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <span className="text-sm text-muted-foreground">No posts yet</span>
+        )}
+      </div>
+    </div>
   )
+}
+
+function Figure({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex flex-col">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-lg font-semibold tabular">{compact(value)}</dd>
+    </div>
+  )
+}
+
+function LatestItem({ t }: { t: Topic }) {
+  const cat = getCategory(t.category)
+  return (
+    <div className="relative flex items-start gap-2.5 rounded-lg p-2 transition-[background-color,transform] duration-200 hover:-translate-y-px hover:bg-white/[0.04] motion-reduce:transform-none">
+      <PosterAvatar poster={t.lastPoster} size={24} className="mt-0.5" />
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <Link href={t.href} lang={t.lang} className="line-clamp-2 rounded-sm text-sm leading-snug after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring">
+          {t.english ?? t.title}
+        </Link>
+        <span className="truncate text-xs text-muted-foreground">
+          {cat?.name ?? "Forum"} · {ago(t.activity)}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/** Links from before categories had pages (/forum?c=<slug>) land on the category's own page. */
+export function LegacyCategoryRedirect() {
+  const params = useSearchParams()
+  const router = useRouter()
+  const c = params.get("c")
+  useEffect(() => {
+    if (c && getCategory(c)) router.replace(categoryPath(c))
+  }, [c, router])
+  return null
 }

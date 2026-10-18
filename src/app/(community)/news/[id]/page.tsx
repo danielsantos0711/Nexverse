@@ -10,6 +10,7 @@ import { NewsCard, ResourceCard } from "@/components/hub/cards"
 import { LikeButton } from "@/components/hub/like-button"
 import { formatDate, getNews, getResource, news, NEWS_KINDS } from "@/lib/data"
 import { SaveButton } from "@/components/social/save-button"
+import { DiscussButton } from "@/components/social/discuss-button"
 
 export function generateStaticParams() {
   return news.map((n) => ({ id: n.id }))
@@ -67,6 +68,7 @@ async function Story({ params }: { params: PageProps<"/news/[id]">["params"] }) 
           <div className="flex flex-wrap gap-2">
             <LikeButton target={`news:${n.id}`} base={n.votes} label="Upvote" />
             <SaveButton target={`news:${n.id}`} />
+            <DiscussButton title={n.title} href={`/news/${n.id}`} category="announcements" />
           </div>
           <ThreadDiscussion threadId={`news-${n.id}`} heading="Comments" />
         </article>

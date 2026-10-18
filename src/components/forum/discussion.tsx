@@ -8,28 +8,15 @@ import { CheckCircle2Icon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
+import { MemberAvatar } from "@/components/forum/forum-ui"
+import { Post } from "@/components/forum/thread-parts"
 import { ago } from "@/lib/data"
 import { acceptAnswer, createAnswer, deleteAnswer, listAnswers, useSession, type Answer, type Question, type ThreadRef } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
-export function MemberAvatar({ name, size = 28 }: { name?: string; size?: number }) {
-  const letters = (name ?? "You")
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-  return (
-    <span
-      aria-hidden
-      style={{ width: size, height: size, fontSize: size * 0.38 }}
-      className="inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#8fb4ff] to-[#2a3550] font-semibold text-white ring-1 ring-white/15 ring-inset"
-    >
-      {letters}
-    </span>
-  )
-}
+// Kept here so existing imports keep working; it lives with the forum's other bits now.
+export { MemberAvatar }
 
 /**
  * Members' replies to a thread, and the box to write one. Works for sample threads (by slug) and for
@@ -40,11 +27,15 @@ export function ThreadDiscussion({
   question,
   heading = "Replies from members",
   onChange,
+  startAt,
 }: {
   threadId: string
   question?: Question
   heading?: string
+  /** Called when replies load and whenever they change. */
   onChange?: (answers: Answer[], acceptedId: string | null) => void
+  /** On forum threads, the post number of the first reply here (posts above it are numbered before). */
+  startAt?: number
 }) {
   const thread: ThreadRef = { kind: question && !question.local ? "question" : "sample", id: threadId }
   const { ready, user } = useSession()
@@ -59,7 +50,11 @@ export function ThreadDiscussion({
   useEffect(() => {
     let stale = false
     listAnswers(thread)
-      .then((a) => !stale && setAnswers(a))
+      .then((a) => {
+        if (stale) return
+        setAnswers(a)
+        onChange?.(a, question?.acceptedAnswerId ?? null)
+      })
       .catch((e: Error) => !stale && setError(e.message))
     return () => {
       stale = true
@@ -121,32 +116,10 @@ export function ThreadDiscussion({
       )}
       <ol className="flex flex-col gap-2">
         <AnimatePresence initial={false}>
-          {answers.map((a) => {
+          {answers.map((a, i) => {
             const mine = a.local || (user && a.author?.id === user.id)
             const isAccepted = accepted === a.id
-            return (
-              <motion.li
-                key={a.id}
-                layout
-                initial={{ opacity: 0, transform: "translateY(10px)" }}
-                animate={{ opacity: 1, transform: "translateY(0px)" }}
-                exit={{ opacity: 0, transform: "scale(0.98)" }}
-                transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                className={cn("flex flex-col gap-3 rounded-xl border p-4", isAccepted ? "border-ok/40 bg-ok/[0.05]" : "border-border bg-card/60")}
-              >
-                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm">
-                  <MemberAvatar name={a.author?.name} size={24} />
-                  <span className="font-medium">{a.local ? "You" : (a.author?.name ?? "A member")}</span>
-                  <span className="text-xs text-muted-foreground">{ago(a.createdAt)}</span>
-                  {a.local && <span className="text-xs text-muted-foreground">· saved on this device only</span>}
-                  {isAccepted && (
-                    <span className="ml-auto inline-flex items-center gap-1 text-xs text-ok">
-                      <CheckCircle2Icon aria-hidden className="size-3.5" /> Solved it
-                    </span>
-                  )}
-                </div>
-                <p className="max-w-[72ch] text-[15px] leading-relaxed whitespace-pre-wrap">{a.body}</p>
-                {(isAuthor || mine) && (
+            const controls = (isAuthor || mine) && (
                   <div className="flex gap-2">
                     {isAuthor && (
                       <Button variant="secondary" size="sm" onClick={() => accept(a.id)} aria-pressed={isAccepted}>
@@ -159,6 +132,45 @@ export function ThreadDiscussion({
                       </Button>
                     )}
                   </div>
+                )
+            return (
+              <motion.li
+                key={a.id}
+                layout
+                initial={{ opacity: 0, transform: "translateY(10px)" }}
+                animate={{ opacity: 1, transform: "translateY(0px)" }}
+                exit={{ opacity: 0, transform: "scale(0.98)" }}
+                transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                className={startAt === undefined ? cn("flex flex-col gap-3 rounded-xl border p-4", isAccepted ? "border-ok/40 bg-ok/[0.05]" : "border-border bg-card/60") : undefined}
+              >
+                {startAt !== undefined ? (
+                  <Post
+                    n={startAt + i}
+                    animate={false}
+                    poster={{ name: a.local ? "You" : (a.author?.name ?? "A member") }}
+                    date={a.createdAt}
+                    accepted={isAccepted}
+                    note={a.local && <span className="text-xs text-muted-foreground">· saved on this device only</span>}
+                    actions={controls}
+                  >
+                    <p className="max-w-[72ch] text-[15px] leading-relaxed whitespace-pre-wrap">{a.body}</p>
+                  </Post>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm">
+                      <MemberAvatar name={a.author?.name} size={24} />
+                      <span className="font-medium">{a.local ? "You" : (a.author?.name ?? "A member")}</span>
+                      <span className="text-xs text-muted-foreground">{ago(a.createdAt)}</span>
+                      {a.local && <span className="text-xs text-muted-foreground">· saved on this device only</span>}
+                      {isAccepted && (
+                        <span className="ml-auto inline-flex items-center gap-1 text-xs text-ok">
+                          <CheckCircle2Icon aria-hidden className="size-3.5" /> Solved it
+                        </span>
+                      )}
+                    </div>
+                    <p className="max-w-[72ch] text-[15px] leading-relaxed whitespace-pre-wrap">{a.body}</p>
+                    {controls}
+                  </>
                 )}
               </motion.li>
             )

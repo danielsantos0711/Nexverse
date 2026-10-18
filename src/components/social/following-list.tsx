@@ -8,7 +8,7 @@ import { categoryIcon } from "@/components/forum/category-icon"
 import { MemberAvatar } from "@/components/forum/discussion"
 import { PersonAvatar } from "@/components/hub/bits"
 import { FollowButton } from "@/components/social/follow-button"
-import { categories, getCategory, getPerson } from "@/lib/data"
+import { categories, categoryPath, getCategory, getPerson } from "@/lib/data"
 import { describeTarget, getMemberNames, listFollowing, type Follow } from "@/lib/social"
 
 const SECTIONS = [
@@ -60,7 +60,7 @@ export function FollowingList({ userId, onCount }: { userId?: string | null; onC
               <li key={c.slug} className="flex items-center gap-3 rounded-xl border border-border bg-card/60 p-3">
                 <Icon aria-hidden className="size-5 shrink-0 text-ion" />
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <Link href={`/forum?c=${c.slug}`} className="truncate font-medium hover:underline">
+                  <Link href={categoryPath(c.slug)} className="truncate font-medium hover:underline">
                     {c.name}
                   </Link>
                   <span className="truncate text-xs text-muted-foreground">{c.blurb}</span>

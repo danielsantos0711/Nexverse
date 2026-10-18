@@ -11,6 +11,7 @@ import { LikeButton } from "@/components/hub/like-button"
 import { Item, Stagger } from "@/components/hub/motion"
 import { constellations, getConstellation, getResource, getThread } from "@/lib/data"
 import { SaveButton } from "@/components/social/save-button"
+import { DiscussButton } from "@/components/social/discuss-button"
 
 export function generateStaticParams() {
   return constellations.map((c) => ({ slug: c.slug }))
@@ -53,6 +54,7 @@ async function Detail({ params }: { params: PageProps<"/constellations/[slug]">[
               </span>
               <LikeButton target={`constellation:${c.slug}`} base={c.saves} label="Star" />
               <SaveButton target={`constellation:${c.slug}`} />
+              <DiscussButton title={c.name} href={`/constellations/${c.slug}`} />
             </div>
           </div>
           <div className="glass rounded-3xl p-2 md:p-6">
