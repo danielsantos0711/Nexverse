@@ -12,6 +12,7 @@ import { LikeButton } from "@/components/hub/like-button"
 import { MotionTabs } from "@/components/hub/motion-tabs"
 import { ResourceIndex } from "@/components/hub/resource-index"
 import { ThreadDiscussion } from "@/components/forum/discussion"
+import { SaveButton } from "@/components/social/save-button"
 import {
   ago,
   compact,
@@ -214,6 +215,7 @@ async function ResourceDetail({ kind, params }: { kind: ResourceKind; params: Pr
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <LikeButton target={`${r.kind}:${r.slug}`} base={r.likes} />
+            <SaveButton target={`${r.kind}:${r.slug}`} />
             <CompareButton slug={r.slug} />
             <span className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-secondary/60 px-3.5 text-sm" title={reachLabel}>
               <ReachIcon aria-hidden className="size-4" /> <span className="tabular">{compact(r.reach)}</span>

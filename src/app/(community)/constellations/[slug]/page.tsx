@@ -10,6 +10,7 @@ import { ConstellationMap } from "@/components/hub/constellation-map"
 import { LikeButton } from "@/components/hub/like-button"
 import { Item, Stagger } from "@/components/hub/motion"
 import { constellations, getConstellation, getResource, getThread } from "@/lib/data"
+import { SaveButton } from "@/components/social/save-button"
 
 export function generateStaticParams() {
   return constellations.map((c) => ({ slug: c.slug }))
@@ -50,7 +51,8 @@ async function Detail({ params }: { params: PageProps<"/constellations/[slug]">[
               <span className="flex items-center gap-1.5">
                 Mapped by <PersonLink handle={c.curator} />
               </span>
-              <LikeButton target={`constellation:${c.slug}`} base={c.saves} label="Save" />
+              <LikeButton target={`constellation:${c.slug}`} base={c.saves} label="Star" />
+              <SaveButton target={`constellation:${c.slug}`} />
             </div>
           </div>
           <div className="glass rounded-3xl p-2 md:p-6">

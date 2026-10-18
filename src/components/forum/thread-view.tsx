@@ -8,6 +8,7 @@ import { LikeButton } from "@/components/hub/like-button"
 import { Item, Stagger } from "@/components/hub/motion"
 import { ago, getCategory, getPerson, getResource, threadsIn, type Thread } from "@/lib/data"
 import { cn } from "@/lib/utils"
+import { SaveButton } from "@/components/social/save-button"
 
 export function SampleThread({ t }: { t: Thread }) {
   const cat = getCategory(t.category)
@@ -59,6 +60,7 @@ export function SampleThread({ t }: { t: Thread }) {
           />
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <LikeButton target={`thread:${t.id}`} base={t.votes} label="Upvote" />
+            <SaveButton target={`thread:${t.id}`} />
             {t.tags.map((tag) => (
               <Chip key={tag}>#{tag}</Chip>
             ))}

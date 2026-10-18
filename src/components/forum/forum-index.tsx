@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { AnimatePresence, motion } from "motion/react"
 import { useEffect, useMemo, useState } from "react"
 import { MessageSquareIcon } from "lucide-react"
+import { FollowButton } from "@/components/social/follow-button"
 import { categoryIcon } from "@/components/forum/category-icon"
 import { LangTag } from "@/components/hub/bits"
 import { ThreadRow } from "@/components/hub/cards"
@@ -66,7 +67,12 @@ export function ForumIndex() {
       </nav>
 
       <div className="flex min-w-0 flex-col gap-4">
-        {cat && <p className="text-sm text-muted-foreground">{getCategory(cat)?.blurb}</p>}
+        {cat && getCategory(cat) && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">{getCategory(cat)!.blurb}</p>
+            <FollowButton followee={`category:${getCategory(cat)!.slug}`} showCount={false} name={getCategory(cat)!.name} />
+          </div>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div role="tablist" aria-label="Sort threads" className="glass flex rounded-full p-1">
             {VIEWS.map(([v, label]) => (

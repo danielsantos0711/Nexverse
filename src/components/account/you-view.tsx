@@ -1,17 +1,22 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { motion, useReducedMotion } from "motion/react"
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 import { ExternalLinkIcon } from "lucide-react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { MemberAvatar } from "@/components/forum/discussion"
 import { PageTitle } from "@/components/hub/bits"
+import { FollowingList } from "@/components/social/following-list"
+import { SavedView } from "@/components/social/saved-view"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { ago, getCategory } from "@/lib/data"
 import { deleteSubmission, listQuestions, listSubmissions, renameMember, signOut, useSession, type Question, type Submission } from "@/lib/store"
+import { useBookmarks } from "@/lib/social"
 import { live } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
 
 export function YouView() {
   const { ready, user, member } = useSession()
@@ -30,10 +35,56 @@ export function YouView() {
   return <Signed key={member.id} id={member.id} name={member.name} email={user.email ?? ""} />
 }
 
-function Mine({ lead, author, side, title = "You" }: { lead: string; author?: string; side?: React.ReactNode; title?: string }) {
+const TABS = [
+  { id: "threads", label: "Threads" },
+  { id: "shares", label: "Shares" },
+  { id: "saved", label: "Saved" },
+  { id: "following", label: "Following" },
+  { id: "settings", label: "Settings" },
+] as const
+type TabId = (typeof TABS)[number]["id"]
+
+// The open tab follows the URL hash (/you#saved), so other pages can link straight to it.
+function subscribeHash(cb: () => void) {
+  window.addEventListener("hashchange", cb)
+  return () => window.removeEventListener("hashchange", cb)
+}
+const readHash = () => window.location.hash.slice(1)
+
+function Mine({
+  lead,
+  author,
+  settings,
+  title = "You",
+  userId,
+}: {
+  lead: string
+  author?: string
+  settings?: React.ReactNode
+  title?: string
+  userId?: string
+}) {
   const [threads, setThreads] = useState<Question[] | null>(null)
   const [shared, setShared] = useState<Submission[] | null>(null)
+  const [following, setFollowing] = useState<number | undefined>(undefined)
   const [error, setError] = useState("")
+  const { list: saved, ready: savedReady } = useBookmarks()
+  const hash = useSyncExternalStore(subscribeHash, readHash, () => "")
+  const [picked, setPicked] = useState<TabId | null>(null)
+  const reduce = useReducedMotion()
+  const uid = useId()
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+
+  const tabs = TABS.filter((t) => t.id !== "settings" || settings)
+  const fromHash = tabs.find((t) => t.id === hash)?.id
+  const tab: TabId = picked ?? fromHash ?? "threads"
+  const counts: Partial<Record<TabId, number | undefined>> = {
+    threads: threads?.length,
+    shares: shared?.length,
+    saved: savedReady ? saved.length : undefined,
+    following,
+  }
+  const countFollowing = useCallback((n: number) => setFollowing(n), [])
 
   useEffect(() => {
     listQuestions({ author, limit: 50 }).then(setThreads).catch((e: Error) => setError(e.message))
@@ -49,12 +100,77 @@ function Mine({ lead, author, side, title = "You" }: { lead: string; author?: st
     }
   }
 
+  function select(id: TabId, focus = false) {
+    setPicked(id)
+    try {
+      history.replaceState(history.state, "", `#${id}`)
+    } catch {}
+    if (focus) tabRefs.current[id]?.focus()
+  }
+
+  function onKey(e: React.KeyboardEvent) {
+    const i = tabs.findIndex((t) => t.id === tab)
+    const to = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : null
+    if (to === null) return
+    e.preventDefault()
+    select(tabs[(to + tabs.length) % tabs.length].id, true)
+  }
+
   return (
     <>
       <PageTitle title={title} lead={lead} />
       {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_18rem]">
-        <div className="flex flex-col gap-10">
+      <div role="tablist" aria-label="Your space" onKeyDown={onKey} className="glass -mx-1 mb-8 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full p-1">
+        {tabs.map((t) => {
+          const on = t.id === tab
+          const n = counts[t.id]
+          return (
+            <button
+              key={t.id}
+              ref={(el) => {
+                tabRefs.current[t.id] = el
+              }}
+              type="button"
+              role="tab"
+              id={`${uid}-tab-${t.id}`}
+              aria-selected={on}
+              aria-controls={`${uid}-panel`}
+              tabIndex={on ? 0 : -1}
+              onClick={() => select(t.id)}
+              className={cn(
+                "relative shrink-0 rounded-full px-4 py-1.5 text-sm transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                on ? "text-ion-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {on && (
+                <motion.span
+                  layoutId={`${uid}-pill`}
+                  aria-hidden
+                  className="absolute inset-0 rounded-full bg-ion"
+                  transition={reduce ? { duration: 0 } : { type: "spring", bounce: 0.2, duration: 0.4 }}
+                />
+              )}
+              <span className="relative">
+                {t.label}
+                {n !== undefined && <span className="ml-1.5 tabular opacity-70">{n}</span>}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      <motion.div
+        key={tab}
+        id={`${uid}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${uid}-tab-${tab}`}
+        tabIndex={0}
+        initial={reduce ? false : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+        className="outline-none"
+      >
+        {tab === "threads" && (
           <section aria-labelledby="mine-h" className="flex flex-col gap-2">
             <h2 id="mine-h" className="text-lg font-semibold">
               Your threads
@@ -79,6 +195,8 @@ function Mine({ lead, author, side, title = "You" }: { lead: string; author?: st
               ))}
             </ul>
           </section>
+        )}
+        {tab === "shares" && (
           <section aria-labelledby="shared-h" className="flex flex-col gap-2">
             <h2 id="shared-h" className="text-lg font-semibold">
               What you shared
@@ -106,9 +224,30 @@ function Mine({ lead, author, side, title = "You" }: { lead: string; author?: st
               ))}
             </ul>
           </section>
-        </div>
-        {side}
-      </div>
+        )}
+        {tab === "saved" && (
+          <section aria-labelledby="saved-h" className="flex flex-col gap-4">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 id="saved-h" className="text-lg font-semibold">
+                Saved
+              </h2>
+              <Link href="/saved" className="text-sm text-ion hover:underline">
+                Open full page
+              </Link>
+            </div>
+            <SavedView />
+          </section>
+        )}
+        {tab === "following" && (
+          <section aria-labelledby="following-h" className="flex flex-col gap-4">
+            <h2 id="following-h" className="text-lg font-semibold">
+              Following
+            </h2>
+            <FollowingList userId={userId} onCount={countFollowing} />
+          </section>
+        )}
+        {tab === "settings" && settings}
+      </motion.div>
     </>
   )
 }
@@ -135,9 +274,10 @@ function Signed({ id, name, email }: { id: string; name: string; email: string }
     <Mine
       title={name}
       author={id}
+      userId={id}
       lead={`Signed in as ${email}.`}
-      side={
-        <div className="flex flex-col gap-4 self-start">
+      settings={
+        <div className="flex max-w-md flex-col gap-4">
           <form onSubmit={save} className="glass rounded-2xl p-5">
             <FieldGroup>
               <div className="flex items-center gap-3">

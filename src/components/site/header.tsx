@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { AccountButton } from "@/components/account/account-button"
+import { NotificationBell } from "@/components/social/notification-bell"
 import { Lockup } from "@/components/brand"
 import { useOpenCommandMenu } from "@/components/site/command-menu"
 import { Button } from "@/components/ui/button"
@@ -95,6 +96,7 @@ export function SiteHeader() {
             <Kbd className="hidden md:inline-flex">⌘K</Kbd>
             <span className="sr-only md:hidden">Search</span>
           </button>
+          <NotificationBell />
           <AccountButton />
           <Link
             href="/share"

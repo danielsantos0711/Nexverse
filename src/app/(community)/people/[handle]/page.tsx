@@ -6,7 +6,7 @@ import { PageSkeleton } from "@/components/app/page-skeleton"
 import { PersonAvatar } from "@/components/hub/bits"
 import { ConstellationCard, ResourceCard, ThreadRow } from "@/components/hub/cards"
 import { Heatmap } from "@/components/hub/heatmap"
-import { LikeButton } from "@/components/hub/like-button"
+import { FollowButton } from "@/components/social/follow-button"
 import { MotionTabs } from "@/components/hub/motion-tabs"
 import { compact, constellations, formatDate, getPerson, LANGUAGES, people, resourcesBy, threads, threadsBy } from "@/lib/data"
 
@@ -47,7 +47,7 @@ async function Profile({ params }: { params: PageProps<"/people/[handle]">["para
           </p>
         </div>
         <p className="text-[15px]">{p.bio}</p>
-        <LikeButton target={`person:${p.handle}`} base={p.followers} label="Follow" className="self-start" />
+        <FollowButton followee={`person:${p.handle}`} base={p.followers} name={p.name} className="self-start" />
         <ul className="flex flex-col gap-1.5 text-sm text-muted-foreground">
           <li className="flex items-center gap-2">
             <MapPinIcon aria-hidden className="size-4" /> {p.place}

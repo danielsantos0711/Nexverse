@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { ago, getCategory } from "@/lib/data"
 import { deleteQuestion, getQuestion, useSession, type Question } from "@/lib/store"
+import { SaveButton } from "@/components/social/save-button"
 
 /** A thread a member started, loaded from the database (or from this browser in a local copy). */
 export function MemberThread({ id }: { id: string }) {
@@ -92,6 +93,7 @@ export function MemberThread({ id }: { id: string }) {
           {!q.local && (
             <div className="mt-5">
               <LikeButton target={`thread:${q.id}`} label="Upvote" />
+              <SaveButton target={`thread:${q.id}`} />
             </div>
           )}
         </div>
