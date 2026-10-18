@@ -1,11 +1,11 @@
 import Link from "next/link"
-import { ArrowUpIcon, FileTextIcon, MessageSquareIcon, MessagesSquareIcon } from "lucide-react"
+import { ArrowUpIcon, BookOpenIcon, FileTextIcon, FolderGit2Icon, MessageSquareIcon, MessagesSquareIcon } from "lucide-react"
 import { Stat } from "@/components/hub/bits"
 import { Spotlight } from "@/components/hub/motion"
 import type { Paper } from "@/lib/live"
+import { discussItemHref, internalHref, paperHref } from "@/lib/live/ids"
 import { cn } from "@/lib/utils"
 import { Abstract } from "./abstract"
-import { discussHref, ExternalLink } from "./bits"
 import { TimeAgo } from "./time"
 
 function Authors({ names }: { names: string[] }) {
@@ -22,9 +22,10 @@ function Authors({ names }: { names: string[] }) {
 
 const LINK = "relative z-10 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
 
-/** A paper from Hugging Face's daily list or arXiv: authors, votes, an expandable abstract and links out. */
+/** A paper from Hugging Face's daily list or arXiv: authors, votes, an expandable abstract. Opens its page on Nexverse. */
 export function PaperCard({ paper: p, rank, className }: { paper: Paper; rank?: number; className?: string }) {
   const fromHf = p.source === "huggingface"
+  const code = p.links.code ? internalHref(p.links.code) : null
   return (
     <Spotlight className={cn("relative flex gap-4 rounded-2xl border border-border bg-card/70 p-4 transition-colors hover:bg-card", className)}>
       {fromHf && (
@@ -52,9 +53,9 @@ export function PaperCard({ paper: p, rank, className }: { paper: Paper; rank?: 
           <span className="font-mono">arXiv:{p.id}</span>
         </div>
         <h3 className="font-sans text-base leading-snug font-medium tracking-normal">
-          <ExternalLink href={fromHf ? p.links.hf : p.links.arxiv} className="hover:underline">
+          <Link href={paperHref(p.id)} className="hover:underline">
             {p.title}
-          </ExternalLink>
+          </Link>
         </h3>
         <Authors names={p.authors} />
         {p.tldr && <p className="text-sm text-foreground/85">{p.tldr}</p>}
@@ -69,26 +70,17 @@ export function PaperCard({ paper: p, rank, className }: { paper: Paper; rank?: 
           </ul>
         )}
         <div className="-ml-2 flex flex-wrap items-center gap-0.5 pt-1">
-          <ExternalLink href={p.links.arxiv} className={LINK}>
-            arXiv
-          </ExternalLink>
-          <ExternalLink href={p.links.pdf} className={LINK}>
-            PDF
-          </ExternalLink>
-          <ExternalLink href={p.links.hf} className={LINK}>
-            Hugging Face
-          </ExternalLink>
-          {p.links.code && (
-            <ExternalLink href={p.links.code} className={LINK}>
+          <Link href={paperHref(p.id)} className={cn(LINK, "text-foreground/90")}>
+            <BookOpenIcon aria-hidden className="size-3.5" />
+            Read the paper
+          </Link>
+          {code && (
+            <Link href={code} className={LINK}>
+              <FolderGit2Icon aria-hidden className="size-3.5" />
               Code
-            </ExternalLink>
+            </Link>
           )}
-          {p.links.project && (
-            <ExternalLink href={p.links.project} className={LINK}>
-              Project page
-            </ExternalLink>
-          )}
-          <Link href={discussHref(p.title)} className={cn(LINK, "ml-auto text-ion hover:text-ion")}>
+          <Link href={discussItemHref(p.title, `${p.title} (arXiv:${p.id})\n\n${paperHref(p.id)}`)} className={cn(LINK, "ml-auto text-ion hover:text-ion")}>
             <MessagesSquareIcon aria-hidden className="size-3.5" />
             Discuss in forum
           </Link>

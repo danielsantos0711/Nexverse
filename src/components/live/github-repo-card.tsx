@@ -1,9 +1,10 @@
+import Link from "next/link"
 import { GitForkIcon, StarIcon } from "lucide-react"
 import { Cover, Stat } from "@/components/hub/bits"
 import { Spotlight } from "@/components/hub/motion"
+import { ghHref } from "@/lib/live/ids"
 import type { GhRepo } from "@/lib/live"
 import { cn } from "@/lib/utils"
-import { ExternalLink } from "./bits"
 import { TimeAgo } from "./time"
 
 const LANG_DOT: Record<string, string> = {
@@ -32,9 +33,9 @@ export function GitHubRepoCard({ repo: r, rank, className }: { repo: GhRepo; ran
             {rank !== undefined && <span className="mr-1.5 font-mono text-repo">#{rank}</span>}
             {r.owner}
           </span>
-          <ExternalLink href={r.url} className="truncate leading-tight font-medium after:absolute after:inset-0">
+          <Link href={ghHref(r.owner, r.name)} className="truncate leading-tight font-medium after:absolute after:inset-0">
             {r.name}
-          </ExternalLink>
+          </Link>
         </div>
       </div>
       <p className="line-clamp-2 text-[13px] text-muted-foreground">{r.description || "No description yet."}</p>

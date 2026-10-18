@@ -7,7 +7,7 @@ import type { GhRepo, HnStory, HubKind, HubRepo, Paper } from "./types"
 
 const HUB_PATH: Record<HubKind, string> = { model: "", dataset: "datasets/", space: "spaces/" }
 
-const NOISE_TAGS = /^(transformers|safetensors|pytorch|gguf|endpoints_compatible|autotrain_compatible|text-generation-inference|custom_code|has_space|gradio|streamlit|docker|static|region|deploy|template|mlx|onnx|diffusers|\d+-bit|fp\d+|bf16)$/i
+export const NOISE_TAGS = /^(transformers|safetensors|pytorch|gguf|endpoints_compatible|autotrain_compatible|text-generation-inference|custom_code|has_space|gradio|streamlit|docker|static|region|deploy|template|mlx|onnx|diffusers|\d+-bit|fp\d+|bf16)$/i
 
 export const pretty = (tag: string) => {
   const s = tag.replace(/[-_]+/g, " ").trim()

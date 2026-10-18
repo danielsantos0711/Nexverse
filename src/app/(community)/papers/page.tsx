@@ -14,10 +14,10 @@ export const metadata: Metadata = {
   description: "Today's most upvoted papers on Hugging Face and the newest arXiv submissions in AI, language and machine learning.",
 }
 
-function PaperList({ feed, href, label, ranked }: { feed: Feed<Paper>; href: string; label: string; ranked?: boolean }) {
+function PaperList({ feed, ranked }: { feed: Feed<Paper>; ranked?: boolean }) {
   return (
     <div className="flex flex-col gap-4">
-      <FeedMeta feed={feed} href={href} label={label} />
+      <FeedMeta feed={feed} />
       {feed.items.length ? (
         <Stagger as="ol" className="flex flex-col gap-3" gap={0.04}>
           {feed.items.map((p, i) => (
@@ -27,7 +27,7 @@ function PaperList({ feed, href, label, ranked }: { feed: Feed<Paper>; href: str
           ))}
         </Stagger>
       ) : (
-        <FeedUnavailable source={feed.source} href={href} />
+        <FeedUnavailable source={feed.source} />
       )}
     </div>
   )
@@ -44,14 +44,14 @@ async function PaperFeeds() {
           label: "Daily on Hugging Face",
           icon: <SparklesIcon aria-hidden className="size-3.5" />,
           count: daily.items.length,
-          content: <PaperList feed={daily} href="https://huggingface.co/papers" label="Open Daily Papers" ranked />,
+          content: <PaperList feed={daily} ranked />,
         },
         {
           id: "arxiv",
           label: "Newest on arXiv",
           icon: <FileTextIcon aria-hidden className="size-3.5" />,
           count: latest.items.length,
-          content: <PaperList feed={latest} href="https://arxiv.org/list/cs.AI/new" label="Open arXiv listings" />,
+          content: <PaperList feed={latest} />,
         },
       ]}
     />
@@ -64,7 +64,7 @@ export default function PapersPage() {
       <PageTitle
         eyebrow="Hugging Face Daily Papers · arXiv cs.AI, cs.CL, cs.LG"
         title="Papers"
-        lead="What researchers are reading today, ranked by the community, next to the newest submissions on arXiv. Open any abstract, jump to the PDF, or start a thread to talk it through."
+        lead="What researchers are reading today, ranked by the community, next to the newest submissions on arXiv. Open any paper to read the abstract and the PDF right here, see what builds on it, or start a thread to talk it through."
       />
       <Suspense fallback={<PapersSkeleton />}>
         <PaperFeeds />

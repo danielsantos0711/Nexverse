@@ -37,21 +37,19 @@ function Section({ id, title, lead, children }: { id: string; title: string; lea
 
 async function HubModels({ kind }: { kind: "model" | "dataset" }) {
   const feed = await hfTrending(kind, kind === "model" ? 12 : 8)
-  const href = kind === "model" ? "https://huggingface.co/models?sort=trending" : "https://huggingface.co/datasets?sort=trending"
   return (
     <div className="flex flex-col gap-4">
-      <FeedMeta feed={feed} href={href} />
-      {feed.items.length ? <LiveModelList items={feed.items} /> : <FeedUnavailable source="huggingface" href={href} />}
+      <FeedMeta feed={feed} />
+      {feed.items.length ? <LiveModelList items={feed.items} /> : <FeedUnavailable source="huggingface" />}
     </div>
   )
 }
 
 async function Spaces() {
   const feed = await hfTrending("space", 9)
-  const href = "https://huggingface.co/spaces?sort=trending"
   return (
     <div className="flex flex-col gap-4">
-      <FeedMeta feed={feed} href={href} />
+      <FeedMeta feed={feed} />
       {feed.items.length ? (
         <Stagger as="ul" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {feed.items.map((s) => (
@@ -61,7 +59,7 @@ async function Spaces() {
           ))}
         </Stagger>
       ) : (
-        <FeedUnavailable source="huggingface" href={href} />
+        <FeedUnavailable source="huggingface" />
       )}
     </div>
   )
@@ -69,10 +67,9 @@ async function Spaces() {
 
 async function Repos() {
   const feed = await githubTrendingAi(9)
-  const href = "https://github.com/topics/llm"
   return (
     <div className="flex flex-col gap-4">
-      <FeedMeta feed={feed} href={href} label="Browse #llm on GitHub" />
+      <FeedMeta feed={feed} />
       {feed.items.length ? (
         <Stagger as="ol" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {feed.items.map((r, i) => (
@@ -82,7 +79,7 @@ async function Repos() {
           ))}
         </Stagger>
       ) : (
-        <FeedUnavailable source="github" href={href} />
+        <FeedUnavailable source="github" />
       )}
     </div>
   )
@@ -90,10 +87,9 @@ async function Repos() {
 
 async function Discussions() {
   const feed = await hnAiStories(12)
-  const href = "https://news.ycombinator.com"
   return (
     <div className="flex flex-col gap-4">
-      <FeedMeta feed={feed} href={href} />
+      <FeedMeta feed={feed} />
       {feed.items.length ? (
         <Stagger as="ol" className="glass flex flex-col divide-y divide-border overflow-hidden rounded-2xl" gap={0.04}>
           {feed.items.map((s) => (
@@ -103,7 +99,7 @@ async function Discussions() {
           ))}
         </Stagger>
       ) : (
-        <FeedUnavailable source="hackernews" href={href} />
+        <FeedUnavailable source="hackernews" />
       )}
     </div>
   )
@@ -115,7 +111,7 @@ export default function TrendingPage() {
       <PageTitle
         eyebrow="Live from Hugging Face, GitHub and Hacker News"
         title="Trending across the open ecosystem"
-        lead="The models, Spaces, datasets, repositories and conversations builders are paying attention to right now. Refreshed through the day, straight from the source."
+        lead="The models, Spaces, datasets, repositories and conversations builders are paying attention to right now. Open any of them to read it here: cards, READMEs, files and numbers, refreshed through the day."
       >
         <nav aria-label="Sections" className="mt-1 flex flex-wrap gap-2">
           {SECTIONS.map((s) => (

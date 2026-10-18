@@ -6,7 +6,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { compact } from "@/lib/data"
 import { hfDailyPapers, hfTrending, hnAiStories, type Feed } from "@/lib/live"
 import { cn } from "@/lib/utils"
-import { ExternalLink, SOURCES } from "./bits"
+import { hfHref, paperHref } from "@/lib/live/ids"
+import { SOURCES } from "./bits"
+import { hnHref } from "./hn-story-row"
 import { LiveBadge } from "./live-badge"
 
 function Column({
@@ -53,9 +55,9 @@ function Row({ href, rank, children, meta, cover }: { href: string; rank: number
       <Spotlight className="relative flex items-start gap-3 rounded-xl p-2.5 transition-colors hover:bg-card/80">
         {cover ?? <span className="w-5 shrink-0 pt-0.5 text-right font-mono text-xs text-muted-foreground tabular">{rank}</span>}
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <ExternalLink href={href} className="line-clamp-2 text-sm leading-snug font-medium after:absolute after:inset-0">
+          <Link href={href} className="line-clamp-2 text-sm leading-snug font-medium after:absolute after:inset-0">
             {children}
-          </ExternalLink>
+          </Link>
           <div className="flex flex-wrap items-center gap-x-2.5 text-xs text-muted-foreground tabular">{meta}</div>
         </div>
       </Spotlight>
@@ -106,7 +108,7 @@ export async function LiveHomeSection({ className }: { className?: string }) {
           {models.items.map((m, i) => (
             <Row
               key={m.id}
-              href={m.url}
+              href={hfHref("model", m.id)}
               rank={i + 1}
               cover={
                 <span className="relative size-9 shrink-0 overflow-hidden rounded-md ring-1 ring-white/10">
@@ -129,7 +131,7 @@ export async function LiveHomeSection({ className }: { className?: string }) {
           {papers.items.map((p, i) => (
             <Row
               key={p.id}
-              href={p.links.hf}
+              href={paperHref(p.id)}
               rank={i + 1}
               meta={
                 <>
@@ -151,7 +153,7 @@ export async function LiveHomeSection({ className }: { className?: string }) {
           {stories.items.map((s, i) => (
             <Row
               key={s.id}
-              href={s.url}
+              href={hnHref(s)}
               rank={i + 1}
               meta={
                 <>

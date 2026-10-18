@@ -2,7 +2,9 @@ import { AppWindowIcon, ArrowUpIcon, BoxIcon, DatabaseIcon, FileTextIcon, FlameI
 import { compact } from "@/lib/data"
 import { hfDailyPapers, hfTrending, hnAiStories, type HnStory, type HubRepo, type Paper } from "@/lib/live"
 import { cn } from "@/lib/utils"
-import { ExternalLink } from "./bits"
+import Link from "next/link"
+import { hfHref, paperHref } from "@/lib/live/ids"
+import { hnHref } from "./hn-story-row"
 
 type Chip = { key: string; href: string; label: string; icon: React.ComponentType<{ className?: string }>; tone: string; metric: string; metricIcon: React.ComponentType<{ className?: string }> }
 
@@ -26,21 +28,21 @@ function interleave<T>(lists: T[][]): T[] {
 export function TrendingNow({ repos = [], papers = [], stories = [], className }: { repos?: HubRepo[]; papers?: Paper[]; stories?: HnStory[]; className?: string }) {
   const hub: Chip[] = repos.map((r) => ({
     key: `${r.kind}-${r.id}`,
-    href: r.url,
+    href: hfHref(r.kind, r.id),
     label: r.kind === "space" ? r.title || r.name : r.id,
     ...HUB_CHIP[r.kind],
     metric: compact(r.likes),
     metricIcon: HeartIcon,
   }))
-  const pap: Chip[] = papers.map((p) => ({ key: `p-${p.id}`, href: p.links.hf, label: p.title, icon: FileTextIcon, tone: "text-gold", metric: compact(p.upvotes), metricIcon: ArrowUpIcon }))
-  const hn: Chip[] = stories.map((s) => ({ key: `hn-${s.id}`, href: s.hnUrl, label: s.title, icon: MessageSquareIcon, tone: "text-[#ff9a5c]", metric: compact(s.points), metricIcon: ArrowUpIcon }))
+  const pap: Chip[] = papers.map((p) => ({ key: `p-${p.id}`, href: paperHref(p.id), label: p.title, icon: FileTextIcon, tone: "text-gold", metric: compact(p.upvotes), metricIcon: ArrowUpIcon }))
+  const hn: Chip[] = stories.map((s) => ({ key: `hn-${s.id}`, href: hnHref(s), label: s.title, icon: MessageSquareIcon, tone: "text-[#ff9a5c]", metric: compact(s.points), metricIcon: ArrowUpIcon }))
   const chips = interleave([hub, pap, hn])
   if (chips.length < 3) return null
 
   const row = (hidden: boolean) =>
     chips.map((c) => (
       <li key={(hidden ? "dup-" : "") + c.key} className="shrink-0">
-        <ExternalLink
+        <Link
           href={c.href}
           tabIndex={hidden ? -1 : undefined}
           className="glass group inline-flex max-w-[22rem] items-center gap-2 rounded-full py-1.5 pr-3 pl-2 text-[13px] transition-colors hover:border-white/20 hover:bg-white/[0.06]"
@@ -51,7 +53,7 @@ export function TrendingNow({ repos = [], papers = [], stories = [], className }
             <c.metricIcon aria-hidden className="size-3" />
             {c.metric}
           </span>
-        </ExternalLink>
+        </Link>
       </li>
     ))
 

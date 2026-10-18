@@ -1,13 +1,14 @@
+import Link from "next/link"
 import { HeartIcon } from "lucide-react"
 import { Cover, Stat } from "@/components/hub/bits"
 import { Spotlight } from "@/components/hub/motion"
+import { hfHref } from "@/lib/live/ids"
 import type { HubRepo } from "@/lib/live"
 import { cn } from "@/lib/utils"
-import { ExternalLink } from "./bits"
 import { TimeAgo } from "./time"
 
 /** Hugging Face's card colour names, as RGB triplets dimmed for the dark theme. */
-const HF_COLORS: Record<string, string> = {
+export const HF_COLORS: Record<string, string> = {
   red: "248 113 113",
   yellow: "234 196 92",
   green: "110 220 160",
@@ -18,10 +19,15 @@ const HF_COLORS: Record<string, string> = {
   gray: "150 158 172",
 }
 
+/** The background of a Space's cover: its two card colours as soft radial glows on near-black. */
+export function spaceGradient(colorFrom: string, colorTo: string) {
+  const from = HF_COLORS[colorFrom] ?? HF_COLORS.indigo
+  const to = HF_COLORS[colorTo] ?? HF_COLORS.purple
+  return `radial-gradient(120% 140% at 0% 0%, rgb(${from} / 0.42), transparent 60%), radial-gradient(120% 140% at 100% 100%, rgb(${to} / 0.38), transparent 60%), #0b0d13`
+}
+
 /** A Space: the author's emoji on their chosen gradient, or a drawn cover when they set none. */
 export function SpaceCard({ space: s, className }: { space: HubRepo; className?: string }) {
-  const from = HF_COLORS[s.colorFrom] ?? HF_COLORS.indigo
-  const to = HF_COLORS[s.colorTo] ?? HF_COLORS.purple
   return (
     <Spotlight className={cn("group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card", className)}>
       <div className="relative h-24 overflow-hidden">
@@ -29,7 +35,7 @@ export function SpaceCard({ space: s, className }: { space: HubRepo; className?:
           <div
             aria-hidden
             className="flex size-full items-center justify-center text-3xl transition-transform duration-700 ease-out group-hover:scale-[1.06] motion-reduce:transition-none"
-            style={{ background: `radial-gradient(120% 140% at 0% 0%, rgb(${from} / 0.42), transparent 60%), radial-gradient(120% 140% at 100% 100%, rgb(${to} / 0.38), transparent 60%), #0b0d13` }}
+            style={{ background: spaceGradient(s.colorFrom, s.colorTo) }}
           >
             <span className="drop-shadow-[0_4px_12px_rgb(0_0_0/0.5)]">{s.emoji}</span>
           </div>
@@ -45,9 +51,9 @@ export function SpaceCard({ space: s, className }: { space: HubRepo; className?:
         )}
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-4 pt-1">
-        <ExternalLink href={s.url} className="line-clamp-1 leading-tight font-medium after:absolute after:inset-0">
+        <Link href={hfHref("space", s.id)} className="line-clamp-1 leading-tight font-medium after:absolute after:inset-0">
           {s.title || s.name}
-        </ExternalLink>
+        </Link>
         <p className="line-clamp-2 text-[13px] text-muted-foreground">{s.description || `A Space by ${s.owner}.`}</p>
         <div className="mt-auto flex items-center gap-3 pt-2 text-xs text-muted-foreground">
           <span className="truncate">{s.owner}</span>

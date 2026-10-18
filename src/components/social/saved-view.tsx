@@ -10,10 +10,13 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ago, getCategory, getConstellation, getNews, getPerson, getResource, getThread, isQuestionId, threadTitle } from "@/lib/data"
 import { getMemberThreads, getSharedLinks, toggleBookmark, useBookmarks, type Bookmark } from "@/lib/social"
 import { useSession, type Question, type Submission } from "@/lib/store"
+import { describeLiveTarget } from "@/lib/live/ids"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 const EASE = [0.23, 1, 0.32, 1] as const
+
+const LIVE_KIND = { ghrepo: "GitHub repository", hfmodel: "Hugging Face model", hfdataset: "Hugging Face dataset", hfspace: "Hugging Face Space", paper: "Paper" } as const
 
 export const SAVED_GROUPS = [
   { id: "model", label: "Models" },
@@ -24,6 +27,7 @@ export const SAVED_GROUPS = [
   { id: "news", label: "News" },
   { id: "constellation", label: "Constellations" },
   { id: "person", label: "People" },
+  { id: "live", label: "Repos, models and papers" },
 ] as const
 type GroupId = (typeof SAVED_GROUPS)[number]["id"]
 
@@ -81,6 +85,20 @@ function useEntries(list: Bookmark[]) {
         const s = shares[id]
         const group: GroupId = s.kind === "news" ? "news" : s.kind
         out.push({ target, group, label: `${s.title} ${s.summary}`, node: <SharedLinkRow s={s} /> })
+      } else {
+        const item = describeLiveTarget(target)
+        if (item)
+          out.push({
+            target,
+            group: "live",
+            label: item.label,
+            node: (
+              <Link href={item.href} className="flex flex-col gap-0.5 rounded-xl border border-border bg-card/70 p-4 transition-colors hover:bg-card">
+                <span className="text-xs text-muted-foreground">{LIVE_KIND[item.type]}</span>
+                <span className="truncate font-medium">{item.label}</span>
+              </Link>
+            ),
+          })
       }
     }
     return out

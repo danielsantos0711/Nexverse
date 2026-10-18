@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { ViewTransition } from "react"
 import { CompareTray } from "@/components/hub/compare"
 import { CommandMenu } from "@/components/site/command-menu"
@@ -20,7 +21,9 @@ export default function CommunityLayout({ children }: LayoutProps<"/">) {
       <HideOnChat>
         <SiteFooter />
       </HideOnChat>
-      <CompareTray />
+      <Suspense fallback={null}>
+        <CompareTray />
+      </Suspense>
     </CommandMenu>
   )
 }

@@ -1,9 +1,10 @@
+import Link from "next/link"
 import { DownloadIcon, HeartIcon, TrendingUpIcon } from "lucide-react"
 import { Cover, KindTag, Stat } from "@/components/hub/bits"
 import { Item, Spotlight, Stagger } from "@/components/hub/motion"
+import { hfHref } from "@/lib/live/ids"
 import type { HubRepo } from "@/lib/live"
 import { cn } from "@/lib/utils"
-import { ExternalLink } from "./bits"
 import { TimeAgo } from "./time"
 
 /** One trending model or dataset from the Hub, in the same dense row as ResourceCard. */
@@ -19,9 +20,9 @@ export function LiveRepoRow({ r, rank, className }: { r: HubRepo; rank?: number;
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 items-baseline gap-0.5 text-[15px] leading-tight">
             <span className="truncate text-muted-foreground">{r.owner}/</span>
-            <ExternalLink href={r.url} className="truncate font-medium text-foreground after:absolute after:inset-0">
+            <Link href={hfHref(r.kind, r.id)} className="truncate font-medium text-foreground after:absolute after:inset-0">
               {r.name}
-            </ExternalLink>
+            </Link>
           </div>
           {(r.description || r.tags.length > 0) && (
             <p className="line-clamp-1 text-[13px] text-muted-foreground">{r.description || r.tags.map((t) => `#${t}`).join("  ")}</p>

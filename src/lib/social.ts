@@ -2,6 +2,7 @@ import { useEffect, useSyncExternalStore } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { categoryPath, getCategory, getConstellation, getNews, getPerson, getResource, getThread, isQuestionId, resourcePath, threadTitle } from "@/lib/data"
 import { getQuestion, useSession, type Member, type Question, type Submission } from "@/lib/store"
+import { describeLiveTarget } from "@/lib/live/ids"
 import { db, live } from "@/lib/supabase"
 
 /**
@@ -454,8 +455,11 @@ export function describeTarget(target: string): TargetInfo {
       return { type, id, label: "a member", href: null }
     case "share":
       return { type, id, label: "a shared link", href: null }
-    default:
+    default: {
+      const item = describeLiveTarget(target)
+      if (item) return { type: item.type, id: item.id, label: item.label, href: item.href }
       return { type, id, label: id, href: null }
+    }
   }
 }
 
