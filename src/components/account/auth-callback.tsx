@@ -21,7 +21,7 @@ export function AuthCallback() {
   if (problem || (ready && !user)) {
     return (
       <div className="flex flex-col items-start gap-5" role="alert">
-        <h1 className="font-wide text-3xl font-semibold tracking-[-0.03em]">That link did not sign you in</h1>
+        <h1 className="text-3xl font-semibold tracking-[-0.03em]">That link did not sign you in</h1>
         <p className="max-w-[54ch] text-muted-foreground">
           {problem ?? "It may have expired or been opened in a different browser."} Ask for a new one and open it
           on this device.
@@ -32,7 +32,7 @@ export function AuthCallback() {
   }
 
   return (
-    <p role="status" className="text-lead text-muted-foreground">
+    <p role="status" className="text-lg text-muted-foreground">
       Signing you in…
     </p>
   )

@@ -286,3 +286,98 @@ export async function signOut() {
   const { error } = await client.auth.signOut()
   fail(error)
 }
+
+// What members share: links to models, datasets, tools, repos and news, and the likes they give.
+
+export type SubmissionKind = "model" | "dataset" | "tool" | "repo" | "news"
+
+export type Submission = {
+  id: string
+  kind: SubmissionKind
+  title: string
+  url: string
+  summary: string
+  tags: string[]
+  createdAt: string
+  author: Member | null
+  local: boolean
+}
+
+export type NewSubmission = Pick<Submission, "kind" | "title" | "url" | "summary" | "tags">
+
+const SUBMISSIONS_KEY = "nexverse-submissions"
+const LIKES_KEY = "nexverse-likes"
+const SUBMISSION_COLUMNS = "id, kind, title, url, summary, tags, created_at, author:profiles(id, name)"
+
+type SubmissionRow = Omit<Submission, "createdAt" | "local"> & { created_at: string }
+type LocalSubmission = NewSubmission & { id: string; date: string }
+
+const fromSubmissionRow = (r: SubmissionRow): Submission => ({ ...r, tags: r.tags ?? [], createdAt: r.created_at, local: false })
+const fromLocalSubmission = (s: LocalSubmission): Submission => ({ ...s, createdAt: s.date, author: null, local: true })
+
+export async function listSubmissions({ kind, author, limit = 30 }: { kind?: SubmissionKind; author?: string; limit?: number } = {}) {
+  const client = db()
+  if (!client) {
+    if (author) return []
+    return readLocal<LocalSubmission>(SUBMISSIONS_KEY)
+      .filter((s) => !kind || s.kind === kind)
+      .slice(0, limit)
+      .map(fromLocalSubmission)
+  }
+  let query = client.from("submissions").select(SUBMISSION_COLUMNS).order("created_at", { ascending: false }).limit(limit)
+  if (kind) query = query.eq("kind", kind)
+  if (author) query = query.eq("author_id", author)
+  const { data, error } = await query
+  fail(error)
+  return (data as unknown as SubmissionRow[]).map(fromSubmissionRow)
+}
+
+export async function createSubmission(input: NewSubmission): Promise<Submission> {
+  const client = db()
+  if (!client) {
+    const s: LocalSubmission = { ...input, id: crypto.randomUUID(), date: new Date().toISOString() }
+    writeLocal(SUBMISSIONS_KEY, [s, ...readLocal<LocalSubmission>(SUBMISSIONS_KEY)])
+    return fromLocalSubmission(s)
+  }
+  const { data, error } = await client.from("submissions").insert(input).select(SUBMISSION_COLUMNS).single()
+  fail(error)
+  return fromSubmissionRow(data as unknown as SubmissionRow)
+}
+
+export async function deleteSubmission(id: string) {
+  const client = db()
+  if (!client) {
+    writeLocal(SUBMISSIONS_KEY, readLocal<LocalSubmission>(SUBMISSIONS_KEY).filter((s) => s.id !== id))
+    return
+  }
+  const { error } = await client.from("submissions").delete().eq("id", id)
+  fail(error)
+}
+
+/** How many members liked a target ("model:orbit-8b", "thread:…", "news:…") and whether you did. */
+export async function getLikes(target: string, userId?: string): Promise<{ count: number; mine: boolean }> {
+  const client = db()
+  if (!client) {
+    const mine = readLocal<string>(LIKES_KEY).includes(target)
+    return { count: mine ? 1 : 0, mine }
+  }
+  const [{ count, error }, mineRes] = await Promise.all([
+    client.from("likes").select("target", { count: "exact", head: true }).eq("target", target),
+    userId ? client.from("likes").select("target").eq("target", target).eq("user_id", userId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+  ])
+  fail(error)
+  return { count: count ?? 0, mine: Boolean(mineRes.data) }
+}
+
+export async function setLike(target: string, on: boolean) {
+  const client = db()
+  if (!client) {
+    const all = readLocal<string>(LIKES_KEY).filter((t) => t !== target)
+    writeLocal(LIKES_KEY, on ? [...all, target] : all)
+    return
+  }
+  const { error } = on
+    ? await client.from("likes").insert({ target })
+    : await client.from("likes").delete().eq("target", target).eq("user_id", session.user?.id ?? "")
+  fail(error)
+}

@@ -1,30 +1,31 @@
 # Nexverse
 
-A public, international community for people who build with AI. Ask in your own language, get answers from
-people who have done it, and share back the models, datasets and tools you make, linked forever to the
-question that started them.
+The open universe for AI builders: a hub for models, datasets, tools and repos, a forum that works in every
+language, news with the reason it matters, and constellations, which connect the pieces of a working stack
+into a map anyone can follow.
 
 ## What is here
 
 | Route | What it does |
 | --- | --- |
-| `/` | Home: the N reel, a live ask box that routes a question to an orbit, a past thread and something already built, the loop, news, and a closing ask. |
-| `/explore` | Search threads and artifacts in any language; filter by kind, unanswered, and orbit. Filters live in the URL. |
-| `/orbits`, `/orbits/[slug]` | Communities, each with threads, what was built there, people and house rules. |
-| `/threads/[id]` | A discussion, readable in English or its original language, with the loop's current stage, what it became, and a reply box. |
-| `/artifacts/[slug]` | A model, dataset, tool, repository or prompt set, with the question it came from. |
-| `/signal` | News with a member's note on why it matters. |
-| `/people/[handle]` | Profiles that show who someone helped and who helped them, not follower counts. |
-| `/new` | The composer: suggests an orbit and detects the language as you type. |
-| `/sign-in`, `/auth/callback` | Sign in with an emailed link. The same link creates the account. |
-| `/you` | Your name and the questions you asked. |
+| `/` | Home: a real-time 3D chrome N over the Earth's limb, universal search, trending by kind, the live pulse, constellations, the forum, news, picks and people. |
+| `/explore` | Everything in one list, filtered by kind, task, language and licence, with `?q=` and `?sort=` in the URL. |
+| `/models`, `/datasets`, `/tools`, `/repos` (and `/[slug]`) | Browse one kind; each item has a card, files, discussions and the constellations it is part of. |
+| `/forum`, `/forum/[id]`, `/forum/new` | Categories, hot/new/unanswered/solved, threads with one-click translation, and members' own threads. |
+| `/news`, `/news/[id]` | Stories with why they matter and comments. |
+| `/constellations`, `/constellations/[slug]` | Animated star maps of stacks that work, step by step. |
+| `/people`, `/people/[handle]` | Profiles with a year of activity, what they built, threads and replies. |
+| `/share` | Share a link to a model, dataset, tool, repo or story. |
+| `/sign-in`, `/auth/callback`, `/you` | Sign in with an emailed link; your threads, shares and name. |
 
-The orbits, people, threads, artifacts and news that ship with the app are **sample data** in
-`src/lib/data.ts`. Members' questions and answers live in Supabase.
+Press ⌘K (Ctrl K) anywhere to jump to anything.
+
+The people, organisations, resources, threads and news that ship with the app are **sample data** in
+`src/lib/data.ts`. Members' threads, replies, shares and likes live in Supabase.
 
 ## Accounts and storage
 
-Members sign in with an emailed link and write questions and answers to a Supabase Postgres database. The
+Members sign in with an emailed link and write threads, replies, shares and likes to a Supabase Postgres database. The
 browser talks to Supabase directly; row level security (in `supabase/migrations/`) makes everything readable
 by anyone and lets members write, change and delete only their own rows. An asker can mark the answer that
 worked for them.
@@ -34,7 +35,7 @@ kept in their browser, labelled that way.
 
 ### The live database
 
-The project `nexverse` (Paris, `eu-west-3`) already has both migrations applied, and `.env.production` points
+The project `nexverse` (Paris, `eu-west-3`) already has all three migrations applied, and `.env.production` points
 production builds at it. Its URL and publishable key are public by design; row level security decides what
 they can do. For local development against it, copy `.env.production` to `.env.local`.
 

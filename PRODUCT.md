@@ -29,10 +29,10 @@ something built and shared back, and where the person who asked becomes the pers
 
 ## Positioning
 
-Not a model hub with comments bolted on, and not an enterprise SaaS or dashboard. The unit of Nexverse is
-the loop: a question, the answers, the thing someone built from them, and that thing shared back and linked to
-the question that started it. Every language is first class: posts keep their original language and are
-readable in yours.
+Daniel's direction (2026-10-18): a Hugging Face-style hub, but more complete and unmistakably its own.
+Models, datasets, tools and repos are first-class, next to a real forum, news and people. What only Nexverse
+has: constellations (stacks that connect resources into a working whole), a forum where every language is
+first class and translation is one click, and a cinematic deep-space design with a real 3D chrome N.
 
 ## Operating Context
 
@@ -41,8 +41,8 @@ dataset pages, a news digest with community notes, and profiles that show who he
 
 ## Capabilities and Constraints
 
-- Built so far: public pages for home, explore, orbits (communities), threads, artifacts, signal (news),
-  people, and a composer.
+- Built so far: home, explore, models/datasets/tools/repos with detail pages, forum, news, constellations,
+  people, share, sign-in and your page, plus a ⌘K palette.
 - Chosen: Supabase for accounts and storage, Vercel for hosting. Undecided: moderation tooling, translation provider, domain.
 - Members sign in with an emailed link and post to Supabase; without a database connected, posting stays on the visitor's device and says so.
 
@@ -57,16 +57,16 @@ dataset pages, a news digest with community notes, and profiles that show who he
 ## Evidence on Hand
 
 - Logo PNGs, app icons and four material studies of the N (chrome, titanium, pearl, champagne).
-- No real members, posts, statistics, partners, prices or press. All people, threads, artifacts and news in
+- No real members, posts, statistics, partners, prices or press. All people, resources, threads and news in
   `src/lib/data.ts` are sample content and must not be presented as real.
 
 ## Product Principles
 
 1. The question and what it became stay linked forever.
 2. Every language is first class; the original is never hidden.
-3. Credit follows the work: profiles show help given and received, not follower counts.
+3. Credit follows the work: profiles show what someone built and who they helped.
 4. Public and readable without an account.
-5. Calm surfaces, so the people and their work carry the page.
+5. Dense and fast to scan, with motion that rewards attention but never blocks reading.
 
 ## Accessibility & Inclusion
 
