@@ -36,7 +36,7 @@ export default function ParticleGalaxy() {
       canvas.className = 'pgx-canvas';
       canvas.setAttribute('aria-hidden', 'true');
       root.replaceChildren(canvas);
-      const gl = canvas.getContext('webgl2', { alpha: true, antialias: false, preserveDrawingBuffer: true, premultipliedAlpha: true });
+      const gl = canvas.getContext('webgl2', { alpha: true, antialias: false, preserveDrawingBuffer: false, premultipliedAlpha: true });
       if (!gl) {
         root.replaceChildren();
         return { update() {}, destroy() { root.replaceChildren(); } };
@@ -117,7 +117,7 @@ export default function ParticleGalaxy() {
       function rgb(hex){let h=hex.slice(1);if(h.length===3)h=h.split('').map(v=>v+v).join('');return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16)/255);}
       function render(){
         if(dead||gl.isContextLost())return;
-        const box=root.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
+        const box=root.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,1.5);
         const width=Math.max(1,Math.round(box.width*dpr)),height=Math.max(1,Math.round(box.height*dpr));
         if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}
         // Additive RGB is already alpha-weighted; composite it without a second alpha multiply.

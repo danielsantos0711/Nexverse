@@ -15,8 +15,8 @@ export default function CommunityLayout({ children }: LayoutProps<"/">) {
       </ViewTransition>
       <ScrollProgress />
       <main id="main" className="w-full flex-1 overflow-x-clip">
-        {/* Moving between pages, the old page sinks away and the new one rises in (see .page in globals.css). */}
-        <ViewTransition default="page">{children}</ViewTransition>
+        {/* No page-wide transition: it replayed every time a streamed section arrived, so one click looked like several reloads. */}
+        {children}
       </main>
       <HideOnChat>
         <SiteFooter />

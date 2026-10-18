@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react"
 import { useEffect, useRef, useState } from "react"
 import {
@@ -95,7 +95,7 @@ export function SiteHeader() {
     <header
       className={cn(
         "sticky top-0 z-40 h-16 border-b transition-[background-color,border-color] duration-300",
-        scrolled ? "border-border bg-background/70 backdrop-blur-xl" : "border-transparent bg-transparent"
+        scrolled ? "border-border bg-background/85 backdrop-blur-md" : "border-transparent bg-transparent"
       )}
     >
       <div className="shell flex h-full items-center gap-4">
@@ -169,6 +169,7 @@ export function SiteHeader() {
  * instead of closing one dropdown and opening another.
  */
 function MainNav({ pathname }: { pathname: string }) {
+  const router = useRouter()
   const [open, setOpen] = useState<string | null>(null)
   const [dir, setDir] = useState(0)
   const reduce = useReducedMotion()
@@ -263,6 +264,9 @@ function MainNav({ pathname }: { pathname: string }) {
                     <li key={l.href}>
                       <Link
                         href={l.href}
+                        prefetch={false}
+                        onPointerEnter={() => router.prefetch(l.href)}
+                        onFocus={() => router.prefetch(l.href)}
                         aria-current={isOn(l.href) ? "page" : undefined}
                         onClick={() => setOpen(null)}
                         className="group flex items-start gap-3 rounded-xl p-3 transition-colors duration-150 hover:bg-white/[0.05] aria-[current=page]:bg-white/[0.06]"
