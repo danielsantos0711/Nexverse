@@ -1,18 +1,15 @@
-import { AppWindowIcon, ArrowUpIcon, BoxIcon, DatabaseIcon, FileTextIcon, FlameIcon, HeartIcon, MessageSquareIcon } from "lucide-react"
-import { compact } from "@/lib/data"
-import { hfDailyPapers, hfTrending, hnAiStories, type HnStory, type HubRepo, type Paper } from "@/lib/live"
-import { cn } from "@/lib/utils"
 import Link from "next/link"
-import { hfHref, paperHref } from "@/lib/live/ids"
-import { hnHref } from "./hn-story-row"
+import { ArrowUpIcon, FileTextIcon, FlameIcon, FolderGit2Icon, HeartIcon, MessageSquareIcon, StarIcon } from "lucide-react"
+import { KIND_ICONS } from "@/components/hub/bits"
+import { compact, resourcePath, resources, threads, threadTitle, trending } from "@/lib/data"
+import { arxivPapers, githubTrendingAi, type GhRepo, type Paper } from "@/lib/live"
+import { ghHref, paperHref } from "@/lib/live/ids"
+import { cn } from "@/lib/utils"
 
-type Chip = { key: string; href: string; label: string; icon: React.ComponentType<{ className?: string }>; tone: string; metric: string; metricIcon: React.ComponentType<{ className?: string }> }
+type Icon = React.ComponentType<{ className?: string }>
+type Chip = { key: string; href: string; label: string; icon: Icon; tone: string; metric?: string; metricIcon?: Icon }
 
-const HUB_CHIP = {
-  model: { icon: BoxIcon, tone: "text-model" },
-  dataset: { icon: DatabaseIcon, tone: "text-dataset" },
-  space: { icon: AppWindowIcon, tone: "text-tool" },
-} as const
+const KIND_TONE = { model: "text-model", dataset: "text-dataset", tool: "text-tool", repo: "text-repo" } as const
 
 /** Interleaves the lists so the strip alternates between sources. */
 function interleave<T>(lists: T[][]): T[] {
@@ -21,22 +18,25 @@ function interleave<T>(lists: T[][]): T[] {
   return out
 }
 
+/** The hub's own trending items and threads, as chips. Sample data, so always available. */
+function hubChips(): Chip[] {
+  const items: Chip[] = trending(resources)
+    .slice(0, 6)
+    .map((r) => ({ key: `r-${r.kind}-${r.slug}`, href: resourcePath(r), label: r.name, icon: KIND_ICONS[r.kind], tone: KIND_TONE[r.kind], metric: compact(r.likes), metricIcon: HeartIcon }))
+  const talk: Chip[] = trending(threads)
+    .slice(0, 4)
+    .map((t) => ({ key: `t-${t.id}`, href: `/forum/${t.id}`, label: threadTitle(t), icon: MessageSquareIcon, tone: "text-ion", metric: compact(t.votes), metricIcon: ArrowUpIcon }))
+  return interleave([items, talk])
+}
+
 /**
- * A slow marquee of what is trending right now across the Hub, papers and Hacker News. It pauses on hover;
- * with reduced motion it stops and becomes a plain horizontally scrollable row.
+ * A slow marquee of what is trending right now on GitHub, on arXiv and on Nexverse itself. It pauses on
+ * hover; with reduced motion it stops and becomes a plain horizontally scrollable row.
  */
-export function TrendingNow({ repos = [], papers = [], stories = [], className }: { repos?: HubRepo[]; papers?: Paper[]; stories?: HnStory[]; className?: string }) {
-  const hub: Chip[] = repos.map((r) => ({
-    key: `${r.kind}-${r.id}`,
-    href: hfHref(r.kind, r.id),
-    label: r.kind === "space" ? r.title || r.name : r.id,
-    ...HUB_CHIP[r.kind],
-    metric: compact(r.likes),
-    metricIcon: HeartIcon,
-  }))
-  const pap: Chip[] = papers.map((p) => ({ key: `p-${p.id}`, href: paperHref(p.id), label: p.title, icon: FileTextIcon, tone: "text-gold", metric: compact(p.upvotes), metricIcon: ArrowUpIcon }))
-  const hn: Chip[] = stories.map((s) => ({ key: `hn-${s.id}`, href: hnHref(s), label: s.title, icon: MessageSquareIcon, tone: "text-[#ff9a5c]", metric: compact(s.points), metricIcon: ArrowUpIcon }))
-  const chips = interleave([hub, pap, hn])
+export function TrendingNow({ repos = [], papers = [], className }: { repos?: GhRepo[]; papers?: Paper[]; className?: string }) {
+  const gh: Chip[] = repos.map((r) => ({ key: `gh-${r.fullName}`, href: ghHref(r.owner, r.name), label: r.fullName, icon: FolderGit2Icon, tone: "text-repo", metric: compact(r.stars), metricIcon: StarIcon }))
+  const pap: Chip[] = papers.map((p) => ({ key: `p-${p.id}`, href: paperHref(p.id), label: p.title, icon: FileTextIcon, tone: "text-gold", metric: p.categories[0] }))
+  const chips = interleave([gh, pap, hubChips()])
   if (chips.length < 3) return null
 
   const row = (hidden: boolean) =>
@@ -49,10 +49,12 @@ export function TrendingNow({ repos = [], papers = [], stories = [], className }
         >
           <c.icon aria-hidden className={cn("size-3.5 shrink-0", c.tone)} />
           <span className="truncate text-foreground/90 group-hover:text-foreground">{c.label}</span>
-          <span className="inline-flex shrink-0 items-center gap-0.5 text-xs text-muted-foreground tabular">
-            <c.metricIcon aria-hidden className="size-3" />
-            {c.metric}
-          </span>
+          {c.metric && (
+            <span className="inline-flex shrink-0 items-center gap-0.5 text-xs text-muted-foreground tabular">
+              {c.metricIcon && <c.metricIcon aria-hidden className="size-3" />}
+              {c.metric}
+            </span>
+          )}
         </Link>
       </li>
     ))
@@ -75,8 +77,9 @@ export function TrendingNow({ repos = [], papers = [], stories = [], className }
   )
 }
 
-/** TrendingNow with its own data: top models, Spaces, today's papers and HN threads. */
+/** TrendingNow with its own data: rising GitHub repositories, the newest papers and the hub's own favourites. */
 export async function TrendingNowLive({ className }: { className?: string }) {
-  const [models, spaces, papers, stories] = await Promise.all([hfTrending("model", 8), hfTrending("space", 6), hfDailyPapers(6), hnAiStories(6)])
-  return <TrendingNow className={className} repos={interleave([models.items, spaces.items])} papers={papers.items} stories={stories.items} />
+  // The same arguments as the /papers list, so both share one cache entry.
+  const [repos, papers] = await Promise.all([githubTrendingAi(8), arxivPapers("all", 30)])
+  return <TrendingNow className={className} repos={repos.items} papers={papers.items.slice(0, 6)} />
 }

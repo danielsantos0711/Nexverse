@@ -96,8 +96,27 @@ export function hostname(url: string): string {
   }
 }
 
-/** Hub repo ids look like owner/name. */
-export const HUB_ID = /^[A-Za-z0-9][\w.-]{0,95}\/[\w.-]{1,96}$/
+/**
+ * Sites Nexverse does not feature, link to or name (other AI communities). Items that mention them are left
+ * out of the feeds, links to them are not rendered, and their addresses are removed from third-party text.
+ */
+const OFF_SITE = /hugging\s?face|\bhf\.(co|space)\b|hacker\s?news|ycombinator/i
+const OFF_SITE_URL = /\bhttps?:\/\/(?:[\w-]+\.)*(?:huggingface\.co|hf\.co|hf\.space|ycombinator\.com)(?:[/?#][^\s)\]}>"']*)?/gi
+const OFF_SITE_HOST = /(^|\.)(huggingface\.co|hf\.co|hf\.space|ycombinator\.com)$/i
+
+export const isOffSite = (...texts: string[]) => texts.some((t) => OFF_SITE.test(t))
+export const isOffSiteHost = (host: string) => OFF_SITE_HOST.test(host.toLowerCase())
+/** Owners on GitHub whose repositories are not shown. */
+export const isOffSiteOwner = (owner: string) => /^hugging\s?face/i.test(owner)
+/** Text with addresses of those sites taken out (for abstracts and notes, which are shown as written otherwise). */
+export const stripOffSiteUrls = (s: string) =>
+  s
+    // Keep sentence punctuation that followed the address.
+    .replace(OFF_SITE_URL, (m) => m.match(/[.,;:!?]+$/)?.[0] ?? "")
+    .replace(/\(\s*\)|\[\s*\]/g, "")
+    .replace(/\s+([,.;:)])/g, "$1")
+    .replace(/\s{2,}/g, " ")
+    .trim()
 
 /** Names that a public community front page should not feature. */
 const UNSAFE = /nsfw|uncensored|porn|hentai|nude|naked|erotic|\bsex/i

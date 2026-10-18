@@ -9,7 +9,7 @@ import { SaveButton } from "@/components/social/save-button"
 import { compact } from "@/lib/data"
 import { ghCommits, ghContents, ghFile, ghLanguages, ghReadme, ghReleases, ghRepo, type GhCommit, type GhEntry, type GhRelease, type GhRepoDetail } from "@/lib/live/github"
 import type { FailReason } from "@/lib/live/http"
-import { discussItemHref, ghBlobHref, ghHref, ghTreeHref, internalHref, liveTarget } from "@/lib/live/ids"
+import { discussItemHref, ghBlobHref, ghHref, ghTopicHref, ghTreeHref, internalHref, liveTarget } from "@/lib/live/ids"
 import { cn } from "@/lib/utils"
 import { ExternalLink } from "./bits"
 import { CodeView } from "./code-block"
@@ -37,7 +37,7 @@ function Avatar({ repo: d, size = "lg" }: { repo: Pick<GhRepoDetail, "ownerAvata
 
 const crumbs = (owner: string) => [
   {
-    href: "/trending#repos",
+    href: "/gh/topics",
     label: (
       <>
         <FolderGit2Icon aria-hidden className="size-4" /> GitHub
@@ -88,8 +88,10 @@ function RepoHeader({ d }: { d: GhRepoDetail }) {
       {d.topics.length > 0 && (
         <ul aria-label="Topics" className="flex flex-wrap gap-1.5">
           {d.topics.map((t) => (
-            <li key={t} className="rounded-full bg-repo/10 px-2.5 py-0.5 text-xs text-repo">
-              {t}
+            <li key={t}>
+              <Link href={ghTopicHref(t)} className="inline-block rounded-full bg-repo/10 px-2.5 py-0.5 text-xs text-repo transition-colors hover:bg-repo/20">
+                {t}
+              </Link>
             </li>
           ))}
         </ul>

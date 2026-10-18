@@ -11,7 +11,6 @@ export function generateStaticParams() {
   return [{ id: "1706.03762" }]
 }
 
-
 type Params = Promise<{ id: string }>
 
 /** New-style ids (2610.21601, 2610.21601v2) arrive as is; old-style ones (hep-th/9901001) arrive percent-encoded. */
@@ -26,7 +25,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const res = await paperDetail(id)
   if (!res.ok) return { title: `arXiv:${id}` }
   const p = res.data
-  const lead = p.tldr || p.summary
+  const lead = p.summary || `${p.title}, on arXiv.`
   return { title: p.title, description: lead.length > 200 ? `${lead.slice(0, 197).trimEnd()}…` : lead }
 }
 

@@ -1,8 +1,8 @@
 import Link from "next/link"
-import { ArrowUpIcon, BookOpenIcon, FileTextIcon, FolderGit2Icon, MessageSquareIcon, MessagesSquareIcon } from "lucide-react"
-import { Stat } from "@/components/hub/bits"
+import { BookOpenIcon, FileTextIcon, FolderGit2Icon, MessagesSquareIcon } from "lucide-react"
 import { Spotlight } from "@/components/hub/motion"
 import type { Paper } from "@/lib/live"
+import { areaInfo } from "@/lib/live/catalog"
 import { discussItemHref, internalHref, paperHref } from "@/lib/live/ids"
 import { cn } from "@/lib/utils"
 import { Abstract } from "./abstract"
@@ -22,34 +22,20 @@ function Authors({ names }: { names: string[] }) {
 
 const LINK = "relative z-10 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
 
-/** A paper from Hugging Face's daily list or arXiv: authors, votes, an expandable abstract. Opens its page on Nexverse. */
-export function PaperCard({ paper: p, rank, className }: { paper: Paper; rank?: number; className?: string }) {
-  const fromHf = p.source === "huggingface"
+/** An arXiv paper: area, authors, an expandable abstract. Opens its page on Nexverse. */
+export function PaperCard({ paper: p, className }: { paper: Paper; className?: string }) {
   const code = p.links.code ? internalHref(p.links.code) : null
+  const primary = p.categories[0]
   return (
     <Spotlight className={cn("relative flex gap-4 rounded-2xl border border-border bg-card/70 p-4 transition-colors hover:bg-card", className)}>
-      {fromHf && (
-        <div className="hidden w-14 shrink-0 flex-col items-center self-start rounded-lg bg-secondary/70 py-1.5 sm:flex">
-          <ArrowUpIcon aria-hidden className="size-3.5 text-muted-foreground" />
-          <span className="text-sm font-semibold tabular">{p.upvotes}</span>
-          <span className="sr-only">upvotes on Hugging Face</span>
-        </div>
-      )}
       <article className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          {rank !== undefined && <span className="font-mono text-gold">#{rank}</span>}
-          <span className="inline-flex items-center gap-1 font-medium text-gold">
+          <span className="inline-flex items-center gap-1 font-medium text-gold" title={primary ? areaInfo(primary)?.label : undefined}>
             <FileTextIcon aria-hidden className="size-3.5" />
-            {fromHf ? "Daily paper" : (p.categories[0] ?? "arXiv")}
+            {primary ?? "arXiv"}
           </span>
-          {!fromHf && p.categories.length > 1 && <span className="font-mono">{p.categories.slice(1).join(" · ")}</span>}
+          {p.categories.length > 1 && <span className="font-mono">{p.categories.slice(1, 4).join(" · ")}</span>}
           <TimeAgo date={p.published} />
-          {fromHf && (
-            <span className="sm:hidden">
-              <Stat icon={ArrowUpIcon} value={p.upvotes} label="upvotes" />
-            </span>
-          )}
-          {p.comments > 0 && <Stat icon={MessageSquareIcon} value={p.comments} label="comments on Hugging Face" />}
           <span className="font-mono">arXiv:{p.id}</span>
         </div>
         <h3 className="font-sans text-base leading-snug font-medium tracking-normal">
@@ -58,17 +44,7 @@ export function PaperCard({ paper: p, rank, className }: { paper: Paper; rank?: 
           </Link>
         </h3>
         <Authors names={p.authors} />
-        {p.tldr && <p className="text-sm text-foreground/85">{p.tldr}</p>}
         <Abstract text={p.summary} />
-        {p.keywords.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5" aria-label="Keywords">
-            {p.keywords.map((k) => (
-              <li key={k} className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">
-                {k}
-              </li>
-            ))}
-          </ul>
-        )}
         <div className="-ml-2 flex flex-wrap items-center gap-0.5 pt-1">
           <Link href={paperHref(p.id)} className={cn(LINK, "text-foreground/90")}>
             <BookOpenIcon aria-hidden className="size-3.5" />

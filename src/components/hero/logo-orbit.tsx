@@ -1,12 +1,15 @@
 "use client"
 
+import dynamic from "next/dynamic"
+import Image from "next/image"
 import Link from "next/link"
 import { motion, useAnimationFrame, useMotionValue, useReducedMotion, useSpring, useTransform } from "motion/react"
 import { useRef, useState } from "react"
 import { BoxIcon, DatabaseIcon, FolderGit2Icon, MessageSquareIcon, MessagesSquareIcon, WrenchIcon, type LucideIcon } from "lucide-react"
-import DustVortex from "@/components/hero/dust-vortex"
-import LiquidLogo from "@/components/hero/liquid-logo"
 import { cn } from "@/lib/utils"
+
+// WebGL, client only and off the first paint: the N and its moons show at once, the galaxy fades in behind.
+const Galaxy = dynamic(() => import("@/components/hero/particle-galaxy"), { ssr: false })
 
 /** The places of Nexverse, orbiting the N. Each is a link, so the hero doubles as a map of the site. */
 const MOONS: { href: string; label: string; icon: LucideIcon; ring: number; phase: number; tint: string }[] = [
@@ -26,8 +29,9 @@ const RINGS = [
 ]
 
 /**
- * Daniel's own fluid N, the real artwork, floating in space: it leans toward the pointer, a band of light
- * runs across its metal, and the sections of the site orbit it as moons you can click.
+ * Daniel's own fluid N, the real artwork and never warped, at the heart of a turning galaxy: it leans toward the
+ * pointer, a highlight follows the pointer across its metal, a band of light sweeps it, and the sections of the
+ * site orbit it as moons you can click.
  */
 export function LogoOrbit({ className }: { className?: string }) {
   const reduce = useReducedMotion()
@@ -40,6 +44,9 @@ export function LogoOrbit({ className }: { className?: string }) {
   const rotX = useTransform(sy, [-1, 1], [12, -12])
   const shiftX = useTransform(sx, [-1, 1], [-14, 14])
   const shiftY = useTransform(sy, [-1, 1], [-10, 10])
+  // A highlight that slides over the metal toward the pointer, clipped to the N's own silhouette.
+  const lightX = useTransform(sx, [-1, 1], ["20%", "80%"])
+  const lightY = useTransform(sy, [-1, 1], ["15%", "85%"])
 
   return (
     <div
@@ -58,9 +65,9 @@ export function LogoOrbit({ className }: { className?: string }) {
     >
       {/* halo and the back half of each ring sit behind the N */}
       <div aria-hidden className="absolute inset-[18%] rounded-full bg-[radial-gradient(closest-side,rgb(143_180_255/0.28),rgb(143_180_255/0.06)_60%,transparent)] blur-2xl" />
-      {/* a slow spiral of star dust, the galaxy the N sits in */}
-      <div aria-hidden className="pointer-events-none absolute -inset-[6%] opacity-70 [mask-image:radial-gradient(closest-side,black_55%,transparent)]">
-        <DustVortex />
+      {/* the galaxy the N sits at the heart of */}
+      <div aria-hidden className="galaxy-in pointer-events-none absolute -inset-x-[70%] -inset-y-[25%] opacity-75 [mask-image:radial-gradient(closest-side,black_60%,transparent)]">
+        <Galaxy />
       </div>
       <Rings half="back" />
 
@@ -69,11 +76,22 @@ export function LogoOrbit({ className }: { className?: string }) {
         style={reduce ? undefined : { rotateX: rotX, rotateY: rotY, x: shiftX, y: shiftY }}
       >
         <div className={cn("relative size-full", !reduce && "logo-float")}>
-          {/* the official N in liquid metal: it flows under the pointer and drifts by itself when idle */}
-          <div className="size-full [filter:drop-shadow(0_30px_60px_rgb(143_180_255/0.25))]">
-            <LiquidLogo />
-          </div>
-          {!reduce && <div aria-hidden className="logo-sheen absolute inset-0" />}
+          {/* Daniel's N, untouched: light moves over it, its shape never changes */}
+          <div aria-hidden className="logo-aura absolute inset-[8%]" />
+          <Image
+            src="/brand/n-chrome-alpha.webp"
+            alt="Nexverse"
+            fill
+            priority
+            sizes="(min-width: 1024px) 40vw, 70vw"
+            className="object-contain [filter:drop-shadow(0_30px_60px_rgb(143_180_255/0.28))]"
+          />
+          {!reduce && (
+            <>
+              <motion.div aria-hidden className="logo-light absolute inset-0" style={{ "--lx": lightX, "--ly": lightY } as React.CSSProperties} />
+              <div aria-hidden className="logo-sheen absolute inset-0" />
+            </>
+          )}
         </div>
       </motion.div>
 

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useEffect, useState } from "react"
-import { ArrowUpRightIcon, MessageSquareIcon, MessagesSquareIcon, NewspaperIcon, ScrollTextIcon, SparklesIcon, type LucideIcon } from "lucide-react"
+import { ArrowUpRightIcon, MessageSquareIcon, MessagesSquareIcon, FlaskConicalIcon, NewspaperIcon, RocketIcon, SparklesIcon, type LucideIcon } from "lucide-react"
 import { KIND_ICONS, kindText } from "@/components/hub/bits"
 import { GlowCard } from "@/components/hub/glow-card"
 import { KINDS, type ResourceKind } from "@/lib/data"
@@ -109,11 +109,18 @@ export function Spaces({ data }: { data: SpacesData }) {
             ))}
           </ul>
         </Tile>
-        <Tile className="lg:col-span-2" href="/news" title="News" icon={NewspaperIcon} blurb="With why it matters." tint="text-model">
-          <p className="mt-auto line-clamp-3 pt-4 text-xs text-muted-foreground">{data.news[0]}</p>
+        <Tile className="lg:col-span-2" href="/lab" title="Lab" icon={FlaskConicalIcon} blurb="Tools that run right here." tint="text-dataset">
+          <ul className="mt-auto flex flex-col gap-1 pt-4 text-xs text-muted-foreground">
+            <li>VRAM calculator</li>
+            <li>Token cost</li>
+            <li>Licence checker</li>
+          </ul>
         </Tile>
-        <Tile className="lg:col-span-2" href="/papers" title="Papers" icon={ScrollTextIcon} blurb="Today's research, live." tint="text-dataset">
-          <p className="mt-auto pt-4 text-xs text-muted-foreground">From arXiv and Hugging Face, with a forum thread one click away.</p>
+        <Tile className="lg:col-span-2" href="/new/project" title="Publish" icon={RocketIcon} blurb="Give your project a home." tint="text-model">
+          <p className="mt-auto pt-4 text-xs text-muted-foreground">README, changelog, likes and a discussion, in a minute.</p>
+        </Tile>
+        <Tile className="lg:col-span-12" href="/news" title="News and papers" icon={NewspaperIcon} blurb="What happened, why it matters, and today's research from arXiv." tint="text-model">
+          <p className="mt-auto line-clamp-2 pt-4 text-sm text-foreground/85">{data.news[0]}</p>
         </Tile>
       </motion.ul>
     </section>

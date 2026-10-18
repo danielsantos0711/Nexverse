@@ -2,15 +2,16 @@ import Link from "next/link"
 import { Lockup } from "@/components/brand"
 
 const COLUMNS = [
-  { title: "Hub", links: [["Models", "/models"], ["Datasets", "/datasets"], ["Tools", "/tools"], ["Repos", "/repos"], ["Trending now", "/trending"], ["Papers", "/papers"]] },
+  { title: "Hub", links: [["Models", "/models"], ["Datasets", "/datasets"], ["Tools", "/tools"], ["Repos", "/repos"], ["Trending now", "/trending"], ["Papers", "/papers"], ["GitHub topics", "/gh/topics"]] },
   { title: "Community", links: [["Forum", "/forum"], ["Chat", "/chat"], ["News", "/news"], ["Constellations", "/constellations"], ["People", "/people"]] },
-  { title: "You", links: [["Share something", "/share"], ["Start a thread", "/forum/new"], ["Your page", "/you"], ["For you", "/for-you"], ["Saved", "/saved"], ["Notifications", "/notifications"]] },
+  { title: "Create", links: [["Publish a project", "/new/project"], ["Your studio", "/studio"], ["Lab", "/lab"], ["Share a link", "/share"], ["Start a thread", "/forum/new"]] },
+  { title: "You", links: [["Settings", "/settings"], ["Your page", "/you"], ["For you", "/for-you"], ["Saved", "/saved"], ["Notifications", "/notifications"]] },
 ] as const
 
 export function SiteFooter() {
   return (
     <footer className="relative mt-24 border-t border-border">
-      <div className="shell grid gap-10 py-14 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+      <div className="shell grid gap-10 py-14 md:grid-cols-[1.4fr_repeat(4,1fr)]">
         <div className="flex flex-col gap-4">
           <Lockup />
           <p className="max-w-[38ch] text-sm text-muted-foreground">

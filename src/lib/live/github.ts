@@ -5,8 +5,9 @@
  * which does not count against the API limit.
  */
 import { cacheLife, cacheTag } from "next/cache"
-import { asArray, fetchSafe, isoDate, isRecord, num, parseJson, plain, safeUrl, str, type FailReason, type Result } from "./http"
+import { asArray, fetchSafe, hostname, isoDate, isOffSiteHost, isRecord, num, parseJson, plain, safeUrl, str, type FailReason, type Result } from "./http"
 import { isGitRef } from "./ids"
+import { cleanTopics } from "./parse"
 
 export type GhRepoDetail = {
   fullName: string
@@ -85,6 +86,7 @@ export function normalizeRepoDetail(raw: unknown): GhRepoDetail | null {
   const avatar = safeUrl(o.avatar_url)
   const license = isRecord(raw.license) ? str(raw.license.spdx_id, 40) : ""
   const branch = str(raw.default_branch, 100)
+  const homepage = safeUrl(raw.homepage)
   return {
     fullName,
     owner,
@@ -92,11 +94,8 @@ export function normalizeRepoDetail(raw: unknown): GhRepoDetail | null {
     ownerAvatar: avatar.startsWith("https://avatars.githubusercontent.com/") ? avatar : "",
     ownerType: o.type === "Organization" ? "Organization" : "User",
     description: plain(raw.description, 400),
-    homepage: safeUrl(raw.homepage),
-    topics: asArray(raw.topics)
-      .map((t) => str(t, 50))
-      .filter((t) => /^[a-z0-9-]+$/.test(t))
-      .slice(0, 20),
+    homepage: isOffSiteHost(hostname(homepage)) ? "" : homepage,
+    topics: cleanTopics(raw.topics, 20),
     stars: num(raw.stargazers_count),
     forks: num(raw.forks_count),
     watchers: num(raw.subscribers_count ?? raw.watchers_count),

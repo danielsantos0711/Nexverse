@@ -2,7 +2,7 @@ import Link from "next/link"
 import { GitForkIcon, StarIcon } from "lucide-react"
 import { Cover, Stat } from "@/components/hub/bits"
 import { Spotlight } from "@/components/hub/motion"
-import { ghHref } from "@/lib/live/ids"
+import { ghHref, ghTopicHref } from "@/lib/live/ids"
 import type { GhRepo } from "@/lib/live"
 import { cn } from "@/lib/utils"
 import { TimeAgo } from "./time"
@@ -20,8 +20,8 @@ const LANG_DOT: Record<string, string> = {
   Java: "#c99a5b",
 }
 
-/** A new open-source AI repository that is gathering stars. */
-export function GitHubRepoCard({ repo: r, rank, className }: { repo: GhRepo; rank?: number; className?: string }) {
+/** An open-source AI repository: name, description, topics (each opening its topic page) and numbers. */
+export function GitHubRepoCard({ repo: r, rank, date = "pushed", className }: { repo: GhRepo; rank?: number; date?: "pushed" | "created"; className?: string }) {
   return (
     <Spotlight className={cn("group relative flex h-full flex-col gap-2.5 rounded-2xl border border-border bg-card/70 p-4 transition-colors hover:bg-card", className)}>
       <div className="flex items-center gap-3">
@@ -42,8 +42,10 @@ export function GitHubRepoCard({ repo: r, rank, className }: { repo: GhRepo; ran
       {r.topics.length > 0 && (
         <ul className="flex flex-wrap gap-1.5" aria-label="Topics">
           {r.topics.map((t) => (
-            <li key={t} className="rounded-full bg-repo/10 px-2 py-0.5 text-[11px] text-repo">
-              {t}
+            <li key={t}>
+              <Link href={ghTopicHref(t)} className="relative z-10 inline-block rounded-full bg-repo/10 px-2 py-0.5 text-[11px] text-repo transition-colors hover:bg-repo/20">
+                {t}
+              </Link>
             </li>
           ))}
         </ul>
@@ -57,7 +59,7 @@ export function GitHubRepoCard({ repo: r, rank, className }: { repo: GhRepo; ran
         )}
         <Stat icon={StarIcon} value={r.stars} label="stars" />
         <Stat icon={GitForkIcon} value={r.forks} label="forks" />
-        <TimeAgo date={r.pushedAt} prefix="Pushed" className="ml-auto" />
+        {date === "created" && r.createdAt ? <TimeAgo date={r.createdAt} prefix="Created" className="ml-auto" /> : <TimeAgo date={r.pushedAt} prefix="Pushed" className="ml-auto" />}
       </div>
     </Spotlight>
   )

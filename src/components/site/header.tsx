@@ -22,6 +22,9 @@ import {
   WrenchIcon,
   type LucideIcon,
   HeartIcon,
+  FlaskConicalIcon,
+  GitBranchIcon,
+  LayoutDashboardIcon,
 } from "lucide-react"
 import { AccountButton } from "@/components/account/account-button"
 import { NotificationBell } from "@/components/social/notification-bell"
@@ -34,7 +37,7 @@ import { cn } from "@/lib/utils"
 
 type NavLink = { href: string; label: string; blurb: string; icon: LucideIcon; tint: string }
 
-/** Two menus, grouped by what you came to do: find things, or talk to people. */
+/** Three menus, grouped by what you came to do: find things, meet people, or make something. */
 const MENUS: { id: string; label: string; links: NavLink[] }[] = [
   {
     id: "hub",
@@ -44,8 +47,10 @@ const MENUS: { id: string; label: string; links: NavLink[] }[] = [
       { href: "/datasets", label: "Datasets", blurb: "Open data with its licence up front", icon: DatabaseIcon, tint: "text-dataset" },
       { href: "/tools", label: "Tools", blurb: "Apps and libraries builders rely on", icon: WrenchIcon, tint: "text-tool" },
       { href: "/repos", label: "Repos", blurb: "Code worth reading and forking", icon: FolderGit2Icon, tint: "text-repo" },
-      { href: "/trending", label: "Trending now", blurb: "Live from Hugging Face, GitHub and HN", icon: FlameIcon, tint: "text-gold" },
+      { href: "/trending", label: "Trending now", blurb: "Live from GitHub, arXiv and the hub", icon: FlameIcon, tint: "text-gold" },
       { href: "/papers", label: "Papers", blurb: "Today's research, ready to discuss", icon: ScrollTextIcon, tint: "text-ion" },
+      { href: "/gh/topics", label: "GitHub topics", blurb: "LLMs, agents, RAG and more, rising", icon: GitBranchIcon, tint: "text-repo" },
+      { href: "/constellations", label: "Constellations", blurb: "Stacks drawn as star maps", icon: SparklesIcon, tint: "text-gold" },
     ],
   },
   {
@@ -59,12 +64,19 @@ const MENUS: { id: string; label: string; links: NavLink[] }[] = [
       { href: "/for-you", label: "For you", blurb: "New from what you follow and save", icon: HeartIcon, tint: "text-gold" },
     ],
   },
+  {
+    id: "create",
+    label: "Create",
+    links: [
+      { href: "/new/project", label: "Publish a project", blurb: "A model, dataset, tool or repo page", icon: PlusIcon, tint: "text-ion" },
+      { href: "/studio", label: "Your studio", blurb: "Everything you made, with its numbers", icon: LayoutDashboardIcon, tint: "text-gold" },
+      { href: "/lab", label: "Lab", blurb: "VRAM, token cost, licences, cards", icon: FlaskConicalIcon, tint: "text-dataset" },
+      { href: "/forum/new", label: "Start a thread", blurb: "Ask, share or start a debate", icon: MessageSquareIcon, tint: "text-model" },
+    ],
+  },
 ]
 
-const DIRECT: NavLink[] = [
-  { href: "/constellations", label: "Constellations", blurb: "Stacks drawn as star maps", icon: SparklesIcon, tint: "text-gold" },
-  { href: "/explore", label: "Explore", blurb: "Search everything", icon: SearchIcon, tint: "text-ion" },
-]
+const DIRECT: NavLink[] = [{ href: "/explore", label: "Explore", blurb: "Search everything", icon: SearchIcon, tint: "text-ion" }]
 
 export function SiteHeader() {
   const pathname = usePathname()

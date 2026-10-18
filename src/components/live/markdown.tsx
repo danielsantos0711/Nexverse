@@ -1,14 +1,14 @@
 import Link from "next/link"
 import { Fragment } from "react"
 import { lexer, type Token, type Tokens } from "marked"
-import { decodeEntities } from "@/lib/live/http"
+import { decodeEntities, isOffSite } from "@/lib/live/http"
 import { ALLOWED, tokenizeHtml } from "@/lib/markdown/html"
 import { rewriteImage, rewriteLink, slugify, type MdContext } from "@/lib/markdown/urls"
 import { cn } from "@/lib/utils"
 import { CodeBlock } from "./code-block"
 
 /*
- * Markdown to React, for READMEs, model cards and release notes from GitHub and Hugging Face.
+ * Markdown to React, for READMEs, files and release notes from GitHub.
  *
  * Safety: nothing is ever passed as HTML. Markdown tokens become React elements (React escapes all text);
  * raw HTML in the source is tokenized and rebuilt from a short whitelist with validated attributes (see
@@ -91,7 +91,8 @@ const dim = (v: string | undefined) => (v && /^\d{1,4}(px)?$/.test(v) ? Math.min
 
 function Img({ src, alt, r, width, height, title }: { src: string; alt: string; r: R; width?: string; height?: string; title?: string }) {
   const url = rewriteImage(src, r.ctx)
-  if (!url) return alt ? <span className="text-muted-foreground">[{alt}]</span> : null
+  // Badges and images from off-site communities are left out entirely, alt text included.
+  if (!url) return alt && !isOffSite(alt, src) ? <span className="text-muted-foreground">[{alt}]</span> : null
   const pct = width && /^\d{1,3}%$/.test(width) ? width : undefined
   return (
     // eslint-disable-next-line @next/next/no-img-element -- third-party README images from arbitrary hosts; no optimisation, no referrer

@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils"
 
 const REACH = { model: [DownloadIcon, "downloads"], dataset: [DownloadIcon, "downloads"], tool: [UsersIcon, "monthly users"], repo: [GitForkIcon, "forks"] } as const
 
-/** The dense row card used in every list of resources, Hugging Face style but with a drawn cover. */
+/** The dense row card used in every list of resources, with a drawn cover. */
 export function ResourceCard({ r, className, rank }: { r: Resource; className?: string; rank?: number }) {
   const [ReachIcon, reachLabel] = REACH[r.kind]
   return (

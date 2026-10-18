@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ExternalLinkIcon, SearchIcon, XIcon } from "lucide-react"
 import { KIND_ICONS, KindTag } from "@/components/hub/bits"
 import { ResourceCard } from "@/components/hub/cards"
+import { MemberProjects } from "@/components/studio/member-projects"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { ago, KINDS, LANGUAGES, resources, TASKS, trending, type LanguageCode, type Resource, type ResourceKind } from "@/lib/data"
 import { listSubmissions, type Submission } from "@/lib/store"
@@ -33,7 +34,7 @@ function matches(r: Resource, q: string) {
 }
 
 /**
- * Hugging Face-style browsing: tasks, languages and licences on the left, a dense list on the right.
+ * Catalogue-style browsing: tasks, languages and licences on the left, a dense list on the right.
  * With no kind it browses everything (the Explore page).
  */
 export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
@@ -189,6 +190,8 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
             </AnimatePresence>
           </motion.ol>
         )}
+
+        <MemberProjects kind={kind} />
 
         {shared.length > 0 && (
           <section aria-labelledby="shared-h" className="mt-8 flex flex-col gap-3">

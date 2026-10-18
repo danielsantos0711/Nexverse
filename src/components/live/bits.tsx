@@ -4,9 +4,7 @@ import { cn } from "@/lib/utils"
 import { LiveBadge } from "./live-badge"
 
 export const SOURCES: Record<LiveSource, { name: string; url: string }> = {
-  huggingface: { name: "Hugging Face", url: "https://huggingface.co" },
   arxiv: { name: "arXiv", url: "https://arxiv.org" },
-  hackernews: { name: "Hacker News", url: "https://news.ycombinator.com" },
   github: { name: "GitHub", url: "https://github.com" },
 }
 
@@ -19,7 +17,7 @@ export function ExternalLink({ href, className, children, ...rest }: Omit<React.
   )
 }
 
-/** "Live · updated 4 min ago · from Hugging Face". The source is credited in small text; items open on Nexverse. */
+/** "Live · updated 4 min ago · via GitHub". The source is credited in small text; items open on Nexverse. */
 export function FeedMeta({ feed, className }: { feed: Feed<unknown>; className?: string }) {
   return (
     <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground", className)}>

@@ -1,33 +1,36 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { Suspense } from "react"
+import { HashIcon, LayersIcon } from "lucide-react"
 import { PageTitle, SectionHead } from "@/components/hub/bits"
+import { ResourceCard, ThreadRow } from "@/components/hub/cards"
 import { Item, Stagger } from "@/components/hub/motion"
 import { FeedMeta, FeedUnavailable } from "@/components/live/bits"
 import { GitHubRepoCard } from "@/components/live/github-repo-card"
-import { HnStoryRow } from "@/components/live/hn-story-row"
-import { LiveModelList } from "@/components/live/live-model-list"
+import { PaperCard } from "@/components/live/paper-card"
+import { PillTabs } from "@/components/live/pill-tabs"
+import { ReleaseList } from "@/components/live/release-list"
 import { CardsSkeleton, RowsSkeleton, StripSkeleton } from "@/components/live/skeletons"
-import { SpaceCard } from "@/components/live/space-card"
 import { TrendingNowLive } from "@/components/live/trending-now"
-import { githubTrendingAi, hfTrending, hnAiStories } from "@/lib/live"
+import { resources, threads, trending } from "@/lib/data"
+import { arxivPapers, GH_TOPICS, ghTopicHref, githubReleases, githubTopicRepos, githubTrendingAi, type Feed, type GhRepo } from "@/lib/live"
 
 export const metadata: Metadata = {
   title: "Trending",
-  description: "Live: the models, datasets, Spaces, repositories and discussions the open AI ecosystem is paying attention to right now.",
+  description: "Live: the open-source AI repositories rising on GitHub, fresh releases, the newest arXiv papers and what the Nexverse community is into right now.",
 }
 
 const SECTIONS = [
-  { id: "models", label: "Models" },
-  { id: "spaces", label: "Spaces" },
-  { id: "datasets", label: "Datasets" },
   { id: "repos", label: "GitHub" },
-  { id: "discussions", label: "Discussions" },
+  { id: "releases", label: "Releases" },
+  { id: "papers", label: "Papers" },
+  { id: "hub", label: "On Nexverse" },
 ] as const
 
-function Section({ id, title, lead, children }: { id: string; title: string; lead: string; children: React.ReactNode }) {
+function Section({ id, title, lead, href, action, children }: { id: string; title: string; lead: string; href?: string; action?: string; children: React.ReactNode }) {
   return (
     <section aria-labelledby={`${id}-title`} id={id} className="scroll-mt-24 border-t border-border pt-10">
-      <SectionHead id={`${id}-title`} title={title}>
+      <SectionHead id={`${id}-title`} title={title} href={href} action={action}>
         <p className="text-sm text-muted-foreground">{lead}</p>
       </SectionHead>
       {children}
@@ -35,72 +38,107 @@ function Section({ id, title, lead, children }: { id: string; title: string; lea
   )
 }
 
-async function HubModels({ kind }: { kind: "model" | "dataset" }) {
-  const feed = await hfTrending(kind, kind === "model" ? 12 : 8)
-  return (
-    <div className="flex flex-col gap-4">
-      <FeedMeta feed={feed} />
-      {feed.items.length ? <LiveModelList items={feed.items} /> : <FeedUnavailable source="huggingface" />}
-    </div>
-  )
-}
-
-async function Spaces() {
-  const feed = await hfTrending("space", 9)
+function RepoGrid({ feed, limit = 9, more }: { feed: Feed<GhRepo>; limit?: number; more?: { href: string; label: string } }) {
   return (
     <div className="flex flex-col gap-4">
       <FeedMeta feed={feed} />
       {feed.items.length ? (
-        <Stagger as="ul" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {feed.items.map((s) => (
-            <Item as="li" key={s.id}>
-              <SpaceCard space={s} />
+        <Stagger as="ol" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {feed.items.slice(0, limit).map((r, i) => (
+            <Item as="li" key={r.fullName}>
+              <GitHubRepoCard repo={r} rank={i + 1} date="created" />
             </Item>
           ))}
         </Stagger>
+      ) : feed.ok ? (
+        <p className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">Nothing new here this month yet.</p>
       ) : (
-        <FeedUnavailable source="huggingface" />
+        <FeedUnavailable source="github" />
+      )}
+      {more && (
+        <Link href={more.href} className="self-start text-sm text-ion hover:underline">
+          {more.label} →
+        </Link>
       )}
     </div>
   )
 }
 
 async function Repos() {
-  const feed = await githubTrendingAi(9)
+  const [all, ...byTopic] = await Promise.all([githubTrendingAi(9), ...GH_TOPICS.map((t) => githubTopicRepos(t.id, "new", 12))])
+  return (
+    <PillTabs
+      label="Topics"
+      tabs={[
+        { id: "all", label: "All topics", icon: <LayersIcon aria-hidden className="size-3.5" />, content: <RepoGrid feed={all} more={{ href: "/gh/topics", label: "Browse every topic" }} /> },
+        ...GH_TOPICS.map((t, i) => ({
+          id: t.id,
+          label: t.label,
+          icon: <HashIcon aria-hidden className="size-3.5" />,
+          content: <RepoGrid feed={byTopic[i]} more={{ href: ghTopicHref(t.id), label: `More on #${t.id}` }} />,
+        })),
+      ]}
+    />
+  )
+}
+
+async function Releases() {
+  const feed = await githubReleases(8)
+  return (
+    <div className="flex flex-col gap-4">
+      <FeedMeta feed={feed} />
+      {feed.items.length ? <ReleaseList items={feed.items} /> : <FeedUnavailable source="github" />}
+    </div>
+  )
+}
+
+async function Papers() {
+  // The same arguments as /papers, so both share one cache entry.
+  const feed = await arxivPapers("all", 30)
   return (
     <div className="flex flex-col gap-4">
       <FeedMeta feed={feed} />
       {feed.items.length ? (
-        <Stagger as="ol" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {feed.items.map((r, i) => (
-            <Item as="li" key={r.fullName}>
-              <GitHubRepoCard repo={r} rank={i + 1} />
+        <Stagger as="ol" className="grid gap-3 lg:grid-cols-2" gap={0.04}>
+          {feed.items.slice(0, 6).map((p) => (
+            <Item as="li" key={p.id}>
+              <PaperCard paper={p} className="h-full" />
             </Item>
           ))}
         </Stagger>
       ) : (
-        <FeedUnavailable source="github" />
+        <FeedUnavailable source="arxiv" />
       )}
     </div>
   )
 }
 
-async function Discussions() {
-  const feed = await hnAiStories(12)
+/** The hub's own favourites: sample catalogue and forum, ranked by likes and votes weighted toward recent. */
+function OnNexverse() {
+  const items = trending(resources).slice(0, 6)
+  const talk = trending(threads).slice(0, 4)
   return (
-    <div className="flex flex-col gap-4">
-      <FeedMeta feed={feed} />
-      {feed.items.length ? (
-        <Stagger as="ol" className="glass flex flex-col divide-y divide-border overflow-hidden rounded-2xl" gap={0.04}>
-          {feed.items.map((s) => (
-            <Item as="li" key={s.id}>
-              <HnStoryRow story={s} className="rounded-none" />
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="flex flex-col gap-3">
+        <h3 className="font-sans text-sm font-medium tracking-normal text-muted-foreground">Models, datasets, tools and repos</h3>
+        <Stagger as="ol" className="flex flex-col gap-2.5">
+          {items.map((r, i) => (
+            <Item as="li" key={`${r.kind}-${r.slug}`}>
+              <ResourceCard r={r} rank={i + 1} />
             </Item>
           ))}
         </Stagger>
-      ) : (
-        <FeedUnavailable source="hackernews" />
-      )}
+      </div>
+      <div className="flex flex-col gap-3">
+        <h3 className="font-sans text-sm font-medium tracking-normal text-muted-foreground">In the forum</h3>
+        <Stagger as="ol" className="glass flex flex-col divide-y divide-border overflow-hidden rounded-2xl" gap={0.04}>
+          {talk.map((t) => (
+            <Item as="li" key={t.id}>
+              <ThreadRow t={t} compact />
+            </Item>
+          ))}
+        </Stagger>
+      </div>
     </div>
   )
 }
@@ -109,9 +147,9 @@ export default function TrendingPage() {
   return (
     <div className="shell pb-16">
       <PageTitle
-        eyebrow="Live from Hugging Face, GitHub and Hacker News"
-        title="Trending across the open ecosystem"
-        lead="The models, Spaces, datasets, repositories and conversations builders are paying attention to right now. Open any of them to read it here: cards, READMEs, files and numbers, refreshed through the day."
+        eyebrow="Live from GitHub and arXiv, and from the hub itself"
+        title="Trending"
+        lead="The open-source AI projects gathering stars, the releases that just shipped, the newest research and what people here are talking about. Open any of them to read it on Nexverse: READMEs, files, abstracts, PDFs and citations, refreshed through the day."
       >
         <nav aria-label="Sections" className="mt-1 flex flex-wrap gap-2">
           {SECTIONS.map((s) => (
@@ -129,30 +167,23 @@ export default function TrendingPage() {
       </div>
 
       <div className="flex flex-col gap-14">
-        <Section id="models" title="Trending models" lead="Ranked by Hugging Face's trending score: likes and downloads, weighted toward the last few days.">
-          <Suspense fallback={<RowsSkeleton rows={12} />}>
-            <HubModels kind="model" />
-          </Suspense>
-        </Section>
-        <Section id="spaces" title="Trending Spaces" lead="Demos and apps you can try in the browser, most of them free.">
-          <Suspense fallback={<CardsSkeleton cards={9} />}>
-            <Spaces />
-          </Suspense>
-        </Section>
-        <Section id="datasets" title="Trending datasets" lead="The data people are downloading and building on this week.">
-          <Suspense fallback={<RowsSkeleton rows={8} />}>
-            <HubModels kind="dataset" />
-          </Suspense>
-        </Section>
-        <Section id="repos" title="Rising on GitHub" lead="New open-source AI repositories from the last 30 days, most starred first.">
+        <Section id="repos" title="Rising on GitHub" lead="New open-source AI repositories from the last 30 days, most starred first." href="/gh/topics" action="All topics">
           <Suspense fallback={<CardsSkeleton cards={6} />}>
             <Repos />
           </Suspense>
         </Section>
-        <Section id="discussions" title="Discussed on Hacker News" lead="The AI stories with the most points over the last three days.">
-          <Suspense fallback={<RowsSkeleton rows={6} columns={1} />}>
-            <Discussions />
+        <Section id="releases" title="Fresh releases" lead="What just shipped in the projects much of the open AI stack runs on.">
+          <Suspense fallback={<RowsSkeleton rows={8} />}>
+            <Releases />
           </Suspense>
+        </Section>
+        <Section id="papers" title="New on arXiv" lead="The newest submissions in AI, language, learning, vision and robotics." href="/papers" action="All papers">
+          <Suspense fallback={<RowsSkeleton rows={6} />}>
+            <Papers />
+          </Suspense>
+        </Section>
+        <Section id="hub" title="Popular on Nexverse" lead="What members are liking and discussing this week." href="/explore" action="Explore the hub">
+          <OnNexverse />
         </Section>
       </div>
     </div>

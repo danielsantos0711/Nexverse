@@ -1,0 +1,294 @@
+"use client"
+
+import { useRouter } from "next/navigation"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
+import { useEffect, useRef, useState } from "react"
+import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, PlusIcon } from "lucide-react"
+import { CategoryIcon } from "@/components/forum/category-icon"
+import { PersonAvatar } from "@/components/hub/bits"
+import { InterestPicker } from "@/components/settings/interest-picker"
+import { SignInPrompt } from "@/components/studio/ui"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { categories, compact, people } from "@/lib/data"
+import { completeOnboarding, useProfile } from "@/lib/profile"
+import { listFollowing, toggleFollow } from "@/lib/social"
+import { useSession } from "@/lib/store"
+import { live } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
+
+const STEPS = ["Interests", "Follow", "Done"] as const
+const EASE = [0.23, 1, 0.32, 1] as const
+
+/** First-run onboarding: pick interests, follow a few categories and people, then land on For you. */
+export function WelcomeFlow() {
+  const session = useSession()
+  const { ready, profile } = useProfile()
+  if (live && session.ready && !session.user) {
+    return <SignInPrompt title="Sign in to set up your feed" detail="It takes an email address and nothing else." next="/welcome" />
+  }
+  if (!ready || !profile) return <WelcomeSkeleton />
+  return <Flow key={profile.id} initialInterests={profile.interests} userId={session.user?.id ?? null} name={profile.name} />
+}
+
+function Flow({ initialInterests, userId, name }: { initialInterests: string[]; userId: string | null; name: string }) {
+  const router = useRouter()
+  const reduce = useReducedMotion()
+  const [step, setStep] = useState(0)
+  const [dir, setDir] = useState(1)
+  const [interests, setInterests] = useState(initialInterests)
+  const [existing, setExisting] = useState<Set<string> | null>(null)
+  const [follows, setFollows] = useState<Set<string>>(new Set())
+  const [touched, setTouched] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState("")
+  const [moved, setMoved] = useState(false)
+
+  useEffect(() => {
+    let stale = false
+    listFollowing(userId)
+      .then((list) => {
+        if (stale) return
+        const set = new Set(list.map((f) => f.followee))
+        setExisting(set)
+        setFollows((cur) => new Set([...set, ...cur]))
+      })
+      .catch(() => !stale && setExisting(new Set()))
+    return () => {
+      stale = true
+    }
+  }, [userId])
+
+  function go(to: number) {
+    setDir(to > step ? 1 : -1)
+    setMoved(true)
+    setError("")
+    // The categories you picked as interests start out followed, until you change them yourself.
+    if (to === 1 && !touched) {
+      setFollows((cur) => new Set([...cur, ...interests.filter((i) => i.startsWith("category:"))]))
+    }
+    setStep(to)
+  }
+
+  function toggle(followee: string) {
+    setTouched(true)
+    setFollows((cur) => {
+      const next = new Set(cur)
+      if (next.has(followee)) next.delete(followee)
+      else next.add(followee)
+      return next
+    })
+  }
+
+  async function finish() {
+    setBusy(true)
+    setError("")
+    try {
+      const before = existing ?? new Set<string>()
+      const add = [...follows].filter((f) => !before.has(f))
+      const drop = [...before].filter((f) => !follows.has(f) && (f.startsWith("category:") || f.startsWith("person:")))
+      const results = await Promise.allSettled([...add.map((f) => toggleFollow(f, true)), ...drop.map((f) => toggleFollow(f, false))])
+      await completeOnboarding(interests)
+      const failed = results.filter((r) => r.status === "rejected").length
+      if (failed) {
+        setError(`${failed} ${failed === 1 ? "follow" : "follows"} did not go through. You can follow from any category or profile later.`)
+        setBusy(false)
+        return
+      }
+      router.push("/for-you")
+    } catch (e) {
+      setError((e as Error).message)
+      setBusy(false)
+    }
+  }
+
+  const followCategories = categories.map((c) => `category:${c.slug}`).filter((f) => follows.has(f)).length
+  const followPeople = people.map((p) => `person:${p.handle}`).filter((f) => follows.has(f)).length
+  const variants = {
+    enter: (d: number) => (reduce ? { opacity: 0 } : { opacity: 0, x: d * 24 }),
+    center: { opacity: 1, x: 0 },
+    exit: (d: number) => (reduce ? { opacity: 0 } : { opacity: 0, x: d * -24 }),
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <ol aria-label="Steps" className="flex items-center gap-2 text-sm">
+        {STEPS.map((s, i) => (
+          <li key={s} aria-current={i === step ? "step" : undefined} className="flex items-center gap-2">
+            <span
+              className={cn(
+                "inline-flex size-6 items-center justify-center rounded-full border text-xs tabular transition-colors",
+                i < step ? "border-ion bg-ion text-ion-foreground" : i === step ? "border-ion text-ion" : "border-border text-muted-foreground"
+              )}
+            >
+              {i < step ? <CheckIcon aria-hidden className="size-3.5" /> : i + 1}
+            </span>
+            <span className={cn(i === step ? "text-foreground" : "text-muted-foreground", "max-sm:sr-only")}>{s}</span>
+            {i < STEPS.length - 1 && <span aria-hidden className="mx-1 h-px w-6 bg-border sm:w-10" />}
+          </li>
+        ))}
+      </ol>
+
+      <div className="glass overflow-hidden rounded-2xl">
+        <AnimatePresence mode="wait" custom={dir} initial={false}>
+          <motion.div key={step} custom={dir} variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: EASE }} className="flex flex-col gap-6 p-5 md:p-7">
+            {step === 0 && (
+              <>
+                <StepHead focus={moved} title={`Welcome, ${name.split(/\s+/)[0]}. What are you into?`} lead="Pick a few. They shape your For you page, and you can change them any time in settings." />
+                <InterestPicker value={interests} onChange={setInterests} />
+              </>
+            )}
+            {step === 1 && (
+              <>
+                <StepHead focus={moved} title="Follow a few categories and people" lead="New topics and releases from what you follow show up in For you." />
+                <section aria-labelledby="w-cats" className="flex flex-col gap-3">
+                  <h3 id="w-cats" className="text-xs font-medium text-muted-foreground">
+                    Forum categories · {followCategories} followed
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((c) => {
+                      const id = `category:${c.slug}`
+                      const on = follows.has(id)
+                      return (
+                        <button
+                          key={c.slug}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => toggle(id)}
+                          title={c.blurb}
+                          className={cn(
+                            "pressable inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-sm transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                            on ? "border-ion/50 bg-ion/15 text-foreground" : "border-border bg-card/60 text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          <CategoryIcon name={c.icon} className="size-4" />
+                          {c.name}
+                          {on ? <CheckIcon aria-hidden className="size-3.5 text-ion" /> : <PlusIcon aria-hidden className="size-3.5" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </section>
+                <section aria-labelledby="w-people" className="flex flex-col gap-3">
+                  <h3 id="w-people" className="text-xs font-medium text-muted-foreground">
+                    People building in the open · {followPeople} followed
+                  </h3>
+                  <ul className="grid gap-2 sm:grid-cols-2">
+                    {people.slice(0, 8).map((p) => {
+                      const id = `person:${p.handle}`
+                      const on = follows.has(id)
+                      return (
+                        <li key={p.handle} className="flex items-start gap-3 rounded-xl border border-border bg-card/50 p-3">
+                          <PersonAvatar handle={p.handle} size={36} />
+                          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <span className="truncate text-sm font-medium">{p.name}</span>
+                            <span className="truncate text-xs text-muted-foreground">
+                              {p.role} · {compact(p.followers)} followers
+                            </span>
+                            <span className="line-clamp-2 text-xs text-muted-foreground">{p.bio}</span>
+                          </div>
+                          <button
+                            type="button"
+                            aria-pressed={on}
+                            aria-label={`${on ? "Following" : "Follow"} ${p.name}`}
+                            onClick={() => toggle(id)}
+                            className={cn(
+                              "pressable inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                              on ? "border-ion/40 bg-ion/10 text-ion" : "border-transparent bg-primary text-primary-foreground hover:bg-primary/90"
+                            )}
+                          >
+                            {on ? <CheckIcon aria-hidden className="size-3.5" /> : <PlusIcon aria-hidden className="size-3.5" />}
+                            {on ? "Following" : "Follow"}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </section>
+              </>
+            )}
+            {step === 2 && (
+              <>
+                <StepHead focus={moved} title="You are all set" lead="Here is what your feed starts from. Everything can be changed later in settings." />
+                <dl className="grid grid-cols-3 gap-2.5">
+                  <Summary label="Interests" value={interests.length} />
+                  <Summary label="Categories" value={followCategories} />
+                  <Summary label="People" value={followPeople} />
+                </dl>
+                {!live && <p className="text-sm text-muted-foreground">This copy of Nexverse has no database, so your choices are kept in this browser.</p>}
+              </>
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        <div className="flex flex-col-reverse gap-3 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between md:px-7">
+          <div>
+            {step > 0 && (
+              <Button variant="ghost" onClick={() => go(step - 1)} disabled={busy}>
+                <ArrowLeftIcon aria-hidden /> Back
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {step < 2 && (
+              <Button variant="ghost" onClick={() => go(step + 1)}>
+                Skip
+              </Button>
+            )}
+            {step < 2 ? (
+              <Button onClick={() => go(step + 1)} disabled={step === 1 && existing === null}>
+                Continue <ArrowRightIcon aria-hidden />
+              </Button>
+            ) : (
+              <Button size="lg" onClick={finish} disabled={busy}>
+                {busy ? "Setting up…" : "Go to For you"} <ArrowRightIcon aria-hidden />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+      {error && (
+        <div role="alert" className="flex flex-col items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <p>{error}</p>
+          <Button variant="secondary" size="sm" onClick={() => router.push("/for-you")}>
+            Continue anyway
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** A step's heading. After moving between steps it takes focus, so screen readers announce the new step. */
+function StepHead({ title, lead, focus }: { title: string; lead: string; focus: boolean }) {
+  const ref = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (focus) ref.current?.focus()
+  }, [focus])
+  return (
+    <div className="flex flex-col gap-1">
+      <h2 ref={ref} tabIndex={-1} className="text-lg font-semibold outline-none">
+        {title}
+      </h2>
+      <p className="text-sm text-muted-foreground">{lead}</p>
+    </div>
+  )
+}
+
+function Summary({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex flex-col gap-0.5 rounded-xl border border-border bg-card/50 p-3">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-xl font-semibold tabular">{value}</dd>
+    </div>
+  )
+}
+
+function WelcomeSkeleton() {
+  return (
+    <div className="flex flex-col gap-4" aria-busy="true" aria-label="Loading">
+      <Skeleton className="h-6 w-56" />
+      <Skeleton className="h-96 w-full rounded-2xl" />
+    </div>
+  )
+}

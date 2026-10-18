@@ -1,14 +1,14 @@
 /**
  * Where links and images in a README point. Relative paths resolve against the repository the file lives
- * in; links to GitHub, Hugging Face and arXiv items become in-site links; everything else must be an absolute
- * http(s) or mailto URL, or it is dropped.
+ * in; links to GitHub repositories and topics and to arXiv papers become in-site links; links and images on
+ * other AI communities' sites are dropped (the text stays); everything else must be an absolute http(s) or
+ * mailto URL, or it is dropped.
  */
-import { ghBlobHref, ghTreeHref, HF_PREFIX, hfBlobHref, hfHref, internalHref } from "@/lib/live/ids"
-import type { HubKind } from "@/lib/live/types"
+import { isOffSiteHost } from "@/lib/live/http"
+import { ghBlobHref, ghTreeHref, internalHref } from "@/lib/live/ids"
 
 export type MdContext =
   | { source: "github"; owner: string; repo: string; branch: string; /** Directory of the Markdown file, "" for the root. */ dir: string }
-  | { source: "hf"; kind: HubKind; id: string; dir: string }
   | { source: "none" }
 
 export type MdLink = { href: string; internal: boolean }
@@ -71,6 +71,7 @@ export function rewriteLink(raw: string, ctx: MdContext): MdLink | null {
     const u = absolute(href)
     if (!u) return null
     if (u.protocol === "mailto:") return { href: u.toString(), internal: false }
+    if (isOffSiteHost(u.hostname)) return null
     const inside = internalHref(u.toString())
     return inside ? { href: inside, internal: true } : { href: u.toString(), internal: false }
   }
@@ -81,11 +82,8 @@ export function rewriteLink(raw: string, ctx: MdContext): MdLink | null {
   if (!path) return { href: hash ? `#${slugify(decode(hash.slice(1)))}` : "#", internal: true }
   const resolved = resolvePath(ctx.dir, decode(path))
   if (resolved === null) return null
-  if (ctx.source === "github") {
-    if (!resolved) return { href: ghTreeHref(ctx.owner, ctx.repo, ctx.branch, ""), internal: true }
-    return { href: path.endsWith("/") ? ghTreeHref(ctx.owner, ctx.repo, ctx.branch, resolved) : ghBlobHref(ctx.owner, ctx.repo, ctx.branch, resolved), internal: true }
-  }
-  return { href: resolved ? hfBlobHref(ctx.kind, ctx.id, resolved) : hfHref(ctx.kind, ctx.id), internal: true }
+  if (!resolved) return { href: ghTreeHref(ctx.owner, ctx.repo, ctx.branch, ""), internal: true }
+  return { href: path.endsWith("/") ? ghTreeHref(ctx.owner, ctx.repo, ctx.branch, resolved) : ghBlobHref(ctx.owner, ctx.repo, ctx.branch, resolved), internal: true }
 }
 
 const encPath = (p: string) => p.split("/").map(encodeURIComponent).join("/")
@@ -99,20 +97,16 @@ export function rewriteImage(raw: string, ctx: MdContext): string | null {
     if (!u || u.protocol === "mailto:") return null
     u.protocol = "https:"
     const host = u.hostname.toLowerCase()
+    if (isOffSiteHost(host)) return null
     // github.com/<o>/<r>/blob|raw/<ref>/<path> as an image means the raw file.
     const gh = host === "github.com" ? u.pathname.match(/^\/([\w.-]+)\/([\w.-]+)\/(?:blob|raw)\/(.+)$/) : null
     if (gh) return `https://raw.githubusercontent.com/${gh[1]}/${gh[2]}/${gh[3]}${/\.svg$/i.test(gh[3]) ? "?sanitize=true" : ""}`
     if (host === "raw.githubusercontent.com" && /\.svg$/i.test(u.pathname) && !u.searchParams.has("sanitize")) u.searchParams.set("sanitize", "true")
-    // huggingface.co/<…>/blob/<ref>/<path> as an image means the resolved file.
-    if (host === "huggingface.co" && u.pathname.includes("/blob/")) u.pathname = u.pathname.replace("/blob/", "/resolve/")
     return u.toString()
   }
   if (ctx.source === "none") return null
   const { path } = splitRef(src)
   const resolved = resolvePath(ctx.dir, decode(path))
   if (!resolved) return null
-  if (ctx.source === "github") {
-    return `https://raw.githubusercontent.com/${ctx.owner}/${ctx.repo}/${encodeURIComponent(ctx.branch)}/${encPath(resolved)}${/\.svg$/i.test(resolved) ? "?sanitize=true" : ""}`
-  }
-  return `https://huggingface.co/${HF_PREFIX[ctx.kind]}${ctx.id}/resolve/main/${encPath(resolved)}`
+  return `https://raw.githubusercontent.com/${ctx.owner}/${ctx.repo}/${encodeURIComponent(ctx.branch)}/${encPath(resolved)}${/\.svg$/i.test(resolved) ? "?sanitize=true" : ""}`
 }

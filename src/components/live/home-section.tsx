@@ -1,14 +1,13 @@
 import Link from "next/link"
-import { ArrowUpIcon, BoxIcon, DownloadIcon, FileTextIcon, HeartIcon, MessageSquareIcon } from "lucide-react"
+import { FileTextIcon, FolderGit2Icon, StarIcon } from "lucide-react"
 import { Cover } from "@/components/hub/bits"
 import { Item, Spotlight, Stagger } from "@/components/hub/motion"
 import { Skeleton } from "@/components/ui/skeleton"
 import { compact } from "@/lib/data"
-import { hfDailyPapers, hfTrending, hnAiStories, type Feed } from "@/lib/live"
+import { arxivPapers, githubTrendingAi, type Feed } from "@/lib/live"
 import { cn } from "@/lib/utils"
-import { hfHref, paperHref } from "@/lib/live/ids"
+import { ghHref, paperHref } from "@/lib/live/ids"
 import { SOURCES } from "./bits"
-import { hnHref } from "./hn-story-row"
 import { LiveBadge } from "./live-badge"
 
 function Column({
@@ -73,15 +72,16 @@ const M = ({ icon: Icon, children }: { icon: React.ComponentType<{ className?: s
 )
 
 /**
- * "Live from the ecosystem": trending models, today's papers and the hottest AI threads on Hacker News, in
- * three columns. Data comes from cached feeds, so this prerenders; render it inside
+ * "Live from the ecosystem": new open-source AI repositories rising on GitHub and the newest arXiv papers,
+ * in two columns. Data comes from cached feeds, so this prerenders; render it inside
  * <Suspense fallback={<LiveHomeSkeleton />}> so a slow source never holds up the page.
  */
 export async function LiveHomeSection({ className }: { className?: string }) {
-  const [models, papers, stories] = await Promise.all([hfTrending("model", 5), hfDailyPapers(5), hnAiStories(5)])
-  const all = [models, papers, stories]
+  // The same arguments as /trending and /papers use, so the cache entries are shared.
+  const [repos, papers] = await Promise.all([githubTrendingAi(9), arxivPapers("all", 30)])
+  const all = [repos, papers]
   const live = all.filter((f) => f.ok)
-  // The badge reports the oldest of the three, so "updated N min ago" is never flattering. (No Date.now()
+  // The badge reports the older of the two, so "updated N min ago" is never flattering. (No Date.now()
   // here: this component is not cached, and reading the clock during prerender is an error.)
   const fetchedAt = Math.min(...(live.length ? live : all).map((f) => f.fetchedAt))
   return (
@@ -103,39 +103,39 @@ export async function LiveHomeSection({ className }: { className?: string }) {
           </Link>
         </nav>
       </div>
-      <Stagger className="relative grid gap-6 lg:grid-cols-3 lg:gap-4">
-        <Column title="Trending models" icon={BoxIcon} tone="text-model" feed={models} more={{ href: "/trending#models", label: "All trending models" }}>
-          {models.items.map((m, i) => (
+      <Stagger className="relative grid gap-6 lg:grid-cols-2 lg:gap-4">
+        <Column title="Rising on GitHub" icon={FolderGit2Icon} tone="text-repo" feed={repos} more={{ href: "/trending#repos", label: "All rising repositories" }}>
+          {repos.items.slice(0, 5).map((r, i) => (
             <Row
-              key={m.id}
-              href={hfHref("model", m.id)}
+              key={r.fullName}
+              href={ghHref(r.owner, r.name)}
               rank={i + 1}
               cover={
                 <span className="relative size-9 shrink-0 overflow-hidden rounded-md ring-1 ring-white/10">
-                  <Cover seed={`hf-model-${m.id}`} kind="model" />
+                  <Cover seed={`gh-${r.fullName}`} kind="repo" />
                 </span>
               }
               meta={
                 <>
-                  <span className="truncate">{m.owner}</span>
-                  {m.downloads > 0 && <M icon={DownloadIcon}>{compact(m.downloads)}</M>}
-                  <M icon={HeartIcon}>{compact(m.likes)}</M>
+                  <span className="truncate">{r.owner}</span>
+                  <M icon={StarIcon}>{compact(r.stars)}</M>
+                  {r.language && <span className="truncate">{r.language}</span>}
                 </>
               }
             >
-              {m.name}
+              {r.name}
             </Row>
           ))}
         </Column>
-        <Column title="Today's papers" icon={FileTextIcon} tone="text-gold" feed={papers} more={{ href: "/papers", label: "All papers" }}>
-          {papers.items.map((p, i) => (
+        <Column title="New on arXiv" icon={FileTextIcon} tone="text-gold" feed={papers} more={{ href: "/papers", label: "All papers" }}>
+          {papers.items.slice(0, 5).map((p, i) => (
             <Row
               key={p.id}
               href={paperHref(p.id)}
               rank={i + 1}
               meta={
                 <>
-                  <M icon={ArrowUpIcon}>{p.upvotes}</M>
+                  {p.categories[0] && <span className="font-mono">{p.categories[0]}</span>}
                   {p.authors[0] && (
                     <span className="truncate">
                       {p.authors[0]}
@@ -146,24 +146,6 @@ export async function LiveHomeSection({ className }: { className?: string }) {
               }
             >
               {p.title}
-            </Row>
-          ))}
-        </Column>
-        <Column title="Hot on Hacker News" icon={MessageSquareIcon} tone="text-[#ff9a5c]" feed={stories} more={{ href: "/trending#discussions", label: "More discussions" }}>
-          {stories.items.map((s, i) => (
-            <Row
-              key={s.id}
-              href={hnHref(s)}
-              rank={i + 1}
-              meta={
-                <>
-                  <M icon={ArrowUpIcon}>{compact(s.points)}</M>
-                  <M icon={MessageSquareIcon}>{compact(s.comments)}</M>
-                  <span className="truncate font-mono">{s.domain}</span>
-                </>
-              }
-            >
-              {s.title}
             </Row>
           ))}
         </Column>
@@ -180,8 +162,8 @@ export function LiveHomeSkeleton({ className }: { className?: string }) {
         <Skeleton className="h-6 w-56" />
         <Skeleton className="h-3 w-40" />
       </div>
-      <div className="grid gap-6 lg:grid-cols-3 lg:gap-4">
-        {[0, 1, 2].map((c) => (
+      <div className="grid gap-6 lg:grid-cols-2 lg:gap-4">
+        {[0, 1].map((c) => (
           <div key={c} className="flex flex-col gap-2">
             <Skeleton className="mx-1 h-4 w-32" />
             {Array.from({ length: 5 }, (_, i) => (
