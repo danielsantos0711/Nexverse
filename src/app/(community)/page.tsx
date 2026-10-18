@@ -1,5 +1,7 @@
 import Image from "next/image"
 import Link from "next/link"
+import { Suspense } from "react"
+import { LiveHomeSection, LiveHomeSkeleton } from "@/components/live/home-section"
 import { Hero } from "@/components/hero/hero"
 import { categoryIcon } from "@/components/forum/category-icon"
 import { SectionHead } from "@/components/hub/bits"
@@ -105,6 +107,12 @@ export default function Home() {
           <Pulse events={pulseEvents()} size={8} />
         </aside>
       </section>
+
+      <div className="shell mt-24">
+        <Suspense fallback={<LiveHomeSkeleton />}>
+          <LiveHomeSection />
+        </Suspense>
+      </div>
 
       <section aria-labelledby="const-h" className="relative mt-24 overflow-hidden border-y border-border">
         <Image src="/space/deep-field.webp" alt="" fill sizes="100vw" className="-z-10 object-cover opacity-30" />

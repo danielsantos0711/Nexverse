@@ -12,7 +12,7 @@ export default function CommunityLayout({ children }: LayoutProps<"/">) {
         <SiteHeader />
       </ViewTransition>
       <ScrollProgress />
-      <main id="main" className="w-full flex-1">
+      <main id="main" className="w-full flex-1 overflow-x-clip">
         {/* Moving between pages, the old page sinks away and the new one rises in (see .page in globals.css). */}
         <ViewTransition default="page">{children}</ViewTransition>
       </main>

@@ -203,8 +203,8 @@ export function PageTitle({
 }) {
   return (
     <header className="relative isolate flex flex-col gap-3 pt-10 pb-8 md:pt-14">
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-16 -z-10 h-72 bg-[radial-gradient(60%_70%_at_20%_0%,rgb(143_180_255/0.14),transparent_70%),radial-gradient(40%_60%_at_70%_10%,rgb(216_197_158/0.07),transparent_70%)]" />
-      <div aria-hidden className="starfield -z-10 [mask-image:linear-gradient(to_bottom,black,transparent)]">
+      <div aria-hidden className="pointer-events-none absolute -top-16 left-1/2 -z-10 h-72 w-screen -translate-x-1/2 bg-[radial-gradient(60%_70%_at_20%_0%,rgb(143_180_255/0.14),transparent_70%),radial-gradient(40%_60%_at_70%_10%,rgb(216_197_158/0.07),transparent_70%)]" />
+      <div aria-hidden className="starfield left-1/2 -z-10 w-screen -translate-x-1/2 [mask-image:linear-gradient(to_bottom,black,transparent)]">
         <i />
         <i />
       </div>
