@@ -4,6 +4,7 @@ import { PageSkeleton } from "@/components/app/page-skeleton"
 import { Suspense } from "react"
 import { NMark } from "@/components/brand"
 import { ArtifactRow, PersonAvatar, PersonLink, ThreadRow } from "@/components/app/bits"
+import { MemberQuestions } from "@/components/app/member"
 import { LinkButton } from "@/components/link-button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { artifactsIn, getOrbit, LANGUAGES, orbits, peopleIn, threadsIn } from "@/lib/data"
@@ -62,6 +63,7 @@ async function OrbitContent({ params }: { params: PageProps<"/orbits/[slug]">["p
             <TabsTrigger value="people">People</TabsTrigger>
           </TabsList>
           <TabsContent value="threads" className="pt-4">
+            <MemberQuestions orbit={orbit.slug} showOrbit={false} className="mb-8" />
             <ul>
               {ts.map((t) => (
                 <ThreadRow key={t.id} thread={t} showOrbit={false} />

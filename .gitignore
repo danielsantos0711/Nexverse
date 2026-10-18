@@ -42,3 +42,4 @@ next-env.d.ts
 
 # design inspector output
 .taste-skill/inspect/
+!.env.example

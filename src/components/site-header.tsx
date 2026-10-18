@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { MenuIcon } from "lucide-react"
+import { AccountButton } from "@/components/account/account-button"
 import { Lockup } from "@/components/brand"
 import { LinkButton } from "@/components/link-button"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -32,6 +33,7 @@ export function SiteHeader() {
           ))}
         </ul>
         <ThemeToggle />
+        <AccountButton />
         <LinkButton href="/new" className="hidden sm:inline-flex">
           Ask a question
         </LinkButton>

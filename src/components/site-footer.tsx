@@ -27,8 +27,8 @@ export function SiteFooter() {
         </ul>
       </div>
       <p className="mt-12 text-small text-muted-foreground">
-        Every person, thread, artifact and news item shown here is sample content written to preview the
-        product. None of it is real yet.
+        The people, threads, artifacts and news that ship with Nexverse are sample content written to preview
+        the product. Only questions and answers written by members are real.
       </p>
     </footer>
   )

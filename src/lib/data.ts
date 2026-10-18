@@ -971,7 +971,12 @@ export function answersBy(handle: string) {
 }
 
 export function formatDate(iso: string) {
-  const [y, m, d] = iso.split("-").map(Number)
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number)
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
   return `${d} ${months[m - 1]} ${y}`
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Members' questions have database ids; sample threads have readable slugs. */
+export const isQuestionId = (id: string) => UUID.test(id)

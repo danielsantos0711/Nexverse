@@ -3,12 +3,14 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { Suspense } from "react"
+import { MemberThread } from "@/components/app/member-thread"
 import { ThreadView } from "@/components/app/thread-view"
 import {
   ARTIFACT_KINDS,
   getArtifact,
   getOrbit,
   getThread,
+  isQuestionId,
   LOOP_STAGES,
   threads,
   threadTitle,
@@ -22,7 +24,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps<"/threads/[id]">): Promise<Metadata> {
   const t = getThread((await params).id)
-  return { title: t ? threadTitle(t) : "Thread" }
+  return { title: t ? threadTitle(t) : "Question" }
 }
 
 // The params are known at build time; the boundary keeps navigation instant for any that are not.
@@ -35,7 +37,10 @@ export default function ThreadPage({ params }: PageProps<"/threads/[id]">) {
 }
 
 async function ThreadContent({ params }: { params: PageProps<"/threads/[id]">["params"] }) {
-  const thread = getThread((await params).id)
+  const { id } = await params
+  const thread = getThread(id)
+  // Members' questions live in the database, so they load in the browser rather than at build time.
+  if (!thread && isQuestionId(id)) return <MemberThread id={id} />
   if (!thread) notFound()
   const orbit = getOrbit(thread.orbit)!
   const artifact = thread.artifact ? getArtifact(thread.artifact) : undefined

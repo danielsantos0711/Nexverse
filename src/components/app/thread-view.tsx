@@ -1,47 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { CheckIcon, LanguagesIcon } from "lucide-react"
 import { LangTag, PersonAvatar, PersonLink } from "@/components/app/bits"
+import { MemberAnswers } from "@/components/app/member"
 import { Button } from "@/components/ui/button"
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { Textarea } from "@/components/ui/textarea"
 import { formatDate, getPerson, LANGUAGES, type Thread } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
-type LocalReply = { id: string; body: string; date: string }
-
-/**
- * A thread, readable in its original language or in English, with replies. Replies written here are
- * kept on this device until accounts exist.
- */
+/** A sample thread, readable in its original language or in English, with its replies and members' answers. */
 export function ThreadView({ thread }: { thread: Thread }) {
   const translatable = thread.lang !== "en" || thread.replies.some((r) => r.lang !== "en")
   const [english, setEnglish] = useState(true)
-  const [local, setLocal] = useState<LocalReply[]>([])
-  const [draft, setDraft] = useState("")
-  const key = `nexverse-replies:${thread.id}`
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(key)
-      // Reading from storage after mount keeps the server and client render identical.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (saved) setLocal(JSON.parse(saved))
-    } catch {}
-  }, [key])
-
-  function post(e: React.FormEvent) {
-    e.preventDefault()
-    if (!draft.trim()) return
-    const next = [...local, { id: crypto.randomUUID(), body: draft.trim(), date: new Date().toISOString().slice(0, 10) }]
-    setLocal(next)
-    setDraft("")
-    try {
-      localStorage.setItem(key, JSON.stringify(next))
-    } catch {}
-  }
-
   const showEnglish = english && thread.lang !== "en" && thread.en
   const author = getPerson(thread.author)!
 
@@ -125,40 +95,10 @@ export function ThreadView({ thread }: { thread: Thread }) {
               </li>
             )
           })}
-          {local.map((r) => (
-            <li key={r.id} className="flex flex-col gap-3 rounded-md p-5 ring-1 ring-border ring-inset">
-              <div className="flex flex-wrap items-center gap-x-3 text-small text-muted-foreground">
-                <span className="font-medium text-foreground">You</span>
-                <span>{formatDate(r.date)}</span>
-                <span>Saved on this device only</span>
-              </div>
-              <p className="max-w-[68ch] leading-relaxed whitespace-pre-wrap">{r.body}</p>
-            </li>
-          ))}
         </ol>
       </section>
 
-      <form onSubmit={post} className="rounded-md bg-card p-5 md:p-6">
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="reply">Your answer</FieldLabel>
-            <Textarea
-              id="reply"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={5}
-              placeholder="Write in whichever language you think in."
-              className="bg-background"
-            />
-            <FieldDescription>
-              Accounts are not open yet, so your answer is kept in this browser and nobody else sees it.
-            </FieldDescription>
-          </Field>
-          <Button type="submit" className="self-start" disabled={!draft.trim()}>
-            Post answer
-          </Button>
-        </FieldGroup>
-      </form>
+      <MemberAnswers thread={{ kind: "sample", id: thread.id }} />
     </article>
   )
 }

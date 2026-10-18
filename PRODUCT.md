@@ -43,8 +43,8 @@ dataset pages, a news digest with community notes, and profiles that show who he
 
 - Built so far: public pages for home, explore, orbits (communities), threads, artifacts, signal (news),
   people, and a composer.
-- Undecided: accounts and sign-in, database and hosting, moderation tooling, translation provider, domain.
-- Posting is stored on the visitor's device until a backend exists.
+- Chosen: Supabase for accounts and storage, Vercel for hosting. Undecided: moderation tooling, translation provider, domain.
+- Members sign in with an emailed link and post to Supabase; without a database connected, posting stays on the visitor's device and says so.
 
 ## Brand Commitments
 

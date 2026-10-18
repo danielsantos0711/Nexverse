@@ -1,19 +1,20 @@
 "use client"
 
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
-import { LoopMark } from "@/components/app/bits"
-import { LinkButton } from "@/components/link-button"
 import { Button } from "@/components/ui/button"
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { getArtifact, getOrbit, LANGUAGES, orbits, threadTitle, type LanguageCode } from "@/lib/data"
 import { route } from "@/lib/search"
+import { createQuestion, listQuestions, useSession, type Question } from "@/lib/store"
+import { live } from "@/lib/supabase"
 
-type Saved = { id: string; title: string; body: string; orbit: string; lang: LanguageCode; date: string }
-const KEY = "nexverse-questions"
+// A draft survives the trip to the sign-in page and back.
+const DRAFT_KEY = "nexverse-draft"
+type Draft = { title: string; body: string; orbit: string }
 
 /** A rough guess at the language being typed, so the picker follows the writer instead of the other way round. */
 function guessLanguage(text: string): LanguageCode | undefined {
@@ -28,24 +29,35 @@ function guessLanguage(text: string): LanguageCode | undefined {
 }
 
 export function Composer() {
+  const router = useRouter()
   const params = useSearchParams()
+  const { ready, user } = useSession()
   const about = params.get("about") ? getArtifact(params.get("about")!) : undefined
   const [title, setTitle] = useState(params.get("q") ?? (about ? `Question about ${about.name}: ` : ""))
   const [body, setBody] = useState("")
   const [orbit, setOrbit] = useState(params.get("orbit") ?? "")
   const [lang, setLang] = useState<LanguageCode>("en")
   const [langTouched, setLangTouched] = useState(false)
-  const [saved, setSaved] = useState<Saved[]>([])
-  const [justSaved, setJustSaved] = useState<Saved | null>(null)
+  const [saved, setSaved] = useState<Question[]>([])
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  const [failure, setFailure] = useState("")
 
   useEffect(() => {
+    // Reading from storage after mount keeps the server and client render identical.
     try {
-      const s = localStorage.getItem(KEY)
-      // Reading from storage after mount keeps the server and client render identical.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (s) setSaved(JSON.parse(s))
+      const d = sessionStorage.getItem(DRAFT_KEY)
+      if (d) {
+        const draft = JSON.parse(d) as Draft
+        /* eslint-disable react-hooks/set-state-in-effect */
+        setTitle(draft.title)
+        setBody(draft.body)
+        setOrbit(draft.orbit)
+        /* eslint-enable react-hooks/set-state-in-effect */
+        sessionStorage.removeItem(DRAFT_KEY)
+      }
     } catch {}
+    if (!live) listQuestions({ limit: 8 }).then(setSaved)
   }, [])
 
   const routed = route(`${title} ${body}`)
@@ -53,60 +65,36 @@ export function Composer() {
   const chosenOrbit = orbit || suggestedOrbit?.slug || ""
   const guessed = guessLanguage(`${title} ${body}`)
   const shownLang = langTouched ? lang : (guessed ?? lang)
+  const needsSignIn = live && ready && !user
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (title.trim().length < 10) {
       setError("Write the question as a full sentence, so people know what you are asking.")
       return
     }
     setError("")
-    const item: Saved = {
-      id: crypto.randomUUID(),
-      title: title.trim(),
-      body: body.trim(),
-      orbit: chosenOrbit || orbits[0].slug,
-      lang: shownLang,
-      date: new Date().toISOString().slice(0, 10),
+    if (needsSignIn) {
+      try {
+        sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title, body, orbit } satisfies Draft))
+      } catch {}
+      router.push("/sign-in?next=/new")
+      return
     }
-    const next = [item, ...saved]
-    setSaved(next)
-    setJustSaved(item)
-    setTitle("")
-    setBody("")
+    setBusy(true)
+    setFailure("")
     try {
-      localStorage.setItem(KEY, JSON.stringify(next))
-    } catch {}
-  }
-
-  if (justSaved) {
-    const o = getOrbit(justSaved.orbit)
-    return (
-      <div className="flex flex-col gap-8 rounded-md bg-card p-6 md:p-10" role="status">
-        <LoopMark stage="asked" />
-        <h2 className="font-wide text-[clamp(1.6rem,1.1rem+1.6vw,2.6rem)] leading-tight font-semibold tracking-[-0.03em] text-balance">
-          {justSaved.title}
-        </h2>
-        <p className="max-w-[60ch] text-muted-foreground">
-          Saved on this device for {o?.name}. Accounts are not open yet, so nobody else can see it. It will be
-          here when you come back, and it can be posted for real once sign-up opens.
-        </p>
-        {routed.thread && (
-          <p>
-            Something close was asked before:{" "}
-            <Link href={`/threads/${routed.thread.item.id}`} className="underline">
-              {threadTitle(routed.thread.item)}
-            </Link>
-          </p>
-        )}
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={() => setJustSaved(null)}>Ask another</Button>
-          <LinkButton href={`/orbits/${justSaved.orbit}`} variant="secondary">
-            Read {o?.name}
-          </LinkButton>
-        </div>
-      </div>
-    )
+      const q = await createQuestion({
+        title: title.trim(),
+        body: body.trim(),
+        orbit: chosenOrbit || orbits[0].slug,
+        lang: shownLang,
+      })
+      router.push(`/threads/${q.id}`)
+    } catch (err) {
+      setFailure((err as Error).message)
+      setBusy(false)
+    }
   }
 
   return (
@@ -178,9 +166,19 @@ export function Composer() {
               {!langTouched && guessed && <FieldDescription>Detected from what you wrote.</FieldDescription>}
             </Field>
           </div>
-          <Button type="submit" size="lg" className="self-start">
-            Save question
-          </Button>
+          {failure && <FieldError>{failure}</FieldError>}
+          <div className="flex flex-col items-start gap-3">
+            <Button type="submit" size="lg" disabled={busy || (live && !ready)}>
+              {busy ? "Posting…" : needsSignIn ? "Sign in to post" : live ? "Post question" : "Save question"}
+            </Button>
+            <p className="text-small text-muted-foreground">
+              {!live
+                ? "This copy of Nexverse has no database, so the question stays in this browser."
+                : needsSignIn
+                  ? "Your draft is kept while you sign in."
+                  : "Everyone can read it. It appears with your name."}
+            </p>
+          </div>
         </FieldGroup>
       </form>
 
@@ -210,7 +208,9 @@ export function Composer() {
             <ul className="flex flex-col gap-3">
               {saved.map((s) => (
                 <li key={s.id} className="flex flex-col gap-1">
-                  <span className="text-[15px] leading-snug">{s.title}</span>
+                  <Link href={`/threads/${s.id}`} className="text-[15px] leading-snug hover:underline">
+                    {s.title}
+                  </Link>
                   <span className="text-small text-muted-foreground">
                     {getOrbit(s.orbit)?.name} · {LANGUAGES[s.lang].native}
                   </span>
