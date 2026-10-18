@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo } from "react"
-import { SquarePenIcon } from "lucide-react"
+import { CalendarDaysIcon, LayersIcon, SquarePenIcon, TrophyIcon } from "lucide-react"
 import { CategoryIcon } from "@/components/forum/category-icon"
 import { ForumSearch } from "@/components/forum/forum-search"
 import { PosterAvatar, primaryButton, rise, riseDelay } from "@/components/forum/forum-ui"
@@ -74,6 +74,29 @@ export function ForumIndex() {
               </p>
             )}
           </section>
+
+          <nav aria-labelledby="around-h" className="flex flex-col gap-1">
+            <h2 id="around-h" className="px-1 pb-1 font-sans text-sm font-semibold tracking-normal">
+              Around the community
+            </h2>
+            {[
+              { href: "/events", label: "Events", hint: "Paper clubs, meetups, office hours", icon: CalendarDaysIcon },
+              { href: "/collections", label: "Collections", hint: "Reading lists curated by members", icon: LayersIcon },
+              { href: "/leaderboard", label: "Leaderboard", hint: "Who helped most this week", icon: TrophyIcon },
+            ].map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="flex items-center gap-2.5 rounded-lg p-2 transition-colors hover:bg-white/[0.04] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                <l.icon aria-hidden className="size-4 shrink-0 text-ion" />
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-sm font-medium">{l.label}</span>
+                  <span className="truncate text-xs text-muted-foreground">{l.hint}</span>
+                </span>
+              </Link>
+            ))}
+          </nav>
 
           <section aria-labelledby="latest-h" className="flex flex-col gap-2">
             <h2 id="latest-h" className="px-1 font-sans text-sm font-semibold tracking-normal">

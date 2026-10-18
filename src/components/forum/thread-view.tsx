@@ -4,11 +4,15 @@ import { ThreadDiscussion } from "@/components/forum/discussion"
 import { Breadcrumbs, PinnedBadge, SolvedBadge } from "@/components/forum/forum-ui"
 import { AcceptedAnswer, Post, SimilarThreads, ThreadStats } from "@/components/forum/thread-parts"
 import { similarTopics, type Poster } from "@/components/forum/topics"
+import { AddToCollection } from "@/components/collections/add-to-collection"
+import { PostReactions } from "@/components/forum/reactions"
+import { TagList } from "@/components/forum/tags"
 import { Translatable } from "@/components/forum/translatable"
-import { Chip, LangTag } from "@/components/hub/bits"
+import { LangTag } from "@/components/hub/bits"
 import { ResourceCard } from "@/components/hub/cards"
 import { LikeButton } from "@/components/hub/like-button"
 import { SaveButton } from "@/components/social/save-button"
+import { sampleReplyTarget } from "@/lib/community"
 import { categoryPath, getCategory, getPerson, getResource, lastActivity, threadTitle, type Thread } from "@/lib/data"
 
 const poster = (handle: string): Poster => ({ handle, name: getPerson(handle)?.name ?? handle })
@@ -52,9 +56,9 @@ export function SampleThread({ t }: { t: Thread }) {
               <>
                 <LikeButton target={`thread:${t.id}`} base={t.votes} label="Upvote" />
                 <SaveButton target={`thread:${t.id}`} />
-                {t.tags.map((tag) => (
-                  <Chip key={tag}>#{tag}</Chip>
-                ))}
+                <AddToCollection target={`thread:${t.id}`} />
+                <PostReactions target={`thread:${t.id}`} />
+                <TagList tags={t.tags} hrefBase={categoryPath(t.category)} className="sm:ml-auto" />
               </>
             }
           >
@@ -83,6 +87,7 @@ export function SampleThread({ t }: { t: Thread }) {
                       poster={poster(r.author)}
                       date={r.date}
                       accepted={r.accepted}
+                      actions={<PostReactions target={sampleReplyTarget(t.id, r.id)} />}
                       note={
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground tabular">
                           <ArrowUpIcon aria-hidden className="size-3" />

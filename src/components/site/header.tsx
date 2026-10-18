@@ -25,6 +25,9 @@ import {
   FlaskConicalIcon,
   GitBranchIcon,
   LayoutDashboardIcon,
+  CalendarDaysIcon,
+  TrophyIcon,
+  LibraryIcon,
 } from "lucide-react"
 import { AccountButton } from "@/components/account/account-button"
 import { NotificationBell } from "@/components/social/notification-bell"
@@ -61,6 +64,8 @@ const MENUS: { id: string; label: string; links: NavLink[] }[] = [
       { href: "/chat", label: "Chat", blurb: "Live rooms for every corner of AI", icon: MessagesSquareIcon, tint: "text-gold" },
       { href: "/news", label: "News", blurb: "What happened and why it matters", icon: NewspaperIcon, tint: "text-model" },
       { href: "/people", label: "People", blurb: "Builders and labs to follow", icon: UsersIcon, tint: "text-dataset" },
+      { href: "/events", label: "Events", blurb: "Reading clubs, meetups and live demos", icon: CalendarDaysIcon, tint: "text-model" },
+      { href: "/leaderboard", label: "Leaderboard", blurb: "Who helped the most this week", icon: TrophyIcon, tint: "text-gold" },
       { href: "/for-you", label: "For you", blurb: "New from what you follow and save", icon: HeartIcon, tint: "text-gold" },
     ],
   },
@@ -71,6 +76,7 @@ const MENUS: { id: string; label: string; links: NavLink[] }[] = [
       { href: "/new/project", label: "Publish a project", blurb: "A model, dataset, tool or repo page", icon: PlusIcon, tint: "text-ion" },
       { href: "/studio", label: "Your studio", blurb: "Everything you made, with its numbers", icon: LayoutDashboardIcon, tint: "text-gold" },
       { href: "/lab", label: "Lab", blurb: "VRAM, token cost, licences, cards", icon: FlaskConicalIcon, tint: "text-dataset" },
+      { href: "/collections", label: "Collections", blurb: "Curate your own constellation", icon: LibraryIcon, tint: "text-repo" },
       { href: "/forum/new", label: "Start a thread", blurb: "Ask, share or start a debate", icon: MessageSquareIcon, tint: "text-model" },
     ],
   },

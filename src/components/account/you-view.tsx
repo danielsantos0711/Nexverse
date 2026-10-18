@@ -9,6 +9,7 @@ import { MemberAvatar } from "@/components/forum/discussion"
 import { PageTitle } from "@/components/hub/bits"
 import { FollowingList } from "@/components/social/following-list"
 import { SavedView } from "@/components/social/saved-view"
+import { ReputationCard } from "@/components/reputation/reputation-card"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -120,6 +121,9 @@ function Mine({
     <>
       <PageTitle title={title} lead={lead} />
       {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
+      <div className="mb-8 max-w-md">
+        <ReputationCard />
+      </div>
       <div role="tablist" aria-label="Your space" onKeyDown={onKey} className="glass -mx-1 mb-8 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full p-1">
         {tabs.map((t) => {
           const on = t.id === tab

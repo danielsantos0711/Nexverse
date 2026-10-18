@@ -7,6 +7,7 @@ import { PersonAvatar } from "@/components/hub/bits"
 import { ConstellationCard, ResourceCard, ThreadRow } from "@/components/hub/cards"
 import { Heatmap } from "@/components/hub/heatmap"
 import { FollowButton } from "@/components/social/follow-button"
+import { ReputationCard } from "@/components/reputation/reputation-card"
 import { MotionTabs } from "@/components/hub/motion-tabs"
 import { compact, constellations, formatDate, getPerson, LANGUAGES, people, resourcesBy, threads, threadsBy } from "@/lib/data"
 
@@ -63,6 +64,7 @@ async function Profile({ params }: { params: PageProps<"/people/[handle]">["para
             </span>
           ))}
         </div>
+        <ReputationCard handle={p.handle} />
       </aside>
 
       <div className="flex min-w-0 flex-col gap-8">

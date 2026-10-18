@@ -31,6 +31,10 @@ const PAGES = [
   ["Share something", "/share"],
   ["Compare side by side", "/compare"],
   ["For you", "/for-you"],
+  ["Events", "/events"],
+  ["Create an event", "/events/new"],
+  ["Collections", "/collections"],
+  ["Leaderboard", "/leaderboard"],
   ["Saved", "/saved"],
   ["Notifications", "/notifications"],
 ] as const

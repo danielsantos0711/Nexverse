@@ -457,6 +457,8 @@ export function describeTarget(target: string): TargetInfo {
       return { type, id, label: "a shared link", href: null }
     case "project":
       return { type, id, label: "a project", href: `/p/${id}` }
+    case "collection":
+      return { type, id, label: "a collection", href: `/collections/${id}` }
     default: {
       const item = describeLiveTarget(target)
       if (item) return { type: item.type, id: item.id, label: item.label, href: item.href }

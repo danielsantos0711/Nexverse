@@ -3,8 +3,8 @@ import { Lockup } from "@/components/brand"
 
 const COLUMNS = [
   { title: "Hub", links: [["Models", "/models"], ["Datasets", "/datasets"], ["Tools", "/tools"], ["Repos", "/repos"], ["Trending now", "/trending"], ["Papers", "/papers"], ["GitHub topics", "/gh/topics"]] },
-  { title: "Community", links: [["Forum", "/forum"], ["Chat", "/chat"], ["News", "/news"], ["Constellations", "/constellations"], ["People", "/people"]] },
-  { title: "Create", links: [["Publish a project", "/new/project"], ["Your studio", "/studio"], ["Lab", "/lab"], ["Share a link", "/share"], ["Start a thread", "/forum/new"]] },
+  { title: "Community", links: [["Forum", "/forum"], ["Chat", "/chat"], ["News", "/news"], ["Events", "/events"], ["Leaderboard", "/leaderboard"], ["Constellations", "/constellations"], ["People", "/people"]] },
+  { title: "Create", links: [["Publish a project", "/new/project"], ["Your studio", "/studio"], ["Lab", "/lab"], ["Collections", "/collections"], ["Share a link", "/share"], ["Start a thread", "/forum/new"]] },
   { title: "You", links: [["Settings", "/settings"], ["Your page", "/you"], ["For you", "/for-you"], ["Saved", "/saved"], ["Notifications", "/notifications"]] },
 ] as const
 

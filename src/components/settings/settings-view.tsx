@@ -564,7 +564,7 @@ function AccountSection({ profile, email }: { profile: Profile; email: string | 
         {requested ? (
           <div className="flex flex-col items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
             <p>
-              You asked for your account to be deleted on {formatDate(requested)}. We remove it and everything you wrote within 30 days. Changed your mind?
+              You asked for your account to be deleted on {formatDate(requested)}. The Nexverse team will remove it and everything you wrote. Changed your mind before then?
             </p>
             <Button variant="secondary" size="sm" onClick={withdraw}>
               Keep my account
@@ -572,7 +572,7 @@ function AccountSection({ profile, email }: { profile: Profile; email: string | 
           </div>
         ) : (
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">Your profile, projects, threads, replies, likes, follows and pictures are deleted within 30 days. You can withdraw the request until then.</p>
+            <p className="text-sm text-muted-foreground">The Nexverse team removes your profile, projects, threads, replies, likes, follows and pictures. You can withdraw the request until it is done.</p>
             <Button variant="destructive" onClick={() => setConfirm("delete")}>
               <Trash2Icon aria-hidden /> Request deletion
             </Button>
@@ -584,7 +584,7 @@ function AccountSection({ profile, email }: { profile: Profile; email: string | 
         open={confirm === "delete"}
         onOpenChange={(o) => !o && setConfirm(null)}
         title="Delete your account?"
-        description="We delete your account and everything you wrote within 30 days. Until then you can come back here and keep it."
+        description="The Nexverse team will delete your account and everything you wrote. Until it is done you can come back here and keep it."
         confirm="Request deletion"
         onConfirm={async () => {
           setRequested(await requestAccountDeletion(true))

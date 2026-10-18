@@ -82,3 +82,15 @@ export const riseDelay = (i: number) => ({ animationDelay: `${Math.min(i, 12) * 
 /** The forum's buttons, so every "Start a thread" looks the same. */
 export const primaryButton =
   "pressable inline-flex h-9 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground transition-[filter] hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+
+/** "· edited", with the full date on hover and for screen readers. */
+export function EditedMarker({ at, className }: { at: string | null | undefined; className?: string }) {
+  if (!at) return null
+  const when = new Date(at)
+  const label = Number.isFinite(when.getTime()) ? when.toISOString().slice(0, 16).replace("T", " ") + " UTC" : ""
+  return (
+    <span title={label ? `Edited ${label}` : "Edited"} className={cn("text-xs text-muted-foreground", className)}>
+      · edited<span className="sr-only">{label ? ` ${label}` : ""}</span>
+    </span>
+  )
+}

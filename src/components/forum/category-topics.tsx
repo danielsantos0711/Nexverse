@@ -4,8 +4,9 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { motion, useReducedMotion } from "motion/react"
 import { useEffect, useMemo, useState } from "react"
-import { ChevronLeftIcon, ChevronRightIcon, MessagesSquareIcon } from "lucide-react"
+import { ChevronLeftIcon, ChevronRightIcon, MessagesSquareIcon, XIcon } from "lucide-react"
 import { PinnedBadge, PosterAvatar, primaryButton, rise, riseDelay, SolvedBadge } from "@/components/forum/forum-ui"
+import { TagList } from "@/components/forum/tags"
 import { isTopicSort, sortTopics, TOPIC_SORTS, type Topic, type TopicSort } from "@/components/forum/topics"
 import { useForumTopics } from "@/components/forum/use-member-topics"
 import { LangTag } from "@/components/hub/bits"
@@ -29,8 +30,9 @@ export function CategoryTopics({ slug, name }: { slug: string; name: string }) {
   const raw = params.get("sort")
   const sort: TopicSort = isTopicSort(raw) ? raw : "latest"
   const { topics, ready } = useForumTopics()
+  const tag = params.get("tag")?.toLowerCase().slice(0, 24) || null
 
-  const all = useMemo(() => topics.filter((t) => t.category === slug), [topics, slug])
+  const all = useMemo(() => topics.filter((t) => t.category === slug && (!tag || t.tags.includes(tag))), [topics, slug, tag])
   const list = useMemo(() => sortTopics(all, sort), [all, sort])
   const pages = Math.max(1, Math.ceil(list.length / PER_PAGE))
   const page = Math.min(pages, Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1))
@@ -43,10 +45,12 @@ export function CategoryTopics({ slug, name }: { slug: string; name: string }) {
     return () => clearTimeout(id)
   }, [])
 
-  const href = (next: { sort?: TopicSort; page?: number }) => {
+  const href = (next: { sort?: TopicSort; page?: number; tag?: string | null }) => {
     const s = next.sort ?? sort
     const p = next.page ?? 1
+    const tg = next.tag === undefined ? tag : next.tag
     const q = new URLSearchParams()
+    if (tg) q.set("tag", tg)
     if (s !== "latest") q.set("sort", s)
     if (p > 1) q.set("page", String(p))
     const qs = q.toString()
@@ -88,6 +92,19 @@ export function CategoryTopics({ slug, name }: { slug: string; name: string }) {
         })}
       </nav>
 
+      {tag && (
+        <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
+          Showing threads tagged <span className="rounded-full bg-ion/10 px-2 py-0.5 text-ion">#{tag}</span>
+          <Link
+            href={href({ tag: null })}
+            scroll={false}
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs hover:bg-white/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <XIcon aria-hidden className="size-3" /> Clear
+          </Link>
+        </p>
+      )}
+
       <div className="overflow-hidden rounded-xl border border-border bg-card/40">
         <div aria-hidden className={cn("hidden gap-4 border-b border-border px-4 py-2 text-xs text-muted-foreground md:grid", COLS)}>
           <span>Topic</span>
@@ -108,9 +125,9 @@ export function CategoryTopics({ slug, name }: { slug: string; name: string }) {
             <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
               <MessagesSquareIcon aria-hidden className="size-5" />
             </span>
-            <p className="text-sm text-muted-foreground">{ready || sort !== "latest" ? EMPTY[sort] : "Loading threads…"}</p>
+            <p className="text-sm text-muted-foreground">{!ready && sort === "latest" ? "Loading threads…" : tag ? `No threads tagged #${tag} here yet.` : EMPTY[sort]}</p>
             {(sort === "latest" || sort === "top") && (
-              <Link href={`/forum/new?c=${slug}`} className={primaryButton}>
+              <Link href={`/forum/new?c=${slug}${tag ? `&tag=${tag}` : ""}`} className={primaryButton}>
                 New thread in {name}
               </Link>
             )}
@@ -187,6 +204,7 @@ function TopicRow({ t }: { t: Topic }) {
             {t.solved && <SolvedBadge />}
           </div>
           {t.english && <p className="line-clamp-1 text-[13px] text-muted-foreground">{t.english}</p>}
+          <TagList tags={t.tags.slice(0, 4)} hrefBase={categoryPath(t.category)} />
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
             <span>{t.author.name}</span>
             <LangTag lang={t.lang} />

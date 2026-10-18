@@ -27,6 +27,7 @@ export type Topic = {
   solved: boolean
   member: boolean
   local: boolean
+  tags: string[]
 }
 
 const person = (handle: string): Poster => ({ handle, name: getPerson(handle)?.name ?? handle })
@@ -51,6 +52,7 @@ export function sampleTopic(t: Thread): Topic {
     solved: t.replies.some((r) => r.accepted),
     member: false,
     local: false,
+    tags: t.tags,
   }
 }
 
@@ -74,6 +76,7 @@ export function memberTopic(q: Question): Topic {
     solved: Boolean(q.acceptedAnswerId),
     member: true,
     local: q.local,
+    tags: [],
   }
 }
 
