@@ -1,0 +1,195 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-heading: var(--font-sans);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-field: var(--field);
+  --color-field-foreground: var(--field-foreground);
+  --color-raised: var(--raised);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * Pearl: the light ground matches the pearl material study, so the N sits on the page without a box.
+ * Graphite: the dark ground matches the chrome, titanium and champagne studies for the same reason.
+ * Champagne is the one warm field, spent once per page.
+ */
+:root {
+  --background: #f1f3f4;
+  --foreground: #0f1115;
+  --card: #e7eaec;
+  --card-foreground: #0f1115;
+  --raised: #dde1e4;
+  --popover: #f8f9fa;
+  --popover-foreground: #0f1115;
+  --primary: #0f1115;
+  --primary-foreground: #f1f3f4;
+  --secondary: #e2e5e8;
+  --secondary-foreground: #0f1115;
+  --muted: #e2e5e8;
+  --muted-foreground: #4b515a;
+  --accent: #dde1e4;
+  --accent-foreground: #0f1115;
+  --destructive: #b42318;
+  --border: rgb(15 17 21 / 0.12);
+  --input: rgb(15 17 21 / 0.16);
+  --ring: #3d434c;
+  --field: #cdbb97;
+  --field-foreground: #17130c;
+  --radius: 0.375rem;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --step-small: 0.875rem;
+  --step-body: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
+  --step-lead: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
+  --step-statement: clamp(1.5rem, 1rem + 1.6vw, 2.25rem);
+  --step-head: clamp(2.25rem, 1.2rem + 4.2vw, 5.25rem);
+  --gutter: clamp(1rem, 2.2vw, 2rem);
+  color-scheme: light;
+}
+
+.dark {
+  --background: #08090d;
+  --foreground: #eceef1;
+  --card: #111318;
+  --card-foreground: #eceef1;
+  --raised: #1a1d23;
+  --popover: #15181d;
+  --popover-foreground: #eceef1;
+  --primary: #eceef1;
+  --primary-foreground: #08090d;
+  --secondary: #181b21;
+  --secondary-foreground: #eceef1;
+  --muted: #15181d;
+  --muted-foreground: #a3a9b2;
+  --accent: #1d2027;
+  --accent-foreground: #eceef1;
+  --destructive: #f97066;
+  --border: rgb(255 255 255 / 0.09);
+  --input: rgb(255 255 255 / 0.13);
+  --ring: #c9cdd3;
+  --field: #cdbb97;
+  --field-foreground: #17130c;
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: var(--step-body);
+    line-height: 1.55;
+    font-feature-settings: "ss01";
+  }
+  ::selection {
+    background: var(--foreground);
+    color: var(--background);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+  a {
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
+  }
+  input,
+  textarea {
+    caret-color: var(--foreground);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--raised) transparent;
+  }
+}
+
+@layer utilities {
+  /* The expanded cut echoes the wide letters of the NEXVERSE wordmark. */
+  .font-wide {
+    font-stretch: 125%;
+    font-variation-settings: "wdth" 125;
+  }
+  .text-statement {
+    font-size: var(--step-statement);
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+  }
+  .text-head {
+    font-size: var(--step-head);
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+  }
+  .text-lead {
+    font-size: var(--step-lead);
+    line-height: 1.35;
+  }
+  .text-small {
+    font-size: var(--step-small);
+  }
+  .px-gutter {
+    padding-inline: var(--gutter);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .pressable {
+    transition: transform 160ms var(--ease-out);
+  }
+  .pressable:active {
+    transform: scale(0.97);
+  }
+}
+
+/* The N swaps material with the theme: chrome on graphite, pearl on pearl. */
+.theme-img-light {
+  display: none;
+}
+:root:not(.dark) .theme-img-light {
+  display: block;
+}
+:root:not(.dark) .theme-img-dark {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pressable:active {
+    transform: none;
+  }
+}
