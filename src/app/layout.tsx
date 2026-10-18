@@ -1,40 +1,27 @@
 import type { Metadata, Viewport } from "next"
-import { Archivo } from "next/font/google"
+import { Geist, Geist_Mono, Sora } from "next/font/google"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import "./globals.css"
 
-const archivo = Archivo({
-  variable: "--font-archivo",
-  subsets: ["latin", "latin-ext"],
-  axes: ["wdth"],
-})
+const geist = Geist({ variable: "--font-geist", subsets: ["latin", "latin-ext"] })
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
+const sora = Sora({ variable: "--font-sora", subsets: ["latin", "latin-ext"] })
 
 export const metadata: Metadata = {
   title: {
-    default: "Nexverse: ask, answer and build AI together",
+    default: "Nexverse: the open universe for AI builders",
     template: "%s · Nexverse",
   },
   description:
-    "A public, international community for people who build with AI. Ask in your own language, get answers from people who have done it, and share back what you build.",
+    "Models, datasets, tools, repos, news and a forum in every language. Find what people are building with AI, share yours, and connect it into constellations.",
   icons: { icon: "/favicon.ico", apple: "/apple-icon.png" },
 }
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#08090d" },
-    { media: "(prefers-color-scheme: light)", color: "#f1f3f4" },
-  ],
-}
-
-// Runs before paint so the stored or system theme never flashes the wrong ground.
-const themeScript = `try{var t=localStorage.getItem("nexverse-theme");var d=t?t==="dark":!matchMedia("(prefers-color-scheme: light)").matches;document.documentElement.classList.toggle("dark",d)}catch(e){}`
+export const viewport: Viewport = { themeColor: "#05060a" }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${archivo.variable} dark h-full antialiased`} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
+    <html lang="en" className={`${geist.variable} ${geistMono.variable} ${sora.variable} dark h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <a
           href="#main"

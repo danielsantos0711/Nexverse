@@ -20,19 +20,19 @@ export function SignInForm() {
 
   if (!live) {
     return (
-      <div className="flex flex-col items-start gap-5 rounded-md bg-card p-6 md:p-8">
+      <div className="flex flex-col items-start gap-5 glass rounded-2xl p-6 md:p-8">
         <p className="max-w-[54ch]">
           This copy of Nexverse is not connected to a database, so there are no accounts. Questions and answers
           you write are kept in this browser instead.
         </p>
-        <LinkButton href="/new">Ask a question</LinkButton>
+        <LinkButton href="/forum/new">Start a thread</LinkButton>
       </div>
     )
   }
 
   if (user) {
     return (
-      <div className="flex flex-col items-start gap-5 rounded-md bg-card p-6 md:p-8">
+      <div className="flex flex-col items-start gap-5 glass rounded-2xl p-6 md:p-8">
         <p>You are signed in as {user.email}.</p>
         <LinkButton href={next}>Continue</LinkButton>
       </div>
@@ -41,8 +41,8 @@ export function SignInForm() {
 
   if (sent) {
     return (
-      <div className="flex flex-col items-start gap-4 rounded-md bg-card p-6 md:p-8" role="status">
-        <h2 className="font-wide text-2xl font-semibold tracking-[-0.03em]">Check your email</h2>
+      <div className="flex flex-col items-start gap-4 glass rounded-2xl p-6 md:p-8" role="status">
+        <h2 className="text-2xl font-semibold tracking-[-0.03em]">Check your email</h2>
         <p className="max-w-[54ch] text-muted-foreground">
           We sent a sign-in link to <span className="text-foreground">{sent}</span>. Open it on this device and you
           will come straight back here.
@@ -74,7 +74,7 @@ export function SignInForm() {
   }
 
   return (
-    <form onSubmit={submit} noValidate className="rounded-md bg-card p-6 md:p-8">
+    <form onSubmit={submit} noValidate className="glass rounded-2xl p-6 md:p-8">
       <FieldGroup>
         <Field data-invalid={error ? true : undefined}>
           <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -85,7 +85,7 @@ export function SignInForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             aria-invalid={error ? true : undefined}
-            className="h-12 bg-background text-base"
+            className="h-12 bg-background/60 text-base"
           />
           {error ? (
             <FieldError>{error}</FieldError>
