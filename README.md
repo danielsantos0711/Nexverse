@@ -32,22 +32,22 @@ worked for them.
 Without the two environment variables below the app still runs: sign-in is hidden and what people write is
 kept in their browser, labelled that way.
 
-### Connect a database
+### The live database
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. Run `supabase/migrations/20261018150000_members.sql` in the project's SQL editor, or `supabase db push`
-   with the Supabase CLI.
-3. In Authentication → URL Configuration, set the Site URL to where the app runs and add
-   `<site url>/auth/callback` to the redirect URLs (and `http://localhost:3000/auth/callback` for
-   development).
-4. Copy `.env.example` to `.env.local` and fill in the project URL and publishable key from
-   Project Settings → API.
+The project `nexverse` (Paris, `eu-west-3`) already has both migrations applied, and `.env.production` points
+production builds at it. Its URL and publishable key are public by design; row level security decides what
+they can do. For local development against it, copy `.env.production` to `.env.local`.
+
+To start a fresh project instead, run the files in `supabase/migrations/` in order in its SQL editor (or
+`supabase db push`) and put its URL and publishable key in `.env.production`.
 
 ### Host it
 
-Import the repository in [Vercel](https://vercel.com/new), add the same two environment variables, and
-deploy. Supabase's built-in email sender is rate limited; connect your own SMTP in Authentication → Emails
-before opening sign-up widely.
+Import the repository in [Vercel](https://vercel.com/new) and deploy; no settings are needed. Then, in the
+Supabase dashboard under Authentication → URL Configuration, set the Site URL to the deployed address and add
+`<site url>/auth/callback` and `http://localhost:3000/auth/callback` to the redirect URLs, or sign-in links
+will point at localhost. Supabase's built-in email sender is rate limited; connect your own SMTP in
+Authentication → Emails before opening sign-up widely.
 
 ## Run it
 
