@@ -30,6 +30,7 @@ export function useDiffMode(): [DiffMode, (m: DiffMode) => void] {
   useEffect(() => {
     try {
       const v = localStorage.getItem(MODE_KEY)
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reads the saved preference once mounted
       if (v === "split" || v === "unified") setMode(v)
       else if (window.matchMedia("(min-width: 1100px)").matches) setMode("split")
     } catch {}

@@ -344,6 +344,7 @@ function About({ tree, commit }: { tree: Tree; commit: Commit | null }) {
   const discuss = `/forum/new?title=${encodeURIComponent(`About ${name}`)}&body=${encodeURIComponent(`${repo.description ? `${repo.description}\n\n` : ""}Repository: /code/${name}`)}`
   const files = useMemo(() => Object.keys(tree).slice(0, 300), [tree])
   const [readme, setReadme] = useState(repo.readme)
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- follows the repository's cached README
   useEffect(() => setReadme(repo.readme), [repo.readme])
 
   // Keep the README cache in step with the default branch, for search and AI summaries.
@@ -489,6 +490,7 @@ export function BlobPage({ refName, path }: { refName: string; path: string }) {
   useEffect(() => {
     if (!blob.data || !image) return
     const url = URL.createObjectURL(new Blob([blob.data.bytes.slice().buffer], { type: image }))
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- an object URL is an external resource tied to this effect
     setImgUrl(url)
     return () => URL.revokeObjectURL(url)
   }, [blob.data, image])

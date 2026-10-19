@@ -39,7 +39,6 @@ export const isDir = (tree: Tree, path: string) => !path || Object.keys(tree).so
 export function cleanPath(raw: string): string | null {
   const p = raw.replace(/\\/g, "/").replace(/\/{2,}/g, "/").replace(/^\/+|\/+$/g, "").trim()
   if (!p || p.length > 400) return null
-  // eslint-disable-next-line no-control-regex -- rejecting control characters is the point
   if (/[\u0000-\u001f\u007f]/.test(p)) return null
   if (p.split("/").some((s) => !s || s === "." || s === "..")) return null
   return p
@@ -144,9 +143,19 @@ export async function mergeBase(a: string, b: string, parents: (id: string) => P
     for (const id of qa) if (seenB.has(id)) return id
     for (const id of qb) if (seenA.has(id)) return id
     const na: string[] = []
-    for (const id of qa) for (const p of (await parents(id)) ?? []) if (!seenA.has(p)) (seenA.add(p), na.push(p))
+    for (const id of qa) for (const p of (await parents(id)) ?? []) {
+      if (!seenA.has(p)) {
+        seenA.add(p)
+        na.push(p)
+      }
+    }
     const nb: string[] = []
-    for (const id of qb) for (const p of (await parents(id)) ?? []) if (!seenB.has(p)) (seenB.add(p), nb.push(p))
+    for (const id of qb) for (const p of (await parents(id)) ?? []) {
+      if (!seenB.has(p)) {
+        seenB.add(p)
+        nb.push(p)
+      }
+    }
     qa = na
     qb = nb
     steps += na.length + nb.length + 1

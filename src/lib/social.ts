@@ -448,6 +448,12 @@ export function describeTarget(target: string): TargetInfo {
     // The member video lab was retired; old notifications about a video stay readable.
     case "video":
       return { type, id, label: "a video that was retired", href: "/notifications" }
+    case "coderepo":
+      return { type, id, label: "a repository", href: `/code/go/repo-${id}` }
+    case "codeissue":
+      return { type, id, label: "an issue", href: `/code/go/issue-${id}` }
+    case "codepull":
+      return { type, id, label: "a pull request", href: `/code/go/pull-${id}` }
     case "benchmark":
       return { type, id, label: getBenchmark(id)?.name ?? id, href: `/benchmarks/${id}` }
     case "crew":

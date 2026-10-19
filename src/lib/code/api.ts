@@ -175,7 +175,7 @@ type PersonRow = { id: string; name: string; handle: string | null; avatar_url: 
 const person = (p: PersonRow): Person | null => (p ? { id: p.id, name: p.name, handle: p.handle ?? null, avatarUrl: p.avatar_url ?? null } : null)
 const P = "id, name, handle, avatar_url"
 
-const REPO_COLUMNS = `id, slug, name, description, visibility, default_branch, topics, license, homepage, readme, links, forked_from, stars_count, forks_count, watchers_count, open_issues_count, open_pulls_count, stored_bytes, pushed_at, archived_at, hidden_at, hidden_reason, created_at, updated_at, owner:profiles(${P})`
+const REPO_COLUMNS = `id, slug, name, description, visibility, default_branch, topics, license, homepage, readme, links, forked_from, stars_count, forks_count, watchers_count, open_issues_count, open_pulls_count, stored_bytes, pushed_at, archived_at, hidden_at, hidden_reason, created_at, updated_at, owner:profiles!code_repos_owner_id_fkey(${P})`
 // Lists leave the README out.
 const REPO_LIST = REPO_COLUMNS.replace(" readme,", "")
 
@@ -394,7 +394,7 @@ export async function deleteRef(repoId: string, kind: Ref["kind"], name: string)
   fail((await client().rpc("code_delete_ref", { repo: repoId, ref_kind: kind, ref_name: name })).error)
 }
 
-const META = `id, parents, message, author_name, stats, created_at, author:profiles(${P})`
+const META = `id, parents, message, author_name, stats, created_at, author:profiles!code_commits_author_id_fkey(${P})`
 type MetaRow = { id: string; parents: string[]; message: string; author_name: string; stats: CommitMeta["stats"] | null; created_at: string; author: PersonRow; tree?: Tree }
 const toMeta = (r: MetaRow): CommitMeta => ({ id: r.id, parents: r.parents ?? [], message: r.message, author: person(r.author), authorName: r.author_name, stats: r.stats ?? {}, createdAt: r.created_at })
 
@@ -601,7 +601,7 @@ type ReleaseRow = { id: string; tag: string; title: string; notes: string; asset
 const toRelease = (r: ReleaseRow): Release => ({ id: r.id, tag: r.tag, title: r.title, notes: r.notes, assets: r.assets ?? [], prerelease: r.prerelease, author: person(r.author), createdAt: r.created_at })
 
 export async function listReleases(repoId: string): Promise<Release[]> {
-  const { data, error } = await client().from("code_releases").select(`id, tag, title, notes, assets, prerelease, created_at, author:profiles(${P})`).eq("repo_id", repoId).order("created_at", { ascending: false }).limit(100)
+  const { data, error } = await client().from("code_releases").select(`id, tag, title, notes, assets, prerelease, created_at, author:profiles!code_releases_author_id_fkey(${P})`).eq("repo_id", repoId).order("created_at", { ascending: false }).limit(100)
   fail(error)
   return (data as unknown as ReleaseRow[]).map(toRelease)
 }
@@ -702,14 +702,14 @@ type CommentRow = { id: string; body: string; created_at: string; updated_at: st
 const toComment = (r: CommentRow): Comment => ({ id: r.id, body: r.body, author: person(r.author), createdAt: r.created_at, updatedAt: r.updated_at, hiddenAt: r.hidden_at, path: r.path ?? null, line: r.line ?? null, side: r.side ?? null })
 
 export async function listIssueComments(issueId: string): Promise<Comment[]> {
-  const { data, error } = await client().from("code_issue_comments").select(`id, body, created_at, updated_at, hidden_at, author:profiles(${P})`).eq("issue_id", issueId).order("created_at").limit(500)
+  const { data, error } = await client().from("code_issue_comments").select(`id, body, created_at, updated_at, hidden_at, author:profiles!code_issue_comments_author_id_fkey(${P})`).eq("issue_id", issueId).order("created_at").limit(500)
   fail(error)
   return (data as unknown as CommentRow[]).map(toComment)
 }
 
 export async function addIssueComment(issueId: string, body: string): Promise<Comment> {
   const me = await requireMe()
-  const { data, error } = await client().from("code_issue_comments").insert({ issue_id: issueId, author_id: me, body }).select(`id, body, created_at, updated_at, hidden_at, author:profiles(${P})`).single()
+  const { data, error } = await client().from("code_issue_comments").insert({ issue_id: issueId, author_id: me, body }).select(`id, body, created_at, updated_at, hidden_at, author:profiles!code_issue_comments_author_id_fkey(${P})`).single()
   fail(error)
   return toComment(data as unknown as CommentRow)
 }
@@ -779,7 +779,7 @@ export async function mergePull(id: string, expectedBase: string, expectedHead: 
   return data as string
 }
 
-const PC = `id, body, path, line, side, created_at, updated_at, hidden_at, author:profiles(${P})`
+const PC = `id, body, path, line, side, created_at, updated_at, hidden_at, author:profiles!code_pull_comments_author_id_fkey(${P})`
 
 export async function listPullComments(pullId: string): Promise<Comment[]> {
   const { data, error } = await client().from("code_pull_comments").select(PC).eq("pull_id", pullId).order("created_at").limit(1000)
@@ -842,7 +842,7 @@ const toActivity = (r: ActivityRow): Activity => ({
 })
 
 export async function listActivity(repoId?: string, limit = 50): Promise<Activity[]> {
-  let q = client().from("code_activity").select(`id, repo_id, kind, title, ref, created_at, actor:profiles(${P}), repo:code_repos(slug, owner:profiles(${P}))`)
+  let q = client().from("code_activity").select(`id, repo_id, kind, title, ref, created_at, actor:profiles!code_activity_actor_id_fkey(${P}), repo:code_repos(slug, owner:profiles!code_repos_owner_id_fkey(${P}))`)
   if (repoId) q = q.eq("repo_id", repoId)
   const { data, error } = await q.order("created_at", { ascending: false }).limit(limit)
   fail(error)

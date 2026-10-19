@@ -19,9 +19,12 @@ export function useLoad<T>(fn: () => Promise<T>, deps: unknown[]): { data: T | u
   const [state, setState] = useState<{ data: T | undefined; error: Error | null; loading: boolean }>({ data: undefined, error: null, loading: true })
   const [tick, setTick] = useState(0)
   const fnRef = useRef(fn)
-  fnRef.current = fn
+  useEffect(() => {
+    fnRef.current = fn
+  })
   useEffect(() => {
     let live = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- marks the reload as loading; data arrives asynchronously
     setState((s) => ({ ...s, loading: true, error: null }))
     fnRef
       .current()

@@ -70,6 +70,7 @@ export function RepoApp({ owner, slug, rest }: { owner: string; slug: string; re
   const [refs, setRefs] = useState<Ref[]>([])
   useEffect(() => {
     if (data.data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- local copies that pages can update optimistically
       setRepo(data.data.repo)
       setRefs(data.data.refs)
     }

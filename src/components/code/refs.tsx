@@ -259,7 +259,7 @@ export function ReleasesPage() {
   const download = async (a: ReleaseAsset) => {
     setError(null)
     try {
-      location.href = await blobUrl(repo.id, a.sha, a.name)
+      window.location.assign(await blobUrl(repo.id, a.sha, a.name))
     } catch (err) {
       setError((err as Error).message)
     }
