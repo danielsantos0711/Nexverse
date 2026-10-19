@@ -175,9 +175,19 @@ export function passwordStrength(password: string, personal: string[] = []): Str
 type AuthErrorLike = { message?: string; code?: string; status?: number; reasons?: string[] }
 
 /** Turns a Supabase Auth error into one plain sentence that says what to do next. */
+/** Shown when the database refused a new account because an admin closed registration (handle_new_user). */
+export const SIGNUP_CLOSED = "Joining Nexverse is closed right now, so no new account was made. If you already have one, sign in the way you did before."
+
+/**
+ * Supabase reports any failure inside the new-user trigger as this generic message, so it only means "registration
+ * is closed" when the site settings say so; otherwise it is a real error and is shown as one.
+ */
+export const isNewUserSaveError = (message: string) => /database error saving new user/i.test(message)
+
 export function authErrorMessage(error: unknown): string {
   const e = (error ?? {}) as AuthErrorLike
   const message = e.message ?? ""
+  if (/joining nexverse is closed/i.test(message)) return SIGNUP_CLOSED
   switch (e.code) {
     case "invalid_credentials":
       return "That email and password do not match. Check both, or reset your password."

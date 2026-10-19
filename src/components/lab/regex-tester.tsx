@@ -1,10 +1,10 @@
 "use client"
 
-import { useDeferredValue, useMemo, useState } from "react"
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
 import { TriangleAlertIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { LIBRARY, replacePreview, run } from "@/lib/lab/regex"
+import { createRegexRunner, LIBRARY, type RegexOutcome } from "@/lib/lab/regex"
 import { cn } from "@/lib/utils"
 import { ActionButton, CopyAction, fmtInt, Panel, useHydrated } from "./ui"
 
@@ -15,6 +15,8 @@ const FLAGS: { f: string; label: string }[] = [
   { f: "s", label: "dot matches newline" },
   { f: "u", label: "unicode" },
 ]
+
+const EMPTY: RegexOutcome = { result: { ok: true, matches: [], groupNames: [], groupCount: 0, capped: false, ms: 0 }, replaced: null }
 
 const HUES = ["143 180 255", "127 224 176", "216 197 158", "211 180 255"]
 
@@ -29,8 +31,20 @@ export function RegexTester() {
   const dp = useDeferredValue(pattern)
   const dt = useDeferredValue(text)
 
-  const result = useMemo(() => run(dp, flags, dt), [dp, flags, dt])
-  const replaced = useMemo(() => (replacement !== "" || result.ok ? replacePreview(dp, flags, dt, replacement) : null), [dp, flags, dt, replacement, result.ok])
+  const runner = useRef<ReturnType<typeof createRegexRunner> | null>(null)
+  const [outcome, setOutcome] = useState<RegexOutcome>(EMPTY)
+  useEffect(() => {
+    runner.current = createRegexRunner()
+    return () => runner.current?.dispose()
+  }, [])
+  useEffect(() => {
+    let live = true
+    void runner.current?.run(dp, flags, dt, replacement).then((o) => live && setOutcome(o))
+    return () => {
+      live = false
+    }
+  }, [dp, flags, dt, replacement])
+  const { result, replaced } = outcome
   const lib = LIBRARY.find((l) => l.id === libId)
 
   function toggle(f: string) {
@@ -135,7 +149,7 @@ export function RegexTester() {
               )
             )}
           </div>
-          {result.ok && result.capped && <p className="mt-2 text-xs text-gold">Stopped after {fmtInt(result.matches.length)} matches or 250 ms so the page stays responsive.</p>}
+          {result.ok && result.capped && <p className="mt-2 text-xs text-gold">Stopped after {fmtInt(result.matches.length)} matches so the page stays responsive.</p>}
         </Panel>
 
         <Panel title="Replace" description="Use $1, $2 or $<name> for groups, $& for the whole match." actions={replaced != null && <CopyAction text={replaced} label="Copy result" />}>
