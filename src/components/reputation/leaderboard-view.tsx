@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useEffect, useState } from "react"
 import { TrophyIcon } from "lucide-react"
 import { PosterAvatar } from "@/components/forum/forum-ui"
+import { MemberPlanet } from "@/components/planet/member-planet"
 import { LevelChip, LevelRing } from "@/components/reputation/level-ring"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getLeaderboard, LEVELS, PERIODS, POINTS, type LeaderRow, type Period } from "@/lib/community"
@@ -93,22 +94,25 @@ export function LeaderboardView() {
               </Link>
             </div>
           ) : (
-            <ol className="flex flex-col gap-2">
-              <AnimatePresence initial={false} mode="popLayout">
-                {rows.map((r, i) => (
-                  <motion.li
-                    key={`${period}-${r.who.handle ?? r.who.memberId ?? r.who.name}`}
-                    layout={!reduce}
-                    initial={reduce ? { opacity: 0 } : { opacity: 0, transform: "translateY(8px)" }}
-                    animate={reduce ? { opacity: 1 } : { opacity: 1, transform: "translateY(0px)" }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.25, ease: EASE, delay: reduce ? 0 : Math.min(i, 10) * 0.025 }}
-                  >
-                    <Row r={r} rank={i + 1} showLevel={period === "all"} />
-                  </motion.li>
-                ))}
-              </AnimatePresence>
-            </ol>
+            <>
+              <Podium rows={rows.slice(0, 3)} />
+              <ol className="flex flex-col gap-2">
+                <AnimatePresence initial={false} mode="popLayout">
+                  {rows.map((r, i) => (
+                    <motion.li
+                      key={`${period}-${r.who.handle ?? r.who.memberId ?? r.who.name}`}
+                      layout={!reduce}
+                      initial={reduce ? { opacity: 0 } : { opacity: 0, transform: "translateY(8px)" }}
+                      animate={reduce ? { opacity: 1 } : { opacity: 1, transform: "translateY(0px)" }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25, ease: EASE, delay: reduce ? 0 : Math.min(i, 10) * 0.025 }}
+                    >
+                      <Row r={r} rank={i + 1} showLevel={period === "all"} />
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
+              </ol>
+            </>
           )}
         </div>
         {!live && <p className="text-xs text-muted-foreground">This copy has no database, so the board is computed from the sample community (upvotes count as likes) plus what you did in this browser.</p>}
@@ -200,5 +204,41 @@ function Row({ r, rank, showLevel }: { r: LeaderRow; rank: number; showLevel: bo
         <span className="sr-only"> points</span>
       </span>
     </div>
+  )
+}
+
+/** The top three as worlds: first in the middle and raised, each planet grown by its points for the period. */
+function Podium({ rows }: { rows: LeaderRow[] }) {
+  if (rows.length < 3) return null
+  const order = [rows[1], rows[0], rows[2]]
+  return (
+    <ol aria-label="Top three" className="mb-4 grid grid-cols-3 items-end gap-2 rounded-2xl bg-card/40 px-2 pt-2 pb-4 sm:gap-6 sm:px-6">
+      {order.map((r) => {
+        const rank = rows.indexOf(r) + 1
+        const seed = r.who.handle ?? r.who.memberId ?? r.who.name
+        return (
+          <li key={seed} className={cn("flex min-w-0 flex-col items-center gap-1 text-center", rank === 1 ? "order-2 sm:-translate-y-3" : rank === 2 ? "order-1" : "order-3")}>
+            <MemberPlanet
+              handle={seed}
+              size={rank === 1 ? 168 : 132}
+              className="max-w-full"
+              label={`${r.who.name}, rank ${rank}`}
+              stats={{ points: r.points, threads: r.threads, replies: r.answers, accepted: r.accepted, collections: r.collections, events: r.eventsHosted }}
+            />
+            <span className={cn("inline-flex items-center gap-1 text-xs font-medium", MEDALS[rank - 1])}>
+              <TrophyIcon aria-hidden className="size-3.5" /> {rank === 1 ? "First" : rank === 2 ? "Second" : "Third"}
+            </span>
+            {r.who.handle ? (
+              <Link href={`/people/${r.who.handle}`} className="pressable max-w-full truncate text-sm font-medium hover:text-ion">
+                {r.who.name}
+              </Link>
+            ) : (
+              <span className="max-w-full truncate text-sm font-medium">{r.who.name}</span>
+            )}
+            <span className="text-xs text-muted-foreground tabular">{compact(r.points)} points</span>
+          </li>
+        )
+      })}
+    </ol>
   )
 }

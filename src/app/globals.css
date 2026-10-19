@@ -456,3 +456,67 @@
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------------------------------------------------
+ * Round 6, home page.
+ * ------------------------------------------------------------------------------------------------------- */
+
+/* Entrance: `.rise` parts rise into place the first time they scroll into view, staggered by --i (0, 1, 2…).
+   Driven by <RiseObserver> (src/components/home/rise.tsx), which hides them with an adopted style sheet and
+   reveals them with the Web Animations API, so without script or with reduced motion nothing is ever hidden. */
+
+/* A band that fades into the ground at its edges, for shaders and photographs behind a section. */
+.fade-band {
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 55%, transparent);
+}
+.fade-band-x {
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
+
+/* Press feedback for whole rows and cards (links that are blocks): a gentle sink, no travel. */
+.press {
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 200ms ease;
+}
+.press:active {
+  transform: scale(0.985);
+}
+@media (prefers-reduced-motion: reduce) {
+  .press:active {
+    transform: none;
+  }
+}
+
+/* Forum row: the latest reply opens under the title on hover or keyboard focus (desktop); always shown on touch. */
+.reveal-reply {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 240ms var(--ease-out), opacity 200ms ease;
+}
+.reveal-reply > * {
+  min-height: 0;
+  overflow: hidden;
+}
+@media (hover: hover) and (pointer: fine) {
+  .reveal-reply {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  .group:hover .reveal-reply,
+  .group:focus-within .reveal-reply {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
+/* Momentum bar: the item's share of the leader (likes, stars). Grows in with its section's entrance. */
+.momentum {
+  transform-origin: left center;
+  transform: scaleX(var(--m, 1));
+}
+/* Dev-only outline for a home section whose component has not been placed yet. */
+.slot-outline {
+  border: 1px dashed rgb(143 180 255 / 0.35);
+  background: repeating-linear-gradient(135deg, rgb(143 180 255 / 0.04) 0 10px, transparent 10px 20px);
+}

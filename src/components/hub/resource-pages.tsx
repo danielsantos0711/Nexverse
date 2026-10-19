@@ -14,6 +14,8 @@ import { ResourceIndex } from "@/components/hub/resource-index"
 import { ThreadDiscussion } from "@/components/forum/discussion"
 import { SaveButton } from "@/components/social/save-button"
 import { AddToCollection } from "@/components/collections/add-to-collection"
+import { CosmosLink } from "@/components/cosmos/cosmos-link"
+import { ModelScores } from "@/components/benchmarks/model-scores"
 import { DiscussButton } from "@/components/social/discuss-button"
 import {
   ago,
@@ -221,6 +223,7 @@ async function ResourceDetail({ kind, params }: { kind: ResourceKind; params: Pr
             <SaveButton target={`${r.kind}:${r.slug}`} />
             <AddToCollection target={`${r.kind}:${r.slug}`} />
             <CompareButton slug={r.slug} />
+            <CosmosLink target={`${r.kind}:${r.slug}`} />
             <DiscussButton title={r.name} href={resourcePath(r)} category={r.kind === "dataset" ? "data" : r.kind === "model" ? "models" : "show"} />
             <span className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-secondary/60 px-3.5 text-sm" title={reachLabel}>
               <ReachIcon aria-hidden className="size-4" /> <span className="tabular">{compact(r.reach)}</span>
@@ -266,6 +269,8 @@ async function ResourceDetail({ kind, params }: { kind: ResourceKind; params: Pr
               </div>
             </div>
           </section>
+
+          {r.kind === "model" && <ModelScores slug={r.slug} />}
 
           {owner && (
             <section aria-label="Owner" className="flex flex-col gap-3 rounded-2xl border border-border bg-card/60 p-5">

@@ -1,0 +1,229 @@
+"use client"
+
+import Link from "next/link"
+import { motion, useReducedMotion } from "motion/react"
+import { useEffect, useState } from "react"
+import { InfoIcon, SwordsIcon } from "lucide-react"
+import { Sparkline } from "@/components/arena/arena-bits"
+import { primaryButton } from "@/components/forum/forum-ui"
+import { Skeleton } from "@/components/ui/skeleton"
+import { confidence, DUEL_TASKS, ELO, getRatings, type DuelTask, type Rating, type RatingSource } from "@/lib/arena"
+import { LANGUAGES, type LanguageCode } from "@/lib/data"
+import { useSession } from "@/lib/store"
+import { live } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
+
+type State = { rows: Rating[]; source: RatingSource; anyMemberVotes: boolean; key: string }
+
+/** The arena leaderboard: Elo per model, filterable by task and language, with how many votes each rests on. */
+export function RatingsView() {
+  const reduce = useReducedMotion()
+  const { ready } = useSession()
+  const [task, setTask] = useState<DuelTask | null>(null)
+  const [lang, setLang] = useState<LanguageCode | null>(null)
+  const [state, setState] = useState<State | null>(null)
+  const [error, setError] = useState("")
+  const key = `${task ?? ""}|${lang ?? ""}`
+  // While a new filter loads, the previous table stays in place, dimmed.
+  const loading = state?.key !== key && !error
+
+  useEffect(() => {
+    if (live && !ready) return
+    let stale = false
+    getRatings({ task, lang })
+      .then((s) => {
+        if (stale) return
+        setState({ ...s, key: `${task ?? ""}|${lang ?? ""}` })
+        setError("")
+      })
+      .catch((e: Error) => !stale && setError(e.message))
+    return () => {
+      stale = true
+    }
+  }, [task, lang, ready])
+
+  const rows = state?.rows ?? []
+  const filtered = Boolean(task || lang)
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Filters: one row above everything they scope. */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Task">
+          {([null, ...Object.keys(DUEL_TASKS)] as (DuelTask | null)[]).map((t) => (
+            <button
+              key={t ?? "all"}
+              type="button"
+              aria-pressed={task === t}
+              onClick={() => setTask(t)}
+              className={cn(
+                "pressable h-8 rounded-full border px-3 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                task === t ? "border-ion/50 bg-ion/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t ? DUEL_TASKS[t].label : "All tasks"}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="rating-lang" className="text-sm text-muted-foreground">
+            Language
+          </label>
+          <select
+            id="rating-lang"
+            value={lang ?? ""}
+            onChange={(e) => setLang((e.target.value || null) as LanguageCode | null)}
+            className="h-9 rounded-full border border-input bg-background/60 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="" className="bg-popover">
+              All languages
+            </option>
+            {(Object.keys(LANGUAGES) as LanguageCode[]).map((l) => (
+              <option key={l} value={l} className="bg-popover">
+                {LANGUAGES[l].name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {state?.source === "samples" && (
+        <p className="flex items-start gap-2 rounded-lg border border-gold/20 bg-gold/[0.06] px-3 py-2 text-sm text-muted-foreground">
+          <InfoIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-gold" />
+          {live
+            ? "No member has voted yet, so these ratings come from the community sample duels (and your own votes on them). They are examples, not measurements."
+            : "Preview: these ratings come from the community sample duels and your votes in this browser. They are examples, not measurements."}
+        </p>
+      )}
+
+      {error && (
+        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          Ratings could not be loaded ({error}).
+        </p>
+      )}
+
+      <div aria-busy={loading} className={cn("transition-opacity", loading && state && "opacity-60")}>
+        {!state && !error ? (
+          <div className="flex flex-col gap-2" aria-label="Loading ratings">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : rows.length ? (
+          <div className="overflow-hidden rounded-xl border border-border bg-card/40">
+            <table className="w-full text-sm">
+              <caption className="sr-only">
+                Elo ratings{task ? ` for ${DUEL_TASKS[task].label.toLowerCase()} duels` : ""}
+                {lang ? ` in ${LANGUAGES[lang].name}` : ""}
+              </caption>
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                  <th scope="col" className="w-10 py-2.5 pr-2 pl-4 font-medium">
+                    #
+                  </th>
+                  <th scope="col" className="py-2.5 pr-3 font-medium">
+                    Model
+                  </th>
+                  <th scope="col" className="py-2.5 pr-3 text-right font-medium">
+                    Rating
+                  </th>
+                  <th scope="col" className="hidden py-2.5 pr-3 pl-5 font-medium sm:table-cell">
+                    Confidence
+                  </th>
+                  <th scope="col" className="hidden py-2.5 pr-3 font-medium md:table-cell">
+                    Won · lost · tied
+                  </th>
+                  <th scope="col" className="py-2.5 pr-4 font-medium">
+                    <span className="sr-only sm:not-sr-only">Trend</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => {
+                  const c = confidence(r.votes)
+                  return (
+                    <motion.tr
+                      key={r.model}
+                      layout={!reduce}
+                      initial={reduce ? false : { opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: reduce ? 0 : Math.min(i, 10) * 0.03, ease: [0.23, 1, 0.32, 1] }}
+                      className="border-b border-border last:border-0 hover:bg-white/[0.02]"
+                    >
+                      <td className="py-3 pr-2 pl-4 text-muted-foreground tabular">{i + 1}</td>
+                      <td className="w-full max-w-0 py-3 pr-3">
+                        <div className="flex min-w-0 flex-col">
+                          {r.slug ? (
+                            <Link href={`/models/${r.slug}`} className="truncate font-medium hover:text-ion focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+                              {r.model}
+                            </Link>
+                          ) : (
+                            <span className="truncate font-medium">{r.model}</span>
+                          )}
+                          <span className="text-xs text-muted-foreground tabular sm:hidden">
+                            {r.votes} votes · {c.label.toLowerCase()} confidence
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 pr-3 text-right text-base font-semibold tabular">{r.rating}</td>
+                      <td className="hidden py-3 pr-3 pl-5 sm:table-cell">
+                        <span className="inline-flex items-center gap-2" title={`${r.votes} votes`}>
+                          <span aria-hidden className="flex items-end gap-0.5">
+                            {[1, 2, 3].map((n) => (
+                              <span key={n} className={cn("w-1 rounded-sm", n <= c.level ? "bg-ion" : "bg-white/10")} style={{ height: 4 + n * 3 }} />
+                            ))}
+                          </span>
+                          <span className="text-xs text-muted-foreground tabular">
+                            {c.label} · {r.votes} {r.votes === 1 ? "vote" : "votes"}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="hidden py-3 pr-3 text-xs text-muted-foreground tabular md:table-cell">
+                        {r.wins} · {r.losses} · {r.ties}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <Sparkline values={r.history} width={88} height={26} className="max-sm:hidden" />
+                        <Sparkline values={r.history} width={52} height={22} className="sm:hidden" />
+                      </td>
+                    </motion.tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 px-6 py-14 text-center">
+            <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
+              <SwordsIcon aria-hidden className="size-5" />
+            </span>
+            <p className="max-w-md text-sm text-muted-foreground">
+              {filtered ? "No votes on duels like these yet. Try another task or language, or post a duel for it." : "No votes yet. Ratings appear as soon as members vote on duels."}
+            </p>
+            <Link href="/arena/new" className={primaryButton}>
+              Post a duel
+            </Link>
+          </div>
+        )}
+      </div>
+
+      <details className="group rounded-xl border border-border bg-card/30 px-4 py-3 text-sm">
+        <summary className="cursor-pointer list-none font-medium marker:hidden focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2 rounded-sm group-focus-within:text-foreground">
+            <InfoIcon aria-hidden className="size-4 text-muted-foreground" /> How ratings work
+          </span>
+        </summary>
+        <div className="mt-2 flex max-w-[70ch] flex-col gap-2 text-muted-foreground">
+          <p>
+            Every model starts at {ELO.start}. Each vote is a game between the two models in a duel: the preferred model takes points from the other, more when it beats a higher-rated model.
+            A tie or “both are bad” counts as a draw. Votes are replayed oldest first with K = {ELO.k}, the same way for every filter.
+          </p>
+          <p>
+            Models are matched by name, so “Orbit 8B” in two duels is one model. Confidence is low under 20 votes and high from 60. The trend line shows the rating after each of a
+            model’s last {ELO.history} games.
+          </p>
+          <p>Ballots are secret: nobody, including the duel’s author, can see who voted for what.</p>
+        </div>
+      </details>
+    </div>
+  )
+}

@@ -28,9 +28,18 @@ import {
   CalendarDaysIcon,
   TrophyIcon,
   LibraryIcon,
+  OrbitIcon,
+  SwordsIcon,
+  GaugeIcon,
+  MailIcon,
+  UsersRoundIcon,
+  TargetIcon,
+  RocketIcon,
 } from "lucide-react"
 import { AccountButton } from "@/components/account/account-button"
 import { NotificationBell } from "@/components/social/notification-bell"
+import { OnlineNow } from "@/components/presence/online-now"
+import { useUnreadMessages } from "@/lib/messages"
 import { Lockup } from "@/components/brand"
 import { useOpenCommandMenu } from "@/components/site/command-menu"
 import { Button } from "@/components/ui/button"
@@ -53,6 +62,7 @@ const MENUS: { id: string; label: string; links: NavLink[] }[] = [
       { href: "/trending", label: "Trending now", blurb: "Live from GitHub, arXiv and the hub", icon: FlameIcon, tint: "text-gold" },
       { href: "/papers", label: "Papers", blurb: "Today's research, ready to discuss", icon: ScrollTextIcon, tint: "text-ion" },
       { href: "/gh/topics", label: "GitHub topics", blurb: "LLMs, agents, RAG and more, rising", icon: GitBranchIcon, tint: "text-repo" },
+      { href: "/cosmos", label: "Cosmos", blurb: "The whole hub as a star map", icon: OrbitIcon, tint: "text-ion" },
       { href: "/constellations", label: "Constellations", blurb: "Stacks drawn as star maps", icon: SparklesIcon, tint: "text-gold" },
     ],
   },
@@ -61,9 +71,15 @@ const MENUS: { id: string; label: string; links: NavLink[] }[] = [
     label: "Community",
     links: [
       { href: "/forum", label: "Forum", blurb: "Threads in any language, translated", icon: MessageSquareIcon, tint: "text-ion" },
+      { href: "/crews", label: "Crews", blurb: "Labs, study groups and teams with a wall and a chat", icon: UsersRoundIcon, tint: "text-repo" },
+      { href: "/messages", label: "Messages", blurb: "Direct messages with other members", icon: MailIcon, tint: "text-ion" },
       { href: "/chat", label: "Chat", blurb: "Live rooms for every corner of AI", icon: MessagesSquareIcon, tint: "text-gold" },
       { href: "/news", label: "News", blurb: "What happened and why it matters", icon: NewspaperIcon, tint: "text-model" },
       { href: "/people", label: "People", blurb: "Builders and labs to follow", icon: UsersIcon, tint: "text-dataset" },
+      { href: "/missions", label: "Missions", blurb: "Challenges with reputation rewards: accept, build, win", icon: TargetIcon, tint: "text-gold" },
+      { href: "/launchpad", label: "Launchpad", blurb: "Project launches, countdowns and Launch of the day", icon: RocketIcon, tint: "text-repo" },
+      { href: "/arena", label: "Arena", blurb: "Blind duels between models: vote, then see who wrote what", icon: SwordsIcon, tint: "text-model" },
+      { href: "/benchmarks", label: "Benchmarks", blurb: "Eval results from members, verified by reproduction", icon: GaugeIcon, tint: "text-dataset" },
       { href: "/events", label: "Events", blurb: "Reading clubs, meetups and live demos", icon: CalendarDaysIcon, tint: "text-model" },
       { href: "/leaderboard", label: "Leaderboard", blurb: "Who helped the most this week", icon: TrophyIcon, tint: "text-gold" },
       { href: "/for-you", label: "For you", blurb: "New from what you follow and save", icon: HeartIcon, tint: "text-gold" },
@@ -116,6 +132,8 @@ export function SiteHeader() {
             <Kbd className="hidden md:inline-flex">⌘K</Kbd>
             <span className="sr-only md:hidden">Search</span>
           </button>
+          <OnlineNow className="hidden md:flex" />
+          <MessagesLink />
           <NotificationBell />
           <AccountButton />
           <Link
@@ -161,6 +179,25 @@ export function SiteHeader() {
         </div>
       </div>
     </header>
+  )
+}
+
+/** Direct messages, with the number of unread ones. */
+function MessagesLink() {
+  const unread = useUnreadMessages()
+  return (
+    <Link
+      href="/messages"
+      aria-label={unread ? `Messages, ${unread} unread` : "Messages"}
+      className="pressable relative hidden size-9 place-items-center rounded-full text-muted-foreground hover:bg-white/[0.06] hover:text-foreground sm:grid"
+    >
+      <MailIcon aria-hidden className="size-4.5" />
+      {unread > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-ion px-1 text-[10px] font-semibold text-background tabular-nums">
+          {unread > 9 ? "9+" : unread}
+        </span>
+      )}
+    </Link>
   )
 }
 

@@ -1,57 +1,41 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Suspense } from "react"
-import { LiveHomeSection, LiveHomeSkeleton } from "@/components/live/home-section"
 import { Hero } from "@/components/hero/hero"
-import { SectionHead } from "@/components/hub/bits"
-import { ConstellationCard, NewsCard, PersonCard, ThreadRow } from "@/components/hub/cards"
+import { ConstellationCard } from "@/components/hub/cards"
 import { ConstellationMap } from "@/components/hub/constellation-map"
-import { Item, Magnetic, Stagger } from "@/components/hub/motion"
-import { Pulse, type PulseEvent } from "@/components/hub/pulse"
-import { Spaces } from "@/components/hub/spaces"
-import { TrendingTabs } from "@/components/hub/trending"
-import {
-  categoryGroups,
-  categoriesIn,
-  constellations,
-  KINDS,
-  LANGUAGES,
-  news,
-  people,
-  resourcePath,
-  resources,
-  resourcesOf,
-  threads,
-  threadsIn,
-  threadTitle,
-  trending,
-  type ResourceKind,
-} from "@/lib/data"
+import { BuilderWorlds, Close, DoToday, Head, HotInForum } from "@/components/home/sections"
+import { Signal, SignalSkeleton } from "@/components/home/signal"
+import { RiseObserver } from "@/components/home/rise"
+import { ArenaToday, MissionsToday } from "@/components/home/today-widgets"
+import { LaunchOfTheDay } from "@/components/launchpad/launch-of-the-day"
+import { OnlineNow } from "@/components/presence/online-now"
+import { TrendingBoard, type TrendItem } from "@/components/home/trending-board"
+import { ago, constellations, KINDS, LANGUAGES, people, resourcePath, resources, resourcesOf, threads, trending, type ResourceKind } from "@/lib/data"
 
-function pulseEvents(): PulseEvent[] {
-  const ev: PulseEvent[] = []
-  const rs = trending(resources)
-  const ts = trending(threads)
-  for (let i = 0; i < 6; i++) {
-    const r = rs[i]
-    ev.push({ who: r.owner, verb: r.kind === "repo" ? "pushed to" : "updated", what: r.name, href: resourcePath(r) })
-    const t = ts[i]
-    const reply = t.replies.at(-1)
-    if (reply) ev.push({ who: reply.author, verb: "replied in", what: threadTitle(t), href: `/forum/${t.id}` })
-    const n = news[i % news.length]
-    if (i < 4) ev.push({ who: n.by, verb: "shared", what: n.title, href: `/news/${n.id}` })
-    const c = constellations[i % constellations.length]
-    if (i < 3) ev.push({ who: people[(i * 5) % 12].handle, verb: "saved the constellation", what: c.name, href: `/constellations/${c.slug}` })
-  }
-  return ev
-}
-
+/*
+ * The home page. Under the hero (the official N in its galaxy), one focus per section:
+ *   Signal          today's briefing from GitHub, arXiv and the hub, with the launch of the day
+ *   Trending        what the hub is liking this week
+ *   Forum           the hottest threads, and who is online now
+ *   Take part       open missions and duels
+ *   Constellations  stacks people mapped
+ *   Builders        members as planets
+ *   Close           one thing to do
+ */
 export default function Home() {
-  const lists = Object.fromEntries((Object.keys(KINDS) as ResourceKind[]).map((k) => [k, trending(resourcesOf(k)).slice(0, 8)])) as Record<ResourceKind, (typeof resources)[number][]>
+  const kinds = Object.keys(KINDS) as ResourceKind[]
+  const lists = Object.fromEntries(
+    kinds.map((k) => [
+      k,
+      trending(resourcesOf(k))
+        .slice(0, 7)
+        .map((r): TrendItem => ({ slug: r.slug, name: r.name, owner: r.owner, summary: r.summary, kind: r.kind, task: r.task, likes: r.likes, updated: r.updated, href: resourcePath(r), ago: ago(r.updated) })),
+    ])
+  ) as Record<ResourceKind, TrendItem[]>
   const hot = trending(threads).slice(0, 6)
-  const [lead, ...restNews] = [...news].sort((a, b) => b.votes - a.votes)
-  const [hero, ...moreConstellations] = constellations
-  const creators = [...people].sort((a, b) => b.followers - a.followers).slice(0, 9)
+  const [map, ...moreConstellations] = constellations
+  const builders = [...people].sort((a, b) => b.followers - a.followers).slice(0, 8)
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
   const counts = [
     { label: "Downloads this month", value: sum([...resourcesOf("model"), ...resourcesOf("dataset")].map((r) => r.reach)) },
@@ -65,6 +49,7 @@ export default function Home() {
 
   return (
     <>
+      <RiseObserver />
       <Hero counts={counts} />
 
       <div aria-hidden className="overflow-hidden border-b border-border py-4">
@@ -77,163 +62,58 @@ export default function Home() {
         </div>
       </div>
 
-      <Spaces
-        data={{
-          kinds: Object.fromEntries((Object.keys(KINDS) as ResourceKind[]).map((k) => [k, resourcesOf(k).length])) as Record<ResourceKind, number>,
-          top: trending(resources)
-            .slice(0, 9)
-            .map((r) => ({ name: r.name, href: resourcePath(r), kind: r.kind })),
-          threads: trending(threads).slice(0, 8).map(threadTitle),
-          threadCount: threads.length,
-          rooms: ["general", "local-ai", "agents"],
-          news: [lead.title],
-          constellations: constellations.length,
-        }}
-      />
+      <Suspense fallback={<SignalSkeleton />}>
+        <Signal launch={<LaunchOfTheDay />} />
+      </Suspense>
 
-      <section aria-labelledby="trend-h" className="shell grid grid-cols-1 gap-10 pt-16 lg:grid-cols-[1fr_22rem]">
-        <div className="min-w-0">
-          <SectionHead id="trend-h" title="Trending this week" href="/explore" action="Explore all">
-            <p className="text-sm text-muted-foreground">Ranked by likes, weighted toward what changed recently.</p>
-          </SectionHead>
-          <TrendingTabs lists={lists} />
-        </div>
-        <aside aria-labelledby="pulse-h" className="glass self-start rounded-2xl p-4 lg:sticky lg:top-20">
-          <h2 id="pulse-h" className="mb-3 flex items-center gap-2 px-2 font-sans text-sm font-medium tracking-normal">
-            <span className="pulse-dot" aria-hidden /> Pulse
-            <span className="ml-auto text-xs font-normal text-muted-foreground">What people are doing</span>
-          </h2>
-          <Pulse events={pulseEvents()} size={8} />
-        </aside>
+      <section aria-labelledby="trend-h" className="shell mt-28 md:mt-36">
+        <Head id="trend-h" title="Trending in the hub" lead="Ranked by likes, weighted toward what changed this week." href="/explore" action="Explore all" />
+        <TrendingBoard lists={lists} />
       </section>
 
-      <div className="shell mt-24">
-        <Suspense fallback={<LiveHomeSkeleton />}>
-          <LiveHomeSection />
-        </Suspense>
+      <div className="mt-28 md:mt-36">
+        <HotInForum threads={hot} online={<OnlineNow />} />
       </div>
 
-      <section aria-labelledby="const-h" className="relative mt-24 overflow-hidden border-y border-border">
-        <Image src="/space/deep-field.webp" alt="" fill sizes="100vw" className="-z-10 object-cover opacity-30" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background via-background/70 to-background" />
+      <div className="mt-28 md:mt-36">
+        <DoToday missions={<MissionsToday />} arena={<ArenaToday />} />
+      </div>
+
+      <section aria-labelledby="const-h" className="relative isolate mt-28 overflow-hidden md:mt-36">
+        <Image src="/space/deep-field.webp" alt="" fill sizes="100vw" className="fade-band -z-10 object-cover opacity-25" />
         <div className="shell grid grid-cols-1 gap-10 py-16 lg:grid-cols-[22rem_1fr] lg:items-center">
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-gold">Only on Nexverse</p>
-            <h2 id="const-h" className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
-              Constellations
-            </h2>
-            <p className="text-muted-foreground">
-              A model alone is a star. Builders connect the model, the data, the tools and the code that make something work, and save it as a map anyone can follow.
-            </p>
-            <div className="glass mt-2 flex flex-col gap-1 rounded-xl p-4">
-              <Link href={`/constellations/${hero.slug}`} className="text-lg font-semibold hover:underline">
-                {hero.name}
+            <Head id="const-h" title="Constellations" lead="A model alone is a star. Builders connect the model, the data, the tools and the code that make something work, and save it as a map anyone can follow." className="mb-0" />
+            <div className="rise">
+              <Link href={`/constellations/${map.slug}`} className="press flex flex-col gap-1 rounded-2xl bg-white/[0.04] p-4 hover:bg-white/[0.07]">
+                <span className="text-lg font-semibold">{map.name}</span>
+                <span className="text-sm text-muted-foreground">{map.goal}</span>
               </Link>
-              <p className="text-sm text-muted-foreground">{hero.goal}</p>
             </div>
-            <Link href="/constellations" className="text-sm text-ion hover:underline">
+            <Link href="/constellations" className="pressable self-start text-sm text-ion hover:underline">
               See every constellation →
             </Link>
           </div>
-          <div className="glass rounded-3xl p-2 md:p-4">
-            <ConstellationMap c={hero} />
+          <div className="rise rounded-3xl bg-card/60 p-2 md:p-4">
+            <ConstellationMap c={map} />
           </div>
         </div>
-        <Stagger className="shell grid gap-4 pb-16 md:grid-cols-2 lg:grid-cols-4">
-          {moreConstellations.map((c) => (
-            <Item key={c.slug}>
+        <ul className="shell flex snap-x snap-mandatory gap-4 overflow-x-auto pb-8 [scrollbar-width:none] md:grid md:grid-cols-2 md:overflow-visible lg:grid-cols-4">
+          {moreConstellations.map((c, i) => (
+            <li key={c.slug} className="rise w-[80%] shrink-0 snap-start md:w-auto" style={{ "--i": i } as React.CSSProperties}>
               <ConstellationCard c={c} className="h-full" />
-            </Item>
+            </li>
           ))}
-        </Stagger>
+        </ul>
       </section>
 
-      <section aria-labelledby="forum-h" className="shell mt-24 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_20rem]">
-        <div className="min-w-0">
-          <SectionHead id="forum-h" title="Hot in the forum" href="/forum" action="Open the forum">
-            <p className="text-sm text-muted-foreground">Ask in any language. Every thread has a translation one click away.</p>
-          </SectionHead>
-          <Stagger as="ol" className="flex flex-col gap-1">
-            {hot.map((t) => (
-              <Item as="li" key={t.id}>
-                <ThreadRow t={t} />
-              </Item>
-            ))}
-          </Stagger>
-        </div>
-        <aside aria-labelledby="cats-h" className="flex flex-col gap-3">
-          <h2 id="cats-h" className="font-sans text-sm font-medium tracking-normal text-muted-foreground">
-            Categories
-          </h2>
-          <ul className="flex flex-col gap-2">
-            {categoryGroups.map((g) => {
-              const cats = categoriesIn(g.slug)
-              return (
-                <li key={g.slug}>
-                  <Link href={`/forum#${g.slug}`} className="pressable flex flex-col gap-1 rounded-xl border border-border bg-card/70 p-3 transition-colors hover:border-ion/40 hover:bg-card">
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span className="text-sm font-medium">{g.name}</span>
-                      <span className="text-xs text-muted-foreground tabular">{cats.reduce((n, c) => n + threadsIn(c.slug).length, 0)} threads</span>
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">{cats.map((c) => c.name).join(" · ")}</span>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-          <Link href="/forum/new" className="pressable mt-1 inline-flex h-10 items-center justify-center rounded-full bg-secondary text-sm font-medium hover:bg-accent">
-            Start a thread
-          </Link>
-        </aside>
-      </section>
+      <div className="mt-24 md:mt-32">
+        <BuilderWorlds handles={builders.map((p) => p.handle)} />
+      </div>
 
-      <section aria-labelledby="news-h" className="shell mt-24">
-        <SectionHead id="news-h" title="News, with the reason it matters" href="/news" action="All news" />
-        <div className="grid gap-4 lg:grid-cols-2">
-          <NewsCard n={lead} big />
-          <Stagger as="ul" className="flex flex-col gap-3">
-            {restNews.slice(0, 4).map((n) => (
-              <Item as="li" key={n.id}>
-                <NewsCard n={n} />
-              </Item>
-            ))}
-          </Stagger>
-        </div>
-      </section>
-
-      <section aria-labelledby="people-h" className="shell mt-24">
-        <SectionHead id="people-h" title="Builders to follow" href="/people" action="Everyone" />
-        <Stagger className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          {creators.map((p) => (
-            <Item key={p.handle}>
-              <PersonCard handle={p.handle} />
-            </Item>
-          ))}
-        </Stagger>
-      </section>
-
-      <section aria-labelledby="join-h" className="shell mt-28">
-        <div className="relative isolate overflow-hidden rounded-3xl border border-border px-6 py-16 md:px-14 md:py-24">
-          <Image src="/space/cliffs.webp" alt="" fill sizes="100vw" className="-z-10 object-cover" />
-          <div className="absolute inset-0 -z-10 bg-gradient-to-r from-background via-background/80 to-background/10" />
-          <div className="flex max-w-xl flex-col items-start gap-5">
-            <h2 id="join-h" className="text-3xl font-semibold tracking-[-0.03em] md:text-5xl md:leading-[1.02]">
-              Put your work in the sky.
-            </h2>
-            <p className="text-muted-foreground md:text-lg">Share a model, a dataset, a tool or a repo in under a minute. Others will find it, use it and connect it to theirs.</p>
-            <div className="flex flex-wrap items-center gap-4">
-              <Magnetic>
-                <Link href="/share" className="pressable inline-flex h-12 items-center rounded-full bg-primary px-6 font-medium text-primary-foreground">
-                  Share what you built
-                </Link>
-              </Magnetic>
-              <Link href="/sign-in" className="text-sm text-muted-foreground hover:text-foreground">
-                Or sign in with your email →
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <div className="mt-28 md:mt-36">
+        <Close />
+      </div>
     </>
   )
 }

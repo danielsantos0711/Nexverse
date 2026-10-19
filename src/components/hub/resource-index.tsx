@@ -89,7 +89,7 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[15rem_1fr]">
-      <aside aria-label="Filters" className="flex flex-col gap-6 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:pr-2">
+      <aside aria-label="Filters" className="flex min-w-0 flex-col gap-4 lg:sticky lg:gap-6 lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:pr-2">
         {!kind && (
           <Facet title="Kind">
             {(Object.keys(KINDS) as ResourceKind[]).map((k) => {
@@ -233,7 +233,8 @@ function Facet({ title, children }: { title: string; children: React.ReactNode }
   return (
     <section className="flex flex-col gap-2">
       <h2 className="font-sans text-xs font-medium tracking-normal text-muted-foreground">{title}</h2>
-      <div className="flex flex-wrap gap-1.5">{children}</div>
+      {/* one swipeable row per facet on phones, so the results start on the first screen */}
+      <div className="-mx-[var(--gutter)] flex gap-1.5 overflow-x-auto px-[var(--gutter)] [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0">{children}</div>
     </section>
   )
 }
@@ -245,7 +246,7 @@ function Pill({ on, onClick, children }: { on: boolean; onClick: () => void; chi
       aria-pressed={on}
       onClick={onClick}
       className={cn(
-        "pressable inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] transition-colors",
+        "pressable inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] whitespace-nowrap transition-colors",
         on ? "border-ion/50 bg-ion/15 text-foreground" : "border-border bg-card/60 text-muted-foreground hover:border-white/15 hover:text-foreground"
       )}
     >

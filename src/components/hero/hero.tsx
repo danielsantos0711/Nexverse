@@ -57,7 +57,7 @@ export function Hero({ counts }: { counts: { label: string; value: number }[] })
 
         <motion.div className="relative z-10 -mt-[min(14vw,4.5rem)] flex w-full max-w-2xl flex-col items-center gap-6" style={reduce ? undefined : { y: textY, opacity: fade }}>
           <motion.p {...rise(0.05)} className="inline-flex items-center gap-2 rounded-full border border-border bg-black/40 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-            <span className="pulse-dot" aria-hidden /> Builders online in 40 languages right now
+            <span className="pulse-dot" aria-hidden /> Models, forum, missions and duels in one sky
           </motion.p>
           <motion.h1 {...rise(0.12)} id="hero-h" className="text-[clamp(2rem,1.2rem+2.6vw,3.5rem)] leading-[1.05] font-semibold tracking-[-0.04em]">
             <span className="chrome-text">The open universe</span>
