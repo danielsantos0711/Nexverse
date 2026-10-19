@@ -1,14 +1,14 @@
 /**
- * Live feeds from public APIs: GitHub (repository search and release feeds) and arXiv. Each fetcher is a
+ * Live feeds from public APIs: GitHub (repository search and release feeds). Each fetcher is a
  * cached function ("use cache"): results become part of the prerendered page and are refreshed in the
  * background (ISR-style) on the lifetime set by cacheLife. A feed that fails returns `ok: false` with no items
  * and is cached only briefly, so the page still renders and a later visitor triggers a retry.
  */
 import { cacheLife, cacheTag } from "next/cache"
-import { ARXIV_AREAS, GH_TOPICS, RELEASE_REPOS, type ArxivArea } from "./catalog"
-import { asArray, fetchSafe, getJson, getText, isRecord } from "./http"
-import { normalizeGh, parseArxiv, parseReleasesAtom } from "./parse"
-import type { Feed, GhReleaseItem, GhRepo, Paper } from "./types"
+import { GH_TOPICS, RELEASE_REPOS } from "./catalog"
+import { asArray, fetchSafe, getJson, isRecord } from "./http"
+import { normalizeGh, parseReleasesAtom } from "./parse"
+import type { Feed, GhReleaseItem, GhRepo } from "./types"
 
 const clampLimit = (n: number, max: number) => Math.min(max, Math.max(1, Math.floor(Number.isFinite(n) ? n : 10)))
 
@@ -97,27 +97,4 @@ export async function githubReleases(limit = 8): Promise<Feed<GhReleaseItem>> {
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
     .slice(0, clampLimit(limit, 30))
   return merge(feeds, "github", items)
-}
-
-/**
- * The newest arXiv submissions in one area, or across all the areas Nexverse follows ("all"). arXiv asks
- * for gentle use, so each list is one request, cached for hours.
- */
-export async function arxivPapers(area: ArxivArea | "all" = "all", limit = 30): Promise<Feed<Paper>> {
-  "use cache"
-  cacheTag("live", "live:arxiv", "live:papers", `live:arxiv:${area}`)
-  const n = clampLimit(limit, 100)
-  try {
-    const cats = area === "all" ? ARXIV_AREAS.map((a) => a.id) : [area]
-    const q = `search_query=${cats.map((c) => `cat:${c}`).join("+OR+")}&sortBy=submittedDate&sortOrder=descending`
-    // A few extra, since entries that name sites Nexverse does not feature are left out.
-    const xml = await getText(`https://export.arxiv.org/api/query?${q}&max_results=${n + 10}`)
-    const items = parseArxiv(xml).slice(0, n)
-    if (!items.length) throw new Error("empty response")
-    cacheLife("hours")
-    return { items, fetchedAt: Date.now(), ok: true, source: "arxiv" }
-  } catch (err) {
-    cacheLife("minutes")
-    return failed("arxiv", err)
-  }
 }

@@ -35,7 +35,7 @@ export async function latestStories(limit = 60): Promise<Stories> {
   // Readers never see an editor's scheduled story early, whatever the cache did.
   const now = Date.now()
   const items = res.items.filter((s) => s.publishedAt && Date.parse(s.publishedAt) <= now)
-  cacheLife(res.ok ? "minutes" : "seconds")
+  cacheLife("minutes")
   return { ok: res.ok, items }
 }
 
@@ -49,7 +49,7 @@ export async function storyByKey(key: string): Promise<{ ok: boolean; story: Sto
     return { ok: true, story: null }
   }
   const res = await read(`${PUBLIC}&${isId ? "id" : "slug"}=eq.${encodeURIComponent(key.toLowerCase())}&limit=1&select=${encodeURIComponent(STORY_COLUMNS)}`)
-  cacheLife(res.ok ? "minutes" : "seconds")
+  cacheLife("minutes")
   const story = res.items[0] ?? null
   return { ok: res.ok, story: story && story.publishedAt && Date.parse(story.publishedAt) <= Date.now() ? story : null }
 }

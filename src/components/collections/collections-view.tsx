@@ -144,11 +144,11 @@ export function CollectionsView() {
             <p className="max-w-md text-sm text-muted-foreground">
               {view === "mine"
                 ? signedOut
-                  ? "Sign in to keep collections of models, datasets, papers and threads."
-                  : "You have no collections yet. Start one here, or use “Collect” on any model, dataset, paper or thread."
+                  ? "Sign in to keep collections of models, datasets, repos and threads."
+                  : "You have no collections yet. Start one here, or use “Collect” on any model, dataset, repo or thread."
                 : view === "following"
                   ? "You are not following any collections. Follow one to find it here."
-                  : "No public collections yet. Start one: gather the models, papers, repos and threads you keep sending people, with a note on why each one matters."}
+                  : "No public collections yet. Start one: gather the models, datasets, repos and threads you keep sending people, with a note on why each one matters."}
             </p>
             {(view === "mine" || view === "discover") &&
               (signedOut ? (
@@ -173,7 +173,7 @@ export function CollectionsView() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>New collection</DialogTitle>
-            <DialogDescription>Gather models, datasets, papers, repos and threads, with a note on why each one matters.</DialogDescription>
+            <DialogDescription>Gather models, datasets, tools, repos and threads, with a note on why each one matters.</DialogDescription>
           </DialogHeader>
           <Gate cap="collection.create" action="start a collection">
           <CollectionForm

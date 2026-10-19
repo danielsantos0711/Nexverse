@@ -1,6 +1,6 @@
 /**
  * Where links and images in a README point. Relative paths resolve against the repository the file lives
- * in; links to GitHub repositories and topics and to arXiv papers become in-site links; links and images on
+ * in; links to GitHub repositories and topics become in-site links; links and images on
  * other AI communities' sites are dropped (the text stays); everything else must be an absolute http(s) or
  * mailto URL, or it is dropped.
  */

@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation"
 import { createContext, use, useEffect, useState } from "react"
-import { FilmIcon, FolderGit2Icon, LinkIcon, MessageSquareIcon, UserIcon, type LucideIcon } from "lucide-react"
+import { FileTextIcon, FolderGit2Icon, LinkIcon, MessageSquareIcon, NewspaperIcon, UserIcon, type LucideIcon } from "lucide-react"
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from "@/components/ui/command"
 import { useRole } from "@/lib/roles"
+import { useMenus } from "@/lib/menus"
 import { isLinkVisible, useSiteSettings } from "@/lib/site-settings"
 import { db } from "@/lib/supabase"
 
@@ -14,17 +15,14 @@ export const useOpenCommandMenu = () => use(Ctx)
 const PAGES = [
   ["Explore everything", "/explore"],
   ["Trending now", "/trending"],
-  ["Papers", "/papers"],
-  ["Most cited papers", "/papers?view=cited"],
   ["Forum", "/forum"],
   ["Chat rooms", "/chat"],
   ["Start a thread", "/forum/new"],
-  ["News", "/news"],
+  ["News: the AI newsroom", "/news"],
+  ["Code: Nexverse repositories", "/code"],
+  ["Lab", "/lab"],
   ["Constellations", "/constellations"],
   ["People", "/people"],
-  ["Video lab", "/video"],
-  ["Shot builder for AI video", "/video/builder"],
-  ["Share a video", "/video/share"],
   ["Publish a project", "/new/project"],
   ["Your studio", "/studio"],
   ["Lab: VRAM calculator", "/lab/vram"],
@@ -63,24 +61,26 @@ async function searchHub(q: string): Promise<Hit[]> {
   const c = db()
   if (!c) return []
   const like = `%${q.replace(/[%_,()]/g, " ").trim()}%`
-  const [threads, links, projects, people, videos] = await Promise.all([
+  const [threads, links, projects, people, pages, stories] = await Promise.all([
     c.from("questions").select("id, title").ilike("title", like).order("created_at", { ascending: false }).limit(6),
     c.from("submissions").select("id, kind, title").ilike("title", like).order("created_at", { ascending: false }).limit(6),
-    c.from("projects").select("slug, name, kind").eq("status", "published").ilike("name", like).limit(6),
+    c.from("projects").select("id, name, kind").eq("status", "published").ilike("name", like).limit(6),
     c.from("profiles").select("handle, name").not("handle", "is", null).or(`name.ilike.${like},handle.ilike.${like}`).limit(6),
-    c.from("video_posts").select("id, title").ilike("title", like).limit(6),
+    c.from("site_pages").select("slug, title").eq("status", "published").ilike("title", like).limit(6),
+    c.from("news_stories").select("slug, title").eq("status", "published").ilike("title", like).order("published_at", { ascending: false }).limit(6),
   ])
   const hits: Hit[] = []
   for (const t of threads.data ?? []) hits.push({ key: `q${t.id}`, label: t.title, href: `/forum/${t.id}`, icon: MessageSquareIcon, group: "Forum" })
   for (const s of links.data ?? [])
     hits.push({ key: `s${s.id}`, label: s.title, hint: s.kind, href: s.kind === "news" ? `/news/${s.id}` : `/explore?q=${encodeURIComponent(s.title)}`, icon: LinkIcon, group: "Shared links" })
-  for (const p of projects.data ?? []) hits.push({ key: `p${p.slug}`, label: p.name, hint: p.kind, href: `/p/${p.slug}`, icon: FolderGit2Icon, group: "Projects" })
+  for (const p of projects.data ?? []) hits.push({ key: `p${p.id}`, label: p.name, hint: p.kind, href: `/p/${p.id}`, icon: FolderGit2Icon, group: "Projects" })
   for (const p of people.data ?? []) hits.push({ key: `u${p.handle}`, label: p.name, hint: `@${p.handle}`, href: `/people/${p.handle}`, icon: UserIcon, group: "People" })
-  for (const v of videos.data ?? []) hits.push({ key: `v${v.id}`, label: v.title, href: `/video/${v.id}`, icon: FilmIcon, group: "Videos" })
+  for (const p of pages.data ?? []) hits.push({ key: `g${p.slug}`, label: p.title, href: `/pages/${p.slug}`, icon: FileTextIcon, group: "Pages" })
+  for (const n of stories.data ?? []) hits.push({ key: `n${n.slug}`, label: n.title, href: `/news/${n.slug}`, icon: NewspaperIcon, group: "News" })
   return hits
 }
 
-/** ⌘K: jump to any page, or to threads, links, projects, people and videos members shared. Opens instantly, by design. */
+/** ⌘K: jump to any page (including the admins' custom pages), or to threads, links, projects and people. Opens instantly, by design. */
 export function CommandMenu({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -88,6 +88,7 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const { settings } = useSiteSettings()
   const { isStaff } = useRole()
+  const { pages: menuPages } = useMenus()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -120,14 +121,18 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
     router.push(href)
   }
 
-  const pages = [...PAGES, ...(isStaff ? ([["Admin panel", "/admin"]] as const) : [])].filter(([, href]) => isLinkVisible(settings, href.split("?")[0]))
+  const pages: (readonly [string, string])[] = [
+    ...PAGES,
+    ...menuPages.map((p) => [p.title, p.href] as const),
+    ...(isStaff ? ([["Admin panel", "/admin"]] as const) : []),
+  ].filter(([, href]) => isLinkVisible(settings, href.split("?")[0]))
   const shown = query.trim().length >= 2 ? hits : []
   const groups = [...new Set(shown.map((h) => h.group))]
 
   return (
     <Ctx value={() => setOpen(true)}>
       {children}
-      <CommandDialog open={open} onOpenChange={setOpen} title="Search Nexverse" description="Find pages, threads, links, projects, people and videos">
+      <CommandDialog open={open} onOpenChange={setOpen} title="Search Nexverse" description="Find pages, threads, links, projects and people">
         <Command>
           <CommandInput placeholder="Search everything…" value={query} onValueChange={setQuery} />
           <CommandList className="max-h-[60vh]">

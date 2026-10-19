@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useState } from "react"
-import { LockIcon } from "lucide-react"
+import { CheckIcon, LockIcon } from "lucide-react"
 import type { RolesData } from "@/components/admin/roles-admin"
 import { Switch } from "@/components/admin/controls"
 import { CAP_GROUPS, CAP_INFO, CAPS, readableColor, STAFF_CAPS, type Cap, type RoleDef } from "@/lib/caps"
@@ -25,6 +25,9 @@ export function RolesMatrix({ data }: { data: RolesData }) {
   const [busy, setBusy] = useState<string | null>(null)
   const roles = [...data.roles].sort((a, b) => a.rank - b.rank)
   const capsOf = (r: RoleDef) => pending[r.key] ?? r.caps
+  const member = roles.find((r) => r.key === "member")
+  // Every role includes the Member powers, so those cells show a check instead of a second switch.
+  const fromMember = (r: RoleDef, cap: Cap) => r.key !== "member" && r.key !== "admin" && Boolean(member && capsOf(member).includes(cap)) && !capsOf(r).includes(cap)
 
   async function toggle(role: RoleDef, cap: Cap, on: boolean) {
     const before = capsOf(role)
@@ -57,7 +60,8 @@ export function RolesMatrix({ data }: { data: RolesData }) {
       <p className="text-sm text-muted-foreground">
         A member has a power when the Member column, one of their roles, or their reputation tier gives it. Paused members have none until the pause ends.
       </p>
-      <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+      {/* relative: keeps the screen-reader-only labels inside the scroller, so the page never scrolls sideways. */}
+      <div className="relative -mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
         <table className="w-full min-w-[44rem] border-separate border-spacing-0 text-sm">
           <caption className="sr-only">Which roles have which powers</caption>
           <thead>
@@ -100,7 +104,12 @@ export function RolesMatrix({ data }: { data: RolesData }) {
                         return (
                           <td key={r.key} className="border-b border-border/60 px-2 py-2 text-center group-hover/row:bg-card/60">
                             <span className="inline-flex items-center justify-center" title={lock ?? undefined}>
-                              {lock && !on ? (
+                              {fromMember(r, cap) ? (
+                                <span title="Every member has this">
+                                  <CheckIcon aria-hidden className="size-4 text-muted-foreground" />
+                                  <span className="sr-only">{`${r.label}: ${CAP_INFO[cap].label}. Included, every member has this.`}</span>
+                                </span>
+                              ) : lock && !on ? (
                                 <LockIcon aria-label={`${r.label}: ${CAP_INFO[cap].label}. ${lock}`} className="size-3.5 text-muted-foreground/60" />
                               ) : (
                                 <Switch
@@ -116,7 +125,7 @@ export function RolesMatrix({ data }: { data: RolesData }) {
                         )
                       })}
                       <td className="border-b border-border/60 px-2 py-2 text-xs whitespace-nowrap text-muted-foreground group-hover/row:bg-card/60">
-                        {tier ? `${tier.label}, ${tier.minPoints.toLocaleString("en")}+` : "No"}
+                        {tier ? `${tier.label}, ${tier.minPoints.toLocaleString("en")}+` : "Roles only"}
                       </td>
                     </tr>
                   )

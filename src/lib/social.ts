@@ -14,7 +14,7 @@ import { db, live } from "@/lib/supabase"
  *   share:<uuid>         a link or news story a member shared (public.submissions)
  *   thread:<uuid>        a member's forum thread
  *   collection:<uuid>    a member's collection
- *   ghrepo:<id> paper:<id>  GitHub repositories and arXiv papers (lib/live/ids)
+ *   ghrepo:<id> paper:<id>  GitHub repositories, and arXiv papers saved before papers moved off-site (lib/live/ids)
  * Follows additionally use member:<uuid>, category:<slug> and room:<slug> (person:<handle> is from the old samples).
  */
 

@@ -91,19 +91,19 @@ export type Tier = { key: string; label: string; minPoints: number; caps: string
 
 /** The same defaults the migration seeds, used before the database answers or when it has no roles yet. */
 export const DEFAULT_ROLES: RoleDef[] = [
-  { key: "member", label: "Member", description: "", color: "#949cad", builtin: true, rank: 0, caps: ["thread.create", "reply.create", "room.post", "message.send", "news.tip", "ai.use", "collection.create", "issue.create"] },
-  { key: "contributor", label: "Contributor", description: "", color: "#7fe0b0", builtin: true, rank: 20, caps: ["link.post", "submission.create", "project.create", "repo.create", "event.create", "mission.create", "launch.create", "duel.create", "crew.create"] },
-  { key: "editor", label: "Editor", description: "", color: "#d8c59e", builtin: true, rank: 40, caps: ["news.write", "news.publish", "pages.edit", "menus.edit", "link.post", "submission.create", "project.create", "repo.create"] },
+  { key: "member", label: "Member", description: "Everyone who signed in. What every member can do from day one.", color: "#949cad", builtin: true, rank: 0, caps: ["thread.create", "reply.create", "room.post", "message.send", "news.tip", "ai.use", "collection.create", "issue.create"] },
+  { key: "contributor", label: "Contributor", description: "Trusted members. Reaching Star (300 reputation) makes you one; admins can also grant it.", color: "#7fe0b0", builtin: true, rank: 20, caps: ["link.post", "submission.create", "project.create", "repo.create", "event.create", "mission.create", "launch.create", "duel.create", "crew.create"] },
+  { key: "editor", label: "Editor", description: "Writes and publishes news and edits the site's own pages and menus.", color: "#d8c59e", builtin: true, rank: 40, caps: ["news.write", "news.publish", "pages.edit", "menus.edit", "link.post", "submission.create", "project.create", "repo.create"] },
   {
     key: "moderator",
     label: "Moderator",
-    description: "",
+    description: "Keeps the community healthy: handles reports, hides posts, pauses accounts, runs the forum and chat.",
     color: "#8fb4ff",
     builtin: true,
     rank: 60,
     caps: ["moderate", "forum.manage", "chat.manage", "room.create", "link.post", "submission.create", "project.create", "repo.create", "event.create", "mission.create", "launch.create", "duel.create", "crew.create"],
   },
-  { key: "admin", label: "Admin", description: "", color: "#ffb4e6", builtin: true, rank: 100, caps: [...CAPS] },
+  { key: "admin", label: "Admin", description: "Runs the site. Admins always have every power.", color: "#ffb4e6", builtin: true, rank: 100, caps: [...CAPS] },
 ]
 
 export const DEFAULT_TIERS: Tier[] = [

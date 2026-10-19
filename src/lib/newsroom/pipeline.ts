@@ -57,6 +57,16 @@ async function pool<T, R>(items: T[], size: number, fn: (t: T) => Promise<R>): P
   return out
 }
 
+/** The date a page says it was published (Open Graph, schema.org or a <time> element), if it says. */
+export function pagePublished(html: string): string | null {
+  const raw =
+    html.match(/<meta[^>]+(?:property|name)=["'](?:article:published_time|og:published_time|date|pubdate)["'][^>]*content=["']([^"']+)["']/i)?.[1] ??
+    html.match(/"datePublished"\s*:\s*"([^"]+)"/)?.[1] ??
+    html.match(/<time[^>]+datetime=["']([^"']+)["']/i)?.[1]
+  const t = raw ? Date.parse(raw) : NaN
+  return Number.isFinite(t) ? new Date(t).toISOString() : null
+}
+
 /** The article pages behind the first signals of a cluster, as plain text, best effort. */
 export async function readPages(signals: Signal[], max = 2): Promise<Material[]> {
   return Promise.all(
@@ -65,7 +75,9 @@ export async function readPages(signals: Signal[], max = 2): Promise<Material[]>
       const got = await getPage(signal.url, 8_000)
       if (!got.ok) return { signal }
       const page = htmlToText(got.text, PAGE_CHARS)
-      return { signal, page: { title: page.title, text: [page.description, page.text].filter(Boolean).join("\n\n").slice(0, PAGE_CHARS) } }
+      // A page that dates itself fills in a signal that came without a date (news pages without feeds).
+      const dated = signal.publishedAt ? signal : { ...signal, publishedAt: pagePublished(got.text) }
+      return { signal: dated, page: { title: page.title, text: [page.description, page.text].filter(Boolean).join("\n\n").slice(0, PAGE_CHARS) } }
     })
   )
 }
@@ -163,6 +175,8 @@ export async function runNewsroom(o: RunOptions): Promise<RunSummary> {
           excerpt: it.excerpt,
           publisher: (s.publisher || hostname(it.url)).slice(0, 80),
           internal_only: s.internalOnly,
+          // The first check of a source only takes a baseline: what it already lists is not news any more.
+          used: !s.lastChecked && !it.publishedAt,
           published_at: it.publishedAt,
           hash,
         })
@@ -253,9 +267,14 @@ async function writeCluster(
   autoPublish: Record<string, boolean>,
   canPublish: boolean
 ): Promise<{ ok: true; status: "draft" | "published" } | { ok: false; reason: string }> {
-  const material = await readPages(c.signals.slice(0, 5))
   const ids = c.signals.map((s) => s.id).filter((n): n is number => typeof n === "number")
   const done = (storyId: string | null) => (ids.length ? update(db, "news_signals", `id=in.(${ids.join(",")})`, { used: true, story_id: storyId }).catch(() => {}) : Promise.resolve())
+  const material = await readPages(c.signals.slice(0, 5))
+  const newest = Math.max(...material.map((m) => (m.signal.publishedAt ? Date.parse(m.signal.publishedAt) : Date.now())))
+  if (Date.now() - newest > 10 * DAY) {
+    await done(null)
+    return { ok: false, reason: "the newest source is more than ten days old" }
+  }
   const res = await writeStory(material, ask)
   if (!res.ok) {
     // A group the model skipped or got wrong is not retried on every run.

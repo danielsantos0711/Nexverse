@@ -74,11 +74,7 @@ function Body() {
         />
       </div>
 
-      {!live ? (
-        <Notice tone="warn" title="Read only in a browser-only copy">
-          These are the defaults Nexverse starts with. Connect Supabase to change them.
-        </Notice>
-      ) : state && !state.ok ? (
+      {live && state && !state.ok ? (
         <Notice tone="warn" title="Roles are not set up on this database yet">
           The capabilities migration (20261019121000_capabilities.sql) has not been applied, so these are the defaults and nothing can be saved yet.
         </Notice>

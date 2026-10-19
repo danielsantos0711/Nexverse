@@ -704,6 +704,9 @@ begin
   new.created_at := now();
   new.updated_at := now();
   -- A tag never moves; a branch only moves through code_commit / code_merge_pull.
+  if coalesce(current_setting('code.quiet_refs', true), '') = 'on' then
+    return new;
+  end if;
   perform public.code__log(new.repo_id, new.kind, new.name, case when new.kind = 'tag' then 'tags' else 'tree/' || new.name end);
   return new;
 end;
@@ -1141,12 +1144,13 @@ begin
   select fid, b.sha, b.size, b.store_repo, b.created_at from public.code_blobs b where b.repo_id = source;
   insert into public.code_commits (repo_id, id, parents, tree, message, author_id, author_name, stats, created_at)
   select fid, c.id, c.parents, c.tree, c.message, c.author_id, c.author_name, c.stats, c.created_at from public.code_commits c where c.repo_id = source;
+  -- The copied refs are not news (the fork itself is the one line in the activity), so the ref trigger stays quiet.
+  perform set_config('code.quiet_refs', 'on', true);
   insert into public.code_refs (repo_id, kind, name, commit_id, created_by, created_at, updated_at)
   select fid, f.kind, f.name, f.commit_id, me, f.created_at, f.updated_at from public.code_refs f where f.repo_id = source;
+  perform set_config('code.quiet_refs', 'off', true);
   insert into public.code_labels (repo_id, name, color, description)
   select fid, l.name, l.color, l.description from public.code_labels l where l.repo_id = source on conflict do nothing;
-  -- The copied refs are not news: the fork itself is the one line in the activity.
-  delete from public.code_activity where repo_id = fid and kind in ('branch', 'tag');
 
   perform public.notify(src.owner_id, 'system', me, 'coderepo:' || source, 'Your repository ' || public.code__full_name(source) || ' was forked');
   return fid;

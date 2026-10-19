@@ -344,9 +344,12 @@ export async function sendPasswordReset(email: string) {
   authFail(error)
 }
 
+// Microsoft only sends the email address when it is asked for by scope (Supabase's Azure guide).
+const scopesFor = (provider: Provider) => (provider === "azure" ? { scopes: "email" } : {})
+
 /** Opens the provider's own sign-in page; it comes back to /auth/callback. */
 export async function signInWithProvider(provider: Provider, next: string) {
-  const { error } = await authClient().auth.signInWithOAuth({ provider, options: { redirectTo: callbackUrl(next) } })
+  const { error } = await authClient().auth.signInWithOAuth({ provider, options: { redirectTo: callbackUrl(next), ...scopesFor(provider) } })
   authFail(error)
 }
 
@@ -377,7 +380,7 @@ export async function listIdentities(): Promise<UserIdentity[]> {
 
 /** Links another sign-in to your account. Leaves the page for the provider and comes back to settings. */
 export async function linkProvider(provider: Provider) {
-  const { error } = await authClient().auth.linkIdentity({ provider, options: { redirectTo: callbackUrl("/settings#security") } })
+  const { error } = await authClient().auth.linkIdentity({ provider, options: { redirectTo: callbackUrl("/settings#security"), ...scopesFor(provider) } })
   authFail(error)
 }
 

@@ -174,6 +174,13 @@ export function LeaderboardView() {
   )
 }
 
+/** "Post outside links, publish projects and the Contributor badge". */
+function sentence(parts: string[]) {
+  const words = parts.map((p, i) => (i === 0 ? p : p.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase())))
+  const text = words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}` : words[0]
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
 /** What each reputation tier unlocks, from the tiers the admins set (the database checks the same list). */
 function Unlocks() {
   const caps = useCaps()
@@ -198,7 +205,7 @@ function Unlocks() {
               <span className="font-medium">{t.label}</span>
               <span className="text-xs text-muted-foreground tabular">{compact(t.min)}+</span>
             </p>
-            <p className="text-xs text-muted-foreground">{t.text.length ? t.text.join(", ") : "Where everyone starts."}</p>
+            <p className="text-xs text-muted-foreground">{t.text.length ? sentence(t.text) : "Where everyone starts."}</p>
           </li>
         ))}
       </ol>

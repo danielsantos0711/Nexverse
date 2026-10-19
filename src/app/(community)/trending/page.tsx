@@ -1,28 +1,29 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
-import { HashIcon, LayersIcon } from "lucide-react"
+import { HashIcon, LayersIcon, NewspaperIcon } from "lucide-react"
 import { PageTitle, SectionHead } from "@/components/hub/bits"
 import { HubTrending } from "@/components/hub/hub-trending"
+import { StoryCard } from "@/components/news/story-card"
 import { Item, Stagger } from "@/components/hub/motion"
 import { FeedMeta, FeedUnavailable } from "@/components/live/bits"
 import { GitHubRepoCard } from "@/components/live/github-repo-card"
-import { PaperCard } from "@/components/live/paper-card"
 import { PillTabs } from "@/components/live/pill-tabs"
 import { ReleaseList } from "@/components/live/release-list"
 import { CardsSkeleton, RowsSkeleton, StripSkeleton } from "@/components/live/skeletons"
+import { latestStories } from "@/lib/newsroom/public"
 import { TrendingNowLive } from "@/components/live/trending-now"
-import { arxivPapers, GH_TOPICS, ghTopicHref, githubReleases, githubTopicRepos, githubTrendingAi, type Feed, type GhRepo } from "@/lib/live"
+import { GH_TOPICS, ghTopicHref, githubReleases, githubTopicRepos, githubTrendingAi, type Feed, type GhRepo } from "@/lib/live"
 
 export const metadata: Metadata = {
   title: "Trending",
-  description: "Live: the open-source AI repositories rising on GitHub, fresh releases, the newest arXiv papers and what the Nexverse community is into right now.",
+  description: "Live: the open-source AI repositories rising on GitHub, fresh releases, the newest Nexverse newsroom stories and what the community is into right now.",
 }
 
 const SECTIONS = [
   { id: "repos", label: "GitHub" },
   { id: "releases", label: "Releases" },
-  { id: "papers", label: "Papers" },
+  { id: "news", label: "News" },
   { id: "hub", label: "On Nexverse" },
 ] as const
 
@@ -91,24 +92,28 @@ async function Releases() {
   )
 }
 
-async function Papers() {
-  // The same arguments as /papers, so both share one cache entry.
-  const feed = await arxivPapers("all", 30)
+async function Newsroom() {
+  // The same arguments as /news, so both share one cache entry.
+  const { items } = await latestStories(60)
+  if (!items.length) {
+    return (
+      <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
+        <NewspaperIcon aria-hidden className="size-5 text-gold" />
+        <p>The newsroom has not published its first story yet. It writes short, sourced stories from official blogs and releases, checked by an editor.</p>
+        <Link href="/news#tip" className="text-ion hover:underline">
+          Send the editors a tip →
+        </Link>
+      </div>
+    )
+  }
   return (
-    <div className="flex flex-col gap-4">
-      <FeedMeta feed={feed} />
-      {feed.items.length ? (
-        <Stagger as="ol" className="grid gap-3 lg:grid-cols-2" gap={0.04}>
-          {feed.items.slice(0, 6).map((p) => (
-            <Item as="li" key={p.id}>
-              <PaperCard paper={p} className="h-full" />
-            </Item>
-          ))}
-        </Stagger>
-      ) : (
-        <FeedUnavailable source="arxiv" />
-      )}
-    </div>
+    <Stagger as="ol" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" gap={0.04}>
+      {items.slice(0, 6).map((s) => (
+        <Item as="li" key={s.id}>
+          <StoryCard story={s} />
+        </Item>
+      ))}
+    </Stagger>
   )
 }
 
@@ -116,9 +121,9 @@ export default function TrendingPage() {
   return (
     <div className="shell pb-16">
       <PageTitle
-        eyebrow="Live from GitHub and arXiv, and from the hub itself"
+        eyebrow="Live from GitHub, the newsroom and the hub itself"
         title="Trending"
-        lead="The open-source AI projects gathering stars, the releases that just shipped, the newest research and what people here are talking about. Open any of them to read it on Nexverse: READMEs, files, abstracts, PDFs and citations, refreshed through the day."
+        lead="The open-source AI projects gathering stars, the releases that just shipped, the newsroom’s latest stories and what people here are talking about. Repositories open on Nexverse with their READMEs and files, refreshed through the day."
       >
         <nav aria-label="Sections" className="mt-1 flex flex-wrap gap-2">
           {SECTIONS.map((s) => (
@@ -146,9 +151,9 @@ export default function TrendingPage() {
             <Releases />
           </Suspense>
         </Section>
-        <Section id="papers" title="New on arXiv" lead="The newest submissions in AI, language, learning, vision and robotics." href="/papers" action="All papers">
-          <Suspense fallback={<RowsSkeleton rows={6} />}>
-            <Papers />
+        <Section id="news" title="From the newsroom" lead="Short, sourced stories on launches, research, policy and tools, checked by an editor." href="/news" action="All news">
+          <Suspense fallback={<CardsSkeleton cards={3} />}>
+            <Newsroom />
           </Suspense>
         </Section>
         <Section id="hub" title="Popular on Nexverse" lead="What members published, shared and liked, and the newest threads in the forum." href="/explore" action="Explore the hub">

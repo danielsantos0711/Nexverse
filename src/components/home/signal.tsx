@@ -1,12 +1,15 @@
 import Link from "next/link"
-import { ArrowUpRightIcon, FileTextIcon, FolderGit2Icon, MessageSquarePlusIcon, StarIcon, TagIcon } from "lucide-react"
+import { ArrowUpRightIcon, FolderGit2Icon, MessageSquarePlusIcon, NewspaperIcon, StarIcon, TagIcon } from "lucide-react"
 import { Cover } from "@/components/hub/bits"
 import { discussHref, SOURCES } from "@/components/live/bits"
 import { LiveBadge } from "@/components/live/live-badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { compact } from "@/lib/data"
-import { areaInfo, arxivPapers, githubReleases, githubTrendingAi, type Feed, type GhReleaseItem, type GhRepo, type Paper } from "@/lib/live"
-import { ghHref, paperHref } from "@/lib/live/ids"
+import { AiNote, CategoryTag, UnconfirmedBadge } from "@/components/news/bits"
+import { githubReleases, githubTrendingAi, type Feed, type GhReleaseItem, type GhRepo } from "@/lib/live"
+import { ghHref } from "@/lib/live/ids"
+import { storyHref, type Story } from "@/lib/newsroom"
+import { latestStories } from "@/lib/newsroom/public"
 import { cn } from "@/lib/utils"
 import { FromTheHub } from "./from-the-hub"
 import { CometStreaks, TextRing } from "./fx"
@@ -20,14 +23,6 @@ const parts = (ms: number) => {
     month: d.toLocaleString("en-GB", { month: "short", timeZone: "UTC" }),
     long: DAY.format(d),
   }
-}
-
-const areaName = (cat: string | undefined) => (cat ? (areaInfo(cat)?.short ?? cat) : "Research")
-const authorLine = (p: Paper) => (p.authors.length ? `${p.authors[0]}${p.authors.length > 1 ? ` and ${p.authors.length - 1} more` : ""}` : "")
-/** The first two sentences of an abstract, so the lead reads as a summary rather than a wall. */
-const gist = (s: string) => {
-  const sentences = s.replace(/\s+/g, " ").match(/[^.!?]+[.!?]+/g) ?? [s]
-  return sentences.slice(0, 2).join(" ").trim()
 }
 
 /** The frame every part of the briefing shares: a quiet heading with its source, then the content. */
@@ -46,30 +41,31 @@ function Part({ title, icon: Icon, source, className, children, i = 0 }: { title
   )
 }
 
-function Lead({ p, now }: { p: Paper; now: number }) {
+function Lead({ story, now }: { story: Story; now: number }) {
+  const href = storyHref(story)
   return (
     <article className="rise group relative flex flex-col gap-4" style={{ "--i": 1 } as React.CSSProperties}>
-      <h3 className="max-w-[34ch] font-display text-[1.4rem] leading-[1.18] font-semibold tracking-[-0.025em] text-balance md:text-[1.65rem]">
-        <Link href={paperHref(p.id)} className="decoration-ion/60 underline-offset-[0.18em] hover:underline">
-          {p.title}
-        </Link>
-      </h3>
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
         <span className="inline-flex items-center gap-1.5 text-gold">
-          <FileTextIcon aria-hidden className="size-4" /> Today&apos;s lead paper
+          <NewspaperIcon aria-hidden className="size-4" /> {story.featured ? "Nexverse Exclusive" : "Today's lead story"}
         </span>
-        <span className="text-muted-foreground">
-          {areaName(p.categories[0])} · {since(p.published, now)}
-        </span>
+        <CategoryTag category={story.category} />
+        {story.unconfirmed && <UnconfirmedBadge />}
+        {story.publishedAt && <span className="text-muted-foreground">{since(story.publishedAt, now)}</span>}
       </p>
-      <p className="max-w-[68ch] text-[15px] leading-relaxed text-foreground/85">{gist(p.summary)}</p>
+      <h3 className="max-w-[34ch] font-display text-[1.4rem] leading-[1.18] font-semibold tracking-[-0.025em] text-balance md:text-[1.65rem]">
+        <Link href={href} className="decoration-ion/60 underline-offset-[0.18em] hover:underline">
+          {story.title}
+        </Link>
+      </h3>
+      {story.dek && <p className="max-w-[68ch] text-[15px] leading-relaxed text-foreground/85">{story.dek}</p>}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3 pt-1">
-        <span className="text-sm text-muted-foreground">{authorLine(p)}</span>
+        {story.aiGenerated && <AiNote className="text-sm" />}
         <div className="flex items-center gap-2">
-          <Link href={paperHref(p.id)} className="pressable inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground">
-            Read it here <ArrowUpRightIcon aria-hidden className="size-4" />
+          <Link href={href} className="pressable inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground">
+            Read the story <ArrowUpRightIcon aria-hidden className="size-4" />
           </Link>
-          <Link href={discussHref(p.title)} className="pressable inline-flex h-9 items-center gap-1.5 rounded-full bg-white/[0.06] px-4 text-sm hover:bg-white/[0.1]">
+          <Link href={discussHref(story.title)} className="pressable inline-flex h-9 items-center gap-1.5 rounded-full bg-white/[0.06] px-4 text-sm hover:bg-white/[0.1]">
             <MessageSquarePlusIcon aria-hidden className="size-4" /> Discuss
           </Link>
         </div>
@@ -78,15 +74,17 @@ function Lead({ p, now }: { p: Paper; now: number }) {
   )
 }
 
-function MorePapers({ items }: { items: Paper[] }) {
+function MoreStories({ items }: { items: Story[] }) {
   return (
     <ul className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
-      {items.map((p) => (
-        <li key={p.id}>
-          <Link href={paperHref(p.id)} className="press group flex flex-col gap-1 rounded-lg px-2 py-2.5 -mx-2 hover:bg-white/[0.035]">
-            <span className="text-xs text-gold/90">{areaName(p.categories[0])}</span>
-            <span className="line-clamp-2 text-[15px] leading-snug font-medium group-hover:text-foreground">{p.title}</span>
-            <span className="truncate text-xs text-muted-foreground">{authorLine(p)}</span>
+      {items.map((s) => (
+        <li key={s.id}>
+          <Link href={storyHref(s)} className="press group -mx-2 flex flex-col gap-1 rounded-lg px-2 py-2.5 hover:bg-white/[0.035]">
+            <span className="flex items-center gap-2">
+              <CategoryTag category={s.category} className="text-[11px]" />
+              {s.unconfirmed && <UnconfirmedBadge className="px-1.5 py-0 text-[11px]" />}
+            </span>
+            <span className="line-clamp-2 text-[15px] leading-snug font-medium group-hover:text-foreground">{s.title}</span>
           </Link>
         </li>
       ))}
@@ -150,19 +148,20 @@ function Quiet({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Signal: today's briefing. The lead paper and more from arXiv, what is rising on GitHub (or, when GitHub's
- * search is rate-limited, the latest releases of the projects Nexverse tracks), the launch of the day and the
- * news members shared. Data comes from cached feeds, so this prerenders; render it inside
+ * Signal: today's briefing. The newsroom's lead story and the next ones, what is rising on GitHub (or, when
+ * GitHub's search is rate-limited, the latest releases of the projects Nexverse tracks), the launch of the day
+ * and the news members shared. With no stories published yet it says so and points to the tip form. Data comes from cached feeds, so this prerenders; render it inside
  * <Suspense fallback={<SignalSkeleton />}>.
  */
 export async function Signal({ launch }: { launch?: React.ReactNode }) {
-  const [papers, repos, releases] = await Promise.all([arxivPapers("all", 30), githubTrendingAi(9), githubReleases(16)])
-  const feeds: Feed<unknown>[] = [papers, repos.ok ? repos : releases]
+  const [news, repos, releases] = await Promise.all([latestStories(60), githubTrendingAi(9), githubReleases(16)])
+  const feeds: Feed<unknown>[] = [repos.ok ? repos : releases]
   const live = feeds.filter((f) => f.ok)
   const fetchedAt = Math.max(...(live.length ? live : feeds).map((f) => f.fetchedAt))
   const oldest = Math.min(...(live.length ? live : feeds).map((f) => f.fetchedAt))
   const today = parts(fetchedAt)
-  const [lead, ...more] = papers.items
+  const lead = news.items.find((s) => s.featured) ?? news.items[0]
+  const more = news.items.filter((s) => s !== lead)
   // Releases worth a line: real version tags (no branch markers), one per project.
   const seen = new Set<string>()
   const shipped = releases.items.filter((r) => /^v?\d|^b\d+$/.test(r.tag) && !r.tag.includes("/") && !seen.has(r.repo) && (seen.add(r.repo), true))
@@ -177,7 +176,7 @@ export async function Signal({ launch }: { launch?: React.ReactNode }) {
       <div className="shell pt-20 md:pt-28">
         <header className="rise mb-10 grid grid-cols-[auto_1fr] items-center gap-x-5 gap-y-4 md:mb-14 md:gap-x-8 lg:grid-cols-[auto_1fr_auto]">
           <div className="group relative grid size-[7.5rem] shrink-0 place-items-center md:size-[9.5rem]">
-            <TextRing className="absolute inset-0 text-ion/80" words={["Signal", "today's briefing", "GitHub", "arXiv", "Nexverse"]} font={11} weight={500} ink="rgb(201 217 255 / 0.75)" tracking={0.14} />
+            <TextRing className="absolute inset-0 text-ion/80" words={["Signal", "today's briefing", "newsroom", "GitHub", "Nexverse"]} font={11} weight={500} ink="rgb(201 217 255 / 0.75)" tracking={0.14} />
             <span className="flex flex-col items-center leading-none">
               <span className="font-display text-4xl font-semibold tracking-[-0.04em] tabular md:text-5xl">{today.day}</span>
               <span className="mt-1 text-xs text-muted-foreground">{today.month}</span>
@@ -188,7 +187,7 @@ export async function Signal({ launch }: { launch?: React.ReactNode }) {
               Signal
             </h2>
             <p className="max-w-[60ch] text-[15px] text-foreground/80 md:text-base">
-              {today.long}. What moved on GitHub and arXiv, and what members shared, in one read.
+              {today.long}. What the newsroom reported, what moved on GitHub and what members shared, in one read.
             </p>
             <LiveBadge fetchedAt={oldest} ok={live.length > 0} />
           </div>
@@ -196,8 +195,8 @@ export async function Signal({ launch }: { launch?: React.ReactNode }) {
             <Link href="/trending" className="pressable inline-flex h-9 items-center rounded-full bg-white/[0.06] px-4 text-sm hover:bg-white/[0.1]">
               Everything trending
             </Link>
-            <Link href="/papers" className="pressable inline-flex h-9 items-center rounded-full bg-white/[0.06] px-4 text-sm hover:bg-white/[0.1]">
-              All papers
+            <Link href="/news" className="pressable inline-flex h-9 items-center rounded-full bg-white/[0.06] px-4 text-sm hover:bg-white/[0.1]">
+              All news
             </Link>
           </nav>
         </header>
@@ -205,15 +204,22 @@ export async function Signal({ launch }: { launch?: React.ReactNode }) {
         <div className="grid gap-x-12 gap-y-12 lg:grid-cols-12">
           <div className="flex min-w-0 flex-col gap-10 lg:col-span-7">
             {lead ? (
-              <Lead p={lead} now={fetchedAt} />
+              <Lead story={lead} now={fetchedAt} />
             ) : (
-              <Part title="New on arXiv" icon={FileTextIcon} source={SOURCES.arxiv.name}>
-                <Quiet>arXiv is not answering right now. The briefing fills in again in a few minutes.</Quiet>
+              <Part title="From the newsroom" icon={NewspaperIcon}>
+                <Quiet>
+                  {news.ok
+                    ? "The newsroom has not published its first story yet. It writes short, sourced stories from official blogs and releases, each checked by an editor. "
+                    : "The newsroom is not switched on for this copy of the site yet. "}
+                  <Link href="/news#tip" className="text-ion hover:underline">
+                    Send the editors a tip
+                  </Link>
+                </Quiet>
               </Part>
             )}
             {more.length > 0 && (
-              <Part title="More from arXiv" icon={FileTextIcon} source={SOURCES.arxiv.name} i={2}>
-                <MorePapers items={more.slice(0, 4)} />
+              <Part title="More from the newsroom" icon={NewspaperIcon} i={2}>
+                <MoreStories items={more.slice(0, 4)} />
               </Part>
             )}
           </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { PlusIcon, Trash2Icon } from "lucide-react"
+import { CheckIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import type { RolesData } from "@/components/admin/roles-admin"
 import { Button } from "@/components/ui/button"
 import { FieldError } from "@/components/ui/field"
@@ -10,8 +10,8 @@ import { CAP_GROUPS, CAP_INFO, CAPS, STAFF_CAPS, type Cap, type Tier } from "@/l
 import { clearBadgeCache, saveRepTiers } from "@/lib/roles"
 import { cn } from "@/lib/utils"
 
-// Powers that make sense to unlock with reputation (the site-running ones stay with roles).
-const EARNABLE = CAPS.filter((c) => !STAFF_CAPS.includes(c) && CAP_INFO[c].group !== "Run the site")
+// Powers that make sense to unlock with reputation; news, pages and running the site stay with roles.
+const EARNABLE = CAPS.filter((c) => !STAFF_CAPS.includes(c) && ["Talk", "Share", "Create", "Code"].includes(CAP_INFO[c].group))
 
 type Row = Tier & { id: string }
 
@@ -142,10 +142,11 @@ export function RolesTiers({ data }: { data: RolesData }) {
                       disabled={!data.editable}
                       onClick={() => edit(t.id, { caps: on ? t.caps.filter((x) => x !== c) : [...t.caps, c] })}
                       className={cn(
-                        "pressable rounded-full border px-2.5 py-1 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60",
-                        on ? "border-ion/60 bg-ion/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+                        "pressable inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60",
+                        on ? "border-ion/70 bg-ion/15 font-medium text-foreground" : "border-border text-muted-foreground hover:text-foreground"
                       )}
                     >
+                      {on && <CheckIcon aria-hidden className="size-3 text-ion" />}
                       {CAP_INFO[c].label}
                     </button>
                   )

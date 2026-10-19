@@ -68,7 +68,7 @@ export function ConstellationsGallery() {
           </EmptyMedia>
           <EmptyTitle className="text-lg">The sky is still dark</EmptyTitle>
           <EmptyDescription>
-            A constellation is a public collection with two or more things in it: the model, the dataset, the paper and the repo that make one idea work, in the order you would read them. Start a collection, add what belongs together, and it lights up here.
+            A constellation is a public collection with two or more things in it: the model, the dataset, the tool and the repo that make one idea work, in the order you would read them. Start a collection, add what belongs together, and it lights up here.
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent className="flex-row flex-wrap justify-center">

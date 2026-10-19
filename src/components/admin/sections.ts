@@ -25,5 +25,7 @@ export const ADMIN_PAGES = [
   { href: "/admin/members", label: "Members", admin: false },
   { href: "/admin/content", label: "Content", admin: false },
   { href: "/admin/log", label: "Moderation log", admin: false },
+  { href: "/admin/roles", label: "Roles and powers", admin: true },
+  { href: "/admin/ai", label: "AI", admin: true },
   { href: "/admin/settings", label: "Site settings", admin: true },
 ] as const

@@ -86,6 +86,7 @@ export function SocialButtons({ next, verb = "Continue", disabled, onError, chil
   const { social } = useAuthSettings()
   const [busy, setBusy] = useState<SocialId | null>(null)
   if (!social.length) return null
+  const compact = social.length > 2
 
   async function go(id: SocialId) {
     setBusy(id)
@@ -101,11 +102,21 @@ export function SocialButtons({ next, verb = "Continue", disabled, onError, chil
 
   return (
     <>
-      <div className={cn("grid gap-2", social.length > 1 && "sm:grid-cols-2")}>
+      <div className={cn("grid gap-2", compact ? "grid-cols-2" : social.length > 1 && "sm:grid-cols-2")}>
         {social.map((p) => (
-          <Button key={p.id} type="button" variant="outline" size="lg" className="h-11 justify-center gap-2.5 bg-card/40" disabled={disabled || busy !== null} onClick={() => go(p.id)}>
+          <Button
+            key={p.id}
+            type="button"
+            variant="outline"
+            size="lg"
+            className="h-11 justify-center gap-2.5 bg-card/40"
+            disabled={disabled || busy !== null}
+            onClick={() => go(p.id)}
+            // With several buttons side by side only the name fits; the full phrase stays for screen readers.
+            aria-label={`${verb} with ${p.label}`}
+          >
             <ProviderIcon id={p.id} />
-            {busy === p.id ? "Opening…" : `${verb} with ${p.label}`}
+            {busy === p.id ? "Opening…" : compact ? p.label : `${verb} with ${p.label}`}
           </Button>
         ))}
       </div>

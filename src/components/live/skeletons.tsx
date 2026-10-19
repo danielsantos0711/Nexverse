@@ -37,25 +37,6 @@ export function CardsSkeleton({ cards = 6, className }: { cards?: number; classN
   )
 }
 
-export function PapersSkeleton({ count = 5 }: { count?: number }) {
-  return (
-    <div aria-busy="true" aria-label="Loading papers" className="flex flex-col gap-5">
-      <Skeleton className="h-10 w-72 rounded-full" />
-      <div className="flex flex-col gap-3">
-        {Array.from({ length: count }, (_, i) => (
-          <div key={i} className="flex flex-col gap-2.5 rounded-2xl border border-border bg-card/50 p-4">
-            <Skeleton className="h-3 w-1/3" />
-            <Skeleton className="h-5 w-3/4" />
-            <Skeleton className="h-3 w-1/2" />
-            <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-3 w-11/12" />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export function StripSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading" className="flex gap-2 overflow-hidden">

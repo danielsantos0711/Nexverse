@@ -10,6 +10,7 @@ import { Cover, KIND_ICONS, kindText } from "@/components/hub/bits"
 import { Skeleton } from "@/components/ui/skeleton"
 import { KINDS, type ResourceKind } from "@/lib/data"
 import { live } from "@/lib/supabase"
+import { GlowCard } from "@/components/hub/glow-card"
 import { cn } from "@/lib/utils"
 import { PixelField } from "./fx"
 import { loadHubItems, since, useLoad, type HubItem } from "./hub-data"
@@ -142,7 +143,8 @@ export function TrendingBoard() {
               />
             ) : (
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
-                <ItemLink item={lead} className="press group relative isolate flex min-h-[17rem] flex-col justify-end overflow-hidden rounded-2xl border border-white/[0.06] bg-card p-6">
+                <GlowCard className="rounded-2xl">
+                <ItemLink item={lead} className="press group relative isolate z-[1] flex h-full min-h-[17rem] flex-col justify-end overflow-hidden rounded-2xl border border-white/[0.06] bg-card p-6">
                   <span aria-hidden className="absolute inset-0 -z-20 transition-transform duration-700 ease-out group-hover:scale-[1.04]">
                     <Image src={SKY[lead.id.length % SKY.length]} alt="" fill sizes="(min-width: 1024px) 40vw, 100vw" className="object-cover opacity-50" />
                     <Cover seed={lead.id} kind={lead.kind} className="absolute inset-0 opacity-80 mix-blend-screen" />
@@ -162,6 +164,7 @@ export function TrendingBoard() {
                     By {lead.by} · {since(lead.at)}
                   </span>
                 </ItemLink>
+                </GlowCard>
                 {rest.length ? (
                   <ol className="flex flex-col">
                     {rest.map((r) => (

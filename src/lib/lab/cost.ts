@@ -82,6 +82,7 @@ export const PRICE_PRESETS: Omit<PriceRow, "id">[] = [
 
 export function fmtMoney(n: number) {
   if (!Number.isFinite(n)) return "$∞"
+  if (n > 0 && n < 0.00001) return "< $0.00001"
   const digits = n === 0 ? 2 : n < 0.01 ? 5 : n < 1 ? 4 : n < 1000 ? 2 : 0
   return `$${n.toLocaleString("en", { minimumFractionDigits: Math.min(2, digits), maximumFractionDigits: digits })}`
 }

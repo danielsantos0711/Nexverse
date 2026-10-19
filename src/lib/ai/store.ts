@@ -29,7 +29,9 @@ function headers(): Record<string, string> | null {
   const token = context.getStore()?.token
   if (token) return { apikey: env.key, authorization: `Bearer ${token}` }
   const svc = serviceKey()
-  return svc ? { apikey: svc, authorization: `Bearer ${svc}` } : null
+  if (!svc) return null
+  // New-style secret keys (sb_secret_...) go in the apikey header only; legacy service_role JWTs in both.
+  return svc.startsWith("sb_") ? { apikey: svc } : { apikey: svc, authorization: `Bearer ${svc}` }
 }
 
 type RpcResult = { ok: true; value: unknown } | { ok: false }
