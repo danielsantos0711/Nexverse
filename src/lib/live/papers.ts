@@ -6,6 +6,7 @@
 import { cacheLife, cacheTag } from "next/cache"
 import { asArray, fetchSafe, isRecord, num, parseJson, plain, safeUrl, str, type Result } from "./http"
 import { arxivBase, isArxivId } from "./ids"
+import { arxivFrom, openAlexGet } from "./openalex"
 import { parseArxiv } from "./parse"
 import type { Paper } from "./types"
 
@@ -62,15 +63,9 @@ export type Citations = {
   url: string
 }
 
-const OPENALEX = "https://api.openalex.org"
 const S2 = "https://api.semanticscholar.org/graph/v1"
 
-/** Optional keys: OpenAlex gives each key its own daily budget; Semantic Scholar raises its shared limits. */
-function openAlexQuery() {
-  const key = process.env.OPENALEX_API_KEY
-  const mail = process.env.OPENALEX_MAILTO
-  return `${key ? `&api_key=${encodeURIComponent(key)}` : ""}${mail ? `&mailto=${encodeURIComponent(mail)}` : ""}`
-}
+/** Optional keys: OpenAlex gives each key its own daily budget (sent as a header, see openalex.ts); Semantic Scholar raises its shared limits. */
 function s2Headers(): Record<string, string> {
   const key = process.env.SEMANTIC_SCHOLAR_API_KEY
   return key ? { "x-api-key": key } : {}
@@ -79,17 +74,6 @@ function s2Headers(): Record<string, string> {
 const year = (v: unknown) => {
   const n = num(v)
   return n >= 1800 && n <= 2200 ? n : 0
-}
-
-/** An arXiv id from a DOI (10.48550/arXiv.<id>) or an arxiv.org address. */
-function arxivFrom(...values: unknown[]): string {
-  for (const v of values) {
-    if (typeof v !== "string") continue
-    const m = v.match(/10\.48550\/arxiv\.([\w./-]+)$/i) ?? v.match(/arxiv\.org\/(?:abs|pdf)\/([\w./-]+?)(?:\.pdf)?$/i)
-    const id = m ? arxivBase(m[1]) : ""
-    if (id && isArxivId(id)) return id
-  }
-  return ""
 }
 
 const cleanDoi = (v: unknown) => {
@@ -114,7 +98,7 @@ function openAlexWork(w: unknown): CitedWork | null {
 
 async function openAlexList(filter: string, sort: string, perPage: number): Promise<CitedWork[] | null> {
   const select = "id,display_name,publication_year,cited_by_count,doi,ids,locations,authorships"
-  const res = await fetchSafe(`${OPENALEX}/works?filter=${filter}&sort=${sort}&per-page=${perPage}&select=${select}${openAlexQuery()}`, { maxBytes: 3_000_000 })
+  const res = await openAlexGet(`/works?filter=${filter}&sort=${sort}&per-page=${perPage}&select=${select}`, 3_000_000)
   if (!res.ok) return null
   const data = parseJson(res.text)
   return asArray(isRecord(data) ? data.results : null)
@@ -123,10 +107,7 @@ async function openAlexList(filter: string, sort: string, perPage: number): Prom
 }
 
 async function fromOpenAlex(baseId: string): Promise<Result<Citations>> {
-  const res = await fetchSafe(
-    `${OPENALEX}/works/doi:10.48550/arXiv.${encodeURIComponent(baseId)}?select=id,cited_by_count,referenced_works,referenced_works_count,counts_by_year${openAlexQuery()}`,
-    { maxBytes: 1_000_000 }
-  )
+  const res = await openAlexGet(`/works/doi:10.48550/arXiv.${encodeURIComponent(baseId)}?select=id,cited_by_count,referenced_works,referenced_works_count,counts_by_year`)
   if (!res.ok) return res
   const w = parseJson(res.text)
   if (!isRecord(w)) return { ok: false, reason: "error" }

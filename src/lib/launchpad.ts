@@ -1,17 +1,16 @@
-import { getPerson, getResource, KINDS, resourcePath, type ResourceKind } from "@/lib/data"
 import type { Member } from "@/lib/store"
 import { isUuid, type Who } from "@/lib/community"
 import { db, live } from "@/lib/supabase"
 
 /**
- * The Launchpad: a member schedules a launch for one of their projects or for a hub resource. Before launch
+ * The Launchpad: a member schedules a launch for one of their published projects. Before launch
  * time there is a countdown; for the 24 hours after it, members boost it (once each) on a live board; then it
  * joins the archive. The launch with the most boosts among those launched on a day (UTC) is that day's
  * "Launch of the day".
  *
  * With a database everything is in public.launches and public.launch_boosts, and boosts arrive live through
- * Realtime. Without one, sample launches dated around today are shown and your boosts and launches stay in this
- * browser (other tabs hear about them straight away).
+ * Realtime. Without one (a browser-only copy), only the launches you schedule here are shown, and they stay in
+ * this browser (other tabs hear about them straight away).
  */
 
 // ─── Plumbing ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -21,7 +20,8 @@ function fail(error: { message: string } | null): asserts error is null {
 }
 
 function friendly(message: string) {
-  if (/violates row-level security/.test(message)) return "You are not allowed to do that. Are you signed in?"
+  if (/violates row-level security/.test(message))
+    return "You are not allowed to do that. Check that you are signed in; if your account is paused, posting stays off until the pause ends (your notifications say why)."
   if (/launch_boosts_pkey|duplicate key/.test(message)) return "You already boosted this launch."
   if (/launches_gallery_check/.test(message)) return "Gallery pictures must be ones you uploaded here."
   if (/JWT|not authenticated/i.test(message)) return "Your session ran out. Sign in again."
@@ -59,16 +59,11 @@ async function requireMe() {
   return id
 }
 
-const personWho = (handle: string): Who => ({
-  handle,
-  name: getPerson(handle)?.name ?? handle,
-})
 const memberWho = (m: Member | null | undefined): Who => (m ? { name: m.name, memberId: m.id } : { name: "A member" })
 
 // ─── Types ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 export const LAUNCH_DAY_MS = 864e5
-const HOUR = 36e5
 
 export type LaunchPhase = "scheduled" | "live" | "landed"
 
@@ -78,18 +73,19 @@ export type Launch = {
   tagline: string
   description: string
   launchAt: string
-  /** Picture URLs in the owner's folder of the avatars bucket. Empty for sample launches. */
+  /** Picture URLs in the owner's folder of the avatars bucket. */
   gallery: string[]
   owner: Who
   /** The member's project being launched, or null. */
   projectId: string | null
-  /** A hub resource being launched ("tool:token-tax"), or null. */
+  /** Older launches pointed at a hub entry ("tool:token-tax") instead of a project. Kept for display only. */
   resource: string | null
   boosts: number
   /** You boosted it. */
   boosted: boolean
-  /** Sample people who boosted it (sample launches only), for the avatar row. */
+  /** @deprecated Always empty: there are no sample launches any more. */
   seedBoosters: string[]
+  /** @deprecated Always false. */
   sample: boolean
   local: boolean
 }
@@ -112,14 +108,9 @@ export function launchPhase(l: Pick<Launch, "launchAt">, now: number): LaunchPha
 /** The UTC day a launch belongs to, as "2026-10-18". */
 export const dayKey = (iso: string | number) => new Date(iso).toISOString().slice(0, 10)
 
-/** Where the launched thing lives on Nexverse: its project page or its hub page. */
+/** Where the launched thing lives on Nexverse: its project page. */
 export function subjectOf(l: Pick<Launch, "projectId" | "resource">): { href: string; label: string } | null {
   if (l.projectId) return { href: `/p/${l.projectId}`, label: "Project page" }
-  if (l.resource) {
-    const [kind, slug] = l.resource.split(":") as [ResourceKind, string]
-    const r = getResource(slug)
-    if (r && r.kind === kind) return { href: resourcePath(r), label: `${KINDS[kind].label} page` }
-  }
   return null
 }
 
@@ -149,217 +140,7 @@ export function dailyWinners(launches: Launch[], now: number): { day: string; wi
     })
 }
 
-// ─── Sample launches (shown when no database is connected) ──────────────────────────────────────────────────
-
-type SampleLaunch = {
-  id: string
-  name: string
-  tagline: string
-  description: string
-  resource: string
-  owner: string
-  /** Days from today (UTC) and the UTC hour it launches. */
-  day: number
-  hour: number
-  boosters: string[]
-  /** Boosts beyond the named boosters, for a believable count. */
-  extra: number
-}
-
-const SAMPLE_DATA: SampleLaunch[] = [
-  {
-    id: "token-tax-2",
-    name: "token-tax 2.0",
-    tagline: "See what every tokenizer charges for your language, side by side.",
-    description:
-      "token-tax counts how many tokens the same text costs across 40 tokenizers. Version 2 adds:\n\n- **Fertility charts** per language, so you can see Yoruba or Hindi costing three times English\n- Paste a whole document or a dataset sample\n- A shareable link for every comparison\n\nFree, runs in the browser, nothing is uploaded.",
-    resource: "tool:token-tax",
-    owner: "kai",
-    day: 0,
-    hour: 0,
-    boosters: ["priya", "rafa", "mei", "layla", "noah", "sofia", "tunde"],
-    extra: 41,
-  },
-  {
-    id: "pocket-run-android",
-    name: "Pocket Run for Android",
-    tagline: "Run small open models on your phone, offline, with one tap.",
-    description: "Pocket Run now has an Android build. Pick a model under 2 GB, download it once and chat offline. Benchmarks for 30 phones are in the app.",
-    resource: "tool:pocket-run",
-    owner: "priya",
-    day: 0,
-    hour: 1,
-    boosters: ["kai", "sofia", "leo", "amara"],
-    extra: 27,
-  },
-  {
-    id: "tone-tokenizer-1",
-    name: "tone-tokenizer 1.0",
-    tagline: "A tokenizer that keeps Yoruba tone marks instead of throwing them away.",
-    description: "The first stable release. Tone marks survive tokenisation, fertility drops by 38% on Yoruba, and it is a drop-in for most training scripts.",
-    resource: "repo:tone-tokenizer",
-    owner: "tunde",
-    day: 0,
-    hour: 2,
-    boosters: ["amara", "ines", "layla"],
-    extra: 12,
-  },
-  {
-    id: "datasheet-studio-teams",
-    name: "Datasheet Studio for teams",
-    tagline: "Write dataset datasheets together, with review and sign-off.",
-    description: "Invite reviewers, track who approved what, export to Markdown or PDF.",
-    resource: "tool:datasheet-studio",
-    owner: "amara",
-    day: 0,
-    hour: 20,
-    boosters: [],
-    extra: 0,
-  },
-  {
-    id: "kansai-7b-v2",
-    name: "Kansai 7B v2",
-    tagline: "A Japanese model that understands Kansai dialect, now with 32k context.",
-    description: "Retrained on twice as much Kansai speech transcribed by native speakers, with long-context support.",
-    resource: "model:kansai-7b",
-    owner: "mei",
-    day: 1,
-    hour: 15,
-    boosters: [],
-    extra: 0,
-  },
-  {
-    id: "serve-small-1",
-    name: "serve-small 1.0",
-    tagline: "Serve a 3B model to a thousand users on one GPU.",
-    description: "Continuous batching, prompt caching and a sensible default config.",
-    resource: "repo:serve-small",
-    owner: "sofia",
-    day: 2,
-    hour: 9,
-    boosters: [],
-    extra: 0,
-  },
-  {
-    id: "subtitle-forge-live",
-    name: "Subtitle Forge Live",
-    tagline: "Live subtitles for streams in 20 languages, with speaker labels.",
-    description: "Works with any streaming tool that takes a browser source.",
-    resource: "tool:subtitle-forge",
-    owner: "leo",
-    day: 4,
-    hour: 17,
-    boosters: [],
-    extra: 0,
-  },
-  {
-    id: "act-checker-2",
-    name: "Act Checker 2",
-    tagline: "Check your model card against the EU AI Act in five minutes.",
-    description: "Updated for the latest guidance, with plain-English explanations for every item.",
-    resource: "tool:act-checker",
-    owner: "jonas",
-    day: 9,
-    hour: 12,
-    boosters: [],
-    extra: 0,
-  },
-  {
-    id: "loop-guard-0-9",
-    name: "loop-guard 0.9",
-    tagline: "Stops agents that go in circles, now for any framework.",
-    description: "Adapters for five agent frameworks and a new detector trained on 600 labelled traces.",
-    resource: "repo:loop-guard",
-    owner: "rafa",
-    day: -1,
-    hour: 14,
-    boosters: ["mei", "noah", "kai", "priya", "sofia"],
-    extra: 58,
-  },
-  {
-    id: "babel-embed-small",
-    name: "babel-embed small",
-    tagline: "Multilingual embeddings at a quarter of the size.",
-    description: "Distilled from babel-embed, 110M parameters, 2 points behind on retrieval.",
-    resource: "model:babel-embed",
-    owner: "noah",
-    day: -1,
-    hour: 16,
-    boosters: ["rafa", "ines"],
-    extra: 21,
-  },
-  {
-    id: "promptboard-history",
-    name: "Promptboard history",
-    tagline: "Every prompt you tried, searchable, with the outputs next to them.",
-    description: "Local-first, exports to JSON.",
-    resource: "tool:promptboard",
-    owner: "kai",
-    day: -2,
-    hour: 10,
-    boosters: ["leo", "layla"],
-    extra: 34,
-  },
-  {
-    id: "kiswahili-commons-v3",
-    name: "Kiswahili Commons v3",
-    tagline: "Two million more Swahili sentences, consented and documented.",
-    description: "Adds Sheng and coastal varieties, with a new datasheet.",
-    resource: "dataset:kiswahili-commons",
-    owner: "amara",
-    day: -3,
-    hour: 8,
-    boosters: ["tunde", "layla", "ines"],
-    extra: 45,
-  },
-  {
-    id: "leakcheck-1",
-    name: "leakcheck 1.0",
-    tagline: "Find out whether your eval set leaked into a model's training data.",
-    description: "Membership tests for 12 open models, with a report you can attach to a paper.",
-    resource: "repo:leakcheck",
-    owner: "mei",
-    day: -6,
-    hour: 13,
-    boosters: ["noah", "rafa"],
-    extra: 39,
-  },
-]
-
-const startOfUtcDay = (t: number) => Math.floor(t / LAUNCH_DAY_MS) * LAUNCH_DAY_MS
-
-/** The sample launches, dated around `now` so there is always something live, upcoming and in the archive. */
-export function sampleLaunches(now = Date.now()): Launch[] {
-  const today = startOfUtcDay(now)
-  return SAMPLE_DATA.map((s) => {
-    const at = today + s.day * LAUNCH_DAY_MS + s.hour * HOUR
-    // Boosts only exist once a launch has started.
-    const started = at <= now
-    return {
-      id: s.id,
-      name: s.name,
-      tagline: s.tagline,
-      description: s.description,
-      launchAt: new Date(at).toISOString(),
-      gallery: [],
-      owner: personWho(s.owner),
-      projectId: null,
-      resource: s.resource,
-      boosts: started ? s.boosters.length + s.extra : 0,
-      boosted: false,
-      seedBoosters: started ? s.boosters : [],
-      sample: true,
-      local: false,
-    }
-  })
-}
-
-export const SAMPLE_LAUNCH_IDS = SAMPLE_DATA.map((s) => s.id)
-
-export function getSampleLaunchMeta(id: string) {
-  const s = SAMPLE_DATA.find((x) => x.id === id)
-  return s ? { title: s.name, description: s.tagline } : null
-}
+// ─── Deprecated sample exports ──────────────────────────────────────────────────────────────────────────────
 
 // ─── Browser-only storage ───────────────────────────────────────────────────────────────────────────────────
 
@@ -432,12 +213,14 @@ async function myBoosts(ids: string[]): Promise<Set<string>> {
 
 // ─── Reading ────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Launches from 60 days ago to 90 days ahead, soonest first. Without a database: yours, then the samples. */
+/** Launches from 60 days ago to 90 days ahead, soonest first. Without a database: the ones scheduled here. */
 export async function listLaunches(): Promise<Launch[]> {
   const client = db()
   if (!client) {
     const boosts = readBoosts()
-    return [...readLaunches().map(fromLocal), ...sampleLaunches()].map((l) => withLocalBoost(l, boosts)).sort((a, b) => a.launchAt.localeCompare(b.launchAt))
+    return readLaunches()
+      .map((l) => withLocalBoost(fromLocal(l), boosts))
+      .sort((a, b) => a.launchAt.localeCompare(b.launchAt))
   }
   const since = new Date(Date.now() - 60 * LAUNCH_DAY_MS).toISOString()
   const { data, error } = await client.from("launches").select(COLUMNS).gte("launch_at", since).order("launch_at").limit(400)
@@ -449,8 +232,6 @@ export async function listLaunches(): Promise<Launch[]> {
 
 export async function getLaunch(id: string): Promise<Launch | null> {
   const client = db()
-  const sample = sampleLaunches().find((l) => l.id === id)
-  if (sample) return client ? sample : withLocalBoost(sample)
   if (!client) {
     const l = readLaunches().find((x) => x.id === id)
     return l ? withLocalBoost(fromLocal(l)) : null
@@ -462,11 +243,10 @@ export async function getLaunch(id: string): Promise<Launch | null> {
   return fromRow(data as unknown as Row, await myBoosts([id]))
 }
 
-/** Members who boosted a launch, newest first (named sample people for sample launches). */
+/** Members who boosted a launch, newest first. */
 export async function getBoosters(l: Launch, limit = 24): Promise<Who[]> {
   const client = db()
-  const seeded = l.seedBoosters.map(personWho)
-  if (l.sample || !client) return l.boosted ? [{ name: "You" }, ...seeded] : seeded
+  if (!client) return l.boosted ? [{ name: "You" }] : []
   const { data, error } = await client.from("launch_boosts").select("member:profiles(id, name)").eq("launch_id", l.id).order("created_at", { ascending: false }).limit(limit)
   fail(error)
   return (data as unknown as { member: Member | null }[]).map((r) => memberWho(r.member))
@@ -475,7 +255,7 @@ export async function getBoosters(l: Launch, limit = 24): Promise<Who[]> {
 // ─── Scheduling ─────────────────────────────────────────────────────────────────────────────────────────────
 
 export type NewLaunch = {
-  /** "project" with a project id, or "resource" with "kind:slug". */
+  /** One of your published projects. ("resource" is how older launches pointed at hub entries; it is refused now.) */
   subject: { type: "project"; id: string; name: string } | { type: "resource"; key: string; name: string }
   tagline: string
   description: string
@@ -489,7 +269,7 @@ export const GALLERY_URL = /^https:\/\/[^/\s]+\/storage\/v1\/object\/public\/ava
 
 export function validateLaunch(l: NewLaunch, now = Date.now()): LaunchErrors {
   const e: LaunchErrors = {}
-  if (!l.subject.name.trim()) e.subject = "Pick what you are launching."
+  if (l.subject.type !== "project" || !l.subject.id || !l.subject.name.trim()) e.subject = "Pick the project you are launching."
   const tagline = l.tagline.trim()
   if (tagline.length < LIMITS.tagline[0]) e.tagline = "Write a tagline of at least 10 characters: what it does, for whom."
   else if (tagline.length > LIMITS.tagline[1]) e.tagline = "Keep the tagline to 140 characters."
@@ -600,7 +380,6 @@ export async function boostLaunch(l: Launch) {
     announce({ type: "boost", launchId: l.id, userId: "local" })
     return
   }
-  if (l.sample) throw new Error("This is an example launch, so it cannot be boosted.")
   await requireMe()
   const { error } = await client.from("launch_boosts").insert({ launch_id: l.id })
   fail(error)

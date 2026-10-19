@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { CheckCircle2Icon, ChevronRightIcon, PinIcon } from "lucide-react"
+import { CheckCircle2Icon, ChevronRightIcon, EyeOffIcon, LockIcon, PinIcon } from "lucide-react"
 import { PersonAvatar } from "@/components/hub/bits"
 import type { Poster } from "@/components/forum/topics"
 import { cn } from "@/lib/utils"
@@ -71,6 +71,26 @@ export function PinnedBadge({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full bg-gold/10 px-2 py-0.5 text-xs font-medium text-gold", className)}>
       <PinIcon aria-hidden className="size-3" /> Pinned
+    </span>
+  )
+}
+
+export function LockedBadge({ className }: { className?: string }) {
+  return (
+    <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5 text-xs font-medium text-muted-foreground", className)}>
+      <LockIcon aria-hidden className="size-3" /> Locked
+    </span>
+  )
+}
+
+/** Shown to a post's author and to staff when moderators hid it; everyone else does not receive the post at all. */
+export function HiddenBadge({ className }: { className?: string }) {
+  return (
+    <span
+      title="Only you and the moderators can see this"
+      className={cn("inline-flex shrink-0 items-center gap-1 rounded-full border border-gold/25 bg-gold/10 px-2 py-0.5 text-xs font-medium text-gold", className)}
+    >
+      <EyeOffIcon aria-hidden className="size-3" /> Hidden by moderators
     </span>
   )
 }

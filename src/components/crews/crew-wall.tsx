@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { MoreHorizontalIcon, PencilIcon, PinIcon, PinOffIcon, SmilePlusIcon, Trash2Icon } from "lucide-react"
 import { WhoAvatar } from "@/components/crews/emblem"
 import { MarkdownComposer } from "@/components/forum/markdown-composer"
+import { Gate } from "@/components/moderation/gate"
 import { EditedMarker, PinnedBadge } from "@/components/forum/forum-ui"
 import { PostBody } from "@/components/forum/post-body"
 import { relative, useNow } from "@/components/live/time"
@@ -129,6 +130,7 @@ export function CrewWall({ crew, role, meId, members, onActivity }: { crew: Crew
   return (
     <div className="flex flex-col gap-4">
       {role ? (
+        <Gate action="write on the crew wall">
         <NewPost
           crew={crew}
           participants={participants}
@@ -138,6 +140,7 @@ export function CrewWall({ crew, role, meId, members, onActivity }: { crew: Crew
             onActivity()
           }}
         />
+        </Gate>
       ) : (
         <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">Join the crew to write on its wall.</p>
       )}
@@ -177,8 +180,8 @@ export function CrewWall({ crew, role, meId, members, onActivity }: { crew: Crew
                   reactions={reactions[p.id]}
                   names={names}
                   participants={participants}
-                  canEdit={Boolean(meId && p.author.memberId === meId && !p.sample)}
-                  canModerate={canManage(role) && !p.sample}
+                  canEdit={Boolean(meId && p.author.memberId === meId)}
+                  canModerate={canManage(role)}
                   canReact={Boolean(role)}
                   onReact={(e) => toggleReaction(p, e)}
                   onPin={() => pin(p)}

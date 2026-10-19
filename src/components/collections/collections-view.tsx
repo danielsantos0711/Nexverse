@@ -8,9 +8,10 @@ import { FolderPlusIcon, LayersIcon } from "lucide-react"
 import { CollectionCard } from "@/components/collections/collection-card"
 import { CollectionForm } from "@/components/collections/collection-form"
 import { primaryButton, rise, riseDelay } from "@/components/forum/forum-ui"
+import { Gate } from "@/components/moderation/gate"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { createCollection, getCollection, listFollowedCollectionIds, listMyCollections, listPublicCollections, SAMPLE_COLLECTIONS, type Collection } from "@/lib/community"
+import { createCollection, getCollection, listFollowedCollectionIds, listMyCollections, listPublicCollections, type Collection } from "@/lib/community"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -34,7 +35,7 @@ export function CollectionsView() {
   const { ready, user } = useSession()
   const raw = params.get("view")
   const view: View = isView(raw) ? raw : "discover"
-  const [lists, setLists] = useState<Lists>({ discover: SAMPLE_COLLECTIONS, mine: null, following: null })
+  const [lists, setLists] = useState<Lists>({ discover: null, mine: null, following: null })
   const [error, setError] = useState("")
   const [creating, setCreating] = useState(false)
   const signedOut = live && ready && !user
@@ -147,9 +148,9 @@ export function CollectionsView() {
                   : "You have no collections yet. Start one here, or use “Collect” on any model, dataset, paper or thread."
                 : view === "following"
                   ? "You are not following any collections. Follow one to find it here."
-                  : "No public collections yet."}
+                  : "No public collections yet. Start one: gather the models, papers, repos and threads you keep sending people, with a note on why each one matters."}
             </p>
-            {view === "mine" &&
+            {(view === "mine" || view === "discover") &&
               (signedOut ? (
                 <Link href={`/sign-in?next=${encodeURIComponent("/collections?view=mine")}`} className={primaryButton}>
                   Sign in
@@ -159,6 +160,11 @@ export function CollectionsView() {
                   Start a collection
                 </button>
               ))}
+            {view === "following" && (
+              <button type="button" onClick={() => setView("discover")} className="text-sm text-ion hover:underline">
+                Discover collections
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -169,6 +175,7 @@ export function CollectionsView() {
             <DialogTitle>New collection</DialogTitle>
             <DialogDescription>Gather models, datasets, papers, repos and threads, with a note on why each one matters.</DialogDescription>
           </DialogHeader>
+          <Gate action="start a collection">
           <CollectionForm
             submitLabel="Create collection"
             onCancel={() => setCreating(false)}
@@ -178,6 +185,7 @@ export function CollectionsView() {
               router.push(`/collections/${c.id}`)
             }}
           />
+          </Gate>
         </DialogContent>
       </Dialog>
     </div>

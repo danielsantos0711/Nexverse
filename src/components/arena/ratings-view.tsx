@@ -87,15 +87,6 @@ export function RatingsView() {
         </div>
       </div>
 
-      {state?.source === "samples" && (
-        <p className="flex items-start gap-2 rounded-lg border border-gold/20 bg-gold/[0.06] px-3 py-2 text-sm text-muted-foreground">
-          <InfoIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-gold" />
-          {live
-            ? "No member has voted yet, so these ratings come from the community sample duels (and your own votes on them). They are examples, not measurements."
-            : "Preview: these ratings come from the community sample duels and your votes in this browser. They are examples, not measurements."}
-        </p>
-      )}
-
       {error && (
         <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           Ratings could not be loaded ({error}).
@@ -197,7 +188,9 @@ export function RatingsView() {
               <SwordsIcon aria-hidden className="size-5" />
             </span>
             <p className="max-w-md text-sm text-muted-foreground">
-              {filtered ? "No votes on duels like these yet. Try another task or language, or post a duel for it." : "No votes yet. Ratings appear as soon as members vote on duels."}
+              {filtered && state?.anyMemberVotes
+                ? "No votes on duels like these yet. Try another task or language, or post a duel for it."
+                : "No votes yet. Ratings appear here as soon as members vote on duels: every model starts at 1000."}
             </p>
             <Link href="/arena/new" className={primaryButton}>
               Post a duel

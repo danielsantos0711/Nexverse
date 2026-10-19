@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { SIDE_COLOR, TASK_ICON } from "@/components/arena/arena-bits"
@@ -10,19 +9,18 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegen
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
-import { createDuel, DUEL_LIMITS, DUEL_TASKS, HUB_MODELS, validateDuel, type DuelModel, type DuelTask, type NewDuel } from "@/lib/arena"
+import { Gate } from "@/components/moderation/gate"
+import { createDuel, DUEL_LIMITS, DUEL_TASKS, validateDuel, type DuelModel, type DuelTask, type NewDuel } from "@/lib/arena"
 import { LANGUAGES, type LanguageCode } from "@/lib/data"
-import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 type Errors = ReturnType<typeof validateDuel> & { form?: string }
 
-/** Post a duel. Signed-in members only when a database is connected; otherwise it stays in this browser. */
+/** Post a duel. Members only (see <Gate>); without a database it stays in this browser. */
 export function NewDuelForm() {
   const mounted = useMounted()
-  const { ready, user } = useSession()
-  if (!mounted || (live && !ready)) {
+  if (!mounted) {
     return (
       <div className="glass flex flex-col gap-4 rounded-2xl p-6" aria-busy="true" aria-label="Loading form">
         <Skeleton className="h-24 w-full" />
@@ -31,17 +29,11 @@ export function NewDuelForm() {
       </div>
     )
   }
-  if (live && !user) {
-    return (
-      <div className="glass flex flex-col items-start gap-4 rounded-2xl p-6">
-        <p>Sign in to post a duel. It takes an email address and nothing else.</p>
-        <Link href={`/sign-in?next=${encodeURIComponent("/arena/new")}`} className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground">
-          Sign in
-        </Link>
-      </div>
-    )
-  }
-  return <Form />
+  return (
+    <Gate action="post a duel">
+      <Form />
+    </Gate>
+  )
 }
 
 const field = "bg-background/60"
@@ -205,33 +197,8 @@ function ModelOutput({
       </FieldLegend>
       <Field data-invalid={errors[mk] ? true : undefined}>
         <FieldLabel htmlFor={`duel-${mk}`}>Model name</FieldLabel>
-        <Input id={`duel-${mk}`} value={model.name} maxLength={DUEL_LIMITS.model} onChange={(e) => setModel({ ...model, name: e.target.value })} placeholder="Orbit 8B (Q4_K_M)" className={cn("h-10", field)} {...err(mk)} />
+        <Input id={`duel-${mk}`} value={model.name} maxLength={DUEL_LIMITS.model} onChange={(e) => setModel({ ...model, name: e.target.value })} placeholder="Model name, size and quantisation" className={cn("h-10", field)} {...err(mk)} />
         {errors[mk] && <FieldError id={`duel-${mk}-error`}>{errors[mk]}</FieldError>}
-      </Field>
-      <Field>
-        <FieldLabel htmlFor={`duel-${mk}-slug`}>Model page on Nexverse (optional)</FieldLabel>
-        <select
-          id={`duel-${mk}-slug`}
-          value={model.slug ?? ""}
-          onChange={(e) => {
-            const slug = e.target.value || null
-            const hub = HUB_MODELS.find((m) => m.slug === slug)
-            const prev = HUB_MODELS.find((m) => m.slug === model.slug)
-            // Fill the name from the page, unless the member already typed their own.
-            const name = hub && (!model.name.trim() || model.name === prev?.name) ? hub.name : model.name
-            setModel({ name, slug })
-          }}
-          className="h-10 rounded-lg border border-input bg-background/60 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <option value="" className="bg-popover">
-            Not on Nexverse
-          </option>
-          {HUB_MODELS.map((m) => (
-            <option key={m.slug} value={m.slug} className="bg-popover">
-              {m.name}
-            </option>
-          ))}
-        </select>
       </Field>
       <Field data-invalid={errors[ok] ? true : undefined}>
         <FieldLabel htmlFor={`duel-${ok}`}>Output</FieldLabel>

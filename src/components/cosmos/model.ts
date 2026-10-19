@@ -1,32 +1,38 @@
-import { categories, categoryPath, compact, constellations, constellationsWith, getPerson, KINDS, people, resourcePath, resources, threads, type ResourceKind } from "@/lib/data"
-import { projectPath, type Project, type ProjectStats } from "@/lib/projects"
+import type { Collection } from "@/lib/community"
+import { categories, categoryPath, compact, type ResourceKind } from "@/lib/data"
+import type { HubEntry } from "@/lib/hub"
+import type { GhRepo } from "@/lib/live"
+import { ghHref, liveTarget } from "@/lib/live/ids"
+import type { PublicMember } from "@/lib/people"
+import type { ProjectStats } from "@/lib/projects"
 
 /**
- * The Cosmos model: every resource, member project, person and forum category as a star, grouped into galaxies by
- * area and joined by faint lines. Layout is computed from the data alone (no randomness), so a star sits in the same
- * place on every visit and on every device.
+ * The Cosmos model: every project and link members published or shared, every member, every forum category and the
+ * repositories rising on GitHub, as stars grouped into galaxies and joined by faint lines. Only real data: an empty
+ * galaxy is drawn empty. Layout is computed from the data alone (no randomness), so a star sits in the same place
+ * on every visit and on every device.
  *
- * Star ids are the same readable target keys used by likes and bookmarks ("model:orbit-8b", "person:ines",
- * "category:help", "project:<uuid>"), plus "you" for the signed-in member at the centre of the map.
+ * Star ids are the same keys used by likes and bookmarks ("project:<uuid>", "share:<uuid>", "member:<uuid>",
+ * "category:help", "ghrepo:<id>"), plus "you" for the signed-in member at the centre of the map.
  */
 
-export type StarKind = ResourceKind | "project" | "person" | "category" | "you"
+export type StarKind = ResourceKind | "github" | "person" | "category" | "you"
 
 export const STAR_KINDS: Record<StarKind, { label: string; plural: string; color: string }> = {
   model: { label: "Model", plural: "Models", color: "#a9c2ff" },
   dataset: { label: "Dataset", plural: "Datasets", color: "#9fe3cf" },
   tool: { label: "Tool", plural: "Tools", color: "#e9c79a" },
   repo: { label: "Repo", plural: "Repos", color: "#d3b4ff" },
-  project: { label: "Member project", plural: "Projects", color: "#ffb8d9" },
-  person: { label: "Person", plural: "People", color: "#f4efe6" },
+  github: { label: "GitHub repo", plural: "GitHub", color: "#ffb8d9" },
+  person: { label: "Member", plural: "Members", color: "#f4efe6" },
   category: { label: "Forum category", plural: "Forum", color: "#d8c59e" },
   you: { label: "You", plural: "You", color: "#8fb4ff" },
 }
 
 /** The kinds a visitor can switch on and off with the filter chips. "you" is always shown. */
-export const FILTER_KINDS = ["model", "dataset", "tool", "repo", "project", "person", "category"] as const satisfies StarKind[]
+export const FILTER_KINDS = ["model", "dataset", "tool", "repo", "github", "person", "category"] as const satisfies StarKind[]
 
-export type GalaxyId = "language" | "media" | "agents" | "evals" | "data" | "forum" | "projects"
+export type GalaxyId = ResourceKind | "github" | "members" | "forum"
 
 export type Galaxy = { id: GalaxyId; name: string; blurb: string; x: number; y: number; radius: number; tint: string; seed: number; count: number }
 
@@ -35,7 +41,7 @@ export type Star = {
   kind: StarKind
   name: string
   summary: string
-  /** One short line under the name: owner, likes, part of which stack. */
+  /** One short line under the name: who made it, real likes or stars. */
   meta: string
   href: string | null
   galaxy: GalaxyId | null
@@ -49,21 +55,21 @@ export type Star = {
   search: string
 }
 
-/** stack: two parts of a curated constellation. thread: a forum category and a resource its threads talk about. maker: a person and what they made. you: you and something you liked or saved. */
+/** stack: neighbours in a member's public collection. maker: a member and what they published or shared. you: you and something you liked or saved. thread: unused, kept for the engine's styles. */
 export type LinkKind = "stack" | "thread" | "maker" | "you"
 export type Link = { a: string; b: string; kind: LinkKind }
 
 export type Cosmos = { stars: Star[]; byId: Map<string, Star>; links: Link[]; galaxies: Galaxy[]; bounds: { minX: number; minY: number; maxX: number; maxY: number } }
 
 /** Where each galaxy sits on a wide ellipse around the centre, and what it holds. Hand-placed so labels never collide. */
-const GALAXIES: { id: GalaxyId; name: string; blurb: string; angle: number; tint: string; tasks?: string[] }[] = [
-  { id: "language", name: "Language", blurb: "Text generation, translation, embeddings and retrieval.", angle: 182, tint: "#8fb4ff", tasks: ["Text generation", "Translation", "Embeddings", "Retrieval"] },
-  { id: "media", name: "Voice, sound & image", blurb: "Speech recognition, text to speech, audio and image generation.", angle: 236, tint: "#7fd8e8", tasks: ["Speech recognition", "Text to speech", "Audio generation", "Image generation"] },
-  { id: "agents", name: "Agents & running", blurb: "Agents, observability and models that run on your own device.", angle: 292, tint: "#b9a7ff", tasks: ["Agents", "Observability", "On-device"] },
-  { id: "evals", name: "Evaluation", blurb: "Evals, benchmarks and the tools that keep results honest.", angle: 342, tint: "#e8cf9a", tasks: ["Evaluation"] },
-  { id: "forum", name: "Forum", blurb: "Every forum category. Lines show what its threads talk about.", angle: 30, tint: "#f0d9a8" },
-  { id: "projects", name: "Member projects", blurb: "Models, datasets, tools and repos published by members.", angle: 92, tint: "#ffb8d9" },
-  { id: "data", name: "Data", blurb: "Data tooling: cleaning, documenting and checking datasets.", angle: 136, tint: "#9fe3cf", tasks: ["Data tooling"] },
+const GALAXIES: { id: GalaxyId; name: string; blurb: string; angle: number; tint: string }[] = [
+  { id: "model", name: "Models", blurb: "Models members published or shared.", angle: 182, tint: "#8fb4ff" },
+  { id: "dataset", name: "Datasets", blurb: "Datasets members published or shared.", angle: 236, tint: "#9fe3cf" },
+  { id: "tool", name: "Tools", blurb: "Tools members published or shared.", angle: 292, tint: "#e8cf9a" },
+  { id: "repo", name: "Repos", blurb: "Code members published or shared.", angle: 342, tint: "#b9a7ff" },
+  { id: "forum", name: "Forum", blurb: "Every forum category.", angle: 30, tint: "#f0d9a8" },
+  { id: "members", name: "Members", blurb: "The people of Nexverse. Lines lead to what they made.", angle: 92, tint: "#f4efe6" },
+  { id: "github", name: "Rising on GitHub", blurb: "New open-source AI repositories gathering stars this month.", angle: 136, tint: "#ffb8d9" },
 ]
 
 const ELLIPSE = { a: 1000, b: 600 }
@@ -75,8 +81,6 @@ export function hash(s: string) {
   return (h >>> 0) / 4294967296
 }
 
-const galaxyForTask = (task: string): GalaxyId => GALAXIES.find((g) => g.tasks?.includes(task))?.id ?? "language"
-
 /** Spreads raw popularity numbers onto 0.15..1 with a log scale, so one giant does not shrink everyone else to dust. */
 function normalise(values: number[]) {
   const logs = values.map((v) => Math.log10(Math.max(0, v) + 1))
@@ -85,107 +89,111 @@ function normalise(values: number[]) {
   return logs.map((l) => (max - min < 1e-6 ? 0.6 : 0.15 + (0.85 * (l - min)) / (max - min)))
 }
 
-type Draft = Omit<Star, "x" | "y" | "r" | "weight" | "search"> & { pop: number }
+type Draft = Omit<Star, "x" | "y" | "r" | "weight" | "search"> & { pop: number; order: number }
 
 export type YouInput = { name: string; signedIn: boolean; canSignIn: boolean; highlights: string[] }
 
-/** Builds the whole map. Projects and "you" are optional so the map can draw before they load. */
-export function buildCosmos({ projects = [], stats = {}, you }: { projects?: Project[]; stats?: Record<string, ProjectStats>; you?: YouInput }): Cosmos {
+export type CosmosInput = {
+  /** Members' projects and shared links (lib/hub). */
+  entries?: HubEntry[]
+  stats?: Record<string, ProjectStats>
+  members?: PublicMember[]
+  /** Public collections, for the lines between things that belong together. */
+  collections?: Collection[]
+  /** Rising GitHub repositories, fetched on the server. */
+  github?: GhRepo[]
+  you?: YouInput
+}
+
+/** Builds the whole map from real data. Everything is optional so the map can draw before it loads. */
+export function buildCosmos({ entries = [], stats = {}, members = [], collections = [], github = [], you }: CosmosInput): Cosmos {
   const drafts: Draft[] = []
 
-  for (const r of resources) {
-    const stacks = constellationsWith(r.slug)
-    const owner = getPerson(r.owner)?.name ?? r.owner
-    drafts.push({
-      id: `${r.kind}:${r.slug}`,
-      kind: r.kind,
-      name: r.name,
-      summary: r.summary,
-      meta: [`by ${owner}`, `${compact(r.likes)} likes`, stacks[0] ? `in ${stacks[0].name}` : null].filter(Boolean).join(" · "),
-      href: resourcePath(r),
-      galaxy: galaxyForTask(r.task),
-      pop: r.likes,
-    })
-  }
-
-  // People live in the galaxy where most of their work is, so a maker sits next to what they made.
-  for (const p of people) {
-    const made = resources.filter((r) => r.owner === p.handle)
-    const tally = new Map<GalaxyId, number>()
-    for (const r of made) tally.set(galaxyForTask(r.task), (tally.get(galaxyForTask(r.task)) ?? 0) + 1)
-    const home = [...tally].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "forum"
-    drafts.push({
-      id: `person:${p.handle}`,
-      kind: "person",
-      name: p.name,
-      summary: p.bio,
-      meta: [p.org ? "Organisation" : p.role, p.place, `${compact(p.followers)} followers`].join(" · "),
-      href: `/people/${p.handle}`,
-      galaxy: home,
-      pop: p.followers,
-    })
-  }
-
-  for (const c of categories) {
-    const inside = threads.filter((t) => t.category === c.slug)
-    drafts.push({
-      id: `category:${c.slug}`,
-      kind: "category",
-      name: c.name,
-      summary: c.blurb,
-      meta: `${inside.length} ${inside.length === 1 ? "thread" : "threads"} · ${compact(inside.reduce((n, t) => n + t.views, 0))} views`,
-      href: categoryPath(c.slug),
-      galaxy: "forum",
-      pop: inside.reduce((n, t) => n + t.views, 0) + 500,
-    })
-  }
-
   // Oldest first, so a new project joins the edge of its galaxy instead of reshuffling everyone already there.
-  const published = [...projects].sort((a, b) => (a.publishedAt ?? a.createdAt).localeCompare(b.publishedAt ?? b.createdAt))
-  for (const p of published) {
-    const s = stats[p.id]
+  const ordered = [...entries].sort((a, b) => a.date.localeCompare(b.date))
+  ordered.forEach((e, i) => {
+    const s = stats[e.id]
     drafts.push({
-      id: `project:${p.id}`,
-      kind: "project",
-      name: p.name,
-      summary: p.summary,
-      meta: [`${KINDS[p.kind].label} by ${p.owner?.name ?? "a member"}`, s ? `${compact(s.likes)} likes` : null].filter(Boolean).join(" · "),
-      href: projectPath(p.id),
-      galaxy: "projects",
+      id: e.key,
+      kind: e.kind,
+      name: e.name,
+      summary: e.summary,
+      meta: [`${e.source === "project" ? "Published" : "Shared"} by ${e.owner?.name ?? "a member"}`, s?.likes ? `${compact(s.likes)} likes` : null].filter(Boolean).join(" · "),
+      href: e.href,
+      galaxy: e.kind,
       pop: (s?.likes ?? 0) + 2 * (s?.saves ?? 0) + 1,
+      order: i,
     })
-  }
+  })
 
-  // Popularity is compared within each kind: followers and likes are different scales.
+  const made = new Map<string, number>()
+  for (const e of entries) if (e.owner?.id) made.set(e.owner.id, (made.get(e.owner.id) ?? 0) + 1)
+  members.forEach((m, i) => {
+    drafts.push({
+      id: `member:${m.id}`,
+      kind: "person",
+      name: m.name,
+      summary: m.bio || (m.handle ? `@${m.handle}` : "A member of Nexverse."),
+      meta: [m.handle ? `@${m.handle}` : null, m.location || null, made.get(m.id) ? `${made.get(m.id)} published or shared` : null].filter(Boolean).join(" · ") || "Member",
+      href: `/people/${m.handle ?? m.id}`,
+      galaxy: "members",
+      pop: (made.get(m.id) ?? 0) + 1,
+      order: i,
+    })
+  })
+
+  categories.forEach((c, i) => {
+    drafts.push({ id: `category:${c.slug}`, kind: "category", name: c.name, summary: c.blurb, meta: "Forum category", href: categoryPath(c.slug), galaxy: "forum", pop: 1, order: i })
+  })
+
+  github.forEach((r, i) => {
+    const key = liveTarget("ghrepo", r.fullName)
+    if (!key) return
+    drafts.push({
+      id: key,
+      kind: "github",
+      name: r.fullName,
+      summary: r.description || "No description yet.",
+      meta: [`${compact(r.stars)} stars on GitHub`, r.language || null].filter(Boolean).join(" · "),
+      href: ghHref(r.owner, r.name),
+      galaxy: "github",
+      pop: r.stars,
+      order: i,
+    })
+  })
+
+  // Popularity is compared within each kind: stars and likes are different scales.
   const weights = new Map<string, number>()
   for (const kind of Object.keys(STAR_KINDS) as StarKind[]) {
     const group = drafts.filter((d) => d.kind === kind)
     if (!group.length) continue
     const norm = normalise(group.map((d) => d.pop))
-    group.forEach((d, i) => weights.set(d.id, kind === "project" && group.length < 3 ? 0.55 : norm[i]))
+    group.forEach((d, i) => weights.set(d.id, group.length < 3 ? 0.55 : norm[i]))
   }
 
   const galaxies: Galaxy[] = []
   const stars: Star[] = []
   for (const g of GALAXIES) {
-    const members = drafts.filter((d) => d.galaxy === g.id)
+    const inside = drafts.filter((d) => d.galaxy === g.id)
     const rad = (g.angle * Math.PI) / 180
-    const radius = Math.max(140, 72 + 46 * Math.sqrt(members.length))
-    const galaxy: Galaxy = { id: g.id, name: g.name, blurb: g.blurb, x: Math.cos(rad) * ELLIPSE.a, y: Math.sin(rad) * ELLIPSE.b, radius, tint: g.tint, seed: hash(g.id), count: members.length }
+    const radius = Math.max(140, 72 + 46 * Math.sqrt(inside.length))
+    const galaxy: Galaxy = { id: g.id, name: g.name, blurb: g.blurb, x: Math.cos(rad) * ELLIPSE.a, y: Math.sin(rad) * ELLIPSE.b, radius, tint: g.tint, seed: hash(g.id), count: inside.length }
     galaxies.push(galaxy)
 
-    // Brightest at the core, the rest on a sunflower spiral: even spacing with no overlaps, and fully deterministic.
-    // Projects keep their publish order so the spiral only ever grows outwards.
-    const ordered = g.id === "projects" ? members : [...members].sort((a, b) => (weights.get(b.id) ?? 0) - (weights.get(a.id) ?? 0) || a.id.localeCompare(b.id))
+    // Members' work keeps its publish order so the spiral only grows outwards; the rest is brightest at the core.
+    const sorted = g.id === "github" || g.id === "forum" ? [...inside].sort((a, b) => (weights.get(b.id) ?? 0) - (weights.get(a.id) ?? 0) || a.id.localeCompare(b.id)) : [...inside].sort((a, b) => a.order - b.order)
     const spin = galaxy.seed * Math.PI * 2
-    ordered.forEach((d, i) => {
+    sorted.forEach((d, i) => {
       const w = weights.get(d.id) ?? 0.5
-      const t = Math.sqrt((i + 0.6) / Math.max(ordered.length, 6))
+      const t = Math.sqrt((i + 0.6) / Math.max(sorted.length, 6))
       const angle = i * 2.399963 + spin
       const j = hash(d.id)
       const dist = radius * 0.86 * t * (0.92 + 0.16 * j)
+      const { pop: _pop, order: _order, ...star } = d
+      void _pop
+      void _order
       stars.push({
-        ...d,
+        ...star,
         weight: w,
         x: galaxy.x + Math.cos(angle) * dist,
         y: galaxy.y + Math.sin(angle) * dist * 0.82,
@@ -225,12 +233,12 @@ export function buildCosmos({ projects = [], stats = {}, you }: { projects?: Pro
     seen.add(key)
     links.push({ a, b, kind })
   }
-  const kindOf = (slug: string) => resources.find((r) => r.slug === slug)?.kind
-  const resId = (slug: string) => `${kindOf(slug)}:${slug}`
 
-  for (const c of constellations) for (const [i, j] of c.links) link(resId(c.stars[i]), resId(c.stars[j]), "stack")
-  for (const t of threads) for (const slug of t.links) if (kindOf(slug)) link(`category:${t.category}`, resId(slug), "thread")
-  for (const r of resources) link(`person:${r.owner}`, `${r.kind}:${r.slug}`, "maker")
+  for (const c of collections) {
+    const keys = c.items.map((i) => i.target).filter((t) => byId.has(t))
+    for (let i = 1; i < keys.length; i++) link(keys[i - 1], keys[i], "stack")
+  }
+  for (const e of entries) if (e.owner?.id) link(`member:${e.owner.id}`, e.key, "maker")
   if (you) for (const target of you.highlights) link("you", target, "you")
 
   const pad = 150
@@ -244,10 +252,10 @@ export function buildCosmos({ projects = [], stats = {}, you }: { projects?: Pro
   return { stars, byId, links, galaxies, bounds }
 }
 
-/** "model:orbit-8b" → true when it is a key a star could have. */
+/** "project:<uuid>" → true when it is a key a star could have. */
 export const FOCUS = /^(?:you|[a-z]{2,16}:[a-z0-9-]{1,80})$/
 
-/** Lowercase without accents, so "ines" finds Inês and "tunde" finds Túndé. */
+/** Lowercase without accents, so "ines" finds Inês. */
 export const fold = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 
 /** Stars that match a search, best first: name or key starts with it, then name contains it, then anything else. */

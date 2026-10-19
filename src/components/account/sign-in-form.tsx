@@ -7,12 +7,14 @@ import { LinkButton } from "@/components/link-button"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useSiteSettings } from "@/lib/site-settings"
 import { signInWithEmail, useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 
 export function SignInForm() {
   const next = safeNext(useSearchParams().get("next"))
   const { user } = useSession()
+  const open = useSiteSettings().settings.access.signupOpen
   const [email, setEmail] = useState("")
   const [sent, setSent] = useState("")
   const [busy, setBusy] = useState(false)
@@ -64,7 +66,7 @@ export function SignInForm() {
     setBusy(true)
     setError("")
     try {
-      await signInWithEmail(address, next)
+      await signInWithEmail(address, next, open)
       setSent(address)
     } catch (err) {
       setError((err as Error).message)
@@ -90,7 +92,9 @@ export function SignInForm() {
           {error ? (
             <FieldError>{error}</FieldError>
           ) : (
-            <FieldDescription>New here? The same link creates your account.</FieldDescription>
+            <FieldDescription>
+              {open ? "New here? The same link creates your account." : "Joining is closed for now. Members can still sign in with their address."}
+            </FieldDescription>
           )}
         </Field>
         <Button type="submit" size="lg" className="self-start" disabled={busy}>

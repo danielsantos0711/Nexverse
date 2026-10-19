@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils"
 
 /**
  * "See in Cosmos": a small button any page can place next to a resource, person, category or project. It opens the
- * star map already flown to that star. `target` is the star's key, e.g. "model:orbit-8b", "person:ines",
- * "category:help" or "project:<uuid>". Works in server and client components.
+ * star map already flown to that star. `target` is the star's key, e.g. "project:<uuid>", "member:<uuid>",
+ * "category:help" or "share:<uuid>". Works in server and client components.
  */
 export function CosmosLink({ target, label = "See in Cosmos", className }: { target: string; label?: string; className?: string }) {
   return (

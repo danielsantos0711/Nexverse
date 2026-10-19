@@ -1,7 +1,6 @@
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { useEffect, useSyncExternalStore } from "react"
 import { localMember } from "@/lib/chat"
-import { getPerson } from "@/lib/data"
 import { useSession } from "@/lib/store"
 import { db, live } from "@/lib/supabase"
 
@@ -9,8 +8,8 @@ import { db, live } from "@/lib/supabase"
  * Direct messages: one-to-one conversations between members, with unread counts, read receipts, a typing
  * notice and blocking. With a database connected this reads and writes Supabase (conversations are opened
  * by the start_dm() function, so only members can message and only within the rate limits), and new messages
- * and read marks arrive over Realtime. Without one, conversations with the sample people are kept in this
- * browser so the screens can be tried; nobody answers.
+ * and read marks arrive over Realtime. Without one there are no other members to write to; the inbox only shows
+ * conversations an earlier version of this browser kept locally.
  */
 
 export const MAX_DM = 4000
@@ -50,7 +49,8 @@ export type DirectMessage = {
 
 function fail(error: { message: string; code?: string } | null): asserts error is null {
   if (!error) return
-  if (/violates row-level security/.test(error.message)) throw new Error("You cannot write in this conversation.")
+  if (/violates row-level security/.test(error.message))
+    throw new Error("You cannot write in this conversation. Check that you are signed in; if your account is paused, sending stays off until the pause ends (your notifications say why).")
   if (/JWT|not authenticated/i.test(error.message)) throw new Error("Your session ran out. Sign in again.")
   if (/schema cache|does not exist/.test(error.message)) throw new Error("Direct messages are still being switched on for this copy of Nexverse. Try again soon.")
   throw new Error(error.message)
@@ -111,10 +111,9 @@ function writeJSON(key: string, value: unknown) {
 const localThreads = () => readJSON<LocalThread[]>(THREADS_KEY, [])
 const localMessages = (id: string) => readJSON<DirectMessage[]>(messagesKey(id), [])
 
-/** Without a database, who you can message: the sample people, by handle, or anyone you named. */
-function localCorrespondent(idOrHandle: string, name?: string): Correspondent {
-  const p = getPerson(idOrHandle)
-  return p ? { id: p.handle, name: p.name, handle: p.handle } : { id: idOrHandle, name: name?.trim() || "Member" }
+/** Without a database, the other side of a conversation is only an id and the name you gave it. */
+function localCorrespondent(id: string, name?: string): Correspondent {
+  return { id, name: name?.trim() || "Member" }
 }
 
 const localThreadId = (otherId: string) =>

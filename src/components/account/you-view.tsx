@@ -1,5 +1,6 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
 import { motion, useReducedMotion } from "motion/react"
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
@@ -16,7 +17,10 @@ import { MissionBadges } from "@/components/missions/mission-badges"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { ago, getCategory } from "@/lib/data"
+import { TimeAgo } from "@/components/live/time"
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+import { getCategory } from "@/lib/data"
+import { hostOf, sharePath } from "@/lib/hub"
 import { deleteSubmission, listQuestions, listSubmissions, renameMember, signOut, useSession, type Question, type Submission } from "@/lib/store"
 import { useBookmarks } from "@/lib/social"
 import { live } from "@/lib/supabase"
@@ -29,10 +33,19 @@ export function YouView() {
   if (!user || !member) {
     return (
       <>
-        <PageTitle title="You" lead="Sign in to share, start threads and keep track of what you have written." />
-        <Link href="/sign-in?next=/you" className="pressable inline-flex h-11 items-center rounded-full bg-primary px-6 font-medium text-primary-foreground">
-          Sign in
-        </Link>
+        <PageTitle title="You" lead="Your own corner of Nexverse: your threads, the links you shared, what you saved and who you follow." />
+        <Empty className="glass max-w-2xl rounded-2xl py-14">
+          <EmptyHeader>
+            <EmptyTitle>Sign in to see your page</EmptyTitle>
+            <EmptyDescription>An account takes an email address. Once you are in, everything you write, share, like and save is kept here and follows you to any device.</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent className="flex-row flex-wrap justify-center gap-2">
+            <Button nativeButton={false} render={<Link href="/sign-in?next=/you" />}>Sign in</Button>
+            <Button nativeButton={false} variant="secondary" render={<Link href="/saved" />}>
+              Saved in this browser
+            </Button>
+          </EmptyContent>
+        </Empty>
       </>
     )
   }
@@ -200,7 +213,7 @@ function Mine({
                       {q.title}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {getCategory(q.orbit)?.name} · {ago(q.createdAt)} · {q.answerCount} {q.answerCount === 1 ? "reply" : "replies"}
+                      {getCategory(q.orbit)?.name ?? q.orbit} · <TimeAgo date={q.createdAt} /> · {q.answerCount} {q.answerCount === 1 ? "reply" : "replies"}
                     </span>
                   </Link>
                 </li>
@@ -221,14 +234,21 @@ function Mine({
             <ul className="flex flex-col gap-1">
               {shared?.map((s) => (
                 <li key={s.id} className="flex items-center gap-3 rounded-xl border border-border bg-card/60 p-4">
-                  <a href={s.url} target="_blank" rel="noopener noreferrer nofollow" className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="flex items-center gap-1.5 font-medium">
-                      {s.title} <ExternalLinkIcon aria-hidden className="size-3.5 text-muted-foreground" />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    {s.local ? (
+                      <span className="font-medium">{s.title}</span>
+                    ) : (
+                      <Link href={sharePath(s) as Route} className="font-medium hover:underline">
+                        {s.title}
+                      </Link>
+                    )}
+                    <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                      <span className="capitalize">{s.kind}</span> · <TimeAgo date={s.createdAt} /> ·
+                      <a href={s.url} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex min-w-0 items-center gap-1 truncate hover:text-foreground hover:underline">
+                        {hostOf(s.url) || "link"} <ExternalLinkIcon aria-hidden className="size-3 shrink-0" />
+                      </a>
                     </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {s.kind} · {ago(s.createdAt)} · {new URL(s.url).hostname}
-                    </span>
-                  </a>
+                  </div>
                   <Button variant="ghost" size="sm" onClick={() => unshare(s.id)}>
                     Remove
                   </Button>

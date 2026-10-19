@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, GlobeIcon, GripVerticalIcon, LayersIcon, LockIcon, PencilIcon, PlusIcon, StickyNoteIcon, Trash2Icon, XIcon } from "lucide-react"
 import { CollectionForm } from "@/components/collections/collection-form"
-import { describeItem } from "@/components/collections/describe-item"
+import { useItemInfo, type ItemInfo } from "@/components/collections/describe-item"
+import { StarMap } from "@/components/hub/constellation-map"
 import { Breadcrumbs, PosterAvatar } from "@/components/forum/forum-ui"
 import { KIND_ICONS, kindText } from "@/components/hub/bits"
 import { PageSkeleton } from "@/components/app/page-skeleton"
@@ -34,13 +35,13 @@ import { cn } from "@/lib/utils"
 const EASE = [0.23, 1, 0.32, 1] as const
 
 /** One collection. Its owner can rename it, reorder items by dragging (or with the arrow buttons), add notes and remove items. */
-export function CollectionDetail({ id, initial }: { id: string; initial?: Collection }) {
-  const [c, setC] = useState<Collection | null | undefined>(initial)
+export function CollectionDetail({ id }: { id: string }) {
+  const [c, setC] = useState<Collection | null | undefined>(undefined)
   const [error, setError] = useState("")
   const { ready, user } = useSession()
 
   useEffect(() => {
-    if (initial || (live && !ready)) return
+    if (live && !ready) return
     let stale = false
     getCollection(id)
       .then((x) => {
@@ -52,7 +53,7 @@ export function CollectionDetail({ id, initial }: { id: string; initial?: Collec
     return () => {
       stale = true
     }
-  }, [id, initial, ready, user?.id])
+  }, [id, ready, user?.id])
 
   if (error) return <Missing title="This collection could not be loaded" detail={error} />
   if (c === undefined) return <PageSkeleton />
@@ -71,7 +72,10 @@ function CollectionPage({ initial }: { initial: Collection }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [status, setStatus] = useState("")
   const [error, setError] = useState("")
-  const isOwner = !c.sample && (c.local || Boolean(user && c.owner.memberId === user.id))
+  const isOwner = c.local || Boolean(user && c.owner.memberId === user.id)
+  const { get, ready: infoReady } = useItemInfo(items.map((i) => i.target))
+  const visible = isOwner ? items : items.filter((i) => get(i.target).found)
+  const stars = visible.map((i) => ({ key: i.target, ...get(i.target) })).filter((s) => s.found && s.type)
 
   async function persistOrder(next: CollectionItem[]) {
     const targets = next.map((i) => i.target)
@@ -94,7 +98,7 @@ function CollectionPage({ initial }: { initial: Collection }) {
     const [it] = next.splice(index, 1)
     next.splice(to, 0, it)
     setItems(next)
-    setStatus(`${describeItem(it.target).label} moved to position ${to + 1} of ${next.length}`)
+    setStatus(`${get(it.target).label} moved to position ${to + 1} of ${next.length}`)
     void persistOrder(next)
     // Keep focus on the same control after the row moves.
     requestAnimationFrame(() => document.getElementById(`move-${delta < 0 ? "up" : "down"}-${it.target}`)?.focus())
@@ -107,7 +111,7 @@ function CollectionPage({ initial }: { initial: Collection }) {
     saved.current = saved.current.filter((t) => t !== target)
     try {
       await removeFromCollection(c.id, target)
-      setStatus(`Removed ${describeItem(target).label}`)
+      setStatus(`Removed ${get(target).label}`)
     } catch (e) {
       setItems(before)
       saved.current = before.map((i) => i.target)
@@ -142,7 +146,7 @@ function CollectionPage({ initial }: { initial: Collection }) {
             {c.isPublic ? "Public" : "Private"}
           </span>
           <span className="tabular">
-            {items.length} {items.length === 1 ? "item" : "items"}
+            {visible.length} {visible.length === 1 ? "item" : "items"}
           </span>
           <span>· Updated {formatDate(c.updatedAt)}</span>
           {c.local && <span>· Saved in this browser</span>}
@@ -184,8 +188,17 @@ function CollectionPage({ initial }: { initial: Collection }) {
         {status}
       </p>
 
+      {infoReady && stars.length >= 2 && (
+        <section aria-label="Star map" className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-[#05060a]">
+          <StarMap id={c.id} name={c.title} stars={stars} />
+          <p className="absolute bottom-2 left-3 text-[11px] text-muted-foreground">
+            {stars.length > 12 ? `The first 12 of ${stars.length} items, in order.` : "Every item, in the curator's order."} Point at a star to light its neighbours.
+          </p>
+        </section>
+      )}
+
       <section aria-label="Items" className="mt-6">
-        {items.length === 0 ? (
+        {visible.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 px-6 py-14 text-center">
             <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
               <LayersIcon aria-hidden className="size-5" />
@@ -223,15 +236,16 @@ function CollectionPage({ initial }: { initial: Collection }) {
                   onMove={move}
                   onRemove={remove}
                   onSaveNote={saveNote}
+                  info={get(it.target)}
                 />
               ))}
             </Reorder.Group>
           </>
         ) : (
           <ol className="flex flex-col gap-2">
-            {items.map((it, i) => (
+            {visible.map((it, i) => (
               <li key={it.target}>
-                <ItemCard item={it} index={i} />
+                <ItemCard item={it} index={i} info={get(it.target)} />
               </li>
             ))}
           </ol>
@@ -278,8 +292,7 @@ function CollectionPage({ initial }: { initial: Collection }) {
   )
 }
 
-function ItemCard({ item, index, children, handle }: { item: CollectionItem; index: number; children?: React.ReactNode; handle?: React.ReactNode }) {
-  const info = describeItem(item.target)
+function ItemCard({ item, index, info, children, handle }: { item: CollectionItem; index: number; info: ItemInfo; children?: React.ReactNode; handle?: React.ReactNode }) {
   const Icon = info.kind ? KIND_ICONS[info.kind] : LayersIcon
   return (
     <article className="group relative flex gap-3 rounded-xl border border-border bg-card/40 p-3.5 transition-colors hover:bg-white/[0.03] sm:p-4">
@@ -290,7 +303,7 @@ function ItemCard({ item, index, children, handle }: { item: CollectionItem; ind
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className={cn("inline-flex items-center gap-1 text-xs font-medium", info.kind ? kindText(info.kind) : "text-muted-foreground")}>
           <Icon aria-hidden className="size-3.5" />
-          {info.type}
+          {info.type || "\u00a0"}
         </span>
         {info.href ? (
           <Link href={info.href} className="w-fit rounded-sm text-[15px] leading-snug font-medium hover:text-ion hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
@@ -321,7 +334,9 @@ function OwnerRow({
   onMove,
   onRemove,
   onSaveNote,
+  info,
 }: {
+  info: ItemInfo
   item: CollectionItem
   index: number
   total: number
@@ -336,7 +351,7 @@ function OwnerRow({
   const [note, setNote] = useState(item.note)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
-  const label = describeItem(item.target).label
+  const label = info.label
   const iconBtn =
     "grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-30"
 
@@ -367,6 +382,7 @@ function OwnerRow({
       <ItemCard
         item={item}
         index={index}
+        info={info}
         handle={
           <button
             type="button"
@@ -500,7 +516,7 @@ function FollowCollection({ c }: { c: Collection }) {
         </AnimatePresence>
         {state.mine ? "Following" : "Follow"}
         <span className="tabular opacity-70">
-          {compact(c.baseFollowers + state.followers)}
+          {compact(state.followers)}
           <span className="sr-only"> followers</span>
         </span>
       </button>

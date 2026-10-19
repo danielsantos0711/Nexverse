@@ -1,4 +1,4 @@
-import { getPerson, getThread, people, threads, type LanguageCode } from "@/lib/data"
+import { type LanguageCode } from "@/lib/data"
 // Types only: this module is also imported by server components (sample events and collections), and the store
 // pulls in React hooks, so the few store operations needed here are written out below.
 import type { Answer, Member, NewQuestion, Question, ThreadRef } from "@/lib/store"
@@ -62,7 +62,6 @@ export const isUuid = (s: string) => UUID.test(s)
 /** Someone shown next to a post, event or collection: a sample person (handle) or a member (memberId). */
 export type Who = { name: string; handle?: string; memberId?: string }
 
-const personWho = (handle: string): Who => ({ handle, name: getPerson(handle)?.name ?? handle })
 const memberWho = (m: Member | null | undefined, fallback = "A member"): Who => (m ? { name: m.name, memberId: m.id } : { name: fallback })
 
 /** "Today" for sample content, matching the fixed date the rest of the preview uses (lib/data.ts `ago`). */
@@ -86,12 +85,12 @@ export function normalizeTag(raw: string) {
     .slice(0, 24)
 }
 
-/** Tags people already use on the forum, most used first, for suggestions. */
-export const KNOWN_TAGS: string[] = (() => {
-  const n = new Map<string, number>()
-  for (const t of threads) for (const tag of t.tags) n.set(tag, (n.get(tag) ?? 0) + 1)
-  return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t)
-})()
+/** Common AI topics, offered as suggestions while typing a tag. A preset list: members can use any tag. */
+export const KNOWN_TAGS: string[] = [
+  "llm", "fine-tuning", "rag", "agents", "evaluation", "quantization", "inference", "training", "datasets", "embeddings",
+  "vision", "speech", "multimodal", "on-device", "open-weights", "licensing", "benchmarks", "prompting", "safety",
+  "gpu", "tokenizers", "diffusion", "robotics", "portuguese", "translation", "beginner",
+]
 
 export type ThreadExtras = { tags: string[]; editedAt: string | null; acceptedAnswerId: string | null }
 
@@ -289,31 +288,16 @@ export async function editReply(thread: ThreadRef, id: string, body: string, men
  */
 export type MentionCandidate = { key: string; name: string; insert: string; handle?: string; memberId?: string; hint: string }
 
-const personCandidate = (p: (typeof people)[number]): MentionCandidate => ({
-  key: `person:${p.handle}`,
-  name: p.name,
-  handle: p.handle,
-  insert: `@${p.handle}`,
-  hint: `@${p.handle}${p.org ? " · organisation" : ""}`,
-})
-
 export const memberCandidate = (m: Member): MentionCandidate => ({ key: `member:${m.id}`, name: m.name, memberId: m.id, insert: `@${m.name}`, hint: "Member" })
 
-const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase()
-
-/** Sample people whose handle or name starts with (or contains) the query. */
+/**
+ * People you can mention without asking the database. There are no built-in people any more, so this is always
+ * empty; members are found with searchMembers(). Kept so the composers that call it keep working.
+ */
 export function matchPeople(query: string, limit = 6): MentionCandidate[] {
-  const q = fold(query)
-  const scored = people
-    .map((p) => {
-      const h = p.handle
-      const n = fold(p.name)
-      const score = !q ? 1 : h.startsWith(q) || n.startsWith(q) ? 3 : n.split(/\s+/).some((w) => w.startsWith(q)) ? 2 : h.includes(q) || n.includes(q) ? 1 : 0
-      return { p, score }
-    })
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score || a.p.name.localeCompare(b.p.name))
-  return scored.slice(0, limit).map((x) => personCandidate(x.p))
+  void query
+  void limit
+  return []
 }
 
 /** Members whose name contains the query. Empty without a database. */
@@ -334,9 +318,9 @@ export function mentionedMemberIds(body: string, picked: MentionCandidate[]): st
   return [...new Set(ids)].slice(0, 10)
 }
 
-/** Every mention a post could contain, so they can be highlighted: sample handles plus picked member names. */
+/** Every mention a post could contain, so they can be highlighted: the member names picked while writing. */
 export function mentionTokens(extra: string[] = []): string[] {
-  return [...people.map((p) => `@${p.handle}`), ...extra].sort((a, b) => b.length - a.length)
+  return [...extra].sort((a, b) => b.length - a.length)
 }
 
 // ─── Reactions on posts ─────────────────────────────────────────────────────────────────────────────────────
@@ -578,149 +562,6 @@ export type CommunityEvent = {
   local: boolean
 }
 
-type SampleEvent = Omit<CommunityEvent, "host" | "sample" | "local" | "seedGoing" | "seedInterested" | "capacity"> & {
-  host: string
-  going: string[]
-  interested: string[]
-  capacity?: number
-}
-
-const SAMPLE_EVENT_DATA: SampleEvent[] = [
-  {
-    id: "paper-club-tokenizer-free",
-    kind: "paper-club",
-    mode: "online",
-    title: "Paper club: do we still need tokenizers?",
-    description:
-      "This week we read the byte-level, tokenizer-free paper everyone keeps linking. Read at least the introduction and section 4 before you come.\n\n**Plan**\n\n1. Ten-minute summary from Noah\n2. Where byte-level models win, and where they lose (hint: fertility in Yoruba and Hindi)\n3. Would we use it for our own small models?\n\nCameras optional. Notes go in the forum thread afterwards.",
-    location: "https://meet.nexverse.example/paper-club",
-    startsAt: "2026-10-22T17:00:00Z",
-    endsAt: "2026-10-22T18:30:00Z",
-    timezone: "America/Toronto",
-    host: "noah",
-    thread: "paper-club-tokenizer-free",
-    going: ["noah", "mei", "tunde", "layla", "priya", "ines"],
-    interested: ["kai", "jonas"],
-  },
-  {
-    id: "office-hours-quantising-phones",
-    kind: "office-hours",
-    mode: "online",
-    title: "Office hours: getting a model under 2 GB",
-    description:
-      "Bring a model you want on a phone and the numbers you have so far. We will look at quantisation settings, context length and what to measure on the device itself.\n\nPriya has done this for Orbit 1B Mobile and Pocket Run. Questions in any language are welcome.",
-    location: "https://meet.nexverse.example/office-hours",
-    startsAt: "2026-10-24T09:00:00Z",
-    endsAt: "2026-10-24T10:00:00Z",
-    timezone: "Asia/Kolkata",
-    host: "priya",
-    going: ["priya", "kai", "sofia"],
-    interested: ["leo", "rafa", "amara"],
-  },
-  {
-    id: "ama-orbit-8b-training",
-    kind: "ama",
-    mode: "online",
-    title: "AMA: how Orbit 8B was trained, logs included",
-    description:
-      "The Orbital AI collective answers questions about the Orbit 8B run: data mix, the loss spikes, what they would change, and how volunteers can help with the next one.\n\nPost questions in advance in the forum's Announcements category and we will start with the most upvoted.",
-    location: "https://meet.nexverse.example/ama",
-    startsAt: "2026-10-29T16:00:00Z",
-    endsAt: "2026-10-29T17:30:00Z",
-    timezone: "UTC",
-    host: "orbitalai",
-    going: ["noah", "mei", "sofia", "rafa", "kai", "priya", "jonas", "layla"],
-    interested: ["ines", "leo", "amara", "tunde"],
-  },
-  {
-    id: "lisbon-small-models-meetup",
-    kind: "meetup",
-    mode: "in-person",
-    title: "Lisbon small-models meetup",
-    description:
-      "An evening of short talks on small models for Iberian languages, then drinks.\n\n- Inês: what changed between tagus-3b-pt v1 and v2\n- Open mic: five minutes on anything you built\n\nThe venue has step-free access. Talks are in Portuguese and English.",
-    location: "LX Factory, Rua Rodrigues de Faria 103, Lisbon",
-    startsAt: "2026-11-05T18:30:00Z",
-    endsAt: "2026-11-05T21:00:00Z",
-    timezone: "Europe/Lisbon",
-    host: "ines",
-    capacity: 60,
-    going: ["ines", "tagus-lab", "jonas", "sofia"],
-    interested: ["leo", "rafa"],
-  },
-  {
-    id: "nairobi-speech-data-sprint",
-    kind: "meetup",
-    mode: "in-person",
-    title: "Speech data sprint, Nairobi",
-    description:
-      "A day of recording and reviewing Swahili and Sheng speech with consent forms done properly. Bring a laptop and headphones; lunch is provided.\n\nNo experience needed: Amara will walk everyone through the datasheet first.",
-    location: "iHub, Senteu Plaza, Nairobi",
-    startsAt: "2026-11-14T07:00:00Z",
-    endsAt: "2026-11-14T13:00:00Z",
-    timezone: "Africa/Nairobi",
-    host: "amara",
-    capacity: 40,
-    going: ["amara", "savanna", "tunde"],
-    interested: ["layla"],
-  },
-  {
-    id: "paper-club-rag-long-context",
-    kind: "paper-club",
-    mode: "online",
-    title: "Paper club: long context or retrieval?",
-    description: "We compared three recent papers on long-context models against plain retrieval. Notes and the recording link are in the forum thread.",
-    location: "https://meet.nexverse.example/paper-club",
-    startsAt: "2026-10-08T17:00:00Z",
-    endsAt: "2026-10-08T18:30:00Z",
-    timezone: "America/Toronto",
-    host: "noah",
-    thread: "rag-long-context-vs-retrieval",
-    going: ["noah", "mei", "rafa", "sofia", "kai"],
-    interested: ["ines"],
-  },
-  {
-    id: "office-hours-agent-loops",
-    kind: "office-hours",
-    mode: "online",
-    title: "Office hours: agents that stop",
-    description: "Rafael looked at traces from agents stuck in loops and showed how loop-guard decides when to step in.",
-    location: "https://meet.nexverse.example/office-hours",
-    startsAt: "2026-10-10T15:00:00Z",
-    endsAt: "2026-10-10T16:00:00Z",
-    timezone: "America/Bogota",
-    host: "rafa",
-    going: ["rafa", "noah", "kai", "priya"],
-    interested: [],
-  },
-  {
-    id: "berlin-serving-meetup",
-    kind: "meetup",
-    mode: "in-person",
-    title: "Berlin: serving small models cheaply",
-    description: "Sofia walked through serve-small and the caching tricks that keep a 3B model fast on one GPU.",
-    location: "Factory Görlitzer Park, Berlin",
-    startsAt: "2026-09-24T16:30:00Z",
-    endsAt: "2026-09-24T19:00:00Z",
-    timezone: "Europe/Berlin",
-    host: "sofia",
-    capacity: 80,
-    going: ["sofia", "jonas", "leo"],
-    interested: [],
-  },
-]
-
-export const SAMPLE_EVENTS: CommunityEvent[] = SAMPLE_EVENT_DATA.map(({ host, going, interested, capacity, ...e }) => ({
-  ...e,
-  host: personWho(host),
-  capacity: capacity ?? null,
-  seedGoing: going,
-  seedInterested: interested,
-  sample: true,
-  local: false,
-}))
-
-export const getSampleEvent = (id: string) => SAMPLE_EVENTS.find((e) => e.id === id)
 
 const EVENTS_KEY = "nexverse-events"
 type LocalEvent = Omit<CommunityEvent, "host" | "sample" | "local" | "seedGoing" | "seedInterested">
@@ -760,19 +601,17 @@ const fromEventRow = (r: EventRow): CommunityEvent => ({
   local: false,
 })
 
-/** Sample events plus members' events (from the database, or from this browser). */
+/** Members' events, from the database or from this browser. */
 export async function listEvents(): Promise<CommunityEvent[]> {
   const client = db()
-  if (!client) return [...readLocal<LocalEvent[]>(EVENTS_KEY, []).map(fromLocalEvent), ...SAMPLE_EVENTS]
+  if (!client) return readLocal<LocalEvent[]>(EVENTS_KEY, []).map(fromLocalEvent)
   const since = new Date(Date.now() - 1000 * 60 * 60 * 24 * 120).toISOString()
   const { data, error } = await client.from("events").select(EVENT_COLUMNS).gte("ends_at", since).order("starts_at").limit(200)
   fail(error)
-  return [...(data as unknown as EventRow[]).map(fromEventRow), ...SAMPLE_EVENTS]
+  return (data as unknown as EventRow[]).map(fromEventRow)
 }
 
 export async function getEvent(id: string): Promise<CommunityEvent | null> {
-  const sample = getSampleEvent(id)
-  if (sample) return sample
   const client = db()
   if (!client) {
     const e = readLocal<LocalEvent[]>(EVENTS_KEY, []).find((x) => x.id === id)
@@ -870,7 +709,7 @@ export type Attendees = { going: Who[]; interested: Who[]; mine: RsvpStatus | nu
 const RSVPS_KEY = "nexverse-rsvps"
 
 export async function getAttendees(e: CommunityEvent): Promise<Attendees> {
-  const seeded: Attendees = { going: e.seedGoing.map(personWho), interested: e.seedInterested.map(personWho), mine: null }
+  const seeded: Attendees = { going: [], interested: [], mine: null }
   const client = db()
   if (!client) {
     const mine = readLocal<Record<string, RsvpStatus>>(RSVPS_KEY, {})[e.id] ?? null
@@ -891,7 +730,7 @@ export async function getAttendees(e: CommunityEvent): Promise<Attendees> {
   }
 }
 
-/** Attendees of many events in one query, for lists. Members come first, then the sample people. */
+/** Attendees of many events in one query, for lists. */
 export async function getAttendeesMany(events: CommunityEvent[]): Promise<Record<string, Attendees>> {
   const client = db()
   const members: Record<string, Attendees> = Object.fromEntries(events.map((e) => [e.id, { going: [], interested: [], mine: null }]))
@@ -924,7 +763,7 @@ export async function getAttendeesMany(events: CommunityEvent[]): Promise<Record
   return Object.fromEntries(
     events.map((e) => {
       const a = members[e.id]
-      return [e.id, { going: [...a.going, ...e.seedGoing.map(personWho)], interested: [...a.interested, ...e.seedInterested.map(personWho)], mine: a.mine }]
+      return [e.id, a]
     })
   )
 }
@@ -1071,100 +910,16 @@ export type Collection = {
   createdAt: string
   updatedAt: string
   items: CollectionItem[]
-  /** Sample followers added to members' follows. */
-  baseFollowers: number
-  sample: boolean
+  /** @deprecated Always false: there are no sample collections any more. Kept for lib/crews.ts. */
+  sample: false
   local: boolean
 }
 
 export const COLLECTION_ITEM_TARGET = /^[a-z]{2,16}:[a-z0-9-]{1,80}$/
 
-type SampleCollection = { id: string; title: string; description: string; owner: string; date: string; followers: number; items: [string, string][] }
-
-const SAMPLE_COLLECTION_DATA: SampleCollection[] = [
-  {
-    id: "starter-european-portuguese",
-    title: "Starter kit: European Portuguese",
-    description: "Everything I point people to when they want a model that writes like someone from Lisbon, not São Paulo.",
-    owner: "ines",
-    date: "2026-10-14",
-    followers: 214,
-    items: [
-      ["model:tagus-3b-pt", "Start here. Small enough to fine-tune on one GPU."],
-      ["dataset:pt-pt-instruct", "The 40k examples behind it, with a datasheet."],
-      ["thread:fine-tune-3b-european-portuguese", "Why rank 16 was not enough, and what fixed it."],
-      ["model:babel-embed", "For retrieval in Portuguese, this beats the usual English-first embedders."],
-      ["repo:tiny-rag", "Pair it with babel-embed for a quick search demo."],
-    ],
-  },
-  {
-    id: "agents-that-stop",
-    title: "Agents that know when to stop",
-    description: "Loops, traces and the guard rails that keep tool-calling agents from burning money.",
-    owner: "rafa",
-    date: "2026-10-11",
-    followers: 388,
-    items: [
-      ["repo:loop-guard", "My library. Detects repeated tool calls without killing legitimate retries."],
-      ["thread:agent-repeats-same-tool", "The forum thread that started it."],
-      ["dataset:agent-traces", "Real traces, labelled: stuck, recovered, finished."],
-      ["tool:tracewatch", "To look at traces without writing a dashboard."],
-      ["paper:2210-d03629", "ReAct, for the reasoning-and-acting loop most agents still use."],
-      ["thread:agent-memory", "What to remember between steps, and what to forget."],
-    ],
-  },
-  {
-    id: "phone-sized-models",
-    title: "Models that fit in a phone",
-    description: "What I actually run on a mid-range Android, and how to measure battery honestly.",
-    owner: "priya",
-    date: "2026-10-09",
-    followers: 502,
-    items: [
-      ["model:orbit-1b-mobile", "The best quality per megabyte I have found."],
-      ["tool:pocket-run", "Run it offline with one tap."],
-      ["repo:quant-cookbook", "Recipes for 4-bit and 3-bit quantisation, with the evals to check them."],
-      ["thread:orbit-1b-pixel-battery", "Battery numbers from real phones."],
-      ["ghrepo:ggml-org--llama-dcpp", "The runtime underneath most of this."],
-    ],
-  },
-  {
-    id: "speech-african-languages",
-    title: "Speech for African languages",
-    description: "Recognition, synthesis and the data behind them, built with the people who speak these languages.",
-    owner: "tunde",
-    date: "2026-10-05",
-    followers: 167,
-    items: [
-      ["model:yoruba-asr-small", "Keeps tone marks, which most ASR quietly drops."],
-      ["dataset:yoruba-voices", "Consent-first recordings from 300 speakers."],
-      ["repo:tone-tokenizer", "Tokenises with diacritics intact."],
-      ["model:kiswahili-tts", "Natural-sounding Swahili synthesis from Savanna Speech."],
-      ["dataset:kiswahili-commons", "A Swahili corpus with a datasheet worth copying."],
-      ["thread:yoruba-tone-marks-asr", "Why tone marks matter for meaning."],
-    ],
-  },
-]
-
-export const SAMPLE_COLLECTIONS: Collection[] = SAMPLE_COLLECTION_DATA.map((c) => ({
-  id: c.id,
-  title: c.title,
-  description: c.description,
-  isPublic: true,
-  owner: personWho(c.owner),
-  createdAt: c.date,
-  updatedAt: c.date,
-  items: c.items.map(([target, note], i) => ({ target, note, position: i, addedAt: c.date })),
-  baseFollowers: c.followers,
-  sample: true,
-  local: false,
-}))
-
-export const getSampleCollection = (id: string) => SAMPLE_COLLECTIONS.find((c) => c.id === id)
-
 const COLLECTIONS_KEY = "nexverse-collections"
-type LocalCollection = Omit<Collection, "owner" | "sample" | "local" | "baseFollowers">
-const fromLocalCollection = (c: LocalCollection): Collection => ({ ...c, items: [...c.items].sort((a, b) => a.position - b.position), owner: { name: "You" }, baseFollowers: 0, sample: false, local: true })
+type LocalCollection = Omit<Collection, "owner" | "local" | "sample">
+const fromLocalCollection = (c: LocalCollection): Collection => ({ ...c, items: [...c.items].sort((a, b) => a.position - b.position), owner: { name: "You" }, sample: false, local: true })
 const readLocalCollections = () => readLocal<LocalCollection[]>(COLLECTIONS_KEY, [])
 function writeLocalCollection(id: string, change: (c: LocalCollection) => LocalCollection) {
   const all = readLocalCollections()
@@ -1196,18 +951,26 @@ const fromCollectionRow = (r: CollectionRow): Collection => ({
   createdAt: r.created_at,
   updatedAt: r.updated_at,
   items: (r.items ?? []).map((i) => ({ target: i.target, note: i.note, position: i.position, addedAt: i.added_at })).sort((a, b) => a.position - b.position || a.addedAt.localeCompare(b.addedAt)),
-  baseFollowers: 0,
   sample: false,
   local: false,
 })
 
-/** Public collections: members' newest first, then the samples. */
-export async function listPublicCollections(): Promise<Collection[]> {
+/** Public collections, most recently updated first. */
+export async function listPublicCollections(limit = 60): Promise<Collection[]> {
   const client = db()
-  if (!client) return [...readLocalCollections().filter((c) => c.isPublic).map(fromLocalCollection), ...SAMPLE_COLLECTIONS]
-  const { data, error } = await client.from("collections").select(COLLECTION_COLUMNS).eq("is_public", true).order("updated_at", { ascending: false }).limit(60)
+  if (!client) return readLocalCollections().filter((c) => c.isPublic).map(fromLocalCollection).slice(0, limit)
+  const { data, error } = await client.from("collections").select(COLLECTION_COLUMNS).eq("is_public", true).order("updated_at", { ascending: false }).limit(limit)
   fail(error)
-  return [...(data as unknown as CollectionRow[]).map(fromCollectionRow), ...SAMPLE_COLLECTIONS]
+  return (data as unknown as CollectionRow[]).map(fromCollectionRow)
+}
+
+/** One member's public collections (and private ones too when the member is you; the database decides). */
+export async function listMemberCollections(ownerId: string): Promise<Collection[]> {
+  const client = db()
+  if (!client || !isUuid(ownerId)) return []
+  const { data, error } = await client.from("collections").select(COLLECTION_COLUMNS).eq("owner_id", ownerId).order("updated_at", { ascending: false }).limit(50)
+  fail(error)
+  return (data as unknown as CollectionRow[]).map(fromCollectionRow)
 }
 
 /** Your own collections, public and private. Empty when signed out with a database. */
@@ -1222,8 +985,6 @@ export async function listMyCollections(): Promise<Collection[]> {
 }
 
 export async function getCollection(id: string): Promise<Collection | null> {
-  const sample = getSampleCollection(id)
-  if (sample) return sample
   const client = db()
   if (!client) {
     const c = readLocalCollections().find((x) => x.id === id)
@@ -1459,33 +1220,6 @@ const pointsOf = (s: Omit<RepStats, "points">) => s.threads * POINTS.thread + s.
 
 const sinceOf = (period: Period, now: number) => (period === "week" ? now - 7 * 864e5 : period === "month" ? now - 30 * 864e5 : -Infinity)
 
-/**
- * Reputation from the sample content: threads and replies count as posted, accepted replies as accepted, and
- * upvotes on someone's threads and replies as likes received. Dated against the preview's fixed today.
- */
-export function sampleStats(handle: string, period: Period = "all"): RepStats {
-  const since = sinceOf(period, PREVIEW_TODAY)
-  const inRange = (d: string) => Date.parse(d) >= since
-  const s = { ...EMPTY_STATS }
-  for (const t of threads) {
-    if (t.author === handle && inRange(t.date)) {
-      s.threads += 1
-      s.likes += t.votes
-    }
-    for (const r of t.replies) {
-      if (r.author !== handle || !inRange(r.date)) continue
-      s.answers += 1
-      s.likes += r.votes
-      if (r.accepted && t.author !== handle) s.accepted += 1
-    }
-  }
-  if (period === "all") {
-    s.eventsHosted = SAMPLE_EVENTS.filter((e) => e.host.handle === handle).length
-    s.collections = SAMPLE_COLLECTIONS.filter((c) => c.owner.handle === handle).length
-  }
-  return { ...s, points: pointsOf(s) }
-}
-
 /** What you did in this browser (no database): threads, replies, events and collections saved here. */
 function localStats(period: Period): RepStats {
   const since = sinceOf(period, Date.now())
@@ -1511,17 +1245,12 @@ function localStats(period: Period): RepStats {
 
 type LeaderDbRow = { member_id: string; name: string; points: number; threads: number; answers: number; accepted: number; likes: number; reactions: number }
 
-/** The leaderboard for a period. With a database: members ranked by the leaderboard() function. Without: sample people. */
+/** The leaderboard for a period: members ranked by the database's leaderboard(). Without a database, only you. */
 export async function getLeaderboard(period: Period, limit = 50): Promise<LeaderRow[]> {
   const client = db()
   if (!client) {
-    const rows: LeaderRow[] = people.map((p) => ({ ...sampleStats(p.handle, period), who: personWho(p.handle) }))
     const you = localStats(period)
-    if (you.points > 0) rows.push({ ...you, who: { name: "You" }, you: true })
-    return rows
-      .filter((r) => r.points > 0)
-      .sort((a, b) => b.points - a.points || a.who.name.localeCompare(b.who.name))
-      .slice(0, limit)
+    return you.points > 0 ? [{ ...you, who: { name: "You" }, you: true }] : []
   }
   const [userId, res] = await Promise.all([me(), client.rpc("leaderboard", { period, max_rows: limit })])
   fail(res.error)
@@ -1559,10 +1288,4 @@ export async function getMemberReputation(memberId: string | null): Promise<RepS
     eventsHosted: Number(r.events_hosted),
     collections: Number(r.collections),
   }
-}
-
-/** The title of a sample thread (in English when translated), or null. */
-export const sampleThreadTitle = (id: string) => {
-  const t = getThread(id)
-  return t ? (t.en?.title ?? t.title) : null
 }

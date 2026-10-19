@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { BoxIcon, DatabaseIcon, FolderGit2Icon, WrenchIcon, type LucideIcon } from "lucide-react"
-import { compact, getPerson, KINDS, LANGUAGES, type LanguageCode, type ResourceKind } from "@/lib/data"
+import { compact, KINDS, LANGUAGES, type LanguageCode, type ResourceKind } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
 export const KIND_ICONS: Record<ResourceKind, LucideIcon> = {
@@ -61,18 +61,26 @@ export function seeded(seed: string) {
 
 const HUES = [222, 200, 245, 168, 32, 275, 190]
 
-/** A person's or organisation's avatar: initials on a gradient drawn from their handle. */
-export function PersonAvatar({ handle, size = 28, className }: { handle: string; size?: number; className?: string }) {
-  const p = getPerson(handle)
+/**
+ * A member's avatar: their uploaded picture when they have one, otherwise initials on a gradient drawn from a
+ * stable seed (handle or id). `name` gives the initials; without it the seed does.
+ */
+export function PersonAvatar({ handle, name, src, size = 28, className }: { handle: string; name?: string; src?: string | null; size?: number; className?: string }) {
   const r = seeded(handle)
   const h1 = HUES[Math.floor(r() * HUES.length)]
   const h2 = (h1 + 40 + r() * 60) % 360
-  const name = p?.name ?? handle
-  const letters = name
+  const letters = (name ?? handle)
     .split(/\s+/)
+    .filter(Boolean)
     .slice(0, 2)
     .map((w) => w[0])
     .join("")
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- avatars come from the project's own storage bucket at any size
+      <img src={src} alt="" width={size} height={size} style={{ width: size, height: size }} className={cn("inline-block shrink-0 rounded-full object-cover ring-1 ring-white/15", className)} />
+    )
+  }
   return (
     <span
       aria-hidden
@@ -82,26 +90,22 @@ export function PersonAvatar({ handle, size = 28, className }: { handle: string;
         fontSize: size * 0.38,
         background: `linear-gradient(135deg, hsl(${h1} 60% 62%), hsl(${h2} 50% 30%))`,
       }}
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center font-semibold text-white/95 ring-1 ring-white/15 ring-inset",
-        p?.org ? "rounded-[28%]" : "rounded-full",
-        className
-      )}
+      className={cn("inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white/95 ring-1 ring-white/15 ring-inset", className)}
     >
       {letters.toUpperCase()}
     </span>
   )
 }
 
-export function PersonLink({ handle, className, avatar = 18 }: { handle: string; className?: string; avatar?: number | false }) {
-  const p = getPerson(handle)
+/** A member's name with their avatar, linking to their profile. */
+export function PersonLink({ handle, name, href, className, avatar = 18 }: { handle: string; name?: string; href?: string; className?: string; avatar?: number | false }) {
   return (
     <Link
-      href={`/people/${handle}`}
+      href={(href ?? `/people/${handle}`) as `/people/${string}`}
       className={cn("relative z-10 inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground", className)}
     >
-      {avatar !== false && <PersonAvatar handle={handle} size={avatar} />}
-      <span className="truncate">{p?.name ?? handle}</span>
+      {avatar !== false && <PersonAvatar handle={handle} name={name} size={avatar} />}
+      <span className="truncate">{name ?? handle}</span>
     </Link>
   )
 }

@@ -6,21 +6,24 @@ import { useEffect, useState } from "react"
 import { ArrowRightIcon, BarChart3Icon, Trash2Icon } from "lucide-react"
 import { DuelCard } from "@/components/arena/duel-card"
 import { primaryButton } from "@/components/forum/forum-ui"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { deleteDuel, getDuel, isMine, type Duel } from "@/lib/arena"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 
-/** One duel on its own page. Sample duels arrive from the server; members' duels load here. */
-export function DuelDetail({ id, initial }: { id: string; initial?: Duel }) {
+/** One duel on its own page, loaded in the browser. */
+export function DuelDetail({ id }: { id: string }) {
   const router = useRouter()
   const { ready, user, member } = useSession()
-  const [duel, setDuel] = useState<Duel | null | undefined>(initial)
+  const [duel, setDuel] = useState<Duel | null | undefined>(undefined)
   const [error, setError] = useState("")
   const [deleting, setDeleting] = useState(false)
+  const [confirming, setConfirming] = useState(false)
 
   useEffect(() => {
-    if (initial || (live && !ready)) return
+    if (live && !ready) return
     let stale = false
     getDuel(id)
       .then((d) => !stale && setDuel(d))
@@ -28,10 +31,11 @@ export function DuelDetail({ id, initial }: { id: string; initial?: Duel }) {
     return () => {
       stale = true
     }
-  }, [id, initial, ready, user?.id])
+  }, [id, ready, user?.id])
 
   async function remove() {
-    if (!duel || !confirm("Delete this duel and all its votes? This cannot be undone.")) return
+    if (!duel) return
+    setConfirming(false)
     setDeleting(true)
     try {
       await deleteDuel(duel)
@@ -89,7 +93,7 @@ export function DuelDetail({ id, initial }: { id: string; initial?: Duel }) {
         {isMine(duel, member?.id) && (
           <button
             type="button"
-            onClick={remove}
+            onClick={() => setConfirming(true)}
             disabled={deleting}
             className="pressable ml-auto inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
           >
@@ -97,6 +101,22 @@ export function DuelDetail({ id, initial }: { id: string; initial?: Duel }) {
           </button>
         )}
       </div>
+      <Dialog open={confirming} onOpenChange={setConfirming}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this duel?</DialogTitle>
+            <DialogDescription>The duel and all its votes disappear, and the ratings no longer count them. This can’t be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={remove}>
+              Delete duel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

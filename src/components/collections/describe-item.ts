@@ -1,5 +1,6 @@
-import { getConstellation, getNews, getResource, getThread, isQuestionId, KINDS, resourcePath, threadTitle, type ResourceKind } from "@/lib/data"
-import { describeLiveTarget } from "@/lib/live/ids"
+import { useEffect, useState } from "react"
+import type { ResourceKind } from "@/lib/data"
+import { describeNow, resolveTargets, type ItemGroup, type Resolved } from "@/lib/hub"
 
 export type ItemInfo = {
   /** What kind of thing it is, for the small label above the name. */
@@ -7,47 +8,51 @@ export type ItemInfo = {
   label: string
   summary?: string
   href: string | null
-  /** For catalogue resources, so cards can show the kind's icon and colour. */
+  group: ItemGroup
+  /** For hub projects and links, so cards can show the kind's icon and colour. */
   kind?: ResourceKind
-  /** The forum category or owner, when known. */
+  /** Who made or shared it, when known. */
   by?: string
+  /** False when the item is gone (deleted, private, or old sample content). */
+  found: boolean
 }
 
-const LIVE_TYPE: Record<string, string> = { ghrepo: "GitHub repo", hfmodel: "Hugging Face model", hfdataset: "Hugging Face dataset", hfspace: "Hugging Face Space", paper: "Paper" }
+const PENDING = (target: string): ItemInfo => ({ ...describeNow(target), label: "Loading…", type: "", found: true })
 
 /**
- * A label, a one-line summary and a link for anything that can go in a collection: catalogue resources
- * ("model:orbit-8b"), forum threads, news, constellations, papers ("paper:…") and GitHub or Hugging Face repos.
+ * What can be said about a collection item at once: live items, Lab tools and forum categories resolve without a
+ * request; members' projects, links, threads and collections come from useItemInfo().
  */
 export function describeItem(target: string): ItemInfo {
-  const i = target.indexOf(":")
-  const type = target.slice(0, i)
-  const id = target.slice(i + 1)
-  switch (type) {
-    case "model":
-    case "dataset":
-    case "tool":
-    case "repo": {
-      const r = getResource(id)
-      return { type: KINDS[type].label, kind: type, label: r?.name ?? id, summary: r?.summary, href: r ? resourcePath(r) : null, by: r?.owner }
+  return describeNow(target)
+}
+
+/**
+ * Labels, summaries and links for a list of item keys, loaded in one round of queries and kept while the list
+ * changes. Until a key resolves it reads "Loading…".
+ */
+export function useItemInfo(targets: string[]) {
+  const key = [...new Set(targets)].sort().join("|")
+  const [info, setInfo] = useState<{ key: string; map: Record<string, Resolved> } | null>(null)
+
+  useEffect(() => {
+    if (!key) return
+    let stale = false
+    resolveTargets(key.split("|"))
+      .then((map) => !stale && setInfo({ key, map }))
+      .catch(() => {
+        if (stale) return
+        const map: Record<string, Resolved> = {}
+        for (const t of key.split("|")) map[t] = describeNow(t)
+        setInfo({ key, map })
+      })
+    return () => {
+      stale = true
     }
-    case "thread": {
-      const t = getThread(id)
-      if (t) return { type: "Forum thread", label: threadTitle(t), summary: `${t.replies.length} ${t.replies.length === 1 ? "reply" : "replies"}`, href: `/forum/${id}` }
-      return { type: "Forum thread", label: isQuestionId(id) ? "A member’s thread" : id, href: `/forum/${id}` }
-    }
-    case "news": {
-      const n = getNews(id)
-      return { type: "News", label: n?.title ?? id, summary: n?.summary, href: `/news/${id}` }
-    }
-    case "constellation": {
-      const c = getConstellation(id)
-      return { type: "Constellation", label: c?.name ?? id, summary: c?.goal, href: `/constellations/${id}` }
-    }
-    default: {
-      const live = describeLiveTarget(target)
-      if (live) return { type: LIVE_TYPE[live.type] ?? "Link", label: live.label, href: live.href }
-      return { type: "Item", label: id, href: null }
-    }
-  }
+  }, [key])
+
+  const ready = !key || info?.key === key
+  // Keys resolved for an earlier version of the list stay usable while the new one loads.
+  const get = (target: string): ItemInfo => info?.map[target] ?? (ready ? describeNow(target) : PENDING(target))
+  return { get, ready }
 }

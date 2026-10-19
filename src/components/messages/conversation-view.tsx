@@ -25,6 +25,7 @@ import {
   type Conversation,
   type DirectMessage,
 } from "@/lib/messages"
+import { useRole } from "@/lib/roles"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -35,6 +36,7 @@ const noop = () => () => {}
 /** One conversation: messages grouped by day, "Seen" under your latest read message, and the message box. */
 export function ConversationView({ id }: { id: string }) {
   const session = useSession()
+  const role = useRole()
   const reduce = useReducedMotion()
   const now = useNow()
   const localId = useSyncExternalStore(
@@ -353,7 +355,11 @@ export function ConversationView({ id }: { id: string }) {
         {notice}
       </span>
 
-      {conv?.blocked ? (
+      {role.suspended ? (
+        <p className="shrink-0 border-t border-border px-4 py-3 text-sm text-muted-foreground">
+          Your account is paused, so you can read but not send messages until {role.suspendedUntil ? new Date(role.suspendedUntil).toLocaleDateString() : "the pause ends"}. Your notifications say why.
+        </p>
+      ) : conv?.blocked ? (
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3 text-sm text-muted-foreground">
           <span>You blocked {other?.name}. Unblock them to send messages.</span>
           <Button variant="secondary" size="sm" onClick={toggleBlock}>

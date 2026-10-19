@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { GlobeIcon, LockIcon } from "lucide-react"
@@ -26,14 +25,15 @@ import {
   type CrewInput,
   type CrewVisibility,
 } from "@/lib/crews"
+import { Gate } from "@/components/moderation/gate"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
-/** Start a crew. Signed-out visitors are asked to sign in first (with a database). */
+/** Start a crew. Guests are asked to sign in and paused accounts are told why (with a database). */
 export function NewCrew() {
   const mounted = useMounted()
-  const { ready, user } = useSession()
+  const { ready } = useSession()
   if (!mounted || (live && !ready)) {
     return (
       <div className="glass flex flex-col gap-4 rounded-2xl p-6" aria-busy="true" aria-label="Loading form">
@@ -43,17 +43,11 @@ export function NewCrew() {
       </div>
     )
   }
-  if (live && !user) {
-    return (
-      <div className="glass flex flex-col items-start gap-4 rounded-2xl p-6">
-        <p>Sign in to start a crew. It takes an email address and nothing else.</p>
-        <Link href={`/sign-in?next=${encodeURIComponent("/crews/new")}`} className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground">
-          Sign in
-        </Link>
-      </div>
-    )
-  }
-  return <CrewForm />
+  return (
+    <Gate action="start a crew">
+      <CrewForm />
+    </Gate>
+  )
 }
 
 /** The crew's details: used to start one and, with `crew`, to edit it (the address stays fixed). */
@@ -243,7 +237,7 @@ export function CrewForm({ crew, onSaved, onCancel }: { crew?: Crew; onSaved?: (
               Cancel
             </Button>
           )}
-          {!live && !crew && <span className="text-xs text-muted-foreground">Local preview: the crew is saved in this browser.</span>}
+          {!live && !crew && <span className="text-xs text-muted-foreground">This copy has no database, so the crew stays in this browser.</span>}
         </div>
       </FieldGroup>
     </form>

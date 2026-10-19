@@ -1,15 +1,14 @@
 import { Markdown } from "@/components/live/markdown"
-import { mentionTokens } from "@/lib/community"
 import { cn } from "@/lib/utils"
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
 /**
- * Makes known mentions stand out by turning "@handle" into bold text. Code spans and fenced blocks are left
+ * Makes known mentions stand out by turning "@Their Name" into bold text. Code spans and fenced blocks are left
  * alone, so a decorator like "@property" in code stays as written. The result is still plain Markdown.
  */
 export function highlightMentions(source: string, names: string[] = []): string {
-  const tokens = mentionTokens(names.map((n) => `@${n}`))
+  const tokens = [...new Set(names.filter(Boolean).map((n) => `@${n}`))].sort((a, b) => b.length - a.length)
   if (!tokens.length || !source.includes("@")) return source
   const re = new RegExp(`(^|[\\s(])(${tokens.map(escapeRe).join("|")})(?=$|[\\s.,;:!?)])`, "giu")
   return source

@@ -3,17 +3,15 @@ import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { MemberThread } from "@/components/forum/member-thread"
-import { SampleThread } from "@/components/forum/thread-view"
-import { getThread, isQuestionId, threads, threadTitle } from "@/lib/data"
 
+// Threads live in the database and load in the browser. The build needs one param; it is not a thread, so it 404s.
 export function generateStaticParams() {
-  return threads.map((t) => ({ id: t.id }))
+  return [{ id: "example" }]
 }
 
-export async function generateMetadata({ params }: PageProps<"/forum/[id]">): Promise<Metadata> {
-  const t = getThread((await params).id)
-  return { title: t ? threadTitle(t) : "Thread" }
-}
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export const metadata: Metadata = { title: "Thread · Forum" }
 
 export default function ThreadPage({ params }: PageProps<"/forum/[id]">) {
   return (
@@ -25,9 +23,6 @@ export default function ThreadPage({ params }: PageProps<"/forum/[id]">) {
 
 async function Thread({ params }: { params: PageProps<"/forum/[id]">["params"] }) {
   const { id } = await params
-  const t = getThread(id)
-  // Members' threads live in the database, so they load in the browser rather than at build time.
-  if (!t && isQuestionId(id)) return <MemberThread id={id} />
-  if (!t) notFound()
-  return <SampleThread t={t} />
+  if (!UUID.test(id)) notFound()
+  return <MemberThread id={id} />
 }

@@ -7,7 +7,7 @@ import { PlusIcon, SearchIcon, UsersIcon, XIcon } from "lucide-react"
 import { CrewCard } from "@/components/crews/crew-card"
 import { primaryButton, rise, riseDelay } from "@/components/forum/forum-ui"
 import { Skeleton } from "@/components/ui/skeleton"
-import { listCrews, myStandings, SAMPLE_CREWS, type Crew, type Standing } from "@/lib/crews"
+import { listCrews, myStandings, type Crew, type Standing } from "@/lib/crews"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -24,8 +24,7 @@ const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCas
 export function CrewsIndex() {
   const { ready, user } = useSession()
   const reduce = useReducedMotion()
-  // Without a database the samples are known up front; with one, crews load in the browser.
-  const [crews, setCrews] = useState<Crew[] | null>(live ? null : SAMPLE_CREWS)
+  const [crews, setCrews] = useState<Crew[] | null>(null)
   const [standing, setStanding] = useState<Record<string, Standing>>({})
   const [error, setError] = useState("")
   const [view, setView] = useState<View>("discover")
@@ -144,7 +143,7 @@ export function CrewsIndex() {
 
       {error && (
         <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          Crews could not be loaded. {error}
+          Crews could not be loaded ({error}). Reload the page to try again.
         </p>
       )}
 
@@ -177,7 +176,9 @@ export function CrewsIndex() {
                   ? live && !user
                     ? "Sign in to see the crews you are in."
                     : "You are not in a crew yet. Join one from Discover, or start your own."
-                  : "No crews yet. Start the first one."}
+                  : live
+                    ? "No crews yet. Start the first one: a lab, a study group or a project team, with a wall, a chat room and shared collections."
+                    : "Crews you start in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can join them yet."}
             </p>
             {live && !user && view === "yours" ? (
               <Link href="/sign-in?next=%2Fcrews" className={primaryButton}>
@@ -187,7 +188,7 @@ export function CrewsIndex() {
               !query &&
               !tag && (
                 <Link href="/crews/new" className={primaryButton}>
-                  Start a crew
+                  <PlusIcon aria-hidden className="size-4" /> {view === "discover" && crews.length === 0 ? "Start the first crew" : "Start a crew"}
                 </Link>
               )
             )}

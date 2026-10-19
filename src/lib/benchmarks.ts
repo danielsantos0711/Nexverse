@@ -1,4 +1,3 @@
-import { getPerson, getResource } from "@/lib/data"
 import type { Who } from "@/lib/community"
 import type { Member } from "@/lib/store"
 import { db } from "@/lib/supabase"
@@ -6,9 +5,9 @@ import { db } from "@/lib/supabase"
 /**
  * Community benchmarks: members submit evaluation results for a model on one of the curated benchmarks, with
  * the settings they used and a link to their logs, and other members say whether they could reproduce them.
- * With a database everything lives in Supabase (supabase/migrations/…_arena_benchmarks.sql); without one it
- * stays in this browser. The sample results below are invented, for invented models from lib/data.ts, to show
- * the pages at full density; they are labelled as samples wherever they appear.
+ * With a database everything lives in Supabase (supabase/migrations/…_arena_benchmarks.sql); without one, only
+ * the results you submit in this browser are shown, and they stay here. The benchmark list itself is a curated
+ * preset of well-known public benchmarks, each linked to the paper that introduced it.
  */
 
 // ─── Plumbing (same shape as lib/community.ts) ──────────────────────────────────────────────────────────────
@@ -18,11 +17,12 @@ function fail(error: { message: string } | null): asserts error is null {
 }
 
 function friendly(message: string) {
-  if (/violates row-level security/.test(message)) return "You are not allowed to do that. Are you signed in?"
+  if (/violates row-level security/.test(message))
+    return "You are not allowed to do that. Check that you are signed in; if your account is paused, posting stays off until the pause ends (your notifications say why)."
   if (/logs_url_check/.test(message)) return "The logs link must start with https://."
   if (/duplicate key/.test(message)) return "You already reported on this result."
   if (/JWT|not authenticated/i.test(message)) return "Your session ran out. Sign in again."
-  if (/schema cache|does not exist/.test(message)) return "benchmarks are still being switched on"
+  if (/schema cache|does not exist/.test(message)) return "Benchmarks are still being switched on for this site. Try again soon."
   return message
 }
 
@@ -283,13 +283,14 @@ export type BenchmarkResult = {
   quantisation: string
   hardware: string
   harness: string
-  /** Always set for members' results; samples have none. */
+  /** Always set for members' results. */
   logsUrl: string | null
   notes: string
   author: Who
   authorId: string | null
   createdAt: string
   repros: Repro[]
+  /** @deprecated Always false: there are no sample results any more. */
   sample: boolean
   local: boolean
 }
@@ -299,109 +300,42 @@ export function reproSummary(r: Pick<BenchmarkResult, "repros">, myId?: string |
   const reproduced = r.repros.filter((x) => x.outcome === "reproduced").length
   const failed = r.repros.length - reproduced
   const mine = r.repros.find((x) => x.mine || (myId && x.userId === myId))
-  return { reproduced, failed, verified: reproduced >= 1 && reproduced > failed, disputed: failed > 0 && failed >= reproduced, mine: mine ?? null }
+  return {
+    reproduced,
+    failed,
+    verified: reproduced >= 1 && reproduced > failed,
+    disputed: failed > 0 && failed >= reproduced,
+    mine: mine ?? null,
+  }
 }
-
-// ─── Sample results ─────────────────────────────────────────────────────────────────────────────────────────
-
-type SampleRepro = [handle: string, outcome: ReproOutcome, measured: number | null, note?: string]
-type SampleResult = Omit<BenchmarkResult, "author" | "authorId" | "repros" | "sample" | "local" | "logsUrl" | "model" | "notes"> & {
-  by: string
-  notes?: string
-  checks?: SampleRepro[]
-}
-
-const LMEH = "lm-evaluation-harness 0.4.5"
-
-const SAMPLE_RESULT_DATA: SampleResult[] = [
-  // MMLU
-  { id: "s-mmlu-orbit8b-bf16", benchmark: "mmlu", modelSlug: "orbit-8b", score: 66.1, shots: 5, quantisation: "bf16", hardware: "1× A100 80 GB", harness: LMEH, by: "sofia", createdAt: "2026-09-18T10:00:00Z", checks: [["noah", "reproduced", 65.8], ["mei", "reproduced", 66.3]] },
-  { id: "s-mmlu-orbit8b-q4", benchmark: "mmlu", modelSlug: "orbit-8b", score: 65.2, shots: 5, quantisation: "Q4_K_M", hardware: "M3 Max 64 GB", harness: "llama.cpp b4100 + " + LMEH, by: "priya", createdAt: "2026-09-26T16:20:00Z", notes: "GGUF from the official repo. Most of the drop is in the STEM subjects.", checks: [["kai", "reproduced", 64.9]] },
-  { id: "s-mmlu-kansai7b", benchmark: "mmlu", modelSlug: "kansai-7b", score: 58.7, shots: 5, quantisation: "bf16", hardware: "1× RTX 4090", harness: LMEH, by: "mei", createdAt: "2026-10-02T09:30:00Z", checks: [["noah", "failed", 56.9, "Got 56.9 with the default chat template off. Might be the template."]] },
-  { id: "s-mmlu-tagus3b", benchmark: "mmlu", modelSlug: "tagus-3b-pt", score: 52.3, shots: 5, quantisation: "bf16", hardware: "1× RTX 4090", harness: LMEH, by: "ines", createdAt: "2026-10-06T14:00:00Z" },
-  { id: "s-mmlu-hindicoder", benchmark: "mmlu", modelSlug: "hindi-coder-3b", score: 48.9, shots: 5, quantisation: "Q8_0", hardware: "Laptop, 8 GB RAM", harness: "llama.cpp b4100 + " + LMEH, by: "priya", createdAt: "2026-10-12T07:45:00Z" },
-  { id: "s-mmlu-orbit1b", benchmark: "mmlu", modelSlug: "orbit-1b-mobile", score: 38.2, shots: 5, quantisation: "bf16", hardware: "1× T4 16 GB", harness: LMEH, by: "kai", createdAt: "2026-10-10T18:10:00Z", checks: [["sofia", "reproduced", 38.5]] },
-
-  // GSM8K
-  { id: "s-gsm8k-orbit8b", benchmark: "gsm8k", modelSlug: "orbit-8b", score: 71.4, shots: 8, quantisation: "bf16", hardware: "1× A100 80 GB", harness: LMEH, by: "noah", createdAt: "2026-09-20T12:00:00Z", notes: "Chain-of-thought prompts, greedy decoding, strict answer extraction.", checks: [["rafa", "reproduced", 70.6]] },
-  { id: "s-gsm8k-hindicoder", benchmark: "gsm8k", modelSlug: "hindi-coder-3b", score: 51.2, shots: 8, quantisation: "bf16", hardware: "1× RTX 4090", harness: LMEH, by: "priya", createdAt: "2026-10-12T08:30:00Z" },
-  { id: "s-gsm8k-kansai7b", benchmark: "gsm8k", modelSlug: "kansai-7b", score: 49.6, shots: 8, quantisation: "bf16", hardware: "1× RTX 4090", harness: LMEH, by: "mei", createdAt: "2026-10-02T10:10:00Z" },
-  { id: "s-gsm8k-tagus3b", benchmark: "gsm8k", modelSlug: "tagus-3b-pt", score: 44.8, shots: 8, quantisation: "bf16", hardware: "1× RTX 4090", harness: LMEH, by: "ines", createdAt: "2026-10-06T15:00:00Z", checks: [["rafa", "reproduced", 45.9]] },
-  { id: "s-gsm8k-orbit1b", benchmark: "gsm8k", modelSlug: "orbit-1b-mobile", score: 27.9, shots: 8, quantisation: "4-bit (MLC)", hardware: "Pixel 8 (WebGPU)", harness: "Custom script, prompts from " + LMEH, by: "kai", createdAt: "2026-10-11T20:00:00Z", notes: "Ran on the phone itself. 1,319 problems took about four hours." },
-
-  // HumanEval
-  { id: "s-humaneval-orbit8b", benchmark: "humaneval", modelSlug: "orbit-8b", score: 54.9, shots: 0, quantisation: "bf16", hardware: "1× A100 80 GB", harness: "bigcode-evaluation-harness", by: "rafa", createdAt: "2026-09-24T11:00:00Z", checks: [["sofia", "reproduced", 53.7]] },
-  { id: "s-humaneval-hindicoder", benchmark: "humaneval", modelSlug: "hindi-coder-3b", score: 46.3, shots: 0, quantisation: "bf16", hardware: "1× RTX 4090", harness: "bigcode-evaluation-harness", by: "priya", createdAt: "2026-10-12T09:00:00Z", checks: [["kai", "reproduced", 45.7], ["noah", "reproduced", 47.0]] },
-  { id: "s-humaneval-orbit1b", benchmark: "humaneval", modelSlug: "orbit-1b-mobile", score: 21.3, shots: 0, quantisation: "bf16", hardware: "1× T4 16 GB", harness: "bigcode-evaluation-harness", by: "kai", createdAt: "2026-10-10T19:00:00Z" },
-  { id: "s-humaneval-tagus3b", benchmark: "humaneval", modelSlug: "tagus-3b-pt", score: 18.9, shots: 0, quantisation: "bf16", hardware: "1× RTX 4090", harness: "bigcode-evaluation-harness", by: "ines", createdAt: "2026-10-07T09:00:00Z" },
-
-  // IFEval
-  { id: "s-ifeval-orbit8b", benchmark: "ifeval", modelSlug: "orbit-8b", score: 72.5, shots: 0, quantisation: "bf16", hardware: "1× A100 80 GB", harness: LMEH, by: "noah", createdAt: "2026-09-21T13:00:00Z", checks: [["mei", "reproduced", 71.8]] },
-  { id: "s-ifeval-tagus3b", benchmark: "ifeval", modelSlug: "tagus-3b-pt", score: 58.3, shots: 0, quantisation: "bf16", hardware: "1× RTX 4090", harness: LMEH, by: "ines", createdAt: "2026-10-06T16:00:00Z" },
-  { id: "s-ifeval-orbit1b", benchmark: "ifeval", modelSlug: "orbit-1b-mobile", score: 51.0, shots: 0, quantisation: "bf16", hardware: "1× T4 16 GB", harness: LMEH, by: "kai", createdAt: "2026-10-10T21:00:00Z" },
-
-  // Belebele
-  { id: "s-belebele-orbit8b-por", benchmark: "belebele", modelSlug: "orbit-8b", score: 81.2, shots: 0, quantisation: "bf16", hardware: "1× A100 80 GB", harness: LMEH, by: "ines", createdAt: "2026-10-04T10:00:00Z", notes: "por_Latn (Portuguese)." },
-  { id: "s-belebele-tagus3b-por", benchmark: "belebele", modelSlug: "tagus-3b-pt", score: 78.4, shots: 0, quantisation: "bf16", hardware: "1× RTX 4090", harness: LMEH, by: "ines", createdAt: "2026-10-06T17:00:00Z", notes: "por_Latn (Portuguese). Within three points of an 8B model at 3B.", checks: [["jonas", "reproduced", 78.0]] },
-  { id: "s-belebele-kansai7b-jpn", benchmark: "belebele", modelSlug: "kansai-7b", score: 74.0, shots: 0, quantisation: "bf16", hardware: "1× RTX 4090", harness: LMEH, by: "mei", createdAt: "2026-10-03T08:00:00Z", notes: "jpn_Jpan (Japanese)." },
-
-  // FLORES-200
-  { id: "s-flores-darija-ary-eng", benchmark: "flores-200", modelSlug: "darija-mt", score: 52.7, shots: 0, quantisation: "fp16", hardware: "1× RTX 3090", harness: "sacrebleu 2.4 (chrF++)", by: "layla", createdAt: "2026-10-01T12:00:00Z", notes: "ary_Arab → eng_Latn, devtest.", checks: [["amara", "reproduced", 52.5]] },
-  { id: "s-flores-orbit8b-ary-eng", benchmark: "flores-200", modelSlug: "orbit-8b", score: 41.3, shots: 0, quantisation: "bf16", hardware: "1× A100 80 GB", harness: "sacrebleu 2.4 (chrF++)", by: "layla", createdAt: "2026-10-01T13:00:00Z", notes: "ary_Arab → eng_Latn, devtest, same prompt as darija-mt." },
-  { id: "s-flores-tagus3b-eng-por", benchmark: "flores-200", modelSlug: "tagus-3b-pt", score: 61.8, shots: 0, quantisation: "bf16", hardware: "1× RTX 4090", harness: "sacrebleu 2.4 (chrF++)", by: "ines", createdAt: "2026-10-08T10:00:00Z", notes: "eng_Latn → por_Latn, devtest." },
-
-  // FLEURS (word error rate, lower is better)
-  { id: "s-fleurs-yoruba-asr", benchmark: "fleurs-wer", modelSlug: "yoruba-asr-small", score: 17.2, shots: null, quantisation: "fp32", hardware: "1× RTX 3090", harness: "jiwer 3.0, tone marks kept", by: "tunde", createdAt: "2026-10-02T15:00:00Z", notes: "yo_ng test split. Tone marks are kept when scoring, which most reports strip.", checks: [["amara", "reproduced", 17.5], ["leo", "reproduced", 17.0]] },
-  { id: "s-fleurs-yoruba-asr-int8", benchmark: "fleurs-wer", modelSlug: "yoruba-asr-small", score: 17.9, shots: null, quantisation: "int8 (CTranslate2)", hardware: "Laptop CPU, 4 cores", harness: "jiwer 3.0, tone marks kept", by: "priya", createdAt: "2026-10-09T09:00:00Z", notes: "yo_ng test split, on CPU in real time." },
-
-  // WikiText-2 (perplexity, lower is better)
-  { id: "s-wikitext-orbit8b-bf16", benchmark: "wikitext-ppl", modelSlug: "orbit-8b", score: 6.41, shots: null, quantisation: "bf16", hardware: "1× A100 80 GB", harness: "llama.cpp perplexity, ctx 2048", by: "sofia", createdAt: "2026-09-19T09:00:00Z" },
-  { id: "s-wikitext-orbit8b-q4", benchmark: "wikitext-ppl", modelSlug: "orbit-8b", score: 6.73, shots: null, quantisation: "Q4_K_M", hardware: "M3 Max 64 GB", harness: "llama.cpp perplexity, ctx 2048", by: "priya", createdAt: "2026-09-26T17:00:00Z", checks: [["sofia", "reproduced", 6.71]] },
-  { id: "s-wikitext-orbit1b-bf16", benchmark: "wikitext-ppl", modelSlug: "orbit-1b-mobile", score: 11.86, shots: null, quantisation: "bf16", hardware: "1× T4 16 GB", harness: "llama.cpp perplexity, ctx 2048", by: "kai", createdAt: "2026-10-10T22:00:00Z" },
-  { id: "s-wikitext-orbit1b-q4", benchmark: "wikitext-ppl", modelSlug: "orbit-1b-mobile", score: 12.94, shots: null, quantisation: "Q4_0", hardware: "Pixel 8 (CPU)", harness: "llama.cpp perplexity, ctx 2048", by: "kai", createdAt: "2026-10-11T08:00:00Z", checks: [["priya", "failed", 13.4, "13.4 on the same phone with Q4_0. Maybe a different llama.cpp build?"]] },
-]
-
-const sampleWho = (handle: string): Who => ({ handle, name: getPerson(handle)?.name ?? handle })
-
-export const SAMPLE_RESULTS: BenchmarkResult[] = SAMPLE_RESULT_DATA.map(({ by, checks = [], notes = "", ...r }) => ({
-  ...r,
-  model: getResource(r.modelSlug ?? "")?.name ?? r.modelSlug ?? "",
-  notes,
-  logsUrl: null,
-  author: sampleWho(by),
-  authorId: null,
-  repros: checks.map(([h, outcome, measured, note = ""], i) => ({
-    who: sampleWho(h),
-    userId: null,
-    outcome,
-    measured,
-    note,
-    at: new Date(Date.parse(r.createdAt) + (i + 1) * 86400e3).toISOString(),
-  })),
-  sample: true,
-  local: false,
-}))
 
 // ─── Local storage ──────────────────────────────────────────────────────────────────────────────────────────
 
-// Results submitted in this browser, and your reproduction verdicts on any result (samples always stay here).
+// Results submitted in this browser, and your reproduction verdicts, when there is no database.
 const RESULTS_KEY = "nexverse-bench-results"
 const REPROS_KEY = "nexverse-bench-repros"
 
 type LocalResult = Omit<BenchmarkResult, "author" | "authorId" | "repros" | "sample" | "local">
-type LocalRepro = { outcome: ReproOutcome; measured: number | null; note: string; at: string }
+type LocalRepro = {
+  outcome: ReproOutcome
+  measured: number | null
+  note: string
+  at: string
+}
 
 const readLocalResults = () => readLocal<LocalResult[]>(RESULTS_KEY, [])
 const readLocalRepros = () => readLocal<Record<string, LocalRepro>>(REPROS_KEY, {})
 
 const you: Who = { name: "You" }
 
-function withLocalRepro(r: BenchmarkResult, repros: Record<string, LocalRepro>): BenchmarkResult {
-  const mine = repros[r.id]
-  return mine ? { ...r, repros: [...r.repros, { who: you, userId: null, mine: true, ...mine }] } : r
-}
-
-const fromLocalResult = (r: LocalResult): BenchmarkResult => ({ ...r, author: you, authorId: null, repros: [], sample: false, local: true })
+const fromLocalResult = (r: LocalResult): BenchmarkResult => ({
+  ...r,
+  author: you,
+  authorId: null,
+  repros: [],
+  sample: false,
+  local: true,
+})
 
 // ─── Reading ────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -423,7 +357,14 @@ type ResultRow = {
   created_at: string
   author_id: string
   author: Member | null
-  repros: { user_id: string; outcome: ReproOutcome; measured: number | string | null; note: string; created_at: string; who: Member | null }[]
+  repros: {
+    user_id: string
+    outcome: ReproOutcome
+    measured: number | string | null
+    note: string
+    created_at: string
+    who: Member | null
+  }[]
 }
 
 const fromResultRow = (r: ResultRow): BenchmarkResult => ({
@@ -456,20 +397,17 @@ const fromReproRows = (rows: ResultRow["repros"]): Repro[] =>
     at: p.created_at,
   }))
 
-/** Results for one benchmark, for one model (by hub slug), or all of them: members' first, then the samples. */
+/** Results for one benchmark, for one model (by its slug, when one was given), or all of them, newest first. */
 export async function listResults(filter: { benchmark?: string; modelSlug?: string } = {}): Promise<BenchmarkResult[]> {
-  const repros = readLocalRepros()
-  const keep = (r: { benchmark: string; modelSlug: string | null }) =>
-    (!filter.benchmark || r.benchmark === filter.benchmark) && (!filter.modelSlug || r.modelSlug === filter.modelSlug)
-  const samples = SAMPLE_RESULTS.filter(keep).map((r) => withLocalRepro(r, repros))
+  const keep = (r: { benchmark: string; modelSlug: string | null }) => (!filter.benchmark || r.benchmark === filter.benchmark) && (!filter.modelSlug || r.modelSlug === filter.modelSlug)
   const client = db()
-  if (!client) return [...readLocalResults().filter(keep).map(fromLocalResult), ...samples]
+  if (!client) return readLocalResults().filter(keep).map(fromLocalResult)
   let q = client.from("benchmark_results").select(RESULT_COLUMNS)
   if (filter.benchmark) q = q.eq("benchmark", filter.benchmark)
   if (filter.modelSlug) q = q.eq("model_slug", filter.modelSlug)
   const { data, error } = await q.order("created_at", { ascending: false }).limit(500)
   fail(error)
-  return [...(data as unknown as ResultRow[]).map(fromResultRow), ...samples]
+  return (data as unknown as ResultRow[]).map(fromResultRow)
 }
 
 // ─── Submitting ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -569,7 +507,7 @@ export async function deleteResult(r: BenchmarkResult) {
   if (r.local) {
     writeLocal(
       RESULTS_KEY,
-      readLocalResults().filter((x) => x.id !== r.id)
+      readLocalResults().filter((x) => x.id !== r.id),
     )
     return
   }
@@ -582,8 +520,8 @@ export async function deleteResult(r: BenchmarkResult) {
 
 // ─── Reproductions ──────────────────────────────────────────────────────────────────────────────────────────
 
-/** Sample results take reproductions only in this browser, as a preview: there are no real logs to check. */
-export const reproStaysLocal = (r: BenchmarkResult) => r.sample || r.local || !db()
+/** Without a database, verdicts stay in this browser. */
+export const reproStaysLocal = (r: BenchmarkResult) => r.local || !db()
 
 export function validateRepro(r: BenchmarkResult, outcome: ReproOutcome, measuredRaw: string): string | null {
   const bench = getBenchmark(r.benchmark)
@@ -591,8 +529,7 @@ export function validateRepro(r: BenchmarkResult, outcome: ReproOutcome, measure
   if (measuredRaw.trim() && measured === null) return "Enter the score you measured as a number."
   if (outcome === "reproduced") {
     if (measured === null) return "Enter the score you measured."
-    if (bench && Math.abs(measured - r.score) > bench.tolerance + 1e-9)
-      return `${measured} is more than ±${bench.tolerance} away from ${r.score}. Mark it as could not reproduce instead.`
+    if (bench && Math.abs(measured - r.score) > bench.tolerance + 1e-9) return `${measured} is more than ±${bench.tolerance} away from ${r.score}. Mark it as could not reproduce instead.`
   }
   return null
 }
@@ -608,7 +545,13 @@ export async function setRepro(r: BenchmarkResult, verdict: { outcome: ReproOutc
   const measured = verdict?.measured.trim() ? parseScore(verdict.measured) : null
   if (reproStaysLocal(r)) {
     const all = readLocalRepros()
-    if (verdict) all[r.id] = { outcome: verdict.outcome, measured, note: verdict.note.trim(), at: new Date().toISOString() }
+    if (verdict)
+      all[r.id] = {
+        outcome: verdict.outcome,
+        measured,
+        note: verdict.note.trim(),
+        at: new Date().toISOString(),
+      }
     else delete all[r.id]
     writeLocal(REPROS_KEY, all)
     const others = r.repros.filter((x) => !x.mine)
@@ -618,11 +561,13 @@ export async function setRepro(r: BenchmarkResult, verdict: { outcome: ReproOutc
   const uid = await requireMe()
   if (verdict) {
     // Members may update only the verdict columns, so an existing verdict is updated rather than upserted.
-    const fields = { outcome: verdict.outcome, measured, note: verdict.note.trim() }
+    const fields = {
+      outcome: verdict.outcome,
+      measured,
+      note: verdict.note.trim(),
+    }
     const had = r.repros.some((x) => x.userId === uid)
-    const { error } = had
-      ? await client.from("benchmark_repros").update(fields).eq("result_id", r.id).eq("user_id", uid)
-      : await client.from("benchmark_repros").insert({ result_id: r.id, ...fields })
+    const { error } = had ? await client.from("benchmark_repros").update(fields).eq("result_id", r.id).eq("user_id", uid) : await client.from("benchmark_repros").insert({ result_id: r.id, ...fields })
     fail(error)
   } else {
     const { error } = await client.from("benchmark_repros").delete().eq("result_id", r.id).eq("user_id", uid)

@@ -271,12 +271,16 @@ export function useSession() {
   )
 }
 
-export async function signInWithEmail(email: string, next: string) {
+/** Sends a sign-in link. With `createAccount` false (the admins closed joining), only existing members get one. */
+export async function signInWithEmail(email: string, next: string, createAccount = true) {
   const client = db()
   if (!client) throw new Error("Sign-in is not switched on for this copy of Nexverse.")
   const redirect = new URL("/auth/callback", window.location.origin)
   redirect.searchParams.set("next", next)
-  const { error } = await client.auth.signInWithOtp({ email, options: { emailRedirectTo: redirect.toString() } })
+  const { error } = await client.auth.signInWithOtp({ email, options: { emailRedirectTo: redirect.toString(), shouldCreateUser: createAccount } })
+  if (error && !createAccount && /signups? not allowed|not found/i.test(error.message)) {
+    throw new Error("Joining is closed for now, and there is no account with that address.")
+  }
   fail(error)
 }
 

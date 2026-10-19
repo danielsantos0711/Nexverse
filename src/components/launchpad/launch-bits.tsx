@@ -184,7 +184,7 @@ export function LaunchCover({ launch, className, rounded = "rounded-xl" }: { lau
 
 // ─── Boost ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-export type BoostState = "open" | "boosted" | "own" | "scheduled" | "landed" | "example"
+export type BoostState = "open" | "boosted" | "own" | "scheduled" | "landed"
 
 /**
  * The boost button. Pressing it launches the rocket off the button (a short flight with exhaust sparks), the
@@ -233,7 +233,7 @@ export function BoostButton({
   }
 
   const label =
-    state === "boosted" ? "Boosted" : state === "own" ? "Your launch" : state === "scheduled" ? "Opens at launch" : state === "landed" ? "Launch day over" : state === "example" ? "Example" : "Boost"
+    state === "boosted" ? "Boosted" : state === "own" ? "Your launch" : state === "scheduled" ? "Opens at launch" : state === "landed" ? "Launch day over" : "Boost"
 
   return (
     <div className={cn("relative inline-flex", className)}>
@@ -334,8 +334,7 @@ function Flight({ big, onDone }: { big: boolean; onDone: () => void }) {
 }
 
 /** Which state the boost button is in for a launch, at a moment, for a viewer. */
-export function boostState(l: Launch, now: number | null, opts: { isOwner: boolean; readOnly: boolean }): BoostState {
-  if (opts.readOnly) return "example"
+export function boostState(l: Launch, now: number | null, opts: { isOwner: boolean }): BoostState {
   if (l.boosted) return "boosted"
   if (opts.isOwner) return "own"
   if (now === null) return "scheduled"

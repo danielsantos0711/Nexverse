@@ -12,7 +12,7 @@ export default function NewThreadPage() {
       <ForumHeader
         title="Start a thread"
         crumbs={[{ label: "Forum", href: "/forum" }, { label: "Start a thread" }]}
-        lead="A good thread says what you tried and what happened. Questions, show and tell, paper discussions: all welcome."
+        lead="Pick the category that fits, give it a clear title, and say what you tried or what you want to talk about."
       />
       <Suspense fallback={<PageSkeleton />}>
         <NewThread />

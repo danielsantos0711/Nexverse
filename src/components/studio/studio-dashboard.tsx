@@ -24,7 +24,8 @@ import { ProfileAvatar } from "@/components/settings/profile-avatar"
 import { ConfirmDialog, SignInPrompt, StatusPill, StudioHead } from "@/components/studio/ui"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ago, compact, KINDS, type ResourceKind } from "@/lib/data"
+import { TimeAgo } from "@/components/live/time"
+import { compact, KINDS, type ResourceKind } from "@/lib/data"
 import { useProfile } from "@/lib/profile"
 import { deleteProject, getProjectStats, listMyProjects, projectPath, setProjectStatus, type Project, type ProjectStats } from "@/lib/projects"
 import { useSession } from "@/lib/store"
@@ -266,7 +267,7 @@ function ProjectRow({ p, stats, onToggle, onDelete }: { p: Project; stats: Proje
           <p className="line-clamp-1 text-[13px] text-muted-foreground">{p.summary}</p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span>{KINDS[p.kind].label}</span>
-            <span>Edited {ago(p.updatedAt.slice(0, 10))}</span>
+            <TimeAgo date={p.updatedAt} prefix="Edited" />
             <span className="inline-flex items-center gap-1 tabular" title="Likes">
               <HeartIcon aria-hidden className="size-3.5" /> {compact(stats.likes)}
               <span className="sr-only">likes</span>

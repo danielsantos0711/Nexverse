@@ -40,10 +40,6 @@ export function LangList({ langs, className }: { langs: LanguageCode[]; classNam
   )
 }
 
-export function SampleChip({ className }: { className?: string }) {
-  return <span className={cn("rounded-full bg-gold/10 px-2 py-0.5 text-xs text-gold", className)}>Community sample</span>
-}
-
 // ─── Output text ────────────────────────────────────────────────────────────────────────────────────────────
 
 /** A model's answer: paragraphs with **bold** and `code`, and fenced code blocks. Never parsed as HTML. */

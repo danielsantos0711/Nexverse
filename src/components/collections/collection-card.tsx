@@ -1,6 +1,8 @@
+"use client"
+
 import Link from "next/link"
 import { LayersIcon, LockIcon } from "lucide-react"
-import { describeItem } from "@/components/collections/describe-item"
+import { useItemInfo } from "@/components/collections/describe-item"
 import { PosterAvatar } from "@/components/forum/forum-ui"
 import { KIND_ICONS } from "@/components/hub/bits"
 import type { Collection } from "@/lib/community"
@@ -8,7 +10,9 @@ import { cn } from "@/lib/utils"
 
 /** A collection in a grid: title, curator, how many items and a peek at the first few. */
 export function CollectionCard({ c, className }: { c: Collection; className?: string }) {
-  const peek = c.items.slice(0, 3).map((i) => ({ target: i.target, ...describeItem(i.target) }))
+  const first = c.items.slice(0, 3).map((i) => i.target)
+  const { get } = useItemInfo(first)
+  const peek = first.map((target) => ({ target, ...get(target) })).filter((p) => p.found)
   return (
     <article className={cn("group relative flex h-full flex-col gap-3 rounded-xl border border-border bg-card/40 p-4 transition-[background-color,transform] duration-200 hover:-translate-y-0.5 hover:bg-white/[0.03] motion-reduce:transform-none", className)}>
       <div className="flex items-start justify-between gap-3">
@@ -31,7 +35,7 @@ export function CollectionCard({ c, className }: { c: Collection; className?: st
             return (
               <li key={p.target} className="flex min-w-0 items-center gap-2 text-sm">
                 <Icon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-                <span className="truncate">{p.label}</span>
+                <span className={cn("truncate", !p.type && "text-muted-foreground")}>{p.label}</span>
               </li>
             )
           })}

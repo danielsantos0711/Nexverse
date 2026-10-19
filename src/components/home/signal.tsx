@@ -1,15 +1,16 @@
-import Image from "next/image"
 import Link from "next/link"
 import { ArrowUpRightIcon, FileTextIcon, FolderGit2Icon, MessageSquarePlusIcon, StarIcon, TagIcon } from "lucide-react"
 import { Cover } from "@/components/hub/bits"
 import { discussHref, SOURCES } from "@/components/live/bits"
 import { LiveBadge } from "@/components/live/live-badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ago, compact, news, NEWS_KINDS } from "@/lib/data"
+import { compact } from "@/lib/data"
 import { areaInfo, arxivPapers, githubReleases, githubTrendingAi, type Feed, type GhReleaseItem, type GhRepo, type Paper } from "@/lib/live"
 import { ghHref, paperHref } from "@/lib/live/ids"
 import { cn } from "@/lib/utils"
+import { FromTheHub } from "./from-the-hub"
 import { CometStreaks, TextRing } from "./fx"
+import { since } from "./time"
 
 const DAY = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })
 const parts = (ms: number) => {
@@ -45,10 +46,10 @@ function Part({ title, icon: Icon, source, className, children, i = 0 }: { title
   )
 }
 
-function Lead({ p }: { p: Paper }) {
+function Lead({ p, now }: { p: Paper; now: number }) {
   return (
     <article className="rise group relative flex flex-col gap-4" style={{ "--i": 1 } as React.CSSProperties}>
-      <h3 className="max-w-[30ch] font-display text-[1.65rem] leading-[1.12] font-semibold tracking-[-0.03em] text-balance md:text-[2rem]">
+      <h3 className="max-w-[34ch] font-display text-[1.4rem] leading-[1.18] font-semibold tracking-[-0.025em] text-balance md:text-[1.65rem]">
         <Link href={paperHref(p.id)} className="decoration-ion/60 underline-offset-[0.18em] hover:underline">
           {p.title}
         </Link>
@@ -58,7 +59,7 @@ function Lead({ p }: { p: Paper }) {
           <FileTextIcon aria-hidden className="size-4" /> Today&apos;s lead paper
         </span>
         <span className="text-muted-foreground">
-          {areaName(p.categories[0])} · {ago(p.published)}
+          {areaName(p.categories[0])} · {since(p.published, now)}
         </span>
       </p>
       <p className="max-w-[68ch] text-[15px] leading-relaxed text-foreground/85">{gist(p.summary)}</p>
@@ -125,7 +126,7 @@ function Rising({ repos }: { repos: GhRepo[] }) {
   )
 }
 
-function Releases({ items }: { items: GhReleaseItem[] }) {
+function Releases({ items, now }: { items: GhReleaseItem[]; now: number }) {
   return (
     <ol className="flex flex-col">
       {items.map((r) => (
@@ -136,7 +137,7 @@ function Releases({ items }: { items: GhReleaseItem[] }) {
               <span className="truncate text-sm font-medium">{r.name}</span>
               <span className="truncate text-xs text-muted-foreground">{r.title || r.tag}</span>
             </span>
-            <span className="shrink-0 text-xs text-muted-foreground">{ago(r.publishedAt)}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">{since(r.publishedAt, now)}</span>
           </Link>
         </li>
       ))}
@@ -148,34 +149,10 @@ function Quiet({ children }: { children: React.ReactNode }) {
   return <p className="rounded-lg bg-white/[0.03] px-3 py-3 text-sm text-muted-foreground">{children}</p>
 }
 
-/** The hub's own news, as the last line of the briefing. */
-function FromTheHub() {
-  const items = [...news].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3)
-  return (
-    <ul className="grid gap-3 md:grid-cols-3">
-      {items.map((n) => (
-        <li key={n.id}>
-          <Link href={`/news/${n.id}`} className="press group flex h-full gap-3 rounded-xl bg-white/[0.025] p-2.5 hover:bg-white/[0.05]">
-            <span className="relative size-16 shrink-0 overflow-hidden rounded-lg">
-              {n.image ? <Image src={n.image} alt="" fill sizes="64px" className="object-cover transition-transform duration-500 ease-out group-hover:scale-110" /> : <Cover seed={n.id} kind="news" />}
-            </span>
-            <span className="flex min-w-0 flex-col gap-1">
-              <span className="text-xs text-gold/90">
-                {NEWS_KINDS[n.kind]} · {ago(n.date)}
-              </span>
-              <span className="line-clamp-2 text-sm leading-snug font-medium">{n.title}</span>
-            </span>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
 /**
  * Signal: today's briefing. The lead paper and more from arXiv, what is rising on GitHub (or, when GitHub's
  * search is rate-limited, the latest releases of the projects Nexverse tracks), the launch of the day and the
- * hub's own news. Data comes from cached feeds, so this prerenders; render it inside
+ * news members shared. Data comes from cached feeds, so this prerenders; render it inside
  * <Suspense fallback={<SignalSkeleton />}>.
  */
 export async function Signal({ launch }: { launch?: React.ReactNode }) {
@@ -207,11 +184,11 @@ export async function Signal({ launch }: { launch?: React.ReactNode }) {
             </span>
           </div>
           <div className="flex min-w-0 flex-col gap-2">
-            <h2 id="signal-h" className="font-display text-3xl font-semibold tracking-[-0.035em] md:text-4xl">
+            <h2 id="signal-h" className="font-display text-2xl font-semibold tracking-[-0.035em] md:text-[2rem]">
               Signal
             </h2>
             <p className="max-w-[60ch] text-[15px] text-foreground/80 md:text-base">
-              {today.long}. What moved on GitHub and arXiv, and what the community shipped, in one read.
+              {today.long}. What moved on GitHub and arXiv, and what members shared, in one read.
             </p>
             <LiveBadge fetchedAt={oldest} ok={live.length > 0} />
           </div>
@@ -228,7 +205,7 @@ export async function Signal({ launch }: { launch?: React.ReactNode }) {
         <div className="grid gap-x-12 gap-y-12 lg:grid-cols-12">
           <div className="flex min-w-0 flex-col gap-10 lg:col-span-7">
             {lead ? (
-              <Lead p={lead} />
+              <Lead p={lead} now={fetchedAt} />
             ) : (
               <Part title="New on arXiv" icon={FileTextIcon} source={SOURCES.arxiv.name}>
                 <Quiet>arXiv is not answering right now. The briefing fills in again in a few minutes.</Quiet>
@@ -249,7 +226,7 @@ export async function Signal({ launch }: { launch?: React.ReactNode }) {
               </Part>
             ) : releases.ok && shipped.length ? (
               <Part title="New releases" icon={TagIcon} source={SOURCES.github.name} i={3}>
-                <Releases items={shipped} />
+                <Releases items={shipped} now={fetchedAt} />
               </Part>
             ) : (
               <Part title="Rising on GitHub" icon={FolderGit2Icon} source={SOURCES.github.name} i={3}>
@@ -258,7 +235,7 @@ export async function Signal({ launch }: { launch?: React.ReactNode }) {
             )}
           </div>
 
-          <Part title="From the hub" icon={ArrowUpRightIcon} className="lg:col-span-12" i={4}>
+          <Part title="Shared by members" icon={ArrowUpRightIcon} className="lg:col-span-12" i={4}>
             <FromTheHub />
           </Part>
         </div>

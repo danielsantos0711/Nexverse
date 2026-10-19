@@ -2,26 +2,25 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useRef, useState } from "react"
-import { ImagePlusIcon, PackageIcon, RocketIcon, XIcon } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { ImagePlusIcon, RocketIcon, XIcon } from "lucide-react"
 import { useMounted } from "@/components/events/event-time"
 import { MarkdownComposer } from "@/components/forum/markdown-composer"
 import { LaunchCover } from "@/components/launchpad/launch-bits"
+import { Gate } from "@/components/moderation/gate"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { KINDS, resources, type ResourceKind } from "@/lib/data"
 import { canUploadGallery, createLaunch, LIMITS, uploadGalleryImage, validateLaunch, type LaunchErrors, type NewLaunch } from "@/lib/launchpad"
 import { listMyProjects, type Project } from "@/lib/projects"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
-import { cn } from "@/lib/utils"
 
 /** Schedule a launch. Renders in the browser only, because the default time depends on your clock. */
 export function NewLaunchForm() {
   const mounted = useMounted()
-  const { ready, user } = useSession()
+  const { ready } = useSession()
   if (!mounted || (live && !ready)) {
     return (
       <div className="glass flex flex-col gap-4 rounded-2xl p-6" aria-busy="true" aria-label="Loading form">
@@ -31,32 +30,20 @@ export function NewLaunchForm() {
       </div>
     )
   }
-  if (live && !user) {
-    return (
-      <div className="glass flex flex-col items-start gap-4 rounded-2xl p-6">
-        <p>Sign in to schedule a launch. It takes an email address and nothing else.</p>
-        <Link
-          href={`/sign-in?next=${encodeURIComponent("/launchpad/new")}`}
-          className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground"
-        >
-          Sign in
-        </Link>
-      </div>
-    )
-  }
-  return <Form />
+  return (
+    <Gate action="schedule a launch">
+      <Form />
+    </Gate>
+  )
 }
 
 const pad = (n: number) => String(n).padStart(2, "0")
 const localDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-const KIND_ORDER: ResourceKind[] = ["model", "dataset", "tool", "repo"]
 
 function Form() {
   const router = useRouter()
-  const [source, setSource] = useState<"project" | "resource">("project")
   const [projects, setProjects] = useState<Project[] | null>(null)
   const [projectId, setProjectId] = useState("")
-  const [resourceKey, setResourceKey] = useState("")
   const [tagline, setTagline] = useState("")
   const [description, setDescription] = useState("")
   // Tomorrow at 15:00 your time is a sensible default: people across time zones are awake.
@@ -77,33 +64,21 @@ function Form() {
     listMyProjects()
       .then((list) => {
         if (stale) return
-        const published = list.filter((p) => p.status === "published")
-        setProjects(published)
-        if (!published.length) setSource("resource")
+        setProjects(list.filter((p) => p.status === "published"))
       })
-      .catch(() => !stale && (setProjects([]), setSource("resource")))
+      .catch(() => !stale && setProjects([]))
     return () => {
       stale = true
     }
   }, [])
 
   const project = projects?.find((p) => p.id === projectId)
-  const resource = useMemo(() => {
-    const [kind, slug] = resourceKey.split(":")
-    return resources.find((r) => r.kind === kind && r.slug === slug) ?? null
-  }, [resourceKey])
 
-  // Prefill the tagline from the summary the first time something is picked, if it is still empty.
+  // Prefill the tagline from the project's summary the first time one is picked, if it is still empty.
   function pickProject(id: string) {
     setProjectId(id)
     const p = projects?.find((x) => x.id === id)
     if (p && !tagline.trim()) setTagline(p.summary.slice(0, LIMITS.tagline[1]))
-  }
-  function pickResource(key: string) {
-    setResourceKey(key)
-    const [kind, slug] = key.split(":")
-    const r = resources.find((x) => x.kind === kind && x.slug === slug)
-    if (r && !tagline.trim()) setTagline(r.summary.slice(0, LIMITS.tagline[1]))
   }
 
   const at = (() => {
@@ -114,7 +89,7 @@ function Form() {
     return Number.isFinite(v.getTime()) ? v.toISOString() : ""
   })()
 
-  const subject: NewLaunch["subject"] = source === "project" ? { type: "project", id: projectId, name: project?.name ?? "" } : { type: "resource", key: resourceKey, name: resource?.name ?? "" }
+  const subject: NewLaunch["subject"] = { type: "project", id: projectId, name: project?.name ?? "" }
   const input: NewLaunch = {
     subject,
     tagline,
@@ -166,80 +141,35 @@ function Form() {
   return (
     <form onSubmit={submit} noValidate className="glass rounded-2xl p-5 md:p-7">
       <FieldGroup>
-        <FieldSet>
-          <FieldLegend variant="label">What are you launching?</FieldLegend>
-          <div role="radiogroup" aria-label="What are you launching?" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {(
-              [
-                ["project", "One of my projects", "A model, dataset, tool or repo you published in the studio.", RocketIcon],
-                ["resource", "Something in the hub", "A model, dataset, tool or repo already on Nexverse.", PackageIcon],
-              ] as const
-            ).map(([value, label, blurb, Icon]) => {
-              const on = source === value
-              return (
-                <label
-                  key={value}
-                  className={cn(
-                    "pressable flex cursor-pointer flex-col gap-1 rounded-lg border px-3 py-2.5 text-sm transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring",
-                    on ? "border-ion/60 bg-ion/10" : "border-border bg-card/50 text-muted-foreground hover:bg-card hover:text-foreground",
-                  )}
-                >
-                  <input type="radio" name="source" value={value} checked={on} onChange={() => setSource(value)} className="sr-only" />
-                  <span className="flex items-center gap-2 font-medium text-foreground">
-                    <Icon aria-hidden className={cn("size-4", on ? "text-ion" : "text-muted-foreground", value === "project" && "-rotate-45")} />
-                    {label}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{blurb}</span>
-                </label>
-              )
-            })}
-          </div>
-          <Field data-invalid={errors.subject ? true : undefined}>
-            <FieldLabel htmlFor="ln-subject">{source === "project" ? "Project" : "Hub page"}</FieldLabel>
-            {source === "project" ? (
-              projects === null ? (
-                <Skeleton className="h-10 w-full" />
-              ) : projects.length ? (
-                <select id="ln-subject" value={projectId} onChange={(e) => pickProject(e.target.value)} className={selectCls} {...err("subject")}>
-                  <option value="" className="bg-popover">
-                    Pick a project
-                  </option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id} className="bg-popover">
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <p id="ln-subject" tabIndex={-1} className="text-sm text-muted-foreground">
-                  You have no published projects yet.{" "}
-                  <Link href="/studio" className="text-ion hover:underline">
-                    Publish one in the studio
-                  </Link>
-                  , or launch something from the hub.
-                </p>
-              )
-            ) : (
-              <select id="ln-subject" value={resourceKey} onChange={(e) => pickResource(e.target.value)} className={selectCls} {...err("subject")}>
-                <option value="" className="bg-popover">
-                  Pick from the hub
+        <Field data-invalid={errors.subject ? true : undefined}>
+          <FieldLabel htmlFor="ln-subject">Project to launch</FieldLabel>
+          {projects === null ? (
+            <Skeleton className="h-10 w-full" />
+          ) : projects.length ? (
+            <select id="ln-subject" value={projectId} onChange={(e) => pickProject(e.target.value)} className={selectCls} {...err("subject")}>
+              <option value="" className="bg-popover">
+                Pick one of your published projects
+              </option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id} className="bg-popover">
+                  {p.name}
                 </option>
-                {KIND_ORDER.map((k) => (
-                  <optgroup key={k} label={KINDS[k].plural} className="bg-popover">
-                    {resources
-                      .filter((r) => r.kind === k)
-                      .map((r) => (
-                        <option key={r.slug} value={`${r.kind}:${r.slug}`} className="bg-popover">
-                          {r.name}
-                        </option>
-                      ))}
-                  </optgroup>
-                ))}
-              </select>
-            )}
-            {errors.subject && <FieldError id="ln-subject-error">{errors.subject}</FieldError>}
-          </Field>
-        </FieldSet>
+              ))}
+            </select>
+          ) : (
+            <div id="ln-subject" tabIndex={-1} className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-border px-3 py-3 text-sm text-muted-foreground">
+              <p>You have no published projects yet. A launch is for a model, dataset, tool or repo you published on Nexverse.</p>
+              <Link href="/new/project" className="text-ion hover:underline">
+                Create a project
+              </Link>
+            </div>
+          )}
+          {errors.subject ? (
+            <FieldError id="ln-subject-error">{errors.subject}</FieldError>
+          ) : (
+            <FieldDescription>One scheduled or live launch per project at a time, up to 3 new launches a day.</FieldDescription>
+          )}
+        </Field>
 
         <Field data-invalid={errors.tagline ? true : undefined}>
           <FieldLabel htmlFor="ln-tagline">Tagline</FieldLabel>

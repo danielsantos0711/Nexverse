@@ -1,5 +1,5 @@
-import { getPerson, getResource, LANGUAGES, resources, type LanguageCode } from "@/lib/data"
-import { isUuid, PREVIEW_TODAY, type Who } from "@/lib/community"
+import { LANGUAGES, type LanguageCode } from "@/lib/data"
+import { isUuid, type Who } from "@/lib/community"
 import type { Member } from "@/lib/store"
 import { db } from "@/lib/supabase"
 
@@ -7,11 +7,8 @@ import { db } from "@/lib/supabase"
  * The arena: a member posts a prompt with two outputs from two different models, everyone else votes blind,
  * and every vote feeds an Elo rating per model. With a database the duels, votes and ratings live in Supabase
  * (supabase/migrations/…_arena_benchmarks.sql): model names stay hidden until you vote, ballots are secret and
- * ratings are computed in SQL. Without one, duels and votes stay in this browser.
- *
- * The sample duels below are community samples for the preview: the models are the invented ones from
- * lib/data.ts and the vote counts are made up to show the page at full density. Votes on a sample duel
- * always stay in this browser and never count toward members' ratings.
+ * ratings are computed in SQL. Without one, duels and votes stay in this browser. There are no sample duels:
+ * every duel, vote and rating shown comes from members.
  */
 
 // ─── Plumbing (same shape as lib/community.ts) ──────────────────────────────────────────────────────────────
@@ -58,17 +55,6 @@ async function requireMe() {
   return id
 }
 
-/** A small seeded generator, so sample timelines render the same everywhere. */
-function seeded(seed: string) {
-  let h = 2166136261
-  for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619)
-  return () => {
-    h = Math.imul(h ^ (h >>> 15), 2246822507)
-    h = Math.imul(h ^ (h >>> 13), 3266489909)
-    return ((h ^= h >>> 16) >>> 0) / 4294967296
-  }
-}
-
 // ─── Types ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 export type DuelTask = "code" | "writing" | "reasoning" | "translation" | "other"
@@ -100,7 +86,6 @@ export type Duel = {
   createdAt: string
   /** Total votes, when known (the split stays hidden until you vote). */
   votes: number
-  sample: boolean
   local: boolean
 }
 
@@ -111,297 +96,13 @@ export type Reveal = { a: DuelModel; b: DuelModel; tally: Tally; total: number; 
 
 const total = (t: Tally) => t.a + t.b + t.tie + t.bad
 
-// ─── Sample duels ───────────────────────────────────────────────────────────────────────────────────────────
-
-type SampleDuel = Omit<Duel, "author" | "authorId" | "votes" | "sample" | "local"> & {
-  by: string
-  a: string
-  b: string
-  seed: Tally
-}
-
-const SAMPLE_DUEL_DATA: SampleDuel[] = [
-  {
-    id: "csv-dedupe-by-email",
-    by: "sofia",
-    task: "code",
-    langs: ["en"],
-    createdAt: "2026-09-22T09:14:00Z",
-    a: "orbit-8b",
-    b: "hindi-coder-3b",
-    seed: { a: 41, b: 23, tie: 9, bad: 2 },
-    prompt:
-      "Write a Python function that removes duplicate rows from a CSV file by the email column, keeping the first occurrence. Emails should match case-insensitively and ignore surrounding spaces.",
-    outputA: `\`\`\`python
-import csv
-
-def dedupe_by_email(src: str, dst: str) -> int:
-    """Copy src to dst without repeated emails. Returns how many rows were dropped."""
-    seen: set[str] = set()
-    dropped = 0
-    with open(src, newline="", encoding="utf-8") as fin, open(dst, "w", newline="", encoding="utf-8") as fout:
-        reader = csv.DictReader(fin)
-        writer = csv.DictWriter(fout, fieldnames=reader.fieldnames)
-        writer.writeheader()
-        for row in reader:
-            key = (row.get("email") or "").strip().lower()
-            if key in seen:
-                dropped += 1
-                continue
-            seen.add(key)
-            writer.writerow(row)
-    return dropped
-\`\`\`
-
-It streams the file, so memory only grows with the number of distinct emails, not the file size. Rows with an empty email are treated as one value; skip the \`seen\` check for them if you want to keep all of those.`,
-    outputB: `\`\`\`python
-import pandas as pd
-
-def dedupe(path, out):
-    df = pd.read_csv(path)
-    df["_key"] = df["email"].str.strip().str.lower()
-    df = df.drop_duplicates(subset="_key", keep="first").drop(columns="_key")
-    df.to_csv(out, index=False)
-\`\`\`
-
-\`drop_duplicates\` with \`keep="first"\` keeps the first row of each email.`,
-  },
-  {
-    id: "remarcar-reuniao-pt-pt",
-    by: "ines",
-    task: "writing",
-    langs: ["pt"],
-    createdAt: "2026-09-25T15:40:00Z",
-    a: "tagus-3b-pt",
-    b: "orbit-8b",
-    seed: { a: 52, b: 14, tie: 6, bad: 1 },
-    prompt: "Escreve um email curto e educado a remarcar a reunião de quinta-feira para sexta-feira às 10h. Português de Portugal, tom profissional.",
-    outputA: `Assunto: Reunião de quinta-feira – nova data
-
-Bom dia, Marta,
-
-Por motivos de agenda, não vou conseguir estar presente na reunião de quinta-feira. Seria possível passarmos para sexta-feira, às 10h, no mesmo local?
-
-Peço desculpa pelo incómodo e fico a aguardar a sua confirmação.
-
-Com os melhores cumprimentos,
-Rui`,
-    outputB: `Assunto: Remarcação da reunião
-
-Olá Marta, tudo bem?
-
-Estou escrevendo para avisar que não vou conseguir participar da reunião de quinta. Você poderia remarcar para sexta às 10h?
-
-Desculpe pelo transtorno!
-
-Abraços,
-Rui`,
-  },
-  {
-    id: "two-trains-same-track",
-    by: "mei",
-    task: "reasoning",
-    langs: ["en"],
-    createdAt: "2026-09-27T08:05:00Z",
-    a: "orbit-1b-mobile",
-    b: "orbit-8b",
-    seed: { a: 6, b: 47, tie: 2, bad: 5 },
-    prompt:
-      "A train leaves a station at 9:00 travelling at 80 km/h. A second train leaves the same station at 10:00 on a parallel track in the same direction at 120 km/h. At what time does the second train catch up, and how far from the station?",
-    outputA: `The first train has a one-hour head start, so it is 80 km ahead at 10:00.
-
-The second train covers 120 km in one hour, which is more than 80 km, so it catches up at **11:00**, about 120 km from the station.`,
-    outputB: `At 10:00 the first train is 80 km ahead (1 h × 80 km/h).
-
-The second train closes the gap at 120 − 80 = 40 km/h, so it needs 80 ÷ 40 = 2 hours.
-
-It catches up at **12:00**, 2 h × 120 km/h = **240 km** from the station. (Check: the first train has then run 3 h × 80 km/h = 240 km.)`,
-  },
-  {
-    id: "darija-arabizi-shopping",
-    by: "layla",
-    task: "translation",
-    langs: ["ar", "en"],
-    createdAt: "2026-09-29T19:22:00Z",
-    a: "darija-mt",
-    b: "orbit-8b",
-    seed: { a: 29, b: 8, tie: 3, bad: 4 },
-    prompt: "Translate this Moroccan Darija (written in Arabizi) into English: \"Salam, wach nta mzyan? Bghit nchri chi khobz o l7lib mn l7anout 9bel ma ysed.\"",
-    outputA: `"Hi, are you doing well? I want to buy some bread and milk from the corner shop before it closes."`,
-    outputB: `"Hello, are you fine? I want to buy bread and something from Hanout before he leaves."
-
-Note: Arabizi uses numbers for Arabic sounds (7 = ḥ, 9 = q), so some words may be uncertain.`,
-  },
-  {
-    id: "kansai-hot-day-reply",
-    by: "mei",
-    task: "other",
-    langs: ["ja"],
-    createdAt: "2026-10-01T03:10:00Z",
-    a: "orbit-8b",
-    b: "kansai-7b",
-    seed: { a: 7, b: 38, tie: 4, bad: 1 },
-    prompt: "友達からのメッセージに関西弁で自然に返信してください：「今日めっちゃ暑いな、どないしよ？」",
-    outputA: `本当に暑いですね。こまめに水分を取って、できるだけ涼しい場所で過ごしてください。熱中症には十分気をつけましょう。`,
-    outputB: `ほんまやなあ、外出たら溶けてまうわ。駅前の喫茶店でかき氷でも食べに行かへん？クーラー効いてるし、ちょっと涼んでこ。`,
-  },
-  {
-    id: "sql-top-customers-2025",
-    by: "noah",
-    task: "code",
-    langs: ["en"],
-    createdAt: "2026-10-03T11:48:00Z",
-    a: "hindi-coder-3b",
-    b: "orbit-8b",
-    seed: { a: 18, b: 21, tie: 15, bad: 1 },
-    prompt: "PostgreSQL: from orders(customer_id, amount, created_at), list the top 3 customers by total order value in 2025, with their totals.",
-    outputA: `\`\`\`sql
-select customer_id, sum(amount) as total
-from orders
-where extract(year from created_at) = 2025
-group by customer_id
-order by total desc
-limit 3;
-\`\`\``,
-    outputB: `\`\`\`sql
-select customer_id, sum(amount) as total
-from orders
-where created_at >= '2025-01-01' and created_at < '2026-01-01'
-group by customer_id
-order by total desc
-limit 3;
-\`\`\`
-
-The date range (instead of \`extract(year …)\`) lets PostgreSQL use an index on \`created_at\`. If two customers tie for third place, add \`fetch first 3 rows with ties\` instead of \`limit 3\`.`,
-  },
-  {
-    id: "overfitting-in-hindi",
-    by: "priya",
-    task: "writing",
-    langs: ["hi"],
-    createdAt: "2026-10-05T06:30:00Z",
-    a: "orbit-8b",
-    b: "hindi-coder-3b",
-    seed: { a: 11, b: 26, tie: 7, bad: 0 },
-    prompt: "Explain overfitting to a beginner, in Hindi, in three sentences.",
-    outputA: `Overfitting का मतलब है कि model training data को याद कर लेता है। इसलिए test data पर उसकी accuracy कम हो जाती है। Dropout और early stopping से इसमें मदद मिलती है।`,
-    outputB: `ओवरफिटिंग तब होती है जब मॉडल डेटा से सीखने के बजाय उसे रट लेता है। ऐसे में वह पुराने उदाहरणों पर बहुत अच्छा करता है, लेकिन नए डेटा पर गलतियाँ करता है। इसे रोकने के लिए ज़्यादा डेटा, रेगुलराइज़ेशन या अलग वैलिडेशन सेट का इस्तेमाल किया जाता है।`,
-  },
-  {
-    id: "bat-and-ball",
-    by: "rafa",
-    task: "reasoning",
-    langs: ["en"],
-    createdAt: "2026-10-07T17:02:00Z",
-    a: "tagus-3b-pt",
-    b: "orbit-1b-mobile",
-    seed: { a: 33, b: 5, tie: 1, bad: 2 },
-    prompt: "A bat and a ball cost €1.10 together. The bat costs €1.00 more than the ball. How much does the ball cost?",
-    outputA: `Let the ball cost x. Then the bat costs x + 1.00, and x + (x + 1.00) = 1.10, so 2x = 0.10 and **x = €0.05**.
-
-The ball costs 5 cents and the bat €1.05, which is exactly €1.00 more.`,
-    outputB: `The ball costs **€0.10**, because €1.10 − €1.00 = €0.10.`,
-  },
-  {
-    id: "bus-ten-minutes-pt-pt",
-    by: "ines",
-    task: "translation",
-    langs: ["en", "pt"],
-    createdAt: "2026-10-09T13:15:00Z",
-    a: "orbit-1b-mobile",
-    b: "tagus-3b-pt",
-    seed: { a: 4, b: 31, tie: 5, bad: 0 },
-    prompt: "Translate into European Portuguese (Portugal): \"I'm on the bus, I'll be there in ten minutes. Can you order me a coffee?\"",
-    outputA: `"Estou no ônibus, chego em dez minutos. Você pode pedir um café pra mim?"`,
-    outputB: `"Estou no autocarro, chego daqui a dez minutos. Podes pedir-me um café?"`,
-  },
-  {
-    id: "regex-iso-date",
-    by: "kai",
-    task: "code",
-    langs: ["en"],
-    createdAt: "2026-10-11T10:40:00Z",
-    a: "orbit-8b",
-    b: "orbit-1b-mobile",
-    seed: { a: 27, b: 9, tie: 6, bad: 3 },
-    prompt: "Give me a JavaScript regex that matches ISO dates (YYYY-MM-DD) with a month from 01 to 12 and a day from 01 to 31. Nothing else on the line.",
-    outputA: `\`\`\`js
-const isoDate = /^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$/
-
-isoDate.test("2026-10-18") // true
-isoDate.test("2026-13-01") // false
-\`\`\`
-
-A regex can't know that 2026-02-31 doesn't exist. If that matters, parse it and compare: \`new Date(s).toISOString().startsWith(s)\`.`,
-    outputB: `\`\`\`js
-/\\d{4}-\\d{2}-\\d{2}/
-\`\`\`
-
-This matches dates like 2026-10-18.`,
-  },
-  {
-    id: "commit-message-rename",
-    by: "jonas",
-    task: "writing",
-    langs: ["en"],
-    createdAt: "2026-10-13T08:55:00Z",
-    a: "hindi-coder-3b",
-    b: "orbit-1b-mobile",
-    seed: { a: 19, b: 12, tie: 10, bad: 2 },
-    prompt: "Write a git commit message for this change: renamed getUser to fetchUser across 14 files, and fixed a missing null check in session.ts that crashed sign-out.",
-    outputA: `Rename getUser to fetchUser; fix sign-out crash
-
-- Rename getUser() to fetchUser() in 14 files; behaviour unchanged.
-- session.ts: check for a null session before reading its user, which
-  crashed sign-out when the session had already expired.`,
-    outputB: `Updated code
-
-Renamed function and fixed bug in session.ts.`,
-  },
-  {
-    id: "world-cup-2030-winner",
-    by: "rafa",
-    task: "other",
-    langs: ["en"],
-    createdAt: "2026-10-15T20:30:00Z",
-    a: "orbit-8b",
-    b: "orbit-1b-mobile",
-    seed: { a: 3, b: 1, tie: 2, bad: 37 },
-    prompt: "Who won the 2030 FIFA World Cup final, and what was the score?",
-    outputA: `Spain won the 2030 World Cup, beating Brazil 2–1 in the final in Madrid after extra time.`,
-    outputB: `Argentina won the 2030 World Cup final against Portugal on penalties after a 1–1 draw.`,
-  },
-]
-
-const modelOf = (slug: string): DuelModel => ({ name: getResource(slug)?.name ?? slug, slug })
-const sampleAuthor = (handle: string): Who => ({ handle, name: getPerson(handle)?.name ?? handle })
-
-export const SAMPLE_DUELS: Duel[] = SAMPLE_DUEL_DATA.map(({ by, seed, id, prompt, outputA, outputB, task, langs, createdAt }) => ({
-  id,
-  prompt,
-  outputA,
-  outputB,
-  task,
-  langs,
-  createdAt,
-  author: sampleAuthor(by),
-  authorId: null,
-  votes: total(seed),
-  sample: true,
-  local: false,
-}))
-
-const SAMPLE_BY_ID = new Map(SAMPLE_DUEL_DATA.map((d) => [d.id, d]))
-export const getSampleDuel = (id: string) => SAMPLE_DUELS.find((d) => d.id === id)
-
 // ─── Local storage ──────────────────────────────────────────────────────────────────────────────────────────
 
-// Duels posted in this browser (no database), with their model names, and every vote cast in this browser
-// (on sample duels always; on any duel without a database).
+// Without a database: duels posted in this browser, with their model names, and every vote cast in it.
 const DUELS_KEY = "nexverse-duels"
 const VOTES_KEY = "nexverse-duel-votes"
 
-type LocalDuel = Omit<Duel, "author" | "authorId" | "votes" | "sample" | "local"> & { a: DuelModel; b: DuelModel }
+type LocalDuel = Omit<Duel, "author" | "authorId" | "votes" | "local"> & { a: DuelModel; b: DuelModel }
 type LocalVote = { choice: Choice; at: string }
 
 const readLocalDuels = () => readLocal<LocalDuel[]>(DUELS_KEY, [])
@@ -418,7 +119,6 @@ const fromLocalDuel = ({ id, prompt, outputA, outputB, task, langs, createdAt }:
   author: { name: "You" },
   authorId: null,
   votes: 0,
-  sample: false,
   local: true,
 })
 
@@ -448,7 +148,6 @@ const fromDuelRow = (r: DuelRow, votes = 0): Duel => ({
   authorId: r.author_id,
   createdAt: r.created_at,
   votes,
-  sample: false,
   local: false,
 })
 
@@ -460,22 +159,18 @@ async function totalsFor(ids: string[]): Promise<Record<string, number>> {
   return Object.fromEntries((data as { duel_id: string; votes: number }[]).map((r) => [r.duel_id, Number(r.votes)]))
 }
 
-/** Members' duels (newest first) followed by the sample duels. Sample totals include your own local vote. */
+/** Members' duels, newest first. */
 export async function listDuels(): Promise<Duel[]> {
-  const votes = readLocalVotes()
-  const samples = SAMPLE_DUELS.map((d) => (votes[d.id] ? { ...d, votes: d.votes + 1 } : d))
   const client = db()
-  if (!client) return [...readLocalDuels().map(fromLocalDuel), ...samples]
+  if (!client) return readLocalDuels().map(fromLocalDuel)
   const { data, error } = await client.from("duels").select(DUEL_COLUMNS).order("created_at", { ascending: false }).limit(300)
   fail(error)
   const rows = data as unknown as DuelRow[]
   const totals = await totalsFor(rows.map((r) => r.id))
-  return [...rows.map((r) => fromDuelRow(r, totals[r.id] ?? 0)), ...samples]
+  return rows.map((r) => fromDuelRow(r, totals[r.id] ?? 0))
 }
 
 export async function getDuel(id: string): Promise<Duel | null> {
-  const sample = getSampleDuel(id)
-  if (sample) return readLocalVotes()[id] ? { ...sample, votes: sample.votes + 1 } : sample
   const client = db()
   if (!client) {
     const d = readLocalDuels().find((x) => x.id === id)
@@ -489,12 +184,15 @@ export async function getDuel(id: string): Promise<Duel | null> {
   return fromDuelRow(data as unknown as DuelRow, totals[id] ?? 0)
 }
 
-/** Every duel you voted on, with your choice: from the database for members' duels, from this browser for the rest. */
+/** Every duel you voted on, with your choice: from the database, or from this browser without one. */
 export async function myVotes(): Promise<Record<string, Choice>> {
   const out: Record<string, Choice> = {}
-  for (const [id, v] of Object.entries(readLocalVotes())) out[id] = v.choice
   const client = db()
-  if (!client || !(await me())) return out
+  if (!client) {
+    for (const [id, v] of Object.entries(readLocalVotes())) out[id] = v.choice
+    return out
+  }
+  if (!(await me())) return out
   const { data, error } = await client.from("duel_votes").select("duel_id, choice").order("created_at", { ascending: false }).limit(2000)
   fail(error)
   for (const r of data as { duel_id: string; choice: Choice }[]) out[r.duel_id] = r.choice
@@ -509,13 +207,6 @@ export function isMine(d: Duel, memberId: string | null | undefined) {
 
 /** The model names and tally for a duel you voted on or posted; null while the vote is still blind. */
 export async function getReveal(d: Duel): Promise<Reveal | null> {
-  if (d.sample) {
-    const s = SAMPLE_BY_ID.get(d.id)!
-    const mine = readLocalVotes()[d.id]?.choice ?? null
-    if (!mine) return null
-    const tally = { ...s.seed, [mine]: s.seed[mine] + 1 }
-    return { a: modelOf(s.a), b: modelOf(s.b), tally, total: total(tally), mine }
-  }
   if (d.local) {
     const l = readLocalDuels().find((x) => x.id === d.id)
     if (!l) return null
@@ -552,7 +243,7 @@ function fromRevealRow(r: RevealRow): Reveal {
 /** Casts your vote (final) and returns what it reveals. */
 export async function vote(d: Duel, choice: Choice): Promise<Reveal> {
   if (d.local) throw new Error("You posted this duel, so you already know which model is which.")
-  if (d.sample || !db()) {
+  if (!db()) {
     const votes = readLocalVotes()
     if (votes[d.id]) throw new Error("You already voted on this duel.")
     votes[d.id] = { choice, at: new Date().toISOString() }
@@ -583,12 +274,6 @@ export type NewDuel = {
 }
 
 export const DUEL_LIMITS = { prompt: 4000, output: 12000, model: 80, langs: 4 } as const
-
-/** Hub models people can link a duel to. */
-export const HUB_MODELS: { slug: string; name: string }[] = resources
-  .filter((r) => r.kind === "model")
-  .map((r) => ({ slug: r.slug, name: r.name }))
-  .sort((a, b) => a.name.localeCompare(b.name))
 
 export function validateDuel(d: NewDuel): Partial<Record<"prompt" | "outputA" | "outputB" | "modelA" | "modelB" | "langs", string>> {
   const e: Partial<Record<"prompt" | "outputA" | "outputB" | "modelA" | "modelB" | "langs", string>> = {}
@@ -689,7 +374,7 @@ export type Rating = {
 
 export type RatingFilter = { task: DuelTask | null; lang: LanguageCode | null }
 
-/** Where the ratings came from: members' votes in the database, or the sample duels (plus your local votes). */
+/** Where the ratings came from. Always members' votes now; "samples" stays in the type for older callers. */
 export type RatingSource = "members" | "samples"
 
 /** The same Elo as public.arena_ratings: start 1000, K 32, a tie or "both bad" is a draw, oldest vote first. */
@@ -735,41 +420,12 @@ export function computeRatings(games: Game[]): Rating[] {
     .sort((x, y) => y.rating - x.rating || y.votes - x.votes)
 }
 
-/** Every sample vote as a timed game (spread between the duel's date and "today"), plus your local sample votes. */
-function sampleGames(filter: RatingFilter): Game[] {
-  const local = readLocalVotes()
-  const games: Game[] = []
-  for (const d of SAMPLE_DUEL_DATA) {
-    if (filter.task && d.task !== filter.task) continue
-    if (filter.lang && !d.langs.includes(filter.lang)) continue
-    const rand = seeded(d.id)
-    const from = Date.parse(d.createdAt)
-    const span = Math.max(3600e3, PREVIEW_TODAY - from)
-    const a = modelOf(d.a)
-    const b = modelOf(d.b)
-    for (const choice of ["a", "b", "tie", "bad"] as const) {
-      for (let i = 0; i < d.seed[choice]; i++) {
-        // Most votes arrive in the first days after a duel is posted.
-        const t = from + span * rand() ** 2.2
-        games.push({ a, b, choice, at: new Date(t).toISOString() })
-      }
-    }
-    const mine = local[d.id]
-    if (mine) games.push({ a, b, choice: mine.choice, at: mine.at })
-  }
-  return games
-}
-
-export function sampleRatings(filter: RatingFilter): Rating[] {
-  return computeRatings(sampleGames(filter))
-}
-
 type RatingRow = { model: string; slug: string | null; rating: number; votes: number; wins: number; losses: number; ties: number; history: number[] | null; last_vote: string | null }
 
-/** Ratings for a task and/or language. Members' ratings when anyone has voted; the sample ratings otherwise. */
+/** Ratings for a task and/or language, from members' votes. Empty until someone votes. */
 export async function getRatings(filter: RatingFilter): Promise<{ rows: Rating[]; source: RatingSource; anyMemberVotes: boolean }> {
   const client = db()
-  if (!client) return { rows: sampleRatings(filter), source: "samples", anyMemberVotes: false }
+  if (!client) return { rows: [], source: "members", anyMemberVotes: false }
   const { data, error } = await client.rpc("arena_ratings", { task_filter: filter.task, lang_filter: filter.lang })
   fail(error)
   const rows = (data as RatingRow[]).map((r) => ({
@@ -790,14 +446,13 @@ export async function getRatings(filter: RatingFilter): Promise<{ rows: Rating[]
     const all = await client.rpc("arena_ratings", { task_filter: null, lang_filter: null })
     anyMemberVotes = Array.isArray(all.data) && all.data.length > 0
   }
-  return { rows: anyMemberVotes ? [] : sampleRatings(filter), source: anyMemberVotes ? "members" : "samples", anyMemberVotes }
+  return { rows: [], source: "members", anyMemberVotes }
 }
 
-/** A model's rating across all duels, matched by hub slug (or by its hub name). */
+/** A model's rating across all duels, matched by the slug its duels linked to (or by name). */
 export async function getModelRating(slug: string): Promise<{ rating: Rating | null; rank: number; of: number; source: RatingSource }> {
   const { rows, source } = await getRatings({ task: null, lang: null })
-  const name = getResource(slug)?.name.toLowerCase()
-  const i = rows.findIndex((r) => r.slug === slug || (name && r.model.toLowerCase() === name))
+  const i = rows.findIndex((r) => r.slug === slug || r.model.toLowerCase() === slug.toLowerCase())
   return { rating: i >= 0 ? rows[i] : null, rank: i + 1, of: rows.length, source }
 }
 

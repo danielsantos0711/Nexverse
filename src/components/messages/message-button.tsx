@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils"
 
 /**
  * "Message" on a member's profile: opens (or finds) your conversation with them. Signed-out visitors are sent
- * to sign in first. With a database only real members can be messaged, so it hides itself for sample people
- * (whose id is a handle, not a member id) and on your own profile.
+ * to sign in first. Only real members can be messaged, so it hides itself without a database, for ids that are
+ * not member ids, and on your own profile.
  */
 export function MessageButton({
   memberId,
@@ -35,7 +35,7 @@ export function MessageButton({
   const [error, setError] = useState("")
   const label = name ? `Message ${name}` : "Send a message"
 
-  if (live && !isUuid(memberId)) return null
+  if (!live || !isUuid(memberId)) return null
   if (live && user?.id === memberId) return null
 
   if (live && ready && !user) {

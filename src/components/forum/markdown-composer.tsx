@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { BoldIcon, CodeIcon, LinkIcon, ListIcon, QuoteIcon } from "lucide-react"
 import { PostBody } from "@/components/forum/post-body"
 import { PosterAvatar } from "@/components/forum/forum-ui"
-import { matchPeople, searchMembers, type MentionCandidate } from "@/lib/community"
+import { searchMembers, type MentionCandidate } from "@/lib/community"
 import { cn } from "@/lib/utils"
 
 type Format = "bold" | "code" | "link" | "list" | "quote"
@@ -58,9 +58,9 @@ function mentionAt(text: string, caret: number): { start: number; query: string 
 }
 
 /**
- * A Markdown editor with Write and Preview tabs, a small toolbar and @mention suggestions. Mentions of sample
- * people insert "@handle"; mentions of members insert "@Name" and are reported through `onMention`, so the
- * post can carry their ids (the database only notifies members whose name is still in the text).
+ * A Markdown editor with Write and Preview tabs, a small toolbar and @mention suggestions. Mentions of members
+ * insert "@Name" and are reported through `onMention`, so the post can carry their ids (the database only
+ * notifies members whose name is still in the text).
  */
 export function MarkdownComposer({
   id,
@@ -134,7 +134,7 @@ export function MarkdownComposer({
     const f = q.toLowerCase()
     const fromThread = participants.filter((c) => !f || c.name.toLowerCase().includes(f) || c.handle?.startsWith(f))
     const fromDb = members.q === q ? members.list : []
-    const all = [...fromThread, ...fromDb, ...matchPeople(q)]
+    const all = [...fromThread, ...fromDb]
     return all.filter((c, i) => all.findIndex((x) => x.key === c.key) === i).slice(0, 7)
   }, [q, participants, members])
 

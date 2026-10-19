@@ -9,7 +9,11 @@ import { CosmosEngine } from "@/components/cosmos/engine"
 import { buildCosmos, FILTER_KINDS, FOCUS, searchStars, STAR_KINDS, type Star, type StarKind } from "@/components/cosmos/model"
 import Nebula from "@/components/cosmos/nebula"
 import { StarCard } from "@/components/cosmos/star-card"
-import { getProjectStats, listProjects, type Project, type ProjectStats } from "@/lib/projects"
+import { listPublicCollections, type Collection } from "@/lib/community"
+import { listHub, type HubEntry } from "@/lib/hub"
+import type { GhRepo } from "@/lib/live"
+import { listMembers, type PublicMember } from "@/lib/people"
+import type { ProjectStats } from "@/lib/projects"
 import { useBookmarks } from "@/lib/social"
 import { useSession } from "@/lib/store"
 import { db, live } from "@/lib/supabase"
@@ -37,13 +41,13 @@ async function myLikes(userId: string | null): Promise<string[]> {
 const iconButton =
   "pressable grid size-10 place-items-center rounded-full text-foreground/80 transition-colors hover:bg-white/8 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-40"
 
-type Projects = { list: Project[]; stats: Record<string, ProjectStats> }
+type Loaded = { entries: HubEntry[]; stats: Record<string, ProjectStats>; members: PublicMember[]; collections: Collection[]; failed: string[] }
 
 /**
  * The Cosmos page: the star map, its controls and the list fallback. The canvas work lives in CosmosEngine; this
  * component owns the state (filters, selection, search, "Where am I") and the overlays that follow the camera.
  */
-export function CosmosView() {
+export function CosmosView({ github = [] }: { github?: GhRepo[] }) {
   const router = useRouter()
   const params = useSearchParams()
   const [initialFocus] = useState(() => {
@@ -53,8 +57,7 @@ export function CosmosView() {
   const { ready, user, member } = useSession()
   const bookmarks = useBookmarks()
 
-  const [projects, setProjects] = useState<Projects | null>(null)
-  const [projectsFailed, setProjectsFailed] = useState(false)
+  const [projects, setProjects] = useState<Loaded | null>(null)
   const [likes, setLikes] = useState<string[]>([])
   const [kinds, setKinds] = useState<Set<StarKind>>(ALL_KINDS)
   const [selected, setSelected] = useState<string | null>(initialFocus)
@@ -81,19 +84,24 @@ export function CosmosView() {
   const listboxId = useId()
   const helpId = useId()
 
-  // Member projects are public, so they load for everyone; the map draws first and they join when ready.
+  // Members' work, profiles and public collections are public, so they load for everyone; the map draws first and
+  // they join when ready. Each source can fail on its own without blanking the others.
   useEffect(() => {
     let stale = false
-    listProjects({ limit: 200 })
-      .then(async (list) => {
-        const stats = list.length ? await getProjectStats(list.map((p) => p.id)).catch(() => ({})) : {}
-        if (!stale) setProjects({ list, stats })
+    Promise.allSettled([listHub({ limit: 300 }), listMembers({ limit: 200 }), listPublicCollections(60)]).then(([hub, members, collections]) => {
+      if (stale) return
+      const failed: string[] = []
+      if (hub.status === "rejected" || (hub.status === "fulfilled" && hub.value.errors.length)) failed.push("members' projects and links")
+      if (members.status === "rejected") failed.push("members")
+      if (collections.status === "rejected") failed.push("collections")
+      setProjects({
+        entries: hub.status === "fulfilled" ? hub.value.entries : [],
+        stats: hub.status === "fulfilled" ? hub.value.stats : {},
+        members: members.status === "fulfilled" ? members.value : [],
+        collections: collections.status === "fulfilled" ? collections.value : [],
+        failed,
       })
-      .catch(() => {
-        if (stale) return
-        setProjectsFailed(true)
-        setProjects({ list: [], stats: {} })
-      })
+    })
     return () => {
       stale = true
     }
@@ -119,11 +127,14 @@ export function CosmosView() {
   const cosmos = useMemo(
     () =>
       buildCosmos({
-        projects: projects?.list,
+        entries: projects?.entries,
         stats: projects?.stats,
+        members: projects?.members,
+        collections: projects?.collections,
+        github,
         you: { name: youName, signedIn, canSignIn: live, highlights: highlightKey ? highlightKey.split(",") : [] },
       }),
-    [projects, youName, signedIn, highlightKey]
+    [projects, github, youName, signedIn, highlightKey]
   )
   const highlights = useMemo(() => new Set(cosmos.links.filter((l) => l.kind === "you").map((l) => l.b)), [cosmos])
 
@@ -254,7 +265,7 @@ export function CosmosView() {
     placeCard()
   }, [activeId, placeCard])
 
-  // A deep link (?focus=model:orbit-8b) opens already flown to its star. Projects arrive later, so wait for them.
+  // A deep link (?focus=project:<id>) opens already flown to its star. Projects arrive later, so wait for them.
   useEffect(() => {
     if (applied.current || !initialFocus) return
     const engine = engineRef.current
@@ -499,7 +510,7 @@ export function CosmosView() {
           </button>
         </p>
       )}
-      {projectsFailed && <p className="text-xs text-muted-foreground">Member projects could not load, so their galaxy is empty for now.</p>}
+      {projects && projects.failed.length > 0 && <p className="text-xs text-muted-foreground">Some stars could not load ({projects.failed.join(", ")}), so those galaxies may look emptier than they are.</p>}
     </>
   )
 

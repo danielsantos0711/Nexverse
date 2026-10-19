@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
-import { categoryPath, getCategory, getConstellation, getNews, getPerson, getResource, getThread, isQuestionId, resourcePath, threadTitle } from "@/lib/data"
+import { categoryPath, getCategory, isQuestionId } from "@/lib/data"
 import { getQuestion, useSession, type Member, type Question, type Submission } from "@/lib/store"
 import { describeLiveTarget } from "@/lib/live/ids"
 import { getBenchmark } from "@/lib/benchmarks"
@@ -10,12 +10,12 @@ import { db, live } from "@/lib/supabase"
  * Social layer: bookmarks (private), follows (public) and notifications (private, written by database triggers).
  *
  * Targets use the same readable keys as likes:
- *   model:<slug> dataset:<slug> tool:<slug> repo:<slug>   resources from the catalogue
- *   thread:<id>          a sample thread slug or a member's question uuid
- *   news:<id>            a sample news story
- *   constellation:<slug> a curated constellation
- *   share:<uuid>         a link a member shared (public.submissions)
- * Follows additionally use person:<handle>, member:<uuid>, category:<slug> and room:<slug>.
+ *   project:<uuid>       a project a member published (public.projects)
+ *   share:<uuid>         a link or news story a member shared (public.submissions)
+ *   thread:<uuid>        a member's forum thread
+ *   collection:<uuid>    a member's collection
+ *   ghrepo:<id> paper:<id>  GitHub repositories and arXiv papers (lib/live/ids)
+ * Follows additionally use member:<uuid>, category:<slug> and room:<slug> (person:<handle> is from the old samples).
  */
 
 export const TARGET = /^[a-z]{2,16}:[a-z0-9-]{1,80}$/
@@ -425,41 +425,28 @@ export async function loadMoreNotifications(limit = 40) {
 
 export type TargetInfo = { type: string; id: string; label: string; href: string | null }
 
-/** A human label and a link for a target key, from the sample catalogue. Member content is labelled generically. */
+/** A human label and a link for a target key, without asking the database. Member content is labelled generically; lib/hub resolveTargets() names it. */
 export function describeTarget(target: string): TargetInfo {
   const i = target.indexOf(":")
   const type = target.slice(0, i)
   const id = target.slice(i + 1)
   switch (type) {
-    case "model":
-    case "dataset":
-    case "tool":
-    case "repo": {
-      const r = getResource(id)
-      return { type, id, label: r?.name ?? id, href: resourcePath({ kind: type, slug: id }) }
-    }
-    case "thread": {
-      const t = getThread(id)
-      return { type, id, label: t ? threadTitle(t) : isQuestionId(id) ? "your thread" : id, href: `/forum/${id}` }
-    }
-    case "news":
-      return { type, id, label: getNews(id)?.title ?? id, href: `/news/${id}` }
-    case "constellation":
-      return { type, id, label: getConstellation(id)?.name ?? id, href: `/constellations/${id}` }
-    case "person":
-      return { type, id, label: getPerson(id)?.name ?? `@${id}`, href: `/people/${id}` }
+    case "thread":
+      return { type, id, label: isQuestionId(id) ? "a thread" : "a thread that is no longer here", href: isQuestionId(id) ? `/forum/${id}` : null }
+    case "share":
+      return { type, id, label: "a shared link", href: null }
     case "category":
       return { type, id, label: getCategory(id)?.name ?? id, href: categoryPath(id) }
     case "room":
       return { type, id, label: `#${id}`, href: `/chat/${id}` }
     case "member":
-      return { type, id, label: "a member", href: null }
-    case "share":
-      return { type, id, label: "a shared link", href: null }
+      return { type, id, label: "a member", href: `/people/${id}` }
     case "project":
       return { type, id, label: "a project", href: `/p/${id}` }
     case "duel":
       return { type, id, label: "your duel", href: `/arena/${id}` }
+    case "video":
+      return { type, id, label: "your video", href: `/video/${id}` }
     case "benchmark":
       return { type, id, label: getBenchmark(id)?.name ?? id, href: `/benchmarks/${id}` }
     case "crew":

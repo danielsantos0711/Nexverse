@@ -3,21 +3,17 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { BookmarkIcon, ExternalLinkIcon, SearchIcon, Undo2Icon } from "lucide-react"
-import { ConstellationCard, NewsCard, PersonCard, ResourceCard, ThreadRow } from "@/components/hub/cards"
+import { BookmarkIcon, SearchIcon, Undo2Icon } from "lucide-react"
+import { useItemInfo, type ItemInfo } from "@/components/collections/describe-item"
+import { KIND_ICONS, kindText } from "@/components/hub/bits"
 import { SaveButton } from "@/components/social/save-button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ago, getCategory, getConstellation, getNews, getPerson, getResource, getThread, isQuestionId, threadTitle } from "@/lib/data"
-import { getMemberThreads, getSharedLinks, toggleBookmark, useBookmarks, type Bookmark } from "@/lib/social"
-import { useSession, type Question, type Submission } from "@/lib/store"
-import { describeLabTarget } from "@/components/lab/tools"
-import { describeLiveTarget } from "@/lib/live/ids"
+import { toggleBookmark, useBookmarks, type Bookmark } from "@/lib/social"
+import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 const EASE = [0.23, 1, 0.32, 1] as const
-
-const LIVE_KIND = { ghrepo: "GitHub repository", paper: "Paper" } as const
 
 export const SAVED_GROUPS = [
   { id: "model", label: "Models" },
@@ -26,95 +22,43 @@ export const SAVED_GROUPS = [
   { id: "repo", label: "Repos" },
   { id: "thread", label: "Threads" },
   { id: "news", label: "News" },
-  { id: "constellation", label: "Constellations" },
-  { id: "person", label: "People" },
-  { id: "live", label: "Projects, tools and papers" },
+  { id: "collection", label: "Collections" },
+  { id: "live", label: "GitHub, papers and Lab tools" },
+  { id: "gone", label: "No longer available" },
 ] as const
 type GroupId = (typeof SAVED_GROUPS)[number]["id"]
 
 type Entry = { target: string; group: GroupId; label: string; node: React.ReactNode; wide?: boolean }
 
-/** Turns bookmarks into renderable entries. Sample content resolves at once; members' content after a fetch. */
+function groupOf(info: ItemInfo): GroupId {
+  if (!info.found) return "gone"
+  switch (info.group) {
+    case "model":
+    case "dataset":
+    case "tool":
+    case "repo":
+    case "thread":
+    case "news":
+    case "collection":
+      return info.group
+    default:
+      return "live"
+  }
+}
+
+/** Turns bookmarks into renderable entries, with every member item named by one round of queries. */
 function useEntries(list: Bookmark[]) {
-  const [threads, setThreads] = useState<Record<string, Question>>({})
-  const [shares, setShares] = useState<Record<string, Submission>>({})
-  const [pending, setPending] = useState(true)
-
-  const threadIds = useMemo(() => list.map((b) => b.target).filter((t) => t.startsWith("thread:") && isQuestionId(t.slice(7))).map((t) => t.slice(7)), [list])
-  const shareIds = useMemo(() => list.map((b) => b.target).filter((t) => t.startsWith("share:")).map((t) => t.slice(6)), [list])
-  const threadKey = threadIds.join()
-  const shareKey = shareIds.join()
-
-  useEffect(() => {
-    let stale = false
-    const ids = threadKey ? threadKey.split(",") : []
-    const sids = shareKey ? shareKey.split(",") : []
-    Promise.all([getMemberThreads(ids), getSharedLinks(sids).catch(() => [] as Submission[])]).then(([qs, ss]) => {
-      if (stale) return
-      setThreads(Object.fromEntries(qs.map((q) => [q.id, q])))
-      setShares(Object.fromEntries(ss.map((s) => [s.id, s])))
-      setPending(false)
-    })
-    return () => {
-      stale = true
-    }
-  }, [threadKey, shareKey])
-
+  const targets = useMemo(() => list.map((b) => b.target), [list])
+  const { get, ready } = useItemInfo(targets)
   const entries = useMemo(() => {
-    const out: Entry[] = []
-    for (const { target } of list) {
-      const i = target.indexOf(":")
-      const type = target.slice(0, i)
-      const id = target.slice(i + 1)
-      if (type === "model" || type === "dataset" || type === "tool" || type === "repo") {
-        const r = getResource(id)
-        if (r) out.push({ target, group: type, label: `${r.owner}/${r.name} ${r.summary}`, node: <ResourceCard r={r} /> })
-      } else if (type === "thread") {
-        const t = getThread(id)
-        if (t) out.push({ target, group: "thread", label: `${t.title} ${threadTitle(t)}`, node: <ThreadRow t={t} /> })
-        else if (threads[id]) out.push({ target, group: "thread", label: threads[id].title, node: <MemberThreadRow q={threads[id]} /> })
-      } else if (type === "news") {
-        const n = getNews(id)
-        if (n) out.push({ target, group: "news", label: `${n.title} ${n.summary}`, node: <NewsCard n={n} /> })
-      } else if (type === "constellation") {
-        const c = getConstellation(id)
-        if (c) out.push({ target, group: "constellation", label: `${c.name} ${c.goal}`, node: <ConstellationCard c={c} className="h-full" />, wide: true })
-      } else if (type === "person") {
-        const p = getPerson(id)
-        if (p) out.push({ target, group: "person", label: `${p.name} ${p.handle} ${p.role}`, node: <PersonCard handle={p.handle} /> })
-      } else if (type === "share" && shares[id]) {
-        const s = shares[id]
-        const group: GroupId = s.kind === "news" ? "news" : s.kind
-        out.push({ target, group, label: `${s.title} ${s.summary}`, node: <SharedLinkRow s={s} /> })
-      } else {
-        // Everything else saved from around the site: GitHub repos and papers, Lab tools, member projects.
-        const live = describeLiveTarget(target)
-        const lab = describeLabTarget(target)
-        const item = live
-          ? { kind: LIVE_KIND[live.type], label: live.label, href: live.href }
-          : lab
-            ? { kind: "Lab tool", label: lab.label, href: lab.href }
-            : type === "project"
-              ? { kind: "Project", label: "A member's project", href: `/p/${id}` }
-              : null
-        if (item)
-          out.push({
-            target,
-            group: "live",
-            label: item.label,
-            node: (
-              <Link href={item.href} className="flex flex-col gap-0.5 rounded-xl border border-border bg-card/70 p-4 transition-colors hover:bg-card">
-                <span className="text-xs text-muted-foreground">{item.kind}</span>
-                <span className="truncate font-medium">{item.label}</span>
-              </Link>
-            ),
-          })
-      }
-    }
-    return out
-  }, [list, threads, shares])
-
-  return { entries, pending: pending && (threadIds.length > 0 || shareIds.length > 0) }
+    if (!ready) return []
+    return list.map(({ target }): Entry => {
+      const info = get(target)
+      return { target, group: groupOf(info), label: `${info.label} ${info.summary ?? ""} ${info.by ?? ""}`, node: <SavedRow info={info} /> }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list, ready])
+  return { entries, pending: !ready }
 }
 
 export function SavedView() {
@@ -223,7 +167,7 @@ export function SavedView() {
         <div className="flex flex-col gap-10">
           {groups.map((g) => {
             const items = visible.filter((e) => e.group === g.id)
-            const grid = g.id === "constellation" || g.id === "person"
+            const grid = false
             return (
               <section key={g.id} aria-labelledby={`saved-${g.id}`} className="flex flex-col gap-3">
                 {filter === "all" && (
@@ -313,39 +257,27 @@ function EmptySaved() {
   )
 }
 
-function MemberThreadRow({ q }: { q: Question }) {
-  return (
-    <Link href={`/forum/${q.id}`} className="flex flex-col gap-1 rounded-xl border border-border bg-card/60 p-4 transition-colors hover:bg-card">
-      <span lang={q.lang} className="font-medium">
-        {q.title}
+/** One saved item: what it is, its name and a line about it, linking to its page. */
+function SavedRow({ info }: { info: ItemInfo }) {
+  const Icon = info.kind ? KIND_ICONS[info.kind] : BookmarkIcon
+  const body = (
+    <>
+      <span className={cn("inline-flex items-center gap-1 text-xs font-medium", info.kind ? kindText(info.kind) : "text-muted-foreground")}>
+        <Icon aria-hidden className="size-3.5" />
+        {info.type}
       </span>
-      <span className="text-xs text-muted-foreground">
-        {getCategory(q.orbit)?.name ?? q.orbit} · {q.author?.name ?? "A member"} · {ago(q.createdAt)} · {q.answerCount} {q.answerCount === 1 ? "reply" : "replies"}
-      </span>
-    </Link>
+      <span className="truncate font-medium">{info.label}</span>
+      {(info.summary || info.by) && <span className="line-clamp-1 text-sm text-muted-foreground">{[info.summary, info.by && `by ${info.by}`].filter(Boolean).join(" · ")}</span>}
+    </>
   )
-}
-
-function SharedLinkRow({ s }: { s: Submission }) {
-  let host = ""
-  try {
-    host = new URL(s.url).hostname
-  } catch {}
-  return (
-    <a
-      href={s.url}
-      target="_blank"
-      rel="noopener noreferrer nofollow"
-      className="flex flex-col gap-1 rounded-xl border border-border bg-card/60 p-4 transition-colors hover:bg-card"
-    >
-      <span className="flex items-center gap-1.5 font-medium">
-        {s.title} <ExternalLinkIcon aria-hidden className="size-3.5 text-muted-foreground" />
-        <span className="sr-only">(opens in a new tab)</span>
-      </span>
-      {s.summary && <span className="line-clamp-1 text-sm text-muted-foreground">{s.summary}</span>}
-      <span className="text-xs text-muted-foreground">
-        Shared by {s.author?.name ?? "a member"} · {ago(s.createdAt)} · {host}
-      </span>
-    </a>
+  return info.href ? (
+    <Link href={info.href as "/"} className="flex flex-col gap-0.5 rounded-xl border border-border bg-card/70 p-4 transition-colors hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+      {body}
+    </Link>
+  ) : (
+    <div className="flex flex-col gap-0.5 rounded-xl border border-dashed border-border bg-card/40 p-4 text-muted-foreground">
+      {body}
+      <span className="text-xs">Remove it with the bookmark button.</span>
+    </div>
   )
 }

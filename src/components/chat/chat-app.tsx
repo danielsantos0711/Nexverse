@@ -10,6 +10,7 @@ import { roomHref, signInHref } from "@/components/chat/format"
 import { ChatAvatar, RoomGlyph } from "@/components/chat/glyphs"
 import { PeoplePanel, people } from "@/components/chat/people"
 import { RoomView } from "@/components/chat/room-view"
+import { useRole } from "@/lib/roles"
 import { cachedRooms, listRooms, live, localMember, subscribeLobby, unreadCounts, type Presence, type Room } from "@/lib/chat"
 import { useSession, type Member } from "@/lib/store"
 import { cn } from "@/lib/utils"
@@ -32,6 +33,9 @@ export function ChatApp({ slug }: { slug: string }) {
   const me = useMemo<Member | null>(() => (memberId ? { id: memberId, name: memberName ?? "Member" } : null), [memberId, memberName])
   const ready = live ? session.ready : localMe !== null
   const canWrite = Boolean(me && (!live || session.user))
+  // Public rooms are opened by the team (the database allows it to staff only); without a database anyone can.
+  const role = useRole()
+  const canOpenRooms = !live || (canWrite && role.isStaff)
 
   const [rooms, setRooms] = useState<Room[]>(cachedRooms)
   const [roomsLoaded, setRoomsLoaded] = useState(false)
@@ -100,6 +104,7 @@ export function ChatApp({ slug }: { slug: string }) {
       online={online}
       me={me}
       canWrite={canWrite}
+      canOpenRooms={canOpenRooms}
       ready={ready}
       onCreate={() => setCreating(true)}
       onNavigate={() => setRoomsOpen(false)}
@@ -144,7 +149,7 @@ export function ChatApp({ slug }: { slug: string }) {
           <PeoplePanel room={room} crowd={crowd} me={me} />
         </SheetContent>
       </Sheet>
-      <CreateRoomDialog open={creating} onOpenChange={setCreating} onCreated={() => setRooms(cachedRooms())} />
+      <CreateRoomDialog open={creating && canOpenRooms} onOpenChange={setCreating} onCreated={() => setRooms(cachedRooms())} />
     </div>
   )
 }
@@ -156,6 +161,7 @@ function RoomRail({
   online,
   me,
   canWrite,
+  canOpenRooms,
   ready,
   onCreate,
   onNavigate,
@@ -166,6 +172,7 @@ function RoomRail({
   online: Record<string, number>
   me: Member | null
   canWrite: boolean
+  canOpenRooms: boolean
   ready: boolean
   onCreate: () => void
   onNavigate: () => void
@@ -174,22 +181,10 @@ function RoomRail({
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center justify-between gap-2 py-3 pr-12 pl-4 md:pr-3">
         <h2 className="text-sm font-semibold">Rooms</h2>
-        {canWrite ? (
-          <Button variant="ghost" size="icon-sm" aria-label="Open a new room" onClick={onCreate}>
+        {canOpenRooms && (
+          <Button variant="ghost" size="icon-sm" aria-label="Open a new room" title="Open a new room" onClick={onCreate}>
             <PlusIcon aria-hidden />
           </Button>
-        ) : (
-          ready &&
-          live && (
-            <Link
-              href={signInHref(active)}
-              aria-label="Sign in to open a new room"
-              title="Sign in to open a new room"
-              className="inline-flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-            >
-              <PlusIcon aria-hidden className="size-4" />
-            </Link>
-          )
         )}
       </div>
       <nav aria-label="Chat rooms" className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">

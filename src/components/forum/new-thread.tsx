@@ -1,12 +1,13 @@
 "use client"
 
-import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
-import { BarChart3Icon, XIcon } from "lucide-react"
+import { BarChart3Icon, LockIcon, XIcon } from "lucide-react"
 import { CategoryIcon } from "@/components/forum/category-icon"
+import { AiAssistButton } from "@/components/ai/ai-assist-button"
 import { MarkdownComposer } from "@/components/forum/markdown-composer"
+import { Gate } from "@/components/moderation/gate"
 import { PollBuilder } from "@/components/forum/poll"
 import { TagInput } from "@/components/forum/tags"
 import { Button } from "@/components/ui/button"
@@ -14,22 +15,36 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegen
 import { Input } from "@/components/ui/input"
 import { createThread, mentionedMemberIds, normalizeTag, validatePoll, validateThread, type MentionCandidate, type NewPoll } from "@/lib/community"
 import { categoriesIn, categoryGroups, getCategory, getCategoryGroup, LANGUAGES, type LanguageCode } from "@/lib/data"
+import { useRole } from "@/lib/roles"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 const EMPTY_POLL: NewPoll = { prompt: "", options: ["", ""], multi: false }
 
-/** Start a forum thread in any language, with Markdown, tags, @mentions and an optional poll. */
+/** Categories only the team posts in (the database enforces it too, see …_forum_threads.sql). */
+const STAFF_ONLY = new Set(["announcements"])
+
+/** Start a forum thread in any language, with Markdown, tags, @mentions and an optional poll. Members only. */
 export function NewThread() {
+  return (
+    <Gate action="start a thread">
+      <NewThreadForm />
+    </Gate>
+  )
+}
+
+function NewThreadForm() {
   const params = useSearchParams()
   const router = useRouter()
   const reduce = useReducedMotion()
-  const { ready, user } = useSession()
+  const { ready } = useSession()
+  const { isStaff } = useRole()
   const [title, setTitle] = useState((params.get("title") ?? "").slice(0, 300))
   const [body, setBody] = useState((params.get("body") ?? "").slice(0, 20000))
   // Old links may carry a first-version community slug; unknown ones fall back to Help.
-  const [cat, setCat] = useState(getCategory(params.get("c") ?? "")?.slug ?? "help")
+  const asked = getCategory(params.get("c") ?? "")?.slug
+  const [cat, setCat] = useState(asked && (isStaff || !STAFF_ONLY.has(asked)) ? asked : "help")
   const chosen = getCategory(cat)
   const [lang, setLang] = useState<LanguageCode>("en")
   const [tags, setTags] = useState<string[]>(() => (params.get("tag") ? [normalizeTag(params.get("tag")!)].filter(Boolean) : []))
@@ -37,17 +52,6 @@ export function NewThread() {
   const [poll, setPoll] = useState<NewPoll | null>(null)
   const [errors, setErrors] = useState<{ title?: string; poll?: string; form?: string }>({})
   const [busy, setBusy] = useState(false)
-
-  if (live && ready && !user) {
-    return (
-      <div className="glass flex flex-col items-start gap-4 rounded-2xl p-6">
-        <p>Sign in to start a thread. It takes an email address and nothing else.</p>
-        <Link href={`/sign-in?next=${encodeURIComponent(`/forum/new?c=${cat}`)}`} className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground">
-          Sign in
-        </Link>
-      </div>
-    )
-  }
 
   async function submit(e?: React.FormEvent) {
     e?.preventDefault()
@@ -89,17 +93,26 @@ export function NewThread() {
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
                   {categoriesIn(g.slug).map((c) => {
                     const on = cat === c.slug
+                    const closed = STAFF_ONLY.has(c.slug) && !isStaff
                     return (
                       <label
                         key={c.slug}
+                        title={closed ? "Only the Nexverse team posts here" : undefined}
                         className={cn(
-                          "pressable flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring",
-                          on ? "border-ion/60 bg-ion/10 text-foreground" : "border-border bg-card/50 text-muted-foreground hover:bg-card hover:text-foreground"
+                          "pressable flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring",
+                          closed ? "cursor-not-allowed border-border/60 text-muted-foreground/60" : "cursor-pointer",
+                          on ? "border-ion/60 bg-ion/10 text-foreground" : !closed && "border-border bg-card/50 text-muted-foreground hover:bg-card hover:text-foreground"
                         )}
                       >
-                        <input type="radio" name="cat" value={c.slug} checked={on} onChange={() => setCat(c.slug)} className="sr-only" />
+                        <input type="radio" name="cat" value={c.slug} checked={on} disabled={closed} onChange={() => setCat(c.slug)} className="sr-only" />
                         <CategoryIcon name={c.icon} className={cn("size-4 shrink-0", on ? "text-ion" : "text-muted-foreground")} />
                         <span className="truncate font-medium">{c.name}</span>
+                        {closed && (
+                          <>
+                            <LockIcon aria-hidden className="ml-auto size-3.5 shrink-0" />
+                            <span className="sr-only">(team only)</span>
+                          </>
+                        )}
                       </label>
                     )
                   })}
@@ -117,7 +130,10 @@ export function NewThread() {
         </FieldSet>
 
         <Field data-invalid={errors.title ? true : undefined}>
-          <FieldLabel htmlFor="title">Title</FieldLabel>
+          <div className="flex items-center justify-between gap-2">
+            <FieldLabel htmlFor="title">Title</FieldLabel>
+            <AiAssistButton value={body} goals={["title"]} translate={false} onAccept={(t) => setTitle(t.slice(0, 300))} />
+          </div>
           <Input
             id="title"
             value={title}
@@ -132,7 +148,10 @@ export function NewThread() {
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="body">Details</FieldLabel>
+          <div className="flex items-center justify-between gap-2">
+            <FieldLabel htmlFor="body">Details</FieldLabel>
+            <AiAssistButton value={body} onAccept={(t) => setBody(t.slice(0, 20000))} />
+          </div>
           <MarkdownComposer
             id="body"
             value={body}

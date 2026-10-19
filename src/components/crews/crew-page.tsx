@@ -48,7 +48,7 @@ const noop = () => () => {}
  * One crew: who they are, a join button that fits (join, ask to join, accept an invite, leave), and tabs for
  * the wall, the crew chat, shared collections, members and, for its owner and admins, settings.
  */
-export function CrewPage({ slug, initial }: { slug: string; initial?: Crew }) {
+export function CrewPage({ slug }: { slug: string }) {
   const session = useSession()
   const router = useRouter()
   const params = useSearchParams()
@@ -65,7 +65,7 @@ export function CrewPage({ slug, initial }: { slug: string; initial?: Crew }) {
   const me = useMemo<Member | null>(() => (meId ? { id: meId, name: meName ?? "Member" } : null), [meId, meName])
   const ready = live ? session.ready : localMe !== null
 
-  const [crew, setCrew] = useState<Crew | null | undefined>(initial)
+  const [crew, setCrew] = useState<Crew | null | undefined>(undefined)
   const [standing, setStanding] = useState<Standing>({ role: null, requested: false })
   const [members, setMembers] = useState<CrewMember[] | null>(null)
   const [error, setError] = useState("")
@@ -76,7 +76,7 @@ export function CrewPage({ slug, initial }: { slug: string; initial?: Crew }) {
   const [activityKey, setActivityKey] = useState(0)
   const [copied, setCopied] = useState(false)
 
-  // The crew itself (samples are known up front; others load in the browser).
+  // The crew itself, loaded in the browser.
   useEffect(() => {
     if (live && !session.ready) return
     let stale = false

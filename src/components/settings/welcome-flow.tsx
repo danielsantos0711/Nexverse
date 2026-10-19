@@ -10,7 +10,8 @@ import { InterestPicker } from "@/components/settings/interest-picker"
 import { SignInPrompt } from "@/components/studio/ui"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { categories, compact, people } from "@/lib/data"
+import { categories } from "@/lib/data"
+import { listMembers, type PublicMember } from "@/lib/people"
 import { completeOnboarding, useProfile } from "@/lib/profile"
 import { listFollowing, toggleFollow } from "@/lib/social"
 import { useSession } from "@/lib/store"
@@ -43,6 +44,19 @@ function Flow({ initialInterests, userId, name }: { initialInterests: string[]; 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [moved, setMoved] = useState(false)
+  const [members, setMembers] = useState<PublicMember[]>([])
+
+  // Real members to follow: the newest ones who wrote a line about themselves, not you.
+  useEffect(() => {
+    if (!live) return
+    let stale = false
+    listMembers({ limit: 24 })
+      .then((list) => !stale && setMembers(list.filter((m) => m.id !== userId).sort((a, b) => Number(Boolean(b.bio)) - Number(Boolean(a.bio))).slice(0, 8)))
+      .catch(() => {})
+    return () => {
+      stale = true
+    }
+  }, [userId])
 
   useEffect(() => {
     let stale = false
@@ -86,7 +100,7 @@ function Flow({ initialInterests, userId, name }: { initialInterests: string[]; 
     try {
       const before = existing ?? new Set<string>()
       const add = [...follows].filter((f) => !before.has(f))
-      const drop = [...before].filter((f) => !follows.has(f) && (f.startsWith("category:") || f.startsWith("person:")))
+      const drop = [...before].filter((f) => !follows.has(f) && (f.startsWith("category:") || f.startsWith("member:")))
       const results = await Promise.allSettled([...add.map((f) => toggleFollow(f, true)), ...drop.map((f) => toggleFollow(f, false))])
       await completeOnboarding(interests)
       const failed = results.filter((r) => r.status === "rejected").length
@@ -103,7 +117,7 @@ function Flow({ initialInterests, userId, name }: { initialInterests: string[]; 
   }
 
   const followCategories = categories.map((c) => `category:${c.slug}`).filter((f) => follows.has(f)).length
-  const followPeople = people.map((p) => `person:${p.handle}`).filter((f) => follows.has(f)).length
+  const followPeople = [...follows].filter((f) => f.startsWith("member:")).length
   const variants = {
     enter: (d: number) => (reduce ? { opacity: 0 } : { opacity: 0, x: d * 24 }),
     center: { opacity: 1, x: 0 },
@@ -140,7 +154,7 @@ function Flow({ initialInterests, userId, name }: { initialInterests: string[]; 
             )}
             {step === 1 && (
               <>
-                <StepHead focus={moved} title="Follow a few categories and people" lead="New topics and releases from what you follow show up in For you." />
+                <StepHead focus={moved} title={members.length ? "Follow a few categories and people" : "Follow a few categories"} lead="New threads, projects and links from what you follow show up in For you." />
                 <section aria-labelledby="w-cats" className="flex flex-col gap-3">
                   <h3 id="w-cats" className="text-xs font-medium text-muted-foreground">
                     Forum categories · {followCategories} followed
@@ -169,42 +183,42 @@ function Flow({ initialInterests, userId, name }: { initialInterests: string[]; 
                     })}
                   </div>
                 </section>
-                <section aria-labelledby="w-people" className="flex flex-col gap-3">
-                  <h3 id="w-people" className="text-xs font-medium text-muted-foreground">
-                    People building in the open · {followPeople} followed
-                  </h3>
-                  <ul className="grid gap-2 sm:grid-cols-2">
-                    {people.slice(0, 8).map((p) => {
-                      const id = `person:${p.handle}`
-                      const on = follows.has(id)
-                      return (
-                        <li key={p.handle} className="flex items-start gap-3 rounded-xl border border-border bg-card/50 p-3">
-                          <PersonAvatar handle={p.handle} size={36} />
-                          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <span className="truncate text-sm font-medium">{p.name}</span>
-                            <span className="truncate text-xs text-muted-foreground">
-                              {p.role} · {compact(p.followers)} followers
-                            </span>
-                            <span className="line-clamp-2 text-xs text-muted-foreground">{p.bio}</span>
-                          </div>
-                          <button
-                            type="button"
-                            aria-pressed={on}
-                            aria-label={`${on ? "Following" : "Follow"} ${p.name}`}
-                            onClick={() => toggle(id)}
-                            className={cn(
-                              "pressable inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-                              on ? "border-ion/40 bg-ion/10 text-ion" : "border-transparent bg-primary text-primary-foreground hover:bg-primary/90"
-                            )}
-                          >
-                            {on ? <CheckIcon aria-hidden className="size-3.5" /> : <PlusIcon aria-hidden className="size-3.5" />}
-                            {on ? "Following" : "Follow"}
-                          </button>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </section>
+                {members.length > 0 && (
+                  <section aria-labelledby="w-people" className="flex flex-col gap-3">
+                    <h3 id="w-people" className="text-xs font-medium text-muted-foreground">
+                      Members · {followPeople} followed
+                    </h3>
+                    <ul className="grid gap-2 sm:grid-cols-2">
+                      {members.map((m) => {
+                        const id = `member:${m.id}`
+                        const on = follows.has(id)
+                        return (
+                          <li key={m.id} className="flex items-start gap-3 rounded-xl border border-border bg-card/50 p-3">
+                            <PersonAvatar handle={m.handle ?? m.id} name={m.name} src={m.avatarUrl} size={36} />
+                            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                              <span className="truncate text-sm font-medium">{m.name}</span>
+                              {m.handle && <span className="truncate text-xs text-muted-foreground">@{m.handle}</span>}
+                              {m.bio && <span className="line-clamp-2 text-xs text-muted-foreground">{m.bio}</span>}
+                            </div>
+                            <button
+                              type="button"
+                              aria-pressed={on}
+                              aria-label={`${on ? "Following" : "Follow"} ${m.name}`}
+                              onClick={() => toggle(id)}
+                              className={cn(
+                                "pressable inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                                on ? "border-ion/40 bg-ion/10 text-ion" : "border-transparent bg-primary text-primary-foreground hover:bg-primary/90"
+                              )}
+                            >
+                              {on ? <CheckIcon aria-hidden className="size-3.5" /> : <PlusIcon aria-hidden className="size-3.5" />}
+                              {on ? "Following" : "Follow"}
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </section>
+                )}
               </>
             )}
             {step === 2 && (

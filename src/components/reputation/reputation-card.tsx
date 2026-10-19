@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { BadgeCheckIcon, CalendarHeartIcon, FlameIcon, HandHelpingIcon, LibraryIcon, SunriseIcon, TelescopeIcon, type LucideIcon } from "lucide-react"
 import { LevelRing } from "@/components/reputation/level-ring"
 import { Skeleton } from "@/components/ui/skeleton"
-import { BADGES, getMemberReputation, POINTS, sampleStats, type RepStats } from "@/lib/community"
+import { BADGES, getMemberReputation, POINTS, type RepStats } from "@/lib/community"
 import { compact } from "@/lib/data"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
@@ -52,19 +52,18 @@ export function Badges({ stats, showLocked = true, className }: { stats: RepStat
 }
 
 /**
- * Level ring, points breakdown and badges for a profile. Pass `handle` for a sample person (computed from the
- * sample content) or `memberId` for a member (from the database). With neither, it shows the signed-in member,
- * or, without a database, what this browser holds.
+ * Level ring, points breakdown and badges for a profile: `memberId` for a member (from the database). Without it,
+ * it shows the signed-in member, or, without a database, what this browser holds.
  */
-export function ReputationCard({ handle, memberId, className }: { handle?: string; memberId?: string; className?: string }) {
+export function ReputationCard({ memberId, className }: { memberId?: string; className?: string }) {
   const { ready, user } = useSession()
-  const subject = handle ? null : (memberId ?? user?.id ?? null)
+  const subject = memberId ?? user?.id ?? null
   const [loaded, setLoaded] = useState<{ key: string; stats: RepStats } | null>(null)
   const [error, setError] = useState("")
-  const key = handle ? `person:${handle}` : `member:${subject ?? "local"}`
+  const key = `member:${subject ?? "local"}`
 
   useEffect(() => {
-    if (handle || (live && !ready)) return
+    if (live && !ready) return
     let stale = false
     getMemberReputation(subject)
       .then((s) => !stale && setLoaded({ key, stats: s }))
@@ -72,9 +71,9 @@ export function ReputationCard({ handle, memberId, className }: { handle?: strin
     return () => {
       stale = true
     }
-  }, [handle, subject, ready, key])
+  }, [subject, ready, key])
 
-  const stats = handle ? sampleStats(handle) : loaded?.key === key ? loaded.stats : null
+  const stats = loaded?.key === key ? loaded.stats : null
 
   if (error) return <p className="text-sm text-muted-foreground">Reputation could not be loaded.</p>
   if (!stats) {

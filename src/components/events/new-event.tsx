@@ -1,12 +1,12 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
 import { MapPinIcon, MonitorIcon } from "lucide-react"
 import { KIND_ICON } from "@/components/events/event-bits"
 import { formatRange, useMounted, zoneCity } from "@/components/events/event-time"
 import { MarkdownComposer } from "@/components/forum/markdown-composer"
+import { Gate } from "@/components/moderation/gate"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -31,7 +31,7 @@ const DURATIONS = [
 /** Create an event. The form only renders in the browser, because its defaults depend on your clock and zone. */
 export function NewEventForm() {
   const mounted = useMounted()
-  const { ready, user } = useSession()
+  const { ready } = useSession()
   if (!mounted || (live && !ready)) {
     return (
       <div className="glass flex flex-col gap-4 rounded-2xl p-6" aria-busy="true" aria-label="Loading form">
@@ -41,17 +41,11 @@ export function NewEventForm() {
       </div>
     )
   }
-  if (live && !user) {
-    return (
-      <div className="glass flex flex-col items-start gap-4 rounded-2xl p-6">
-        <p>Sign in to host an event. It takes an email address and nothing else.</p>
-        <Link href={`/sign-in?next=${encodeURIComponent("/events/new")}`} className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground">
-          Sign in
-        </Link>
-      </div>
-    )
-  }
-  return <Form />
+  return (
+    <Gate action="host an event">
+      <Form />
+    </Gate>
+  )
 }
 
 const pad = (n: number) => String(n).padStart(2, "0")
@@ -225,7 +219,7 @@ function Form() {
               maxLength={200}
               inputMode={mode === "online" ? "url" : undefined}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder={mode === "online" ? "https://meet.example.com/your-room" : "LX Factory, Rua Rodrigues de Faria 103, Lisbon"}
+              placeholder={mode === "online" ? "https://meet.example.com/your-room" : "Venue name, street address, city"}
               className="h-10 bg-background/60"
               {...err("location")}
             />

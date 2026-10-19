@@ -4,18 +4,16 @@ import { Suspense } from "react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { DuelDetail } from "@/components/arena/duel-detail"
 import { ForumHeader } from "@/components/forum/forum-header"
-import { getSampleDuel, SAMPLE_DUELS } from "@/lib/arena"
-import { isUuid } from "@/lib/community"
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// Duels live in the database and load in the browser. The build needs one param; it is not a duel, so it 404s.
 export function generateStaticParams() {
-  return SAMPLE_DUELS.map((d) => ({ id: d.id }))
+  return [{ id: "example" }]
 }
 
-export async function generateMetadata({ params }: PageProps<"/arena/[id]">): Promise<Metadata> {
-  const d = getSampleDuel((await params).id)
-  // The prompt only: the model names are the answer to a blind vote.
-  return { title: "Duel", description: d ? `Which answer is better? ${d.prompt.slice(0, 140)}` : "A blind duel between two models." }
-}
+// The prompt is not in the metadata: the page loads it in the browser, and the model names are the answer to a blind vote.
+export const metadata: Metadata = { title: "Duel · Arena", description: "A blind duel between two models. Read both answers, vote, then see which models wrote them." }
 
 export default function DuelPage({ params }: PageProps<"/arena/[id]">) {
   return (
@@ -30,9 +28,7 @@ export default function DuelPage({ params }: PageProps<"/arena/[id]">) {
 
 async function Duel({ params }: { params: PageProps<"/arena/[id]">["params"] }) {
   const { id } = await params
-  const sample = getSampleDuel(id)
-  if (sample) return <DuelDetail id={id} initial={sample} />
-  // Members' duels live in the database (or this browser), so they load in the browser.
-  if (isUuid(id)) return <DuelDetail id={id} />
-  notFound()
+  // Without a database, duels saved in this browser also have random UUIDs.
+  if (!UUID.test(id)) notFound()
+  return <DuelDetail id={id} />
 }

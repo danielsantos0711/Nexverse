@@ -6,13 +6,11 @@ import { useEffect, useState } from "react"
 import { HashIcon, UserIcon } from "lucide-react"
 import { categoryIcon } from "@/components/forum/category-icon"
 import { MemberAvatar } from "@/components/forum/discussion"
-import { PersonAvatar } from "@/components/hub/bits"
 import { FollowButton } from "@/components/social/follow-button"
-import { categories, categoryPath, getCategory, getPerson } from "@/lib/data"
+import { categories, categoryPath, getCategory } from "@/lib/data"
 import { describeTarget, getMemberNames, listFollowing, type Follow } from "@/lib/social"
 
 const SECTIONS = [
-  { type: "person", label: "People and organisations" },
   { type: "member", label: "Members" },
   { type: "category", label: "Forum categories" },
   { type: "room", label: "Chat rooms" },
@@ -74,8 +72,24 @@ export function FollowingList({ userId, onCount }: { userId?: string | null; onC
     )
   }
 
+  // Follows of the old sample people point at nobody; they are listed first so they can be dropped.
+  const stale = follows.filter((f) => f.followee.startsWith("person:"))
   return (
     <div className="flex flex-col gap-8">
+      {stale.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h3 className="text-sm font-medium text-muted-foreground">No longer on Nexverse</h3>
+          <ul className="flex flex-col gap-2">
+            {stale.map((f) => (
+              <li key={f.followee} className="flex items-center gap-3 rounded-xl border border-dashed border-border p-3 text-sm text-muted-foreground">
+                <UserIcon aria-hidden className="size-5 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">@{f.followee.slice(7)} was an example profile and has been removed.</span>
+                <FollowButton followee={f.followee} showCount={false} name={f.followee.slice(7)} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {SECTIONS.map((s) => {
         const items = follows.filter((f) => f.followee.startsWith(`${s.type}:`))
         if (!items.length) return null
@@ -97,9 +111,7 @@ export function FollowingList({ userId, onCount }: { userId?: string | null; onC
                       className="flex items-center gap-3 rounded-xl border border-border bg-card/60 p-3"
                     >
                       <span className="grid size-9 shrink-0 place-items-center">
-                        {s.type === "person" && getPerson(info.id) ? (
-                          <PersonAvatar handle={info.id} size={36} />
-                        ) : s.type === "member" ? (
+                        {s.type === "member" ? (
                           <MemberAvatar name={label} size={36} />
                         ) : s.type === "room" ? (
                           <HashIcon aria-hidden className="size-5 text-gold" />

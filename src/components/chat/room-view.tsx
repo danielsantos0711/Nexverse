@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { ArrowDownIcon, MenuIcon, UsersIcon, XIcon } from "lucide-react"
+import { ArrowDownIcon, MenuIcon, ShieldIcon, UsersIcon, XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -30,6 +30,7 @@ import {
   type Presence,
   type Room,
 } from "@/lib/chat"
+import { useRole } from "@/lib/roles"
 import type { Member } from "@/lib/store"
 
 type Props = {
@@ -57,6 +58,8 @@ function place(list: ChatMessage[], m: ChatMessage) {
 const NEAR_BOTTOM = 80
 
 export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unreadElsewhere, onPresence, onRead, onOpenRooms, onOpenPeople }: Props) {
+  // Posting is for members whose account is not paused; the database refuses the rest anyway.
+  const role = useRole()
   const reduce = useReducedMotion()
   const name = room?.name ?? slug
   const [messages, setMessages] = useState<ChatMessage[]>(() => cachedMessages(slug) ?? [])
@@ -596,8 +599,16 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
             </Button>
           </div>
         )}
-        {!ready ? (
+        {!ready || (live && canWrite && !role.ready) ? (
           <Skeleton className="h-12 w-full rounded-xl" />
+        ) : canWrite && role.suspended ? (
+          <div role="status" className="glass flex items-start gap-3 rounded-xl px-4 py-3 text-sm text-muted-foreground">
+            <ShieldIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-gold" />
+            <p>
+              Your account is paused{role.suspendedUntil ? ` until ${new Date(role.suspendedUntil).toLocaleDateString()}` : ""}. You can still read every room. Check your notifications for the
+              reason.
+            </p>
+          </div>
         ) : canWrite ? (
           <Composer
             ref={composer}

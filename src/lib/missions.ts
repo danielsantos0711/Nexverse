@@ -1,4 +1,3 @@
-import { getPerson, getResource, resourcePath } from "@/lib/data"
 // Types only from the store (it pulls in React hooks); community.ts is plain functions and safe to import.
 import type { Member } from "@/lib/store"
 import { isUuid, normalizeTag, TAG, type Who } from "@/lib/community"
@@ -10,8 +9,8 @@ import { db } from "@/lib/supabase"
  * crew, submit an entry (a project page, a GitHub repository or a paper), and the poster picks the winner.
  *
  * With a database everything reads and writes Supabase (supabase/migrations/…_missions_launchpad.sql), where
- * triggers keep the status and send notifications. Without one, the sample missions below are shown and what you
- * do (missions you post, crews you join, entries you submit) stays in this browser.
+ * triggers keep the status and send notifications. Without one (a browser-only copy of the site), only what you
+ * do yourself (missions you post, crews you join, entries you submit) is shown, and it stays in this browser.
  */
 
 // ─── Plumbing ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -21,7 +20,7 @@ function fail(error: { message: string } | null): asserts error is null {
 }
 
 function friendly(message: string) {
-  if (/violates row-level security/.test(message)) return "You are not allowed to do that. Are you signed in?"
+  if (/violates row-level security/.test(message)) return DENIED
   if (/mission_entries_check/.test(message)) return "That link does not match the kind of entry. Check it and try again."
   if (/missions_tags_check/.test(message)) return "Tags are lowercase letters, numbers and hyphens, up to 24 characters, and at most 5."
   if (/duplicate key/.test(message)) return "That is already there."
@@ -29,6 +28,9 @@ function friendly(message: string) {
   if (/schema cache|does not exist/.test(message)) return "Missions are still being switched on for this site. Try again soon."
   return message
 }
+
+/** Row level security said no: signed out, not yours, or a paused account (the database blocks posting then). */
+const DENIED = "You are not allowed to do that. Check that you are signed in; if your account is paused, posting stays off until the pause ends (your notifications say why)."
 
 function readLocal<T>(key: string, fallback: T): T {
   try {
@@ -66,10 +68,6 @@ async function requireMe() {
   return id
 }
 
-const personWho = (handle: string): Who => ({
-  handle,
-  name: getPerson(handle)?.name ?? handle,
-})
 const memberWho = (m: Member | null | undefined, fallback = "A member"): Who => (m ? { name: m.name, memberId: m.id } : { name: fallback })
 const YOU: Who = { name: "You" }
 
@@ -169,7 +167,7 @@ export type Mission = {
   winnerEntryId: string | null
   crewCount: number
   entryCount: number
-  /** One of the examples kept in this file. */
+  /** @deprecated Always false: there are no sample missions any more. */
   sample: boolean
   /** Posted in this browser (no database). */
   local: boolean
@@ -217,10 +215,7 @@ export function entryHref(e: Pick<MissionEntry, "url">): {
 /** A short label for an entry's link: "owner/repo", "arXiv 2610.00001", the project or resource name. */
 export function entryLabel(e: Pick<MissionEntry, "kind" | "url">): string {
   if (e.url.startsWith("/p/")) return "Project page"
-  if (e.url.startsWith("/")) {
-    const slug = e.url.split("/").pop() ?? ""
-    return getResource(slug)?.name ?? slug
-  }
+  if (e.url.startsWith("/")) return e.url
   try {
     const u = new URL(e.url)
     if (u.hostname === "github.com") return u.pathname.replace(/^\/|\/$/g, "")
@@ -232,224 +227,7 @@ export function entryLabel(e: Pick<MissionEntry, "kind" | "url">): string {
   }
 }
 
-// ─── Sample missions (shown when no database is connected) ──────────────────────────────────────────────────
-
-type SampleEntry = {
-  by: string
-  kind: EntryKind
-  url: string
-  notes: string
-  daysAgo: number
-}
-type SampleMission = {
-  id: string
-  title: string
-  brief: string
-  criteria: string[]
-  difficulty: Difficulty
-  reward: number
-  tags: string[]
-  poster: string
-  /** Days before today it was posted, and days from today to its deadline (negative: already passed). */
-  postedDaysAgo: number
-  deadlineInDays: number
-  crew: { by: string; daysAgo: number }[]
-  entries: SampleEntry[]
-  winner?: { by: string; daysAgo: number }
-}
-
-const res = (slug: string) => {
-  const r = getResource(slug)
-  return r ? resourcePath(r) : "/explore"
-}
-
-const SAMPLE_DATA: SampleMission[] = [
-  {
-    id: "pt-pt-3b-finetune",
-    title: "Fine-tune a 3B model for European Portuguese",
-    brief:
-      "General models drift into Brazilian Portuguese the moment you stop watching: *ônibus* instead of *autocarro*, *você* everywhere. I want a small model that stays in PT-PT.\n\n**What I am looking for**\n\n- A 3B (or smaller) open-weights model, fine-tuned with LoRA or full fine-tuning\n- Trained on data you are allowed to use; `pt-pt-instruct` is a good start\n- Evaluated on the PT-PT eval set, with the numbers in the model card\n\nShare the training recipe so others can reproduce it. Questions go in the forum's Portuguese channel.",
-    criteria: [
-      "Open weights under a permissive licence",
-      "Scores within 3 points of an 8B baseline on the PT-PT eval set",
-      "Fewer than 2% Brazilian forms on the 500-prompt drift test",
-      "Training recipe and data sources documented",
-    ],
-    difficulty: "pilot",
-    reward: 150,
-    tags: ["portuguese", "fine-tuning", "lora"],
-    poster: "ines",
-    postedDaysAgo: 9,
-    deadlineInDays: 12,
-    crew: [
-      { by: "tunde", daysAgo: 8 },
-      { by: "priya", daysAgo: 6 },
-      { by: "sofia", daysAgo: 3 },
-    ],
-    entries: [],
-  },
-  {
-    id: "yoruba-speech-dataset",
-    title: "Build a dataset of Yoruba speech with tone marks",
-    brief:
-      "Most Yoruba speech data drops the tone marks in the transcripts, which makes them useless for tone-aware ASR. This mission is for a consented, documented dataset of read and conversational Yoruba.\n\nConsent forms must be in Yoruba and English. Pay contributors fairly and say how in the datasheet.",
-    criteria: [
-      "At least 40 hours of audio from 60 or more speakers",
-      "Transcripts with full tone marks, reviewed by a second speaker",
-      "A datasheet: consent, payment, demographics, licence",
-      "A train/dev/test split with no speaker overlap",
-    ],
-    difficulty: "commander",
-    reward: 400,
-    tags: ["yoruba", "speech", "datasets"],
-    poster: "tunde",
-    postedDaysAgo: 21,
-    deadlineInDays: 40,
-    crew: [
-      { by: "amara", daysAgo: 20 },
-      { by: "layla", daysAgo: 12 },
-    ],
-    entries: [],
-  },
-  {
-    id: "loop-guard-benchmark",
-    title: "A benchmark for agents that get stuck in loops",
-    brief:
-      "loop-guard decides when an agent is going in circles, but we test it on hand-picked traces. We need a proper benchmark: real traces, labelled, with a scoring script.\n\nUse `agent-traces` as a starting point or collect your own.",
-    criteria: ["At least 500 labelled traces from 3 or more agent frameworks", "A scoring script anyone can run", "Baseline numbers for loop-guard and one other method"],
-    difficulty: "pilot",
-    reward: 120,
-    tags: ["agents", "evaluation"],
-    poster: "rafa",
-    postedDaysAgo: 18,
-    deadlineInDays: 2,
-    crew: [
-      { by: "mei", daysAgo: 17 },
-      { by: "noah", daysAgo: 15 },
-      { by: "kai", daysAgo: 10 },
-    ],
-    entries: [
-      {
-        by: "mei",
-        kind: "project",
-        url: res("agent-traces"),
-        notes: "612 traces from four frameworks, each labelled by two people. Scoring script and baselines are in the README; loop-guard gets 0.81 F1.",
-        daysAgo: 2,
-      },
-      {
-        by: "noah",
-        kind: "paper",
-        url: "https://arxiv.org/abs/2610.04417",
-        notes: "Write-up of a smaller benchmark (340 traces) with a retrieval-based detector as the second baseline.",
-        daysAgo: 1,
-      },
-    ],
-  },
-  {
-    id: "phone-under-2gb",
-    title: "Get Orbit 1B under 2 GB with less than 1 point lost",
-    brief: "Quantise Orbit 1B Mobile so it runs on a 4 GB phone with room to spare. Measure on a real device, not a desktop.",
-    criteria: ["Model file under 2 GB", "Loses less than 1 point on the general eval", "At least 15 tokens a second on a mid-range Android phone"],
-    difficulty: "cadet",
-    reward: 60,
-    tags: ["on-device", "quantization"],
-    poster: "priya",
-    postedDaysAgo: 30,
-    deadlineInDays: -6,
-    crew: [
-      { by: "kai", daysAgo: 29 },
-      { by: "sofia", daysAgo: 25 },
-      { by: "leo", daysAgo: 22 },
-    ],
-    entries: [
-      {
-        by: "kai",
-        kind: "project",
-        url: res("pocket-run"),
-        notes: "4-bit build at 1.6 GB, 0.6 points lower, 21 tokens a second on a Pixel 7a. Numbers and the device log are in the app's notes.",
-        daysAgo: 8,
-      },
-      {
-        by: "sofia",
-        kind: "project",
-        url: res("quant-cookbook"),
-        notes: "Recipe for mixed 4/8-bit at 1.9 GB that loses 0.3 points, 17 tokens a second.",
-        daysAgo: 7,
-      },
-    ],
-    winner: { by: "kai", daysAgo: 5 },
-  },
-  {
-    id: "swahili-tts-voices",
-    title: "Two new Swahili voices for Sauti TTS",
-    brief: "Record and train two more Swahili voices (one coastal, one upcountry accent) with speakers who agreed to it in writing.",
-    criteria: ["Two voices, each from at least 3 hours of studio audio", "Signed consent from both speakers", "A listening test with 20 native speakers"],
-    difficulty: "pilot",
-    reward: 100,
-    tags: ["swahili", "tts"],
-    poster: "amara",
-    postedDaysAgo: 4,
-    deadlineInDays: 26,
-    crew: [],
-    entries: [],
-  },
-  {
-    id: "arabic-dialect-tokenizer",
-    title: "A tokenizer that does not punish Arabic dialects",
-    brief: "Darija and Levantine text costs two to three times more tokens than English in most tokenizers. Build one that brings fertility close to English without hurting MSA.",
-    criteria: ["Fertility within 1.3x of English on the dialect test set", "No more than 5% worse on MSA", "Released with the training script"],
-    difficulty: "commander",
-    reward: 250,
-    tags: ["arabic", "tokenizers"],
-    poster: "layla",
-    postedDaysAgo: 70,
-    deadlineInDays: -25,
-    crew: [{ by: "noah", daysAgo: 60 }],
-    entries: [],
-  },
-]
-
-/** The sample missions, dated against `now` so open ones stay open whenever you look. */
-export function sampleMissions(now = Date.now()): Mission[] {
-  return SAMPLE_DATA.map((s) => {
-    const at = (daysAgo: number) => new Date(now - daysAgo * DAY).toISOString()
-    const status: StoredStatus = s.winner ? "completed" : s.entries.length ? "review" : s.crew.length ? "in-progress" : "open"
-    return {
-      id: s.id,
-      title: s.title,
-      brief: s.brief,
-      criteria: s.criteria,
-      difficulty: s.difficulty,
-      reward: s.reward,
-      tags: s.tags,
-      deadline: new Date(now + s.deadlineInDays * DAY).toISOString(),
-      status,
-      createdAt: at(s.postedDaysAgo),
-      completedAt: s.winner ? at(s.winner.daysAgo) : null,
-      poster: personWho(s.poster),
-      winner: s.winner ? personWho(s.winner.by) : null,
-      winnerEntryId: s.winner ? `${s.id}-${s.winner.by}` : null,
-      crewCount: s.crew.length,
-      entryCount: s.entries.length,
-      sample: true,
-      local: false,
-    }
-  })
-}
-
-export const SAMPLE_MISSION_IDS = SAMPLE_DATA.map((s) => s.id)
-const sampleData = (id: string) => SAMPLE_DATA.find((s) => s.id === id)
-
-/** Title and brief of a sample mission, for page metadata. */
-export function getSampleMissionMeta(id: string) {
-  const s = sampleData(id)
-  return s
-    ? {
-        title: s.title,
-        description: s.brief.split("\n")[0].replace(/[*_`]/g, "").slice(0, 160),
-      }
-    : null
-}
+// ─── Deprecated sample exports ──────────────────────────────────────────────────────────────────────────────
 
 // ─── Browser-only storage ───────────────────────────────────────────────────────────────────────────────────
 
@@ -539,19 +317,17 @@ const fromRow = (r: Row): Mission => ({
 
 // ─── Reading ────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Every mission, newest first. Without a database: yours from this browser, then the samples. */
+/** Every mission, newest first. Without a database: the ones you posted in this browser. */
 export async function listMissions(): Promise<Mission[]> {
   const client = db()
-  if (!client) return [...readMissions().map(fromLocalMission), ...sampleMissions()].map(withLocal)
+  if (!client) return readMissions().map(fromLocalMission).map(withLocal)
   const { data, error } = await client.from("missions").select(COLUMNS).order("created_at", { ascending: false }).limit(300)
   fail(error)
   return (data as unknown as Row[]).map(fromRow)
 }
 
 export async function getMission(id: string): Promise<Mission | null> {
-  const sample = sampleMissions().find((m) => m.id === id)
   const client = db()
-  if (sample) return client ? sample : withLocal(sample)
   if (!client) {
     const m = readMissions().find((x) => x.id === id)
     return m ? withLocal(fromLocalMission(m)) : null
@@ -576,40 +352,19 @@ type EntryRow = {
 /** A mission's crew (earliest first) and its entries, with yours marked. */
 export async function getMissionCrew(m: Mission): Promise<MissionCrew> {
   const client = db()
-  if (m.sample || !client) {
-    const s = sampleData(m.id)
-    const now = Date.now()
-    const at = (daysAgo: number) => new Date(now - daysAgo * DAY).toISOString()
-    const crew: CrewMember[] = (s?.crew ?? []).map((c) => ({
-      who: personWho(c.by),
-      joinedAt: at(c.daysAgo),
-      mine: false,
-    }))
-    const entries: MissionEntry[] = (s?.entries ?? []).map((e) => ({
-      id: `${m.id}-${e.by}`,
-      kind: e.kind,
-      url: e.url,
-      notes: e.notes,
-      createdAt: at(e.daysAgo),
-      updatedAt: at(e.daysAgo),
-      author: personWho(e.by),
-      mine: false,
-    }))
+  if (!client) {
+    // Browser-only: the mission is one you posted here, so the crew and entries are yours alone.
+    const crew: CrewMember[] = []
+    const entries: MissionEntry[] = []
     let myEntry: MissionEntry | null = null
-    let joined = false
-    if (!client) {
-      const joinedAt = readCrew()[m.id]
-      if (joinedAt) {
-        joined = true
-        crew.push({ who: YOU, joinedAt, mine: true })
-      }
-      const local = readEntries()[m.id]
-      if (local) {
-        myEntry = { ...local, author: YOU, mine: true }
-        entries.push(myEntry)
-      }
+    const joinedAt = readCrew()[m.id]
+    if (joinedAt) crew.push({ who: YOU, joinedAt, mine: true })
+    const local = readEntries()[m.id]
+    if (local) {
+      myEntry = { ...local, author: YOU, mine: true }
+      entries.push(myEntry)
     }
-    return { crew, entries, joined, myEntry }
+    return { crew, entries, joined: Boolean(joinedAt), myEntry }
   }
   const [userId, crewRes, entryRes] = await Promise.all([
     me(),
@@ -1060,23 +815,13 @@ export const MISSION_BADGES: MissionBadge[] = [
   },
 ]
 
-/** A member's (or a sample person's) mission record. Without a database, "you" means this browser. */
+/** A member's mission record. Without a database, "you" means the missions you posted in this browser. */
 export async function getMissionRecord(who: Who | null): Promise<MissionRecord> {
   const client = db()
-  if (who?.handle || !client) {
-    const missions = client ? sampleMissions() : await listMissions()
+  if (!client) {
+    if (who?.handle || who?.memberId) return EMPTY_RECORD
     const r = { ...EMPTY_RECORD }
-    for (const m of missions) {
-      if (m.status !== "completed") continue
-      const winner = who?.handle ? m.winner?.handle === who.handle : false
-      const poster = who?.handle ? m.poster.handle === who.handle : m.local
-      if (winner) {
-        r.won += 1
-        r.pointsWon += m.reward
-        if (m.difficulty === "commander") r.wonCommander += 1
-      }
-      if (poster) r.postedCompleted += 1
-    }
+    for (const m of await listMissions()) if (m.status === "completed" && m.local) r.postedCompleted += 1
     return r
   }
   if (!who?.memberId) return EMPTY_RECORD

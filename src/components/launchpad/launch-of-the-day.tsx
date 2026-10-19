@@ -9,7 +9,6 @@ import { useLaunches } from "@/components/launchpad/use-launches"
 import { Skeleton } from "@/components/ui/skeleton"
 import { dailyWinners, dayKey, launchOfTheDay, launchPhase, type Launch } from "@/lib/launchpad"
 import { useSession } from "@/lib/store"
-import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 /**
@@ -84,7 +83,7 @@ export function LaunchOfTheDay({ className }: { className?: string }) {
           <BoostButton
             launch={l}
             size="sm"
-            state={boostState(l, now, { isOwner, readOnly: l.sample && live })}
+            state={boostState(l, now, { isOwner })}
             count={l.boosts}
             incoming={incoming[l.id]}
             onBoost={() => {

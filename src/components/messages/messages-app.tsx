@@ -58,14 +58,13 @@ export function MessagesApp({ id }: { id?: string }) {
             <h1 className="flex items-center gap-2 text-base font-semibold">
               <MailIcon aria-hidden className="size-4 text-ion" /> Messages
             </h1>
-            {!signedOut && (
-              <Button variant="ghost" size="sm" onClick={() => setComposing(true)} disabled={live && !ready}>
+            {live && !signedOut && (
+              <Button variant="ghost" size="sm" onClick={() => setComposing(true)} disabled={!ready}>
                 <MessageSquarePlusIcon aria-hidden /> New
               </Button>
             )}
           </div>
           <InboxList list={list} active={id} error={error} signedOut={signedOut} loading={(live && !ready) || list === null} onCompose={() => setComposing(true)} />
-          {!live && <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">Local preview: conversations stay in this browser, and the sample people do not answer.</p>}
         </aside>
 
         <section aria-label="Conversation" className={cn("min-h-0 min-w-0 flex-col md:flex", id ? "flex" : "hidden")}>
@@ -76,8 +75,10 @@ export function MessagesApp({ id }: { id?: string }) {
               <span className="grid size-12 place-items-center rounded-full bg-ion/10 text-ion">
                 <MailIcon aria-hidden className="size-5" />
               </span>
-              <p className="max-w-xs text-sm text-muted-foreground">Pick a conversation, or start a new one with any member.</p>
-              {!signedOut && (
+              <p className="max-w-xs text-sm text-muted-foreground">
+                {signedOut ? "Direct messages are private conversations between members. Sign in to read and send them." : live ? "Pick a conversation, or start a new one with any member." : "Direct messages need member accounts. This copy of Nexverse is not connected to its database, so there is nobody to write to yet."}
+              </p>
+              {live && !signedOut && (
                 <Button variant="secondary" onClick={() => setComposing(true)}>
                   <MessageSquarePlusIcon aria-hidden /> New message
                 </Button>
@@ -136,15 +137,17 @@ function InboxList({
     <div className="min-h-0 flex-1 overflow-y-auto">
       {error && (
         <p role="alert" className="m-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          Conversations could not be loaded. {error}
+          Conversations could not be loaded ({error}). Reload the page to try again.
         </p>
       )}
       {list && list.length === 0 && !error && (
         <div className="flex flex-col items-center gap-3 px-6 py-12 text-center text-sm text-muted-foreground">
-          <p>No conversations yet. Message someone from their profile, or start one here.</p>
-          <Button variant="secondary" size="sm" onClick={onCompose}>
-            <MessageSquarePlusIcon aria-hidden /> New message
-          </Button>
+          <p>{live ? "No conversations yet. Message someone from their profile, or start one here." : "No conversations. Direct messages work once this site is connected to its database."}</p>
+          {live && (
+            <Button variant="secondary" size="sm" onClick={onCompose}>
+              <MessageSquarePlusIcon aria-hidden /> New message
+            </Button>
+          )}
         </div>
       )}
       <ul className="flex flex-col p-1.5">

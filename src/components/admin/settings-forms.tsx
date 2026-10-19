@@ -1,0 +1,678 @@
+"use client"
+
+import type { Route } from "next"
+import Link from "next/link"
+import { useEffect, useRef, useState } from "react"
+import { ArrowDownIcon, ArrowRightIcon, ArrowUpIcon, GripVerticalIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { ChoiceCards, Notice, StatusLine, Switch, SwitchRow } from "@/components/admin/controls"
+import { SETTING_SECTIONS } from "@/components/admin/sections"
+import { AnnouncementLine } from "@/components/moderation/announcement-bar"
+import { Gate } from "@/components/moderation/gate"
+import { Button } from "@/components/ui/button"
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Textarea } from "@/components/ui/textarea"
+import { moderationReady, NAV_LINKS } from "@/lib/admin"
+import {
+  ACCENTS,
+  ANNOUNCEMENT_TONES,
+  DEFAULTS,
+  FEATURES,
+  featureForPath,
+  HERO_EFFECTS,
+  HOME_SECTIONS,
+  isSafeHref,
+  MOTION_LEVELS,
+  orderedHomeSections,
+  saveSiteSetting,
+  useSiteSettings,
+  type SettingKey,
+  type SiteSettings,
+} from "@/lib/site-settings"
+import { live } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
+
+type Errors = Record<string, string>
+type Status = { ok: boolean; text: string } | null
+
+// Whether saving can work here: a database, and the site_settings table on it. Checked once per visit.
+let availability: Promise<{ ok: boolean; reason?: string }> | null = null
+function useCanSave() {
+  const [state, setState] = useState<{ ok: boolean; reason?: string } | null>(live ? null : { ok: false, reason: "browser" })
+  useEffect(() => {
+    if (!live) return
+    availability ??= moderationReady()
+    let on = true
+    void availability.then((s) => on && setState(s))
+    return () => {
+      on = false
+    }
+  }, [])
+  return state
+}
+
+function SaveNotice({ state }: { state: { ok: boolean; reason?: string } | null }) {
+  if (!state || state.ok) return null
+  if (state.reason === "browser") {
+    return (
+      <Notice tone="warn" title="Saving is off in a browser-only copy">
+        These are the real forms, but site settings live in the database. Connect Supabase to save them.
+      </Notice>
+    )
+  }
+  if (state.reason === "schema") {
+    return (
+      <Notice tone="warn" title="The settings table is not on this database yet">
+        Apply the migration 20261019070000_roles_admin.sql, then reload. Until then the site uses its defaults and nothing here can be saved.
+      </Notice>
+    )
+  }
+  return (
+    <Notice tone="warn" title="Settings cannot be saved right now">
+      {state.reason}
+    </Notice>
+  )
+}
+
+/** The list of settings sections. */
+export function SettingsIndex() {
+  const body = (
+    <section aria-labelledby="set-title" className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h2 id="set-title" className="text-xl font-semibold tracking-[-0.02em]">
+          Site settings
+        </h2>
+        <p className="max-w-[68ch] text-sm text-muted-foreground">Change how Nexverse looks and what it offers. Each section saves on its own and applies to every open page within seconds.</p>
+      </div>
+      <SaveNotice state={useCanSave()} />
+      <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+        {SETTING_SECTIONS.map((s) => (
+          <li key={s.key}>
+            <Link
+              href={`/admin/settings/${s.key}` as Route}
+              className="press group flex h-full flex-col gap-1 rounded-xl border border-border bg-card/50 p-4 hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              <span className="flex items-center gap-1.5 font-medium">
+                {s.label}
+                <ArrowRightIcon aria-hidden className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              </span>
+              <span className="text-sm text-muted-foreground">{s.blurb}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+  return live ? (
+    <Gate role="admin" action="change the site settings">
+      {body}
+    </Gate>
+  ) : (
+    body
+  )
+}
+
+/** One settings section with its form. */
+export function SettingsSection({ section }: { section: SettingKey }) {
+  const meta = SETTING_SECTIONS.find((s) => s.key === section)!
+  const body = (
+    <section aria-labelledby="sec-title" className="flex flex-col gap-4">
+      <nav aria-label="Settings sections" className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+        <ul className="flex gap-1">
+          {SETTING_SECTIONS.map((s) => (
+            <li key={s.key} className="shrink-0">
+              <Link
+                href={`/admin/settings/${s.key}` as Route}
+                aria-current={s.key === section ? "page" : undefined}
+                className={cn(
+                  "pressable inline-flex h-8 items-center rounded-full border px-3 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                  s.key === section ? "border-ion/60 bg-ion/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {s.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <div className="flex flex-col gap-1">
+        <h2 id="sec-title" className="text-xl font-semibold tracking-[-0.02em]">
+          {meta.label}
+        </h2>
+        <p className="max-w-[68ch] text-sm text-muted-foreground">{meta.blurb}.</p>
+      </div>
+      <SectionForm section={section} />
+    </section>
+  )
+  return live ? (
+    <Gate role="admin" action="change the site settings">
+      {body}
+    </Gate>
+  ) : (
+    body
+  )
+}
+
+// Validation: each section returns field errors keyed by field name; an empty object means it can be saved.
+
+const len = (s: string, max: number, label: string, min = 0): string | null =>
+  s.trim().length < min ? (min === 1 ? `${label} cannot be empty.` : `${label} needs at least ${min} characters.`) : s.length > max ? `${label} can be at most ${max} characters.` : null
+
+function collect(entries: [string, string | null][]): Errors {
+  return Object.fromEntries(entries.filter((e): e is [string, string] => Boolean(e[1])))
+}
+
+const HREF_HELP = "A page on this site such as /forum, or a full https:// address."
+
+const VALIDATE: { [K in SettingKey]: (v: SiteSettings[K]) => Errors } = {
+  brand: (v) => collect([["name", len(v.name, 40, "The name", 1)], ["tagline", len(v.tagline, 80, "The tagline")], ["description", len(v.description, 240, "The description")]]),
+  announcement: (v) =>
+    collect([
+      ["text", v.enabled && !v.text.trim() ? "Write the announcement, or switch it off." : len(v.text, 160, "The announcement")],
+      ["href", v.href.trim() && !isSafeHref(v.href) ? `That link will not work. ${HREF_HELP}` : null],
+    ]),
+  theme: () => ({}),
+  hero: (v) =>
+    collect([
+      ["badge", len(v.badge, 80, "The badge")],
+      ["title", len(v.title, 90, "The headline")],
+      ["subtitle", len(v.subtitle, 220, "The subtitle")],
+      ["primaryLabel", len(v.primaryLabel, 30, "The button label", 1)],
+      ["primaryHref", !v.primaryHref.trim() ? "The button needs somewhere to go." : !isSafeHref(v.primaryHref) ? `That link will not work. ${HREF_HELP}` : null],
+    ]),
+  home: (v): Errors => (v.sections.some((s) => s.visible) ? {} : { sections: "Keep at least one section visible, or the home page is empty below the hero." }),
+  nav: () => ({}),
+  features: () => ({}),
+  footer: (v) =>
+    collect([
+      ["note", len(v.note, 200, "The note")],
+      ...v.links.flatMap((l, i): [string, string | null][] => [
+        [`label-${i}`, len(l.label, 30, "The label", 1)],
+        [`href-${i}`, !l.href.trim() ? "Add where the link goes." : !isSafeHref(l.href) ? `That link will not work. ${HREF_HELP}` : null],
+      ]),
+      ["links", v.links.length > 8 ? "Up to 8 links." : null],
+    ]),
+  access: () => ({}),
+}
+
+/** Normalises what is about to be saved: trimmed text, no duplicate or unknown entries. */
+function clean<K extends SettingKey>(key: K, v: SiteSettings[K]): SiteSettings[K] {
+  const t = (s: string) => s.trim()
+  switch (key) {
+    case "brand": {
+      const b = v as SiteSettings["brand"]
+      return { name: t(b.name), tagline: t(b.tagline), description: t(b.description) } as SiteSettings[K]
+    }
+    case "announcement": {
+      const a = v as SiteSettings["announcement"]
+      return { ...a, text: t(a.text), href: t(a.href) } as SiteSettings[K]
+    }
+    case "hero": {
+      const h = v as SiteSettings["hero"]
+      return { badge: t(h.badge), title: t(h.title), subtitle: t(h.subtitle), primaryLabel: t(h.primaryLabel), primaryHref: t(h.primaryHref) } as SiteSettings[K]
+    }
+    case "nav": {
+      const n = v as SiteSettings["nav"]
+      return { hidden: [...new Set(n.hidden)].filter((h) => NAV_LINKS.some((l) => l.href === h)) } as SiteSettings[K]
+    }
+    case "footer": {
+      const f = v as SiteSettings["footer"]
+      return { note: t(f.note), links: f.links.slice(0, 8).map((l) => ({ label: t(l.label), href: t(l.href) })) } as SiteSettings[K]
+    }
+    default:
+      return v
+  }
+}
+
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+
+function SectionForm({ section }: { section: SettingKey }) {
+  const { settings, ready } = useSiteSettings()
+  const canSave = useCanSave()
+  // The saved value, normalised the same way the site reads it (home sections in order, new ones appended).
+  const saved = section === "home" ? { sections: orderedHomeSections(settings) } : settings[section]
+  const [draft, setDraft] = useState<SiteSettings[SettingKey] | null>(null)
+  const [errors, setErrors] = useState<Errors>({})
+  const [status, setStatus] = useState<Status>(null)
+  const [busy, setBusy] = useState(false)
+  const value = (draft ?? saved) as SiteSettings[SettingKey]
+  const dirty = draft !== null && !same(draft, saved)
+  const isDefault = same(value, DEFAULTS[section])
+
+  // Leaving with unsaved changes asks first.
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener("beforeunload", warn)
+    return () => window.removeEventListener("beforeunload", warn)
+  }, [dirty])
+
+  function change(next: SiteSettings[SettingKey]) {
+    setDraft(next)
+    setStatus(null)
+    // Errors clear as soon as the field is fixed, but new ones wait for Save.
+    if (Object.keys(errors).length) {
+      const now = (VALIDATE[section] as (v: SiteSettings[SettingKey]) => Errors)(next)
+      setErrors(Object.fromEntries(Object.entries(errors).filter(([k]) => now[k])))
+    }
+  }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    if (busy || !dirty) return
+    const found = (VALIDATE[section] as (v: SiteSettings[SettingKey]) => Errors)(value)
+    setErrors(found)
+    const first = Object.keys(found)[0]
+    if (first) {
+      document.getElementById(`f-${first}`)?.focus()
+      setStatus({ ok: false, text: Object.keys(found).length === 1 ? "One field needs a fix before saving." : `${Object.keys(found).length} fields need a fix before saving.` })
+      return
+    }
+    setBusy(true)
+    setStatus(null)
+    try {
+      await saveSiteSetting(section, clean(section, value) as never)
+      setDraft(null)
+      setStatus({ ok: true, text: "Saved. Every open page picks it up within a few seconds." })
+    } catch (err) {
+      const msg = (err as Error).message
+      setStatus({ ok: false, text: /schema cache|does not exist/i.test(msg) ? "The settings table is not on this database yet. Apply the roles migration first." : /row-level security|permission/i.test(msg) ? "Only admins can save site settings." : msg })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!ready) return <Skeleton className="h-96 w-full rounded-2xl" />
+
+  const fields = { value, change, errors } as FieldsProps<SettingKey>
+  const disabledSave = !canSave?.ok
+
+  return (
+    <form onSubmit={save} noValidate className="flex flex-col gap-4">
+      <SaveNotice state={canSave} />
+      <div className="glass rounded-2xl p-4 md:p-6">
+        {section === "brand" && <BrandFields {...(fields as FieldsProps<"brand">)} />}
+        {section === "announcement" && <AnnouncementFields {...(fields as FieldsProps<"announcement">)} />}
+        {section === "theme" && <ThemeFields {...(fields as FieldsProps<"theme">)} />}
+        {section === "hero" && <HeroFields {...(fields as FieldsProps<"hero">)} />}
+        {section === "home" && <HomeFields {...(fields as FieldsProps<"home">)} />}
+        {section === "nav" && <NavFields {...(fields as FieldsProps<"nav">)} features={settings.features} />}
+        {section === "features" && <FeatureFields {...(fields as FieldsProps<"features">)} />}
+        {section === "footer" && <FooterFields {...(fields as FieldsProps<"footer">)} />}
+        {section === "access" && <AccessFields {...(fields as FieldsProps<"access">)} />}
+      </div>
+
+      {/* The action bar stays in reach at the bottom of the screen while the form scrolls. */}
+      <div className="sticky bottom-3 z-10 flex flex-col gap-2 rounded-2xl border border-border bg-popover/95 p-3 shadow-lg backdrop-blur-sm sm:flex-row sm:items-center">
+        <div className="min-w-0 flex-1">
+          {status ? <StatusLine status={status} /> : <p className="text-sm text-muted-foreground">{dirty ? "You have unsaved changes." : "No changes."}</p>}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={isDefault}
+            onClick={() => change(structuredClone(DEFAULTS[section]))}
+            title="Fills the form with the defaults. Save to apply them."
+          >
+            Reset to defaults
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!dirty}
+            onClick={() => {
+              setDraft(null)
+              setErrors({})
+              setStatus(null)
+            }}
+          >
+            Discard
+          </Button>
+          <Button type="submit" size="sm" disabled={!dirty || busy || disabledSave} title={disabledSave ? "Saving is not available here" : undefined}>
+            {busy ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </div>
+    </form>
+  )
+}
+
+type FieldsProps<K extends SettingKey> = { value: SiteSettings[K]; change: (v: SiteSettings[K]) => void; errors: Errors }
+
+/** A text field with its label, help, error and a character count. */
+function TextField({
+  id,
+  label,
+  value,
+  onChange,
+  max,
+  error,
+  help,
+  placeholder,
+  multiline,
+}: {
+  id: string
+  label: string
+  value: string
+  onChange: (v: string) => void
+  max: number
+  error?: string
+  help?: React.ReactNode
+  placeholder?: string
+  multiline?: boolean
+}) {
+  const a11y = { "aria-invalid": error ? true : undefined, "aria-describedby": `f-${id}-help${error ? ` f-${id}-error` : ""}` } as const
+  return (
+    <Field data-invalid={error ? true : undefined}>
+      <FieldLabel htmlFor={`f-${id}`}>{label}</FieldLabel>
+      {multiline ? (
+        <Textarea id={`f-${id}`} value={value} rows={3} maxLength={max + 20} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="bg-background/60" {...a11y} />
+      ) : (
+        <Input id={`f-${id}`} value={value} maxLength={max + 20} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="h-10 bg-background/60" {...a11y} />
+      )}
+      <FieldDescription id={`f-${id}-help`} className="flex justify-between gap-3">
+        <span>{help}</span>
+        <span className={cn("shrink-0 tabular-nums", value.length > max && "text-destructive")}>
+          {value.length}/{max}
+        </span>
+      </FieldDescription>
+      {error && <FieldError id={`f-${id}-error`}>{error}</FieldError>}
+    </Field>
+  )
+}
+
+function BrandFields({ value, change, errors }: FieldsProps<"brand">) {
+  return (
+    <FieldGroup>
+      <TextField id="name" label="Site name" value={value.name} max={40} error={errors.name} onChange={(name) => change({ ...value, name })} help="Shown in sign-in walls, notices and anywhere the site names itself." />
+      <TextField id="tagline" label="Tagline" value={value.tagline} max={80} error={errors.tagline} onChange={(tagline) => change({ ...value, tagline })} help="A few words under the name." />
+      <TextField
+        id="description"
+        label="Description"
+        value={value.description}
+        max={240}
+        multiline
+        error={errors.description}
+        onChange={(description) => change({ ...value, description })}
+        help="One or two sentences on what the site is for, used in the footer and for search engines."
+      />
+    </FieldGroup>
+  )
+}
+
+function AnnouncementFields({ value, change, errors }: FieldsProps<"announcement">) {
+  return (
+    <FieldGroup>
+      <SwitchRow id="f-enabled" label="Show the announcement" description="A line above the header on every page. Visitors can dismiss it; a new text shows again." checked={value.enabled} onChange={(enabled) => change({ ...value, enabled })} />
+      <TextField id="text" label="Text" value={value.text} max={160} error={errors.text} onChange={(text) => change({ ...value, text })} placeholder="Paper club this Thursday: Mixture of depths" help="Plain text, one line on most screens." />
+      <TextField id="href" label="Link (optional)" value={value.href} max={300} error={errors.href} onChange={(href) => change({ ...value, href })} placeholder="/events" help={HREF_HELP} />
+      <ChoiceCards name="tone" label="Tone" value={value.tone} options={ANNOUNCEMENT_TONES} onChange={(tone) => change({ ...value, tone })} />
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium" id="ann-preview">
+          Preview
+        </p>
+        <div aria-labelledby="ann-preview" className="overflow-hidden rounded-xl border border-border bg-background">
+          {value.text.trim() ? (
+            <AnnouncementLine a={{ ...value, text: value.text.trim() }} preview />
+          ) : (
+            <p className="px-4 py-3 text-sm text-muted-foreground">Write a text to see the announcement.</p>
+          )}
+        </div>
+        {!value.enabled && value.text.trim() && <p className="text-xs text-muted-foreground">Switched off: visitors will not see it until you switch it on and save.</p>}
+      </div>
+    </FieldGroup>
+  )
+}
+
+function ThemeFields({ value, change }: FieldsProps<"theme">) {
+  return (
+    <FieldGroup>
+      <ChoiceCards name="accent" label="Accent colour" columns={5} value={value.accent} options={ACCENTS} swatch={(id) => ACCENTS.find((a) => a.id === id)!.color} onChange={(accent) => change({ ...value, accent })} />
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-background/50 px-4 py-3 text-sm" style={{ ["--preview" as string]: ACCENTS.find((a) => a.id === value.accent)!.color }}>
+        <span className="text-muted-foreground">Preview:</span>
+        <span className="font-medium text-(--preview)">A link in the accent</span>
+        <span className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium" style={{ background: "var(--preview)", color: ACCENTS.find((a) => a.id === value.accent)!.foreground }}>
+          Live
+        </span>
+        <span className="inline-flex h-7 items-center rounded-full border border-(--preview) px-3 text-xs">Focus ring</span>
+      </div>
+      <ChoiceCards name="motion" label="Motion" value={value.motion} options={MOTION_LEVELS} onChange={(motion) => change({ ...value, motion })} />
+      <p className="-mt-3 text-xs text-muted-foreground">Visitors who ask their device for reduced motion always get less, whatever is chosen here.</p>
+      <ChoiceCards name="hero" label="Home page backdrop" value={value.heroEffect} options={HERO_EFFECTS} onChange={(heroEffect) => change({ ...value, heroEffect })} />
+    </FieldGroup>
+  )
+}
+
+function HeroFields({ value, change, errors }: FieldsProps<"hero">) {
+  return (
+    <FieldGroup>
+      <TextField id="badge" label="Badge" value={value.badge} max={80} error={errors.badge} onChange={(badge) => change({ ...value, badge })} help="The small line above the headline." />
+      <TextField id="title" label="Headline" value={value.title} max={90} error={errors.title} onChange={(title) => change({ ...value, title })} help="Leave empty to keep the built-in headline." />
+      <TextField id="subtitle" label="Subtitle" value={value.subtitle} max={220} multiline error={errors.subtitle} onChange={(subtitle) => change({ ...value, subtitle })} help="Leave empty to keep the built-in text." />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <TextField id="primaryLabel" label="Button label" value={value.primaryLabel} max={30} error={errors.primaryLabel} onChange={(primaryLabel) => change({ ...value, primaryLabel })} />
+        <TextField id="primaryHref" label="Button link" value={value.primaryHref} max={300} error={errors.primaryHref} onChange={(primaryHref) => change({ ...value, primaryHref })} help={HREF_HELP} />
+      </div>
+    </FieldGroup>
+  )
+}
+
+function HomeFields({ value, change, errors }: FieldsProps<"home">) {
+  const [announce, setAnnounce] = useState("")
+  const focusAfter = useRef<string | null>(null)
+  const rows = value.sections
+
+  useEffect(() => {
+    if (!focusAfter.current) return
+    document.getElementById(focusAfter.current)?.focus()
+    focusAfter.current = null
+  })
+
+  function move(i: number, by: -1 | 1, focusId?: string) {
+    const j = i + by
+    if (j < 0 || j >= rows.length) return
+    const next = [...rows]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    if (focusId) focusAfter.current = focusId
+    change({ sections: next })
+    const label = HOME_SECTIONS.find((s) => s.id === rows[i].id)?.label
+    setAnnounce(`${label} moved to position ${j + 1} of ${rows.length}.`)
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-muted-foreground">Top to bottom, as they appear under the hero. Focus a handle and use the arrow keys to move a section, or use the buttons.</p>
+      <ol className="flex flex-col gap-2" id="f-sections">
+        {rows.map((s, i) => {
+          const label = HOME_SECTIONS.find((h) => h.id === s.id)?.label ?? s.id
+          return (
+            <li key={s.id} className={cn("flex items-center gap-2 rounded-xl border border-border bg-card/50 py-2 pr-3 pl-1.5", !s.visible && "opacity-70")}>
+              <button
+                type="button"
+                id={`home-${s.id}`}
+                aria-label={`${label}, position ${i + 1} of ${rows.length}. Arrow up or down to move.`}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                    e.preventDefault()
+                    move(i, e.key === "ArrowUp" ? -1 : 1, `home-${s.id}`)
+                  }
+                }}
+                className="grid size-8 shrink-0 cursor-grab place-items-center rounded-md text-muted-foreground hover:bg-white/[0.05] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                <GripVerticalIcon aria-hidden className="size-4" />
+              </button>
+              <span className="w-5 text-xs text-muted-foreground tabular-nums">{i + 1}</span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label={`Move ${label} up`} disabled={i === 0} onClick={() => move(i, -1)}>
+                <ArrowUpIcon aria-hidden />
+              </Button>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label={`Move ${label} down`} disabled={i === rows.length - 1} onClick={() => move(i, 1)}>
+                <ArrowDownIcon aria-hidden />
+              </Button>
+              <Switch
+                checked={s.visible}
+                aria-label={`Show ${label}`}
+                onCheckedChange={(visible) => change({ sections: rows.map((r) => (r.id === s.id ? { ...r, visible } : r)) })}
+                className="ml-1"
+              />
+            </li>
+          )
+        })}
+      </ol>
+      <p aria-live="polite" className="sr-only">
+        {announce}
+      </p>
+      {errors.sections && <FieldError>{errors.sections}</FieldError>}
+    </div>
+  )
+}
+
+function NavFields({ value, change, features }: FieldsProps<"nav"> & { features: SiteSettings["features"] }) {
+  const groups = [...new Set(NAV_LINKS.map((l) => l.group))]
+  const hidden = new Set(value.hidden)
+  const toggle = (href: string, show: boolean) => change({ hidden: show ? value.hidden.filter((h) => h !== href) : [...value.hidden, href] })
+  return (
+    <div className="flex flex-col gap-5">
+      <p className="text-sm text-muted-foreground">Unticked links leave the header menus, the footer and search. The pages stay reachable by address; to close a whole area, use Features.</p>
+      {groups.map((g) => (
+        <fieldset key={g} className="flex flex-col gap-2">
+          <legend className="mb-2 text-sm font-medium">{g}</legend>
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+            {NAV_LINKS.filter((l) => l.group === g).map((l) => {
+              const feature = featureForPath(l.href)
+              const off = feature ? features[feature] === false : false
+              return (
+                <label key={l.href} className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card/50 px-3 py-2 text-sm has-focus-visible:ring-2 has-focus-visible:ring-ring">
+                  <input type="checkbox" checked={!hidden.has(l.href)} onChange={(e) => toggle(l.href, e.target.checked)} className="mt-0.5 size-4 accent-(--ion)" />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="font-medium">{l.label}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {l.href}
+                      {off && ` · hidden while ${FEATURES.find((f) => f.key === feature)?.label} is off`}
+                    </span>
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+        </fieldset>
+      ))}
+    </div>
+  )
+}
+
+function FeatureFields({ value, change }: FieldsProps<"features">) {
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-muted-foreground">
+        A switched-off area shows visitors a polite “switched off by the admins” page and leaves the navigation. Nothing is deleted, and admins can still open it. Switch it back on at any time.
+      </p>
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        {FEATURES.map((f) => (
+          <SwitchRow
+            key={f.key}
+            id={`f-feature-${f.key}`}
+            label={f.label}
+            description={f.key === "ai" ? "AI help in composers and settings" : `Everything under ${f.href}`}
+            checked={value[f.key] !== false}
+            onChange={(on) => change({ ...value, [f.key]: on })}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function FooterFields({ value, change, errors }: FieldsProps<"footer">) {
+  const links = value.links
+  const set = (i: number, patch: Partial<{ label: string; href: string }>) => change({ ...value, links: links.map((l, j) => (j === i ? { ...l, ...patch } : l)) })
+  const move = (i: number, by: -1 | 1) => {
+    const j = i + by
+    if (j < 0 || j >= links.length) return
+    const next = [...links]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    change({ ...value, links: next })
+  }
+  return (
+    <FieldGroup>
+      <TextField id="note" label="Note" value={value.note} max={200} multiline error={errors.note} onChange={(note) => change({ ...value, note })} help="A short line at the bottom of every page, such as a code of conduct reminder." />
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-2 text-sm font-medium">Links ({links.length}/8)</legend>
+        {links.length === 0 && <p className="text-sm text-muted-foreground">No extra links yet.</p>}
+        <ol className="flex flex-col gap-2">
+          {links.map((l, i) => (
+            <li key={i} className="flex flex-col gap-2 rounded-xl border border-border bg-card/50 p-3 sm:flex-row sm:items-start">
+              <Field data-invalid={errors[`label-${i}`] ? true : undefined} className="sm:w-48">
+                <FieldLabel htmlFor={`f-label-${i}`} className="text-xs">
+                  Label
+                </FieldLabel>
+                <Input id={`f-label-${i}`} value={l.label} maxLength={50} placeholder="Code of conduct" onChange={(e) => set(i, { label: e.target.value })} aria-invalid={errors[`label-${i}`] ? true : undefined} className="h-9 bg-background/60" />
+                {errors[`label-${i}`] && <FieldError>{errors[`label-${i}`]}</FieldError>}
+              </Field>
+              <Field data-invalid={errors[`href-${i}`] ? true : undefined} className="flex-1">
+                <FieldLabel htmlFor={`f-href-${i}`} className="text-xs">
+                  Link
+                </FieldLabel>
+                <Input id={`f-href-${i}`} value={l.href} maxLength={320} placeholder="/forum/c/meta" onChange={(e) => set(i, { href: e.target.value })} aria-invalid={errors[`href-${i}`] ? true : undefined} className="h-9 bg-background/60" />
+                {errors[`href-${i}`] && <FieldError>{errors[`href-${i}`]}</FieldError>}
+              </Field>
+              <div className="flex gap-1 sm:pt-5">
+                <Button type="button" variant="ghost" size="icon-sm" aria-label={`Move link ${i + 1} up`} disabled={i === 0} onClick={() => move(i, -1)}>
+                  <ArrowUpIcon aria-hidden />
+                </Button>
+                <Button type="button" variant="ghost" size="icon-sm" aria-label={`Move link ${i + 1} down`} disabled={i === links.length - 1} onClick={() => move(i, 1)}>
+                  <ArrowDownIcon aria-hidden />
+                </Button>
+                <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove link ${i + 1}`} onClick={() => change({ ...value, links: links.filter((_, j) => j !== i) })}>
+                  <Trash2Icon aria-hidden />
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="self-start"
+          disabled={links.length >= 8}
+          onClick={() => {
+            change({ ...value, links: [...links, { label: "", href: "" }] })
+            requestAnimationFrame(() => document.getElementById(`f-label-${links.length}`)?.focus())
+          }}
+        >
+          <PlusIcon aria-hidden /> Add a link
+        </Button>
+        <FieldDescription>{HREF_HELP}</FieldDescription>
+      </fieldset>
+    </FieldGroup>
+  )
+}
+
+function AccessFields({ value, change }: FieldsProps<"access">) {
+  return (
+    <div className="flex flex-col gap-3">
+      <SwitchRow
+        id="f-guests"
+        label="Guests can browse"
+        description="When off, people who are not signed in see a sign-in wall on every page except the home page, sign-in and welcome."
+        checked={value.guestsCanBrowse}
+        onChange={(guestsCanBrowse) => change({ ...value, guestsCanBrowse })}
+      />
+      <SwitchRow
+        id="f-signup"
+        label="New people can join"
+        description="When off, the sign-in page only lets existing members in and says that joining is closed for now."
+        checked={value.signupOpen}
+        onChange={(signupOpen) => change({ ...value, signupOpen })}
+      />
+      <Notice title="What these switches do">
+        They change what the site shows. Public posts can still be read through the database API by design, so do not rely on them to keep content secret.
+      </Notice>
+    </div>
+  )
+}
