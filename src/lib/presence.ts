@@ -17,9 +17,10 @@ export type Visitor = { member: Member; path: string; at: number }
 const OPT_OUT_KEY = "nexverse-presence-off"
 const TOPIC = "presence:site"
 
-/** Pages whose address says more than "which page": a conversation id is kept private. */
+/** Pages whose address says more than "which page": a conversation id is kept private. Anything that is not a plain internal path (another site, odd characters) becomes the home page, since paths arrive from other browsers. */
 export function publicPath(pathname: string) {
   const path = pathname.split(/[?#]/)[0] || "/"
+  if (!/^\/(?!\/)[A-Za-z0-9/_.%-]*$/.test(path)) return "/"
   if (path.startsWith("/messages")) return "/messages"
   if (path.startsWith("/auth") || path.startsWith("/settings")) return "/settings"
   return path.slice(0, 120)
@@ -86,6 +87,42 @@ function emit() {
   for (const l of listeners) l()
 }
 
+/**
+ * Names come from members' profiles, never from what another browser announces, and ids with no profile are
+ * left out, so nobody shows up in "Online now" under a made-up name.
+ */
+const names = new Map<string, string | null>()
+const asking = new Set<string>()
+
+function withProfiles(list: Visitor[]): Visitor[] {
+  return list.flatMap((v) => {
+    const name = names.get(v.member.id)
+    return name ? [{ ...v, member: { id: v.member.id, name } }] : []
+  })
+}
+
+function lookUp(ids: string[]) {
+  const client = db()
+  const missing = ids.filter((id) => !names.has(id) && !asking.has(id) && /^[0-9a-f-]{36}$/i.test(id)).slice(0, 100)
+  if (!client || !missing.length) return
+  for (const id of missing) asking.add(id)
+  client
+    .from("profiles")
+    .select("id, name")
+    .in("id", missing)
+    .then(({ data }) => {
+      for (const id of missing) {
+        asking.delete(id)
+        names.set(id, null)
+      }
+      for (const row of (data ?? []) as { id: string; name: string | null }[]) names.set(row.id, (row.name || "Member").slice(0, 60))
+      if (channel) {
+        visitors = withProfiles(readState(channel))
+        emit()
+      }
+    })
+}
+
 /** Everyone in the channel, one row per member (their most recent tab wins). */
 function readState(ch: RealtimeChannel): Visitor[] {
   const byMember = new Map<string, Visitor>()
@@ -119,7 +156,9 @@ function open() {
   const tabKey = crypto.randomUUID()
   const ch = client.channel(TOPIC, { config: { presence: { key: tabKey } } })
   ch.on("presence", { event: "sync" }, () => {
-    visitors = readState(ch)
+    const all = readState(ch)
+    lookUp(all.map((v) => v.member.id))
+    visitors = withProfiles(all)
     emit()
   }).subscribe((status) => {
     joined = status === "SUBSCRIBED"

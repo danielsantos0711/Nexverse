@@ -306,8 +306,9 @@ export function CrewPage({ slug, initial }: { slug: string; initial?: Crew }) {
                 className="self-start"
                 onClick={() =>
                   run(async () => {
-                    await acceptInvite(crew, validInvite)
-                    router.replace(`/crews/${slug}`, { scroll: false })
+                    // The link may belong to another crew than the page it was opened on: go where it led.
+                    const joined = await acceptInvite(crew, validInvite)
+                    router.replace(`/crews/${joined}`, { scroll: false })
                   })
                 }
               >

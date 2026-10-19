@@ -155,8 +155,21 @@ type InboxRow = {
 }
 
 let inboxCache: Conversation[] | null = null
+/** Whose inbox the cache holds, so a different account signing in on this browser never sees it. */
+let inboxOwner: string | null = null
 /** The last inbox this page loaded, for drawing the list at once when you come back to it. */
-export const cachedConversations = () => inboxCache
+export const cachedConversations = () => (inboxOwner !== null && inboxOwner === cacheViewer ? inboxCache : null)
+/** The member the page currently belongs to, kept in step with the session. */
+let cacheViewer: string | null = null
+
+/** Called when the signed-in member changes: drops another account's cached inbox at once. */
+export function setInboxViewer(userId: string | null) {
+  cacheViewer = userId
+  if (inboxOwner !== userId) {
+    inboxCache = null
+    inboxOwner = null
+  }
+}
 
 /** Your conversations, most recent first. Empty when signed out. */
 export async function listConversations(): Promise<Conversation[]> {
@@ -166,10 +179,12 @@ export async function listConversations(): Promise<Conversation[]> {
       .map(toLocalConversation)
       .sort((a, b) => (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""))
     inboxCache = list
+    inboxOwner = cacheViewer = "local"
     publishUnread(list)
     return list
   }
   const userId = await me()
+  setInboxViewer(userId ?? null)
   if (!userId) {
     inboxCache = []
     publishUnread([])
@@ -188,13 +203,15 @@ export async function listConversations(): Promise<Conversation[]> {
     blocked: r.blocked,
     local: false,
   }))
+  if (cacheViewer !== userId) return list
   inboxCache = list
+  inboxOwner = userId
   publishUnread(list)
   return list
 }
 
 export async function getConversation(id: string): Promise<Conversation | null> {
-  const known = inboxCache?.find((c) => c.id === id)
+  const known = cachedConversations()?.find((c) => c.id === id)
   if (known) return known
   const list = await listConversations()
   return list.find((c) => c.id === id) ?? null
@@ -471,6 +488,7 @@ export function useUnreadMessages(): number {
   const userId = live ? (user?.id ?? null) : "local"
   useEffect(() => {
     if (live && !ready) return
+    setInboxViewer(userId)
     if (!userId) {
       if (unread !== 0) {
         unread = 0

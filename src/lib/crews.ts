@@ -730,8 +730,8 @@ export async function revokeInvite(c: Crew, token: string) {
   fail(error)
 }
 
-/** Opens an invite link: makes you a member if it is still good. */
-export async function acceptInvite(c: Crew, token: string) {
+/** Opens an invite link: makes you a member if it is still good. Returns the slug of the crew the link belongs to. */
+export async function acceptInvite(c: Crew, token: string): Promise<string> {
   if (!INVITE_TOKEN.test(token)) throw new Error("This invite link is not complete. Ask for a new one.")
   const client = db()
   if (!client) {
@@ -741,11 +741,12 @@ export async function acceptInvite(c: Crew, token: string) {
     if (!c.sample && (!i || Date.parse(i.expiresAt) < Date.now() || i.uses >= i.maxUses)) throw new Error("This invite link has run out. Ask for a new one.")
     if (i) writeLocal(invitesKey(c.id), all.map((x) => (x.token === token ? { ...x, uses: x.uses + 1 } : x)))
     if (!c.local) writeStanding(c.id, { role: "member", requested: false })
-    return
+    return c.slug
   }
   await requireMe()
-  const { error } = await client.rpc("accept_crew_invite", { invite: token })
+  const { data, error } = await client.rpc("accept_crew_invite", { invite: token })
   fail(error)
+  return typeof data === "string" && data ? data : c.slug
 }
 
 // ─── The wall ───────────────────────────────────────────────────────────────────────────────────────────────
