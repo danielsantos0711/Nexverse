@@ -6,6 +6,7 @@ import { LockIcon, ShieldIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useCaps, type Cap } from "@/lib/caps"
 import { useRole, type SiteRole } from "@/lib/roles"
 import { live } from "@/lib/supabase"
 
@@ -17,21 +18,25 @@ const RANK: Record<SiteRole, number> = { guest: 0, member: 1, moderator: 2, admi
  */
 export function Gate({
   role = "member",
+  cap,
   action = "do this",
   children,
 }: {
   role?: Exclude<SiteRole, "guest">
+  /** A finer check than the role: the capability the page needs, from roles and reputation. */
+  cap?: Cap
   /** What the page lets you do, for the message: "post a mission", "open the admin panel". */
   action?: string
   children: React.ReactNode
 }) {
   const me = useRole()
+  const caps = useCaps()
   const path = usePathname()
 
   // Browser-only copies have no accounts: everything a member can do stays available locally.
   if (!live && role === "member") return children
   if (!me.ready) return <Skeleton className="h-48 w-full rounded-2xl" />
-  if (RANK[me.role] >= RANK[role] && !(me.suspended && role === "member")) return children
+  if (RANK[me.role] >= RANK[role] && !(me.suspended && role === "member") && (!cap || caps.can(cap))) return children
 
   if (me.role === "guest") {
     return (
