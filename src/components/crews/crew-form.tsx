@@ -44,7 +44,7 @@ export function NewCrew() {
     )
   }
   return (
-    <Gate action="start a crew">
+    <Gate cap="crew.create" action="start a crew">
       <CrewForm />
     </Gate>
   )

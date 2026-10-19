@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export const metadata: Metadata = {
   title: "Collections",
-  description: "Lists of models, datasets, papers, repos and threads, curated by members with a note on why each one matters.",
+  description: "Lists of models, datasets, tools, repos and threads, curated by members with a note on why each one matters.",
 }
 
 export default function CollectionsPage() {
@@ -15,7 +15,7 @@ export default function CollectionsPage() {
     <div className="shell pb-16">
       <ForumHeader
         title="Collections"
-        lead="Reading lists and starter kits curated by members: models, datasets, papers, repos and threads, each with a note on why it matters."
+        lead="Reading lists and starter kits curated by members: models, datasets, tools, repos and threads, each with a note on why it matters."
         icon={
           <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl border border-ion/20 bg-ion/10 text-ion">
             <LayersIcon aria-hidden className="size-5" />

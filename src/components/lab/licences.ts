@@ -4,7 +4,7 @@
  * licence) it says so instead of guessing. Not legal advice.
  */
 
-export type LicenceId = "apache-2.0" | "mit" | "bsd-3" | "gpl-3.0" | "agpl-3.0" | "cc-by-4.0" | "cc-by-nc-4.0" | "cc-by-sa-4.0" | "openrail-m" | "llama-style" | "cc0"
+export type LicenceId = "apache-2.0" | "mit" | "bsd-3" | "mpl-2.0" | "gpl-3.0" | "agpl-3.0" | "cc-by-4.0" | "cc-by-nc-4.0" | "cc-by-sa-4.0" | "openrail-m" | "llama-style" | "cc0"
 
 export type UseId = "commercial" | "research" | "redistribute" | "finetune" | "saas"
 
@@ -79,6 +79,22 @@ export const LICENCES: Licence[] = [
       finetune: { verdict: "conditions", summary: "Allowed under any terms, keeping the notice and not implying endorsement.", must: [NOTICE], cant: ["Imply endorsement by the original authors"] },
       saas: { verdict: "yes", summary: "Allowed. No obligations from serving it." },
     },
+  },
+  {
+    id: "mpl-2.0",
+    name: "MPL 2.0",
+    family: "Copyleft",
+    blurb: "Weak, file-level copyleft: changed files stay MPL and open, the rest of your product can use any licence.",
+    must: ["Make the source of MPL-covered files you distribute (including your changes to them) available under MPL-2.0", NOTICE],
+    cant: ["Relicense MPL-covered files under other terms", "Use contributors' trademarks"],
+    answers: {
+      commercial: { verdict: "conditions", summary: "Allowed, including inside closed-source products. Only the MPL files themselves must stay open when you ship them.", must: ["Offer source of the MPL files you distribute"] },
+      research: { verdict: "yes", summary: "Allowed without restriction." },
+      redistribute: { verdict: "conditions", summary: "Allowed under MPL-2.0, with the source of the covered files.", must: ["Keep MPL-2.0 on covered files", "Provide their source"] },
+      finetune: { verdict: "conditions", summary: "Allowed. Changes to MPL-covered files must be released under MPL-2.0 when you distribute them; new files can use other terms.", must: ["Release changed covered files under MPL-2.0"] },
+      saas: { verdict: "yes", summary: "Allowed. Running it as a service is not distribution under the MPL." },
+    },
+    caveat: "Like other software licences, how “files” maps onto model weights is not settled.",
   },
   {
     id: "gpl-3.0",
@@ -204,6 +220,37 @@ export const LICENCES: Licence[] = [
     },
   },
 ]
+
+/*
+ * Facts for the side-by-side comparator, read from the licence texts linked in `url`. Where a licence family
+ * varies by version (Llama-style community licences), the fact says so instead of picking one.
+ */
+export type LicenceFacts = {
+  spdx: string
+  url: string
+  urlLabel: string
+  copyleft: string
+  patentGrant: "Explicit grant" | "No explicit grant" | "Excluded" | "Varies by version"
+  attribution: boolean
+  networkClause: boolean
+  useRestrictions: boolean
+  osiApproved: boolean
+}
+
+export const FACTS: Record<LicenceId, LicenceFacts> = {
+  "apache-2.0": { spdx: "Apache-2.0", url: "https://www.apache.org/licenses/LICENSE-2.0", urlLabel: "apache.org", copyleft: "None (permissive)", patentGrant: "Explicit grant", attribution: true, networkClause: false, useRestrictions: false, osiApproved: true },
+  mit: { spdx: "MIT", url: "https://opensource.org/license/mit", urlLabel: "opensource.org", copyleft: "None (permissive)", patentGrant: "No explicit grant", attribution: true, networkClause: false, useRestrictions: false, osiApproved: true },
+  "bsd-3": { spdx: "BSD-3-Clause", url: "https://opensource.org/license/bsd-3-clause", urlLabel: "opensource.org", copyleft: "None (permissive)", patentGrant: "No explicit grant", attribution: true, networkClause: false, useRestrictions: false, osiApproved: true },
+  "mpl-2.0": { spdx: "MPL-2.0", url: "https://www.mozilla.org/en-US/MPL/2.0/", urlLabel: "mozilla.org", copyleft: "Weak, per file", patentGrant: "Explicit grant", attribution: true, networkClause: false, useRestrictions: false, osiApproved: true },
+  "gpl-3.0": { spdx: "GPL-3.0-only / -or-later", url: "https://www.gnu.org/licenses/gpl-3.0.html", urlLabel: "gnu.org", copyleft: "Strong, whole derivative", patentGrant: "Explicit grant", attribution: true, networkClause: false, useRestrictions: false, osiApproved: true },
+  "agpl-3.0": { spdx: "AGPL-3.0-only / -or-later", url: "https://www.gnu.org/licenses/agpl-3.0.html", urlLabel: "gnu.org", copyleft: "Strong, including network use", patentGrant: "Explicit grant", attribution: true, networkClause: true, useRestrictions: false, osiApproved: true },
+  "cc-by-4.0": { spdx: "CC-BY-4.0", url: "https://creativecommons.org/licenses/by/4.0/legalcode.en", urlLabel: "creativecommons.org", copyleft: "None", patentGrant: "Excluded", attribution: true, networkClause: false, useRestrictions: false, osiApproved: false },
+  "cc-by-nc-4.0": { spdx: "CC-BY-NC-4.0", url: "https://creativecommons.org/licenses/by-nc/4.0/legalcode.en", urlLabel: "creativecommons.org", copyleft: "None", patentGrant: "Excluded", attribution: true, networkClause: false, useRestrictions: true, osiApproved: false },
+  "cc-by-sa-4.0": { spdx: "CC-BY-SA-4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/legalcode.en", urlLabel: "creativecommons.org", copyleft: "Share-alike for adaptations", patentGrant: "Excluded", attribution: true, networkClause: false, useRestrictions: false, osiApproved: false },
+  "openrail-m": { spdx: "OpenRAIL-M (no single SPDX id)", url: "https://www.licenses.ai/ai-licenses", urlLabel: "licenses.ai", copyleft: "Use restrictions must pass downstream", patentGrant: "Explicit grant", attribution: true, networkClause: false, useRestrictions: true, osiApproved: false },
+  "llama-style": { spdx: "Custom (per model version)", url: "https://github.com/meta-llama/llama-models", urlLabel: "github.com/meta-llama", copyleft: "Same terms for derivatives", patentGrant: "Varies by version", attribution: true, networkClause: false, useRestrictions: true, osiApproved: false },
+  cc0: { spdx: "CC0-1.0", url: "https://creativecommons.org/publicdomain/zero/1.0/legalcode.en", urlLabel: "creativecommons.org", copyleft: "None (public domain)", patentGrant: "Excluded", attribution: false, networkClause: false, useRestrictions: false, osiApproved: false },
+}
 
 export const getLicence = (id: string) => LICENCES.find((l) => l.id === id) ?? LICENCES[0]
 

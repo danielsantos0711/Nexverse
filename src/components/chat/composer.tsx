@@ -21,12 +21,14 @@ export const Composer = forwardRef<
     roomName: string
     replyTo: ChatMessage | null
     disabled?: boolean
+    /** Slow mode: you can type, but sending waits until this is back to zero. */
+    hold?: boolean
     onCancelReply: () => void
     onSend: (body: string) => void
     onTyping: () => void
     onEditLast: () => void
   }
->(function Composer({ room, roomName, replyTo, disabled, onCancelReply, onSend, onTyping, onEditLast }, handle) {
+>(function Composer({ room, roomName, replyTo, disabled, hold, onCancelReply, onSend, onTyping, onEditLast }, handle) {
   // The box only appears in the browser (it waits for the session), so reading storage here is safe.
   const [draft, setDraft] = useState(() => {
     try {
@@ -60,7 +62,7 @@ export const Composer = forwardRef<
   }, [draft, room])
 
   function send() {
-    if (!length || over || disabled) return
+    if (!length || over || disabled || hold) return
     onSend(draft.trim())
     setDraft("")
   }
@@ -132,7 +134,7 @@ export const Composer = forwardRef<
             <span className="sr-only"> characters left</span>
           </span>
         )}
-        <Button type="submit" size="icon" disabled={!length || over || disabled} aria-label="Send message" className="shrink-0">
+        <Button type="submit" size="icon" disabled={!length || over || disabled || hold} aria-label="Send message" className="shrink-0">
           <SendHorizontalIcon aria-hidden />
         </Button>
       </form>

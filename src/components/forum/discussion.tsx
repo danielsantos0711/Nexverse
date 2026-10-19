@@ -64,6 +64,7 @@ export function ThreadDiscussion({
   startAt,
   participants = [],
   locked = false,
+  lockedNote,
   quote,
 }: {
   threadId: string
@@ -79,6 +80,8 @@ export function ThreadDiscussion({
   participants?: MentionCandidate[]
   /** Locked by staff: members can read but not reply. */
   locked?: boolean
+  /** Why replies are closed, when it is not a moderator's lock (an archived category, say). */
+  lockedNote?: string
   /** Set by the page to quote a post outside this list (the thread's first post) into the reply box. */
   quote?: QuoteRequest | null
 }) {
@@ -263,6 +266,7 @@ export function ThreadDiscussion({
                   <PostModeration
                     kind="answer"
                     id={a.id}
+                    orbit={question?.orbit}
                     mine={mine}
                     anchor={postKey}
                     hidden={a.hidden}
@@ -357,10 +361,10 @@ export function ThreadDiscussion({
       {locked && !isStaff ? (
         <div className="flex items-center gap-3 rounded-xl border border-border bg-card/40 px-4 py-3 text-sm text-muted-foreground">
           <LockIcon aria-hidden className="size-4 shrink-0" />
-          The moderators locked this thread. You can still read it, react and quote it in a new thread.
+          {lockedNote ?? "The moderators locked this thread. You can still read it, react and quote it in a new thread."}
         </div>
       ) : (
-        <Gate action="reply">
+        <Gate cap="reply.create" action="reply">
           <form onSubmit={post} className="glass flex flex-col gap-3 rounded-xl p-4">
             <label htmlFor={composerId} className="text-sm font-medium">
               Your reply

@@ -1,8 +1,10 @@
 import Link from "next/link"
-import { FileTextIcon, FlameIcon, FolderGit2Icon, StarIcon } from "lucide-react"
+import { FlameIcon, FolderGit2Icon, NewspaperIcon, StarIcon } from "lucide-react"
 import { compact } from "@/lib/data"
-import { arxivPapers, githubTrendingAi, type GhRepo, type Paper } from "@/lib/live"
-import { ghHref, paperHref } from "@/lib/live/ids"
+import { githubTrendingAi, type GhRepo } from "@/lib/live"
+import { ghHref } from "@/lib/live/ids"
+import { categoryInfo, storyHref, type Story } from "@/lib/newsroom"
+import { latestStories } from "@/lib/newsroom/public"
 import { cn } from "@/lib/utils"
 
 type Icon = React.ComponentType<{ className?: string }>
@@ -16,13 +18,13 @@ function interleave<T>(lists: T[][]): T[] {
 }
 
 /**
- * A slow marquee of what is trending right now on GitHub and arXiv, every item opening on Nexverse. It pauses on
+ * A slow marquee of what is rising on GitHub and the newest newsroom stories, every item opening on Nexverse. It pauses on
  * hover; with reduced motion it stops and becomes a plain horizontally scrollable row.
  */
-export function TrendingNow({ repos = [], papers = [], className }: { repos?: GhRepo[]; papers?: Paper[]; className?: string }) {
+export function TrendingNow({ repos = [], stories = [], className }: { repos?: GhRepo[]; stories?: Story[]; className?: string }) {
   const gh: Chip[] = repos.map((r) => ({ key: `gh-${r.fullName}`, href: ghHref(r.owner, r.name), label: r.fullName, icon: FolderGit2Icon, tone: "text-repo", metric: compact(r.stars), metricIcon: StarIcon }))
-  const pap: Chip[] = papers.map((p) => ({ key: `p-${p.id}`, href: paperHref(p.id), label: p.title, icon: FileTextIcon, tone: "text-gold", metric: p.categories[0] }))
-  const chips = interleave([gh, pap])
+  const news: Chip[] = stories.map((s) => ({ key: `n-${s.id}`, href: storyHref(s), label: s.title, icon: NewspaperIcon, tone: "text-gold", metric: categoryInfo(s.category).one }))
+  const chips = interleave([gh, news])
   if (chips.length < 3) return null
 
   const row = (hidden: boolean) =>
@@ -63,9 +65,9 @@ export function TrendingNow({ repos = [], papers = [], className }: { repos?: Gh
   )
 }
 
-/** TrendingNow with its own data: rising GitHub repositories and the newest papers. */
+/** TrendingNow with its own data: rising GitHub repositories and the newest newsroom stories. */
 export async function TrendingNowLive({ className }: { className?: string }) {
-  // The same arguments as the /papers list, so both share one cache entry.
-  const [repos, papers] = await Promise.all([githubTrendingAi(8), arxivPapers("all", 30)])
-  return <TrendingNow className={className} repos={repos.items} papers={papers.items.slice(0, 6)} />
+  // The same arguments as /news, so both share one cache entry.
+  const [repos, news] = await Promise.all([githubTrendingAi(8), latestStories(60)])
+  return <TrendingNow className={className} repos={repos.items} stories={news.items.slice(0, 6)} />
 }

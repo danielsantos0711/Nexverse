@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils"
 import { LiveBadge } from "./live-badge"
 
 export const SOURCES: Record<LiveSource, { name: string; url: string }> = {
-  arxiv: { name: "arXiv", url: "https://arxiv.org" },
   github: { name: "GitHub", url: "https://github.com" },
 }
 

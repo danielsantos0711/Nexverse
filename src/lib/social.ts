@@ -14,7 +14,7 @@ import { db, live } from "@/lib/supabase"
  *   share:<uuid>         a link or news story a member shared (public.submissions)
  *   thread:<uuid>        a member's forum thread
  *   collection:<uuid>    a member's collection
- *   ghrepo:<id> paper:<id>  GitHub repositories and arXiv papers (lib/live/ids)
+ *   ghrepo:<id> paper:<id>  GitHub repositories, and arXiv papers saved before papers moved off-site (lib/live/ids)
  * Follows additionally use member:<uuid>, category:<slug> and room:<slug> (person:<handle> is from the old samples).
  */
 
@@ -445,8 +445,15 @@ export function describeTarget(target: string): TargetInfo {
       return { type, id, label: "a project", href: `/p/${id}` }
     case "duel":
       return { type, id, label: "your duel", href: `/arena/${id}` }
+    // The member video lab was retired; old notifications about a video stay readable.
     case "video":
-      return { type, id, label: "your video", href: `/video/${id}` }
+      return { type, id, label: "a video that was retired", href: "/notifications" }
+    case "coderepo":
+      return { type, id, label: "a repository", href: `/code/go/repo-${id}` }
+    case "codeissue":
+      return { type, id, label: "an issue", href: `/code/go/issue-${id}` }
+    case "codepull":
+      return { type, id, label: "a pull request", href: `/code/go/pull-${id}` }
     case "benchmark":
       return { type, id, label: getBenchmark(id)?.name ?? id, href: `/benchmarks/${id}` }
     case "crew":

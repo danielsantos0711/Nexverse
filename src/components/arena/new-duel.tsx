@@ -30,7 +30,7 @@ export function NewDuelForm() {
     )
   }
   return (
-    <Gate action="post a duel">
+    <Gate cap="duel.create" action="post a duel">
       <Form />
     </Gate>
   )

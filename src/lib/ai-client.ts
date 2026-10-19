@@ -12,9 +12,10 @@ import { db, live } from "@/lib/supabase"
 
 // Status
 
-export type AiStatus = { enabled: boolean; ready: boolean }
+export type AiJob = "news" | "summary" | "moderation" | "rewrite" | "translate" | "code" | "playground"
+export type AiStatus = { enabled: boolean; ready: boolean; jobs: Partial<Record<AiJob, boolean>> }
 
-const OFF: AiStatus = { enabled: false, ready: false }
+const OFF: AiStatus = { enabled: false, ready: false, jobs: {} }
 let status: AiStatus = OFF
 let loading = false
 const listeners = new Set<() => void>()
@@ -25,17 +26,21 @@ async function loadStatus() {
   try {
     if (!live) throw new Error("no accounts")
     const res = await fetch("/api/ai/status", { cache: "no-store" })
-    const json = (await res.json()) as { enabled?: unknown }
-    status = { enabled: json.enabled === true, ready: true }
+    const json = (await res.json()) as { enabled?: unknown; jobs?: unknown }
+    const jobs = json.jobs && typeof json.jobs === "object" ? (json.jobs as Partial<Record<AiJob, boolean>>) : {}
+    status = { enabled: json.enabled === true, ready: true, jobs }
   } catch {
-    status = { enabled: false, ready: true }
+    status = { enabled: false, ready: true, jobs: {} }
   } finally {
     loading = false
     listeners.forEach((l) => l())
   }
 }
 
-/** Whether AI assist is configured on this site. Fetched once per page load and shared by every component. */
+/**
+ * Whether AI assist is configured on this site, and for which jobs (`status.jobs.translate`, ...). Fetched
+ * once per page load and shared by every component.
+ */
 export function useAiStatus(): AiStatus {
   useEffect(() => {
     void loadStatus()
@@ -87,8 +92,10 @@ export type ImproveGoal = "clearer" | "shorter" | "friendlier" | "title"
 export type TranslateResult = { text: string; from: string; to: LanguageCode }
 export type ModerationVerdict = "ok" | "review" | "remove"
 export type ModerationHintResult = { verdict: ModerationVerdict; categories: string[]; reason: string }
-export type VideoShot = { duration: number; description: string; camera: string; lens: string; lighting: string }
-export type VideoPromptResult = { title: string; prompt: string; shots: VideoShot[]; style: string; negative: string }
+/** A free model members can pick in the Lab playground. `id` is what `ai.playground` takes as `model`. */
+export type AiModel = { id: string; label: string; provider: string; context: number; notes: string }
+export type PlaygroundInput = { model: string; system?: string; prompt: string; temperature?: number }
+export type PlaygroundResult = { text: string; model: string; provider: string; ms: number }
 
 async function token(): Promise<string | null> {
   const c = db()
@@ -127,6 +134,51 @@ export const ai = {
   translate: (input: { text: string; to: LanguageCode }, signal?: AbortSignal) => post<TranslateResult>("translate", input, signal),
   /** Staff only. A suggestion for the reports queue; it never acts on anything. */
   moderate: (input: { text: string; context?: string }, signal?: AbortSignal) => post<ModerationHintResult>("moderate", input, signal),
-  videoPrompt: (input: { idea: string; style?: string; camera?: string; duration?: number }, signal?: AbortSignal) =>
-    post<VideoPromptResult>("video-prompt", input, signal),
+  /** The free models on offer in the playground right now. Public: no sign-in needed. Empty when AI is off. */
+  models: async (signal?: AbortSignal): Promise<AiModel[]> => {
+    try {
+      const res = await fetch("/api/ai/models", { cache: "no-store", signal })
+      const json = (await res.json()) as { models?: AiModel[] }
+      return Array.isArray(json.models) ? json.models : []
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") throw err
+      return []
+    }
+  },
+  /** The member's own prompt to one free model. Counts toward their daily allowance. */
+  playground: (input: PlaygroundInput, signal?: AbortSignal) => post<PlaygroundResult>("playground", input, signal),
+}
+
+// Admin (/admin/ai). Staff only on the server; the page itself is for admins.
+
+export type AiAdminStatus = {
+  day: string
+  /** The stored settings, normalised by the server. */
+  settings: unknown
+  providers: { id: string; configured: boolean; envSet: Record<string, boolean>; usedToday: number | null }[]
+  /** Today's calls per provider, model and job, or null when the usage table is not on the database yet. */
+  usage: { provider: string; model: string; job: string; requests: number; failures: number }[] | null
+  memberRequests: number | null
+  server: { supabase: boolean; serviceKey: boolean; cacheSecret: boolean }
+}
+
+export type AiTestResult = { ok: true; ms: number; reply: string; label: string }
+
+export const aiAdmin = {
+  status: async (signal?: AbortSignal): Promise<AiAdminStatus> => {
+    const t = await token()
+    if (!t) throw new AiRequestError("unauthorized", "Sign in to see AI usage.", 401)
+    let res: Response
+    try {
+      res = await fetch("/api/ai/admin", { headers: { authorization: `Bearer ${t}` }, cache: "no-store", signal })
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") throw err
+      throw new AiRequestError("network", "Could not reach Nexverse. Check your connection and try again.", 0)
+    }
+    const json = (await res.json().catch(() => null)) as (AiAdminStatus & { error?: { code: AiErrorCode; message: string } }) | null
+    if (!res.ok || !json || json.error) throw new AiRequestError(json?.error?.code ?? "upstream", json?.error?.message ?? "Could not load AI status.", res.status)
+    return json
+  },
+  /** One tiny real call to one model. Counts toward that provider's daily cap. */
+  test: (model: string, signal?: AbortSignal) => post<AiTestResult>("admin/test", { model }, signal),
 }

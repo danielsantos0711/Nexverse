@@ -1,10 +1,10 @@
-import type { AskOptions, JsonSchema } from "./anthropic"
+import type { JsonSchema, LlmOptions } from "./llm"
 import { AiError } from "./errors"
 import { isObject, str, strList } from "./json"
 
 /*
  * Prompts, output schemas and output validators for every AI task. Pure functions only (no network), so they
- * can be checked without an API key. Untrusted text (posts, pages, drafts) always goes inside `fence()` and
+ * can be checked without an API key. Each request names the router job that picks its free model. Untrusted text (posts, pages, drafts) always goes inside `fence()` and
  * every system prompt tells the model that fenced text is data to work on, never instructions to follow.
  */
 
@@ -29,6 +29,8 @@ function obj(properties: Record<string, JsonSchema>): JsonSchema {
 const S = { type: "string" } as const
 const LIST = { type: "array", items: { type: "string" } } as const
 
+type AskOptions = LlmOptions & { schema: JsonSchema }
+
 function invalid(): never {
   throw new AiError(502, "bad_output", "The AI answer was incomplete. Try again.")
 }
@@ -44,8 +46,7 @@ export function newsDraftRequest(input: { url?: string; title?: string; notes?: 
   if (input.notes) parts.push(fence("member_notes", input.notes))
   if (input.page) parts.push(fence("page", `Title: ${input.page.title}\nDescription: ${input.page.description}\n\n${input.page.text}`))
   return {
-    tier: "draft",
-    effort: "medium",
+    job: "news",
     maxTokens: 3000,
     system: system(
       `You draft short news items for the Nexverse news feed from a source page and/or a member's notes. Report only what the material says: do not add facts, numbers, dates, quotes or opinions that are not in it. Keep a neutral tone and attribute claims to their source ("the authors say", "according to the release notes").
@@ -74,8 +75,7 @@ export type ThreadSummary = { tldr: string; points: string[] }
 export function threadSummaryRequest(input: { title: string; posts: { author: string; body: string }[] }): AskOptions {
   const posts = input.posts.map((p, i) => `#${i + 1} ${p.author}:\n${p.body}`).join("\n\n---\n\n")
   return {
-    tier: "fast",
-    effort: "low",
+    job: "summary",
     maxTokens: 2000,
     system: system(
       `You summarize forum threads so a newcomer can catch up quickly. Be faithful: only state what posters actually said, attribute disagreements ("some suggest", "the original poster"), and mention open questions. Do not judge members.
@@ -107,8 +107,7 @@ const GOAL_TEXT: Record<ImproveGoal, string> = {
 
 export function improveRequest(input: { text: string; goal: ImproveGoal }): AskOptions {
   return {
-    tier: "fast",
-    effort: "low",
+    job: "rewrite",
     maxTokens: input.goal === "title" ? 800 : 4000,
     system: system(
       `You help members edit what they are about to post. ${GOAL_TEXT[input.goal]} Write in the same language as the original. Keep Markdown formatting and code blocks exactly as they are. Never add new claims.
@@ -130,8 +129,7 @@ export function readImprove(v: unknown, goal: ImproveGoal): { text: string } {
 
 export function translateRequest(input: { text: string; to: string; toName: string }): AskOptions {
   return {
-    tier: "fast",
-    effort: "low",
+    job: "translate",
     maxTokens: 4000,
     system: system(
       `You translate member posts into ${input.toName}. Translate faithfully and naturally, keeping tone, Markdown, code blocks, URLs, names and technical terms (model names, library names) unchanged. If the text is already in ${input.toName}, return it unchanged.
@@ -156,8 +154,7 @@ export type ModerationHint = { verdict: "ok" | "review" | "remove"; categories: 
 
 export function moderateRequest(input: { text: string; context?: string }): AskOptions {
   return {
-    tier: "fast",
-    effort: "low",
+    job: "moderation",
     maxTokens: 1500,
     system: system(
       `You help human moderators triage reported content on a professional community about AI. You never take action yourself: a moderator reads your suggestion and decides. Be conservative. Disagreement, criticism, blunt technical feedback, beginner questions, non-English text, security research and discussion of AI risks are normal and fine.
@@ -176,48 +173,4 @@ export function readModeration(v: unknown): ModerationHint {
   const categories = strList(v.categories, 6, 30).filter((c): c is (typeof MOD_CATEGORIES)[number] => (MOD_CATEGORIES as readonly string[]).includes(c))
   const reason = str(v.reason, 400) || "No reason given. Read the content yourself."
   return { verdict, categories: [...new Set(categories)], reason }
-}
-
-// Video prompt (for the video studio)
-
-export type VideoShot = { duration: number; description: string; camera: string; lens: string; lighting: string }
-export type VideoPrompt = { title: string; prompt: string; shots: VideoShot[]; style: string; negative: string }
-
-export function videoPromptRequest(input: { idea: string; style?: string; camera?: string; duration?: number }): AskOptions {
-  const seconds = input.duration ?? 8
-  return {
-    tier: "draft",
-    effort: "medium",
-    maxTokens: 3000,
-    system: system(
-      `You are a cinematographer writing prompts for text-to-video models. Turn a member's idea into a precise, filmable prompt. Be concrete about subject, action, setting, camera movement, lens (focal length, depth of field), lighting and colour. Avoid real people's likenesses, brands and copyrighted characters; replace them with generic descriptions.
-Return: "title" (a short working title), "prompt" (one paragraph of at most 120 words that can be pasted into a video model as is), "shots" (1 to 5 shots whose durations in seconds add up to about ${seconds}; each with "duration", "description", "camera", "lens", "lighting"), "style" (one line on look and grade) and "negative" (a short comma-separated list of things to avoid).`
-    ),
-    prompt: `Write a ${seconds}-second video prompt.\n\n${fence("idea", input.idea)}${input.style ? "\n\n" + fence("style", input.style) : ""}${input.camera ? "\n\n" + fence("camera", input.camera) : ""}`,
-    schema: obj({
-      title: S,
-      prompt: S,
-      shots: { type: "array", items: obj({ duration: { type: "number" }, description: S, camera: S, lens: S, lighting: S }) },
-      style: S,
-      negative: S,
-    }),
-  }
-}
-
-export function readVideoPrompt(v: unknown): VideoPrompt {
-  if (!isObject(v)) invalid()
-  const prompt = str(v.prompt, 1200)
-  if (!prompt) invalid()
-  const shots = (Array.isArray(v.shots) ? v.shots : [])
-    .filter(isObject)
-    .slice(0, 5)
-    .map((s) => ({
-      duration: typeof s.duration === "number" && Number.isFinite(s.duration) ? Math.min(60, Math.max(0.5, Math.round(s.duration * 10) / 10)) : 2,
-      description: str(s.description, 400),
-      camera: str(s.camera, 160),
-      lens: str(s.lens, 120),
-      lighting: str(s.lighting, 160),
-    }))
-    .filter((s) => s.description)
-  return { title: str(v.title, 90), prompt, shots, style: str(v.style, 240), negative: str(v.negative, 300) }
 }

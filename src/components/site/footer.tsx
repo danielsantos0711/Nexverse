@@ -3,21 +3,14 @@
 import Link from "next/link"
 import type { Route } from "next"
 import { Lockup } from "@/components/brand"
-import { FEATURES, useSiteSettings } from "@/lib/site-settings"
-
-/** Every link here is a page that exists; areas the admins switch off drop out of the footer too. */
-const COLUMNS: { title: string; links: [string, string][] }[] = [
-  { title: "Hub", links: [["Models", "/models"], ["Datasets", "/datasets"], ["Tools", "/tools"], ["Repos", "/repos"], ["Trending now", "/trending"], ["Papers", "/papers"], ["GitHub topics", "/gh/topics"]] },
-  { title: "Community", links: [["Forum", "/forum"], ["Chat rooms", "/chat"], ["News", "/news"], ["Events", "/events"], ["Missions", "/missions"], ["Arena", "/arena"], ["Leaderboard", "/leaderboard"]] },
-  { title: "Create", links: [["Publish a project", "/new/project"], ["Share a link", "/share"], ["Start a thread", "/forum/new"], ["Your studio", "/studio"], ["Lab", "/lab"], ["Collections", "/collections"]] },
-  { title: "You", links: [["Your page", "/you"], ["For you", "/for-you"], ["Saved", "/saved"], ["Notifications", "/notifications"], ["Settings", "/settings"]] },
-]
+import { useMenus } from "@/lib/menus"
+import { useSiteSettings } from "@/lib/site-settings"
 
 export function SiteFooter() {
   const { settings } = useSiteSettings()
   const name = settings.brand.name || "Nexverse"
-  const off = FEATURES.filter((f) => f.key !== "ai" && settings.features[f.key] === false).map((f) => f.href)
-  const hidden = (href: string) => settings.nav.hidden.includes(href) || off.some((h) => href === h || href.startsWith(h + "/"))
+  // The columns the admins built in /admin/menus (switched-off areas and hidden links already left out).
+  const { footer } = useMenus()
   // Extra links the admins added (internal pages only, so the footer never sends anyone away by surprise).
   const extra = settings.footer.links.filter((l) => l.label && l.href.startsWith("/") && !l.href.startsWith("//"))
 
@@ -41,20 +34,23 @@ export function SiteFooter() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4">
-          {COLUMNS.map((c) => {
-            const links = c.links.filter(([, href]) => !hidden(href))
-            if (!links.length) return null
-            return (
-              <nav key={c.title} aria-label={c.title} className="flex flex-col gap-2.5 text-sm">
-                <h2 className="mb-1 font-sans text-xs font-medium tracking-wide text-muted-foreground uppercase">{c.title}</h2>
-                {links.map(([label, href]) => (
-                  <Link key={href} href={href as Route} className="self-start rounded-sm text-foreground/80 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-                    {label}
+          {footer.map((c) => (
+            <nav key={c.id} aria-label={c.label || "Links"} className="flex flex-col gap-2.5 text-sm">
+              {c.label && <h2 className="mb-1 font-sans text-xs font-medium tracking-wide text-muted-foreground uppercase">{c.label}</h2>}
+              {c.links.map((l, i) =>
+                l.href.startsWith("/") ? (
+                  <Link key={`${l.href}-${i}`} href={l.href as Route} className="self-start rounded-sm text-foreground/80 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                    {l.label}
                   </Link>
-                ))}
-              </nav>
-            )
-          })}
+                ) : (
+                  <a key={`${l.href}-${i}`} href={l.href} target="_blank" rel="noopener noreferrer" className="self-start rounded-sm text-foreground/80 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                    {l.label}
+                    <span className="sr-only"> (opens in a new tab)</span>
+                  </a>
+                )
+              )}
+            </nav>
+          ))}
         </div>
       </div>
       <div className="shell flex flex-col gap-3 border-t border-border py-6 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between">

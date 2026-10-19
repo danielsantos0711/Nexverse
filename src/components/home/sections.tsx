@@ -9,10 +9,12 @@ import { MemberPlanet } from "@/components/planet/member-planet"
 import { Skeleton } from "@/components/ui/skeleton"
 import { categoriesIn, categoryGroups, compact, getCategory, LANGUAGES, type LanguageCode } from "@/lib/data"
 import { useSiteSettings } from "@/lib/site-settings"
+import { useReducedMotion } from "motion/react"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
-import { AstralAbyss } from "./fx"
+import { FilamentFlow, HalftoneOrbit, LoopVideo } from "@/components/fx"
+import { GlowCard } from "@/components/hub/glow-card"
 import { loadBuilders, loadCollections, loadHotThreads, since, useLoad, type HotThread } from "./hub-data"
 import { Slot } from "./slot"
 
@@ -24,6 +26,8 @@ export function Head({ id, title, lead, href, action, className }: { id: string;
         <h2 id={id} className="font-display text-2xl font-semibold tracking-[-0.03em] md:text-[1.75rem]">
           {title}
         </h2>
+        {/* a short orbit line that draws in with the heading (the .rise observer grows .momentum bars) */}
+        <span aria-hidden className="momentum block h-px w-16 bg-gradient-to-r from-ion via-ion/50 to-transparent" />
         {lead && <p className="text-[15px] text-foreground/70">{lead}</p>}
       </div>
       {href && action && (
@@ -181,9 +185,14 @@ const itemLabel = (target: string) => target.split(":").slice(1).join(":") || ta
 /** Constellations: the public collections members curate, each drawn as a small star map of its items. */
 export function Constellations() {
   const list = useLoad(() => loadCollections(4), [])
+  const still = useStill()
   return (
     <section aria-labelledby="const-h" className="relative isolate overflow-hidden">
       <Image src="/space/deep-field.webp" alt="" fill sizes="100vw" className="fade-band -z-10 object-cover opacity-20" />
+      {/* HorizonX Filament Flow: threads of gas between the stars, the way a collection ties its pieces together */}
+      <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 -z-10 w-[min(48rem,62%)] opacity-40 [mask-image:linear-gradient(90deg,transparent,#000_45%),linear-gradient(180deg,transparent,#000_22%,#000_78%,transparent)] [mask-composite:intersect] max-md:hidden">
+        <FilamentFlow className="size-full" still={still} settings={{ scale: 1.35, turbulence: 0.85 }} />
+      </div>
       <div className="shell py-14">
         <Head
           id="const-h"
@@ -202,7 +211,8 @@ export function Constellations() {
           <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {list.map((c, i) => (
               <li key={c.id} className="rise" style={{ "--i": i } as React.CSSProperties}>
-                <Link href={`/collections/${c.id}` as Route} className="press group flex h-full flex-col gap-3 rounded-2xl border border-white/[0.06] bg-card/70 p-4 hover:border-white/15 hover:bg-card">
+                <GlowCard className="h-full rounded-2xl">
+                <Link href={`/collections/${c.id}` as Route} className="press group relative z-[1] flex h-full flex-col gap-3 rounded-2xl border border-white/[0.06] bg-card/80 p-4 hover:border-white/15 hover:bg-card">
                   <StarMap seed={c.id} count={Math.min(c.items, 7)} />
                   <span className="font-medium group-hover:text-ion">{c.title}</span>
                   {c.description && <span className="line-clamp-2 text-sm text-muted-foreground">{c.description}</span>}
@@ -211,6 +221,7 @@ export function Constellations() {
                     {c.items} {c.items === 1 ? "star" : "stars"} · by {c.by} · {since(c.at)}
                   </span>
                 </Link>
+                </GlowCard>
               </li>
             ))}
           </ul>
@@ -256,6 +267,7 @@ function StarMap({ seed, count }: { seed: string; count: number }) {
 /** Builders as worlds: real members, each one's planet grown from their reputation. */
 export function BuilderWorlds() {
   const builders = useLoad(() => loadBuilders(8), [])
+  const still = useStill()
   const { member } = useSession()
   return (
     <section aria-labelledby="people-h" className="shell">
@@ -301,8 +313,10 @@ export function BuilderWorlds() {
           {builders.length < 8 && !builders.some((b) => b.id === member?.id) && (
             <li className="rise w-[9rem] shrink-0 snap-start md:w-auto" style={{ "--i": builders.length } as React.CSSProperties}>
               <Link href={member ? "/you" : "/sign-in"} className="press group flex flex-col items-center gap-1 rounded-2xl px-1 pt-1 pb-3 text-center hover:bg-white/[0.03]">
-                <span aria-hidden className="grid size-[140px] place-items-center">
-                  <span className="grid size-20 place-items-center rounded-full border border-dashed border-white/20 text-muted-foreground transition-colors group-hover:border-ion/60 group-hover:text-ion">
+                <span aria-hidden className="relative grid size-[140px] place-items-center">
+                  {/* HorizonX Halftone Orbit: the orbit waiting for a planet */}
+                  <HalftoneOrbit className="absolute inset-0 opacity-70 transition-opacity duration-300 group-hover:opacity-100" still={still} />
+                  <span className="relative grid size-20 place-items-center rounded-full border border-dashed border-white/20 text-muted-foreground transition-colors group-hover:border-ion/60 group-hover:text-ion">
                     <UserPlusIcon className="size-5" />
                   </span>
                 </span>
@@ -325,27 +339,44 @@ export function BuilderWorlds() {
   )
 }
 
-/** The close: a basin of silver filaments and a tiny explorer on its lip, and one thing to do. */
-export function Close() {
+/** True when nothing on the page should move: the visitor's reduced-motion setting, or the site's motion "off". */
+function useStill() {
   const { settings } = useSiteSettings()
-  const motionOff = settings.theme.motion === "off"
+  return Boolean(useReducedMotion()) || settings.theme.motion === "off"
+}
+
+/**
+ * The close, as a cinematic band: the brand film (the official N in its galaxy, rendered from the hero's own
+ * scene) runs on the right while it is on screen, and one thing to do sits on the left. The film is a muted
+ * 8-second loop that loads only as the band nears the screen; with motion off it is its poster.
+ */
+export function Close() {
+  const still = useStill()
   return (
     <section aria-labelledby="join-h" className="shell">
-      <div className="relative isolate overflow-hidden rounded-3xl border border-white/[0.06] bg-[#05060a]">
-        <div aria-hidden className="absolute inset-0 -z-10">
-          {motionOff ? <Image src="/space/horizon.webp" alt="" fill sizes="100vw" className="object-cover opacity-40" /> : <AstralAbyss className="size-full" />}
+      <div className="relative isolate overflow-hidden rounded-3xl border border-white/[0.06] bg-[#05060a] shadow-[0_40px_120px_-60px_rgb(143_180_255/0.35)]">
+        {/* the film: on top on phones (cropped closer to the N), the right two thirds from md up, fading into the text side */}
+        <div aria-hidden className="relative aspect-[5/4] w-full sm:aspect-video md:absolute md:inset-y-0 md:right-0 md:aspect-auto md:w-[68%] md:[mask-image:linear-gradient(90deg,transparent,#000_32%)] max-md:[mask-image:linear-gradient(0deg,transparent,#000_30%)]">
+          <LoopVideo name="brand" still={still} />
         </div>
-        <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgb(5_6_10/0.92),rgb(5_6_10/0.6)_45%,transparent_75%)] max-md:bg-[linear-gradient(0deg,rgb(5_6_10/0.95),rgb(5_6_10/0.55)_60%,transparent)]" />
-        <div className="flex min-h-[22rem] max-w-2xl flex-col justify-end gap-5 px-6 py-12 md:min-h-[26rem] md:justify-center md:px-14">
-          <h2 id="join-h" className="rise font-display text-2xl font-semibold tracking-[-0.03em] text-balance md:text-[2.1rem] md:leading-[1.1]">
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_15%_80%,rgb(143_180_255/0.10),transparent_55%)]" />
+        <div className="relative flex max-w-xl flex-col justify-center gap-5 px-6 pt-2 pb-10 md:min-h-[28rem] md:px-14 md:py-14">
+          <p className="rise inline-flex items-center gap-2 text-xs tracking-[0.18em] text-ion/80 uppercase">
+            <span aria-hidden className="h-px w-6 bg-ion/60" /> Your place in the universe
+          </p>
+          <h2 id="join-h" className="rise font-display text-2xl font-semibold tracking-[-0.03em] text-balance md:text-[2.1rem] md:leading-[1.1]" style={{ "--i": 1 } as React.CSSProperties}>
             Put your work in the sky.
           </h2>
-          <p className="rise text-foreground/80 md:text-[17px]" style={{ "--i": 1 } as React.CSSProperties}>
+          <p className="rise text-foreground/80 md:text-[17px]" style={{ "--i": 2 } as React.CSSProperties}>
             Share a model, a dataset, a tool or a repo in under a minute. Others will find it, use it and connect it to theirs.
           </p>
-          <div className="rise flex flex-wrap items-center gap-4" style={{ "--i": 2 } as React.CSSProperties}>
-            <Link href="/share" className="pressable inline-flex h-11 items-center rounded-full bg-primary px-6 font-medium text-primary-foreground">
+          <div className="rise flex flex-wrap items-center gap-4" style={{ "--i": 3 } as React.CSSProperties}>
+            <Link
+              href="/share"
+              className="pressable group inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 font-medium text-primary-foreground shadow-[0_10px_40px_-12px_rgb(255_255_255/0.45)] transition-[box-shadow] hover:shadow-[0_10px_50px_-6px_rgb(143_180_255/0.7)]"
+            >
               Share what you built
+              <ArrowRightIcon aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
             <Link href="/new/project" className="pressable inline-flex h-11 items-center rounded-full px-2 text-sm text-foreground/75 hover:text-foreground">
               Or publish a full project page

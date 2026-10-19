@@ -8,6 +8,7 @@ import { PosterAvatar } from "@/components/forum/forum-ui"
 import { MemberPlanet } from "@/components/planet/member-planet"
 import { LevelChip, LevelRing } from "@/components/reputation/level-ring"
 import { Skeleton } from "@/components/ui/skeleton"
+import { CAP_INFO, isCap, useCaps } from "@/lib/caps"
 import { getLeaderboard, LEVELS, PERIODS, POINTS, type LeaderRow, type Period } from "@/lib/community"
 import { compact } from "@/lib/data"
 import { useSession } from "@/lib/store"
@@ -134,7 +135,7 @@ export function LeaderboardView() {
             )}
           </section>
         )}
-        <section aria-labelledby="points-h" className="glass rounded-xl p-4">
+        <section id="how-points" aria-labelledby="points-h" className="glass scroll-mt-24 rounded-xl p-4">
           <h2 id="points-h" className="mb-3 font-sans text-sm font-semibold tracking-normal">
             How points work
           </h2>
@@ -154,6 +155,7 @@ export function LeaderboardView() {
           </dl>
           <p className="mt-3 text-xs text-muted-foreground">Liking or reacting to your own posts earns nothing.</p>
         </section>
+        <Unlocks />
         <section aria-labelledby="levels-h" className="glass rounded-xl p-4">
           <h2 id="levels-h" className="mb-3 font-sans text-sm font-semibold tracking-normal">
             Levels
@@ -169,6 +171,45 @@ export function LeaderboardView() {
         </section>
       </aside>
     </div>
+  )
+}
+
+/** "Post outside links, publish projects and the Contributor badge". */
+function sentence(parts: string[]) {
+  const words = parts.map((p, i) => (i === 0 ? p : p.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase())))
+  const text = words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}` : words[0]
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+/** What each reputation tier unlocks, from the tiers the admins set (the database checks the same list). */
+function Unlocks() {
+  const caps = useCaps()
+  const rows = caps.tiers
+    .map((t) => {
+      const role = t.grantsRole ? caps.roles.find((r) => r.key === t.grantsRole) : null
+      const powers = t.caps.filter(isCap).map((c) => CAP_INFO[c].label)
+      return { key: t.key, label: t.label, min: t.minPoints, text: [...powers, ...(role ? [`the ${role.label} badge`] : [])] }
+    })
+    .filter((t) => t.text.length || t.min === 0)
+  if (!rows.length) return null
+  return (
+    <section aria-labelledby="unlocks-h" className="glass rounded-xl p-4">
+      <h2 id="unlocks-h" className="mb-1 font-sans text-sm font-semibold tracking-normal">
+        What points unlock
+      </h2>
+      <p className="mb-3 text-xs text-muted-foreground">Every member can start threads, reply, chat and send messages from day one. More opens up as you help.</p>
+      <ol className="flex flex-col gap-2.5">
+        {rows.map((t) => (
+          <li key={t.key} className="flex flex-col gap-0.5 text-sm">
+            <p className="flex items-baseline justify-between gap-3">
+              <span className="font-medium">{t.label}</span>
+              <span className="text-xs text-muted-foreground tabular">{compact(t.min)}+</span>
+            </p>
+            <p className="text-xs text-muted-foreground">{t.text.length ? sentence(t.text) : "Where everyone starts."}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }
 

@@ -1,22 +1,7 @@
 /**
- * The fixed lists behind the live pages: arXiv areas, the GitHub topics Nexverse follows, and the projects
+ * The fixed lists behind the live pages: the GitHub topics Nexverse follows, and the projects
  * whose releases it tracks. Plain data, safe to import from client components.
  */
-
-export const ARXIV_AREAS = [
-  { id: "cs.AI", label: "Artificial intelligence", short: "AI", blurb: "Reasoning, planning, agents and knowledge." },
-  { id: "cs.CL", label: "Computation and language", short: "Language", blurb: "Language models, translation, speech and text." },
-  { id: "cs.LG", label: "Machine learning", short: "Machine learning", blurb: "Training methods, theory and optimisation." },
-  { id: "cs.CV", label: "Computer vision", short: "Vision", blurb: "Images, video, 3D and multimodal models." },
-  { id: "cs.RO", label: "Robotics", short: "Robotics", blurb: "Manipulation, navigation and embodied agents." },
-  { id: "stat.ML", label: "Statistical machine learning", short: "Stats ML", blurb: "Probabilistic models, inference and learning theory." },
-] as const
-
-export type ArxivArea = (typeof ARXIV_AREAS)[number]["id"]
-
-export const isArxivArea = (s: string): s is ArxivArea => ARXIV_AREAS.some((a) => a.id === s)
-
-export const areaInfo = (id: string) => ARXIV_AREAS.find((a) => a.id === id)
 
 /** The topics Nexverse follows on GitHub, in the order they are shown. */
 export const GH_TOPICS = [

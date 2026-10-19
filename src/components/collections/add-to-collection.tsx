@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils"
 
 /**
  * "Add to collection": drop it next to a SaveButton for anything with a like/save key ("model:orbit-8b",
- * "thread:<id>", "paper:<encoded id>", "ghrepo:<encoded id>"…). Opens a dialog to put the item in (or take it
+ * "thread:<id>", "ghrepo:<encoded id>"…). Opens a dialog to put the item in (or take it
  * out of) your collections, or to start a new one with it. `variant="icon"` is a round icon-only button.
  */
 export function AddToCollection({ target, variant = "pill", className, label = "Collect" }: { target: string; variant?: "pill" | "icon"; className?: string; label?: string }) {

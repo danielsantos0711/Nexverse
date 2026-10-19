@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { ArrowDownIcon, MenuIcon, ShieldIcon, UsersIcon, XIcon } from "lucide-react"
+import { ArchiveIcon, ArrowDownIcon, LockIcon, MenuIcon, ShieldIcon, TimerIcon, UsersIcon, XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -22,6 +22,7 @@ import {
   listMessages,
   live,
   markRead,
+  roomRuleText,
   sendMessage,
   subscribeRoom,
   toggleReaction,
@@ -78,6 +79,25 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
   // Read the clock only in the browser (in the effect below), so the page can be prerendered.
   const [now, setNow] = useState(0)
   const [readMark, setReadMark] = useState<string | null>(null)
+  // Slow mode: when you may write again, and a clock that ticks only while you wait.
+  const [slowUntil, setSlowUntil] = useState(0)
+  const [tick, setTick] = useState(0)
+  const waiting = slowUntil > tick ? Math.ceil((slowUntil - tick) / 1000) : 0
+  useEffect(() => {
+    if (!slowUntil) return
+    const t = setInterval(() => {
+      const n = Date.now()
+      setTick(n)
+      if (n >= slowUntil) {
+        setSlowUntil(0)
+        clearInterval(t)
+      }
+    }, 500)
+    return () => clearInterval(t)
+  }, [slowUntil])
+  // Staff write everywhere; everyone else follows the room's rules (the database checks them too).
+  const exempt = role.isStaff || !live
+  const closed = room && !exempt ? (room.archived ? "archived" : room.locked ? "locked" : null) : null
 
   const scroller = useRef<HTMLDivElement>(null)
   const composer = useRef<ComposerHandle>(null)
@@ -304,7 +324,12 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
   }
 
   function send(body: string) {
-    if (!me) return
+    if (!me || waiting) return
+    if (room?.slowMode && !exempt) {
+      const n = Date.now()
+      setTick(n)
+      setSlowUntil(n + room.slowMode * 1000)
+    }
     const draft: ChatMessage = {
       id: crypto.randomUUID(),
       room: slug,
@@ -499,8 +524,9 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
           <h1 id="chat-room-title" className="truncate text-sm leading-tight font-semibold">
             {name}
           </h1>
-          {room?.topic && <p className="hidden truncate text-xs text-muted-foreground sm:block">{room.topic}</p>}
+          {room?.topic && <p className="truncate text-xs text-muted-foreground">{room.topic}</p>}
         </div>
+        <RoomRules room={room} />
         <button
           type="button"
           onClick={() => {
@@ -609,7 +635,18 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
               reason.
             </p>
           </div>
+        ) : canWrite && closed ? (
+          <div role="status" className="glass flex items-start gap-3 rounded-xl px-4 py-3 text-sm text-muted-foreground">
+            {closed === "archived" ? <ArchiveIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-gold" /> : <LockIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-gold" />}
+            <p>{roomRuleText(closed, room)}</p>
+          </div>
         ) : canWrite ? (
+          <>
+          {waiting > 0 && (
+            <p role="status" className="mb-1.5 flex items-center gap-1.5 px-1 text-xs text-gold">
+              <TimerIcon aria-hidden className="size-3.5" /> Slow mode: you can write again in {waiting} s.
+            </p>
+          )}
           <Composer
             ref={composer}
             room={slug}
@@ -619,7 +656,9 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
             onSend={send}
             onTyping={() => sub.current?.typing()}
             onEditLast={editLast}
+            hold={waiting > 0}
           />
+          </>
         ) : (
           <div className="glass flex flex-col items-start gap-2 rounded-xl px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">Anyone can read. Sign in with your email to join the conversation.</p>
@@ -653,6 +692,29 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
         </DialogContent>
       </Dialog>
     </section>
+  )
+}
+
+/** The room's rules, said honestly next to its name: locked, slow mode, team only, archived. */
+function RoomRules({ room }: { room: Room | undefined }) {
+  if (!room) return null
+  const rules = [
+    room.archived && { icon: ArchiveIcon, label: "Archived", hint: "Read only" },
+    room.locked && !room.archived && { icon: LockIcon, label: "Locked", hint: "Only the team writes here" },
+    room.staffOnly && { icon: ShieldIcon, label: "Team", hint: "Only the team can see this room" },
+    room.slowMode ? { icon: TimerIcon, label: `${room.slowMode} s`, hint: `Slow mode: one message every ${room.slowMode} seconds` } : null,
+  ].filter((r): r is { icon: typeof LockIcon; label: string; hint: string } => Boolean(r))
+  if (!rules.length) return null
+  return (
+    <ul aria-label="Room rules" className="flex shrink-0 items-center gap-1">
+      {rules.map((r) => (
+        <li key={r.label} title={r.hint} className="inline-flex items-center gap-1 rounded-full border border-gold/25 bg-gold/[0.07] px-2 py-0.5 text-[11px] text-gold">
+          <r.icon aria-hidden className="size-3" />
+          <span className="hidden sm:inline">{r.label}</span>
+          <span className="sr-only">: {r.hint}</span>
+        </li>
+      ))}
+    </ul>
   )
 }
 

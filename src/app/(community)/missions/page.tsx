@@ -5,7 +5,7 @@ import { MissionsView } from "@/components/missions/missions-view"
 
 export const metadata: Metadata = {
   title: "Missions",
-  description: "Challenges members post for each other, with reputation points for whoever builds it best: models, datasets, tools and papers.",
+  description: "Challenges members post for each other, with reputation points for whoever builds it best: models, datasets, tools and write-ups.",
 }
 
 export default function MissionsPage() {

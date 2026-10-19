@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { BarChart3Icon, LockIcon, XIcon } from "lucide-react"
 import { CategoryIcon } from "@/components/forum/category-icon"
 import { AiAssistButton } from "@/components/ai/ai-assist-button"
@@ -14,7 +14,9 @@ import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { createThread, mentionedMemberIds, normalizeTag, validatePoll, validateThread, type MentionCandidate, type NewPoll } from "@/lib/community"
-import { categoriesIn, categoryGroups, getCategory, getCategoryGroup, LANGUAGES, type LanguageCode } from "@/lib/data"
+import { useCaps } from "@/lib/caps"
+import { LANGUAGES, type LanguageCode } from "@/lib/data"
+import { findCategory, myReputation, postBlock, postBlockText, useForumMap, visibleGroups } from "@/lib/forum-categories"
 import { useRole } from "@/lib/roles"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
@@ -22,13 +24,10 @@ import { cn } from "@/lib/utils"
 
 const EMPTY_POLL: NewPoll = { prompt: "", options: ["", ""], multi: false }
 
-/** Categories only the team posts in (the database enforces it too, see …_forum_threads.sql). */
-const STAFF_ONLY = new Set(["announcements"])
-
 /** Start a forum thread in any language, with Markdown, tags, @mentions and an optional poll. Members only. */
 export function NewThread() {
   return (
-    <Gate action="start a thread">
+    <Gate cap="thread.create" action="start a thread">
       <NewThreadForm />
     </Gate>
   )
@@ -38,14 +37,35 @@ function NewThreadForm() {
   const params = useSearchParams()
   const router = useRouter()
   const reduce = useReducedMotion()
-  const { ready } = useSession()
+  const { ready, user } = useSession()
   const { isStaff } = useRole()
+  const caps = useCaps()
+  const map = useForumMap()
+  const groups = visibleGroups(map)
+  const needsRep = map.categories.some((c) => c.minReputation > 0)
+  const [reputation, setReputation] = useState<number | null>(null)
+  useEffect(() => {
+    if (!needsRep || !user) return
+    let on = true
+    void myReputation(user.id).then((p) => on && setReputation(p))
+    return () => {
+      on = false
+    }
+  }, [needsRep, user])
+  // Why a category takes no thread from you (archived, team only, reputation), or null when it does.
+  const blockOf = (slug: string) => {
+    const c = findCategory(map, slug)
+    return c && live ? postBlock(c, { id: user?.id ?? null, isStaff, can: caps.can, reputation }) : c?.archived ? "archived" : null
+  }
   const [title, setTitle] = useState((params.get("title") ?? "").slice(0, 300))
   const [body, setBody] = useState((params.get("body") ?? "").slice(0, 20000))
   // Old links may carry a first-version community slug; unknown ones fall back to Help.
-  const asked = getCategory(params.get("c") ?? "")?.slug
-  const [cat, setCat] = useState(asked && (isStaff || !STAFF_ONLY.has(asked)) ? asked : "help")
-  const chosen = getCategory(cat)
+  const asked = findCategory(map, params.get("c") ?? "")?.slug
+  const [chosenSlug, setCat] = useState<string | null>(null)
+  // Until you pick one: the category the link asked for, when you may post there, or Help.
+  const cat = chosenSlug ?? (asked && !blockOf(asked) ? asked : (findCategory(map, "help")?.slug ?? map.categories.find((c) => !c.hidden && !blockOf(c.slug))?.slug ?? "help"))
+  const chosen = findCategory(map, cat)
+  const chosenBlock = blockOf(cat)
   const [lang, setLang] = useState<LanguageCode>("en")
   const [tags, setTags] = useState<string[]>(() => (params.get("tag") ? [normalizeTag(params.get("tag")!)].filter(Boolean) : []))
   const [picked, setPicked] = useState<MentionCandidate[]>([])
@@ -56,6 +76,10 @@ function NewThreadForm() {
   async function submit(e?: React.FormEvent) {
     e?.preventDefault()
     if (busy) return
+    if (chosenBlock && chosen) {
+      setErrors({ form: postBlockText(chosenBlock, chosen) })
+      return
+    }
     const titleError = validateThread({ title, body, tags })
     const pollError = poll ? validatePoll(poll) : null
     setErrors({ title: titleError ?? undefined, poll: pollError ?? undefined })
@@ -85,19 +109,20 @@ function NewThreadForm() {
           <FieldLegend variant="label">Category</FieldLegend>
           <FieldDescription>Pick the closest fit. You can browse each category on the forum page first.</FieldDescription>
           <div className="flex flex-col gap-4">
-            {categoryGroups.map((g) => (
+            {groups.map(({ group: g, categories }) => (
               <div key={g.slug} role="radiogroup" aria-labelledby={`grp-${g.slug}`} className="flex flex-col gap-2">
                 <p id={`grp-${g.slug}`} className="text-xs font-medium text-muted-foreground">
                   {g.name}
                 </p>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                  {categoriesIn(g.slug).map((c) => {
+                  {categories.map((c) => {
                     const on = cat === c.slug
-                    const closed = STAFF_ONLY.has(c.slug) && !isStaff
+                    const block = blockOf(c.slug)
+                    const closed = Boolean(block)
                     return (
                       <label
                         key={c.slug}
-                        title={closed ? "Only the Nexverse team posts here" : undefined}
+                        title={block ? postBlockText(block, c) : undefined}
                         className={cn(
                           "pressable flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring",
                           closed ? "cursor-not-allowed border-border/60 text-muted-foreground/60" : "cursor-pointer",
@@ -110,7 +135,7 @@ function NewThreadForm() {
                         {closed && (
                           <>
                             <LockIcon aria-hidden className="ml-auto size-3.5 shrink-0" />
-                            <span className="sr-only">(team only)</span>
+                            <span className="sr-only">({block === "staff" ? "team only" : block === "archived" ? "archived" : block === "reputation" ? `needs ${c.minReputation} reputation` : "closed to you"})</span>
                           </>
                         )}
                       </label>
@@ -123,8 +148,8 @@ function NewThreadForm() {
           {chosen && (
             <p aria-live="polite" className="rounded-lg border border-ion/20 bg-ion/[0.06] px-3 py-2 text-sm">
               <span className="font-medium text-ion">{chosen.name}</span>
-              <span className="text-muted-foreground"> · {getCategoryGroup(chosen.group)?.name}. </span>
-              {chosen.blurb}
+              <span className="text-muted-foreground"> · {map.groups.find((g) => g.slug === chosen.group)?.name}. </span>
+              {chosenBlock ? postBlockText(chosenBlock, chosen) : chosen.blurb}
             </p>
           )}
         </FieldSet>

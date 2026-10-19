@@ -1,7 +1,7 @@
 /**
- * Identifiers and in-site addresses for external items. Every GitHub repository, GitHub topic and arXiv paper
- * has its own page on Nexverse; these helpers validate the ids that reach those routes and map external URLs
- * (in READMEs, abstracts and feeds) onto them.
+ * Identifiers and in-site addresses for external items. Every GitHub repository and GitHub topic has its own
+ * page on Nexverse; these helpers validate the ids that reach those routes and map external URLs (in READMEs
+ * and feeds) onto them. arXiv papers are not mirrored: they link to arXiv itself.
  */
 import { isOffSite, isOffSiteOwner } from "./http"
 
@@ -67,7 +67,8 @@ export const ghBlobHref = (owner: string, repo: string, ref: string, path: strin
 export const ghTreeHref = (owner: string, repo: string, ref: string, path: string) =>
   path ? `/gh/${owner}/${repo}/tree/${encodeURIComponent(ref)}/${encPath(path)}` : ghHref(owner, repo)
 export const ghTopicHref = (topic: string) => `/gh/topics/${topic}`
-export const paperHref = (id: string) => `/papers/${id.includes("/") ? encodeURIComponent(id) : id}`
+/** A paper's own page on arXiv (Nexverse does not mirror papers). */
+export const paperHref = (id: string) => `https://arxiv.org/abs/${id}`
 
 /** The forum's new-thread page, prefilled with a title and a body that links back to the item's page. */
 export function discussItemHref(title: string, body: string) {
@@ -82,8 +83,8 @@ const GH_RESERVED = new Set([
 ])
 
 /**
- * Maps an external URL to its Nexverse page when we have one: GitHub repositories (and their files), GitHub
- * topics and arXiv papers. Returns null otherwise.
+ * Maps an external URL to its Nexverse page when we have one: GitHub repositories (and their files) and GitHub
+ * topics. Returns null otherwise (arXiv links stay links to arXiv).
  */
 export function internalHref(url: string): string | null {
   let u: URL
@@ -113,15 +114,6 @@ export function internalHref(url: string): string | null {
       if (path) return ghBlobHref(owner, repo, ref, path)
     }
     return ghHref(owner, repo)
-  }
-
-  if (host === "arxiv.org" || host === "export.arxiv.org") {
-    const [mode, ...rest] = parts
-    if (mode === "abs" || mode === "pdf" || mode === "html") {
-      const id = rest.join("/").replace(/\.pdf$/, "")
-      if (isArxivId(id)) return paperHref(id)
-    }
-    return null
   }
 
   return null
@@ -174,7 +166,8 @@ export function liveTarget(type: LiveTargetType, id: string): string | null {
 }
 
 /**
- * A label and in-site link for a live target key, for the Saved page and notifications. Returns null for keys
+ * A label and link for a live target key, for the Saved page and notifications (papers saved before Nexverse
+ * stopped mirroring them link to arXiv). Returns null for keys
  * that are not live targets, so callers can fall through to their own catalogue.
  */
 export function describeLiveTarget(target: string): { type: LiveTargetType; id: string; label: string; href: string } | null {

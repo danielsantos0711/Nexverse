@@ -73,7 +73,7 @@ export type Benchmark = {
   max: number
   /** How far a reproduction may land from the reported score and still count (same as public.benchmark_tolerance). */
   tolerance: number
-  /** The paper that introduced it, opened on Nexverse's paper page. */
+  /** The arXiv id of the paper that introduced it, linked on arXiv itself. */
   arxiv: string
   /** The usual number of examples in the prompt, as a hint in the form. */
   usualShots?: number

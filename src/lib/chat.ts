@@ -14,7 +14,28 @@ export const EMOJIS = ["👍", "❤️", "🎉", "🚀", "👀", "🤔", "😂",
 export type Emoji = (typeof EMOJIS)[number]
 export const ROOM_SLUG = /^[a-z0-9-]{2,40}$/
 
-export type Room = { slug: string; name: string; topic: string; createdBy: string | null; createdAt: string }
+export type Room = {
+  slug: string
+  name: string
+  topic: string
+  createdBy: string | null
+  createdAt: string
+  /** The rules the admins set (…_cms.sql). Older databases have none of them, which reads as an open room. */
+  position?: number
+  /** Seconds a member waits between two messages; 0 is off. */
+  slowMode?: number
+  /** Only staff write; everyone else reads. */
+  locked?: boolean
+  /** Read only, and listed apart from the active rooms. */
+  archived?: boolean
+  /** Only staff see the room at all. */
+  staffOnly?: boolean
+  /** Reputation a member needs to write. */
+  minReputation?: number
+}
+
+/** The rules columns, read when the database has them. */
+const RULE_COLUMNS = "position, slow_mode_seconds, locked, archived, staff_only, min_reputation"
 
 export type Reaction = { emoji: Emoji; userId: string }
 
@@ -124,7 +145,19 @@ const AUTHOR = "author:profiles!room_messages_author_id_fkey(id, name)"
 const MESSAGE_COLUMNS = `id, room, body, created_at, edited_at, reply_to, ${AUTHOR}, parent:reply_to(id, body, ${AUTHOR}), reactions:message_reactions(emoji, user_id)`
 const ROOM_COLUMNS = "slug, name, topic, created_by, created_at"
 
-type RoomRow = { slug: string; name: string; topic: string; created_by: string | null; created_at: string }
+type RoomRow = {
+  slug: string
+  name: string
+  topic: string
+  created_by: string | null
+  created_at: string
+  position?: number
+  slow_mode_seconds?: number
+  locked?: boolean
+  archived?: boolean
+  staff_only?: boolean
+  min_reputation?: number
+}
 type MessageRow = {
   id: string
   room: string
@@ -138,7 +171,19 @@ type MessageRow = {
   hidden_at?: string | null
 }
 
-const fromRoomRow = (r: RoomRow): Room => ({ slug: r.slug, name: r.name, topic: r.topic, createdBy: r.created_by, createdAt: r.created_at })
+const fromRoomRow = (r: RoomRow): Room => ({
+  slug: r.slug,
+  name: r.name,
+  topic: r.topic,
+  createdBy: r.created_by,
+  createdAt: r.created_at,
+  position: r.position,
+  slowMode: r.slow_mode_seconds ?? 0,
+  locked: r.locked ?? false,
+  archived: r.archived ?? false,
+  staffOnly: r.staff_only ?? false,
+  minReputation: r.min_reputation ?? 0,
+})
 
 function fromMessageRow(r: MessageRow): ChatMessage {
   return {
@@ -203,13 +248,26 @@ function localRooms(): Room[] {
   return [...DEFAULT_ROOMS, ...extra.filter((r) => !DEFAULT_ROOMS.some((d) => d.slug === r.slug))]
 }
 
-/** The lobby first, then the starting rooms in their order, then members' rooms oldest first. */
+/** The admins' order when the database has one; otherwise the lobby first, the starting rooms, then the rest oldest first. */
 function sortRooms(rooms: Room[]) {
-  const order = (slug: string) => {
-    const i = DEFAULT_ROOMS.findIndex((r) => r.slug === slug)
+  const order = (r: Room) => {
+    if (typeof r.position === "number") return r.position
+    const i = DEFAULT_ROOMS.findIndex((d) => d.slug === r.slug)
     return i === -1 ? DEFAULT_ROOMS.length : i
   }
-  return [...rooms].sort((a, b) => order(a.slug) - order(b.slug) || a.createdAt.localeCompare(b.createdAt))
+  return [...rooms].sort((a, b) => order(a) - order(b) || a.createdAt.localeCompare(b.createdAt))
+}
+
+// Whether this database has the rules columns; a missing column is remembered and later reads skip them.
+let ruleColumns = true
+
+async function selectRooms<T>(run: (columns: string) => PromiseLike<{ data: T; error: { message: string; code?: string } | null }>) {
+  if (ruleColumns) {
+    const res = await run(`${ROOM_COLUMNS}, ${RULE_COLUMNS}`)
+    if (res.error?.code !== "42703") return res
+    ruleColumns = false
+  }
+  return run(ROOM_COLUMNS)
 }
 
 let roomsCache: Room[] | null = null
@@ -220,9 +278,9 @@ export const cachedRooms = () => roomsCache ?? DEFAULT_ROOMS
 export async function listRooms(): Promise<Room[]> {
   const client = db()
   if (!client) return (roomsCache = localRooms())
-  const { data, error } = await client.from("rooms").select(ROOM_COLUMNS).order("created_at").limit(200)
+  const { data, error } = await selectRooms((columns) => client.from("rooms").select(columns).order("created_at").limit(200))
   fail(error)
-  return (roomsCache = sortRooms((data as RoomRow[]).map(fromRoomRow)))
+  return (roomsCache = sortRooms((data as unknown as RoomRow[]).map(fromRoomRow)))
 }
 
 export async function getRoom(slug: string): Promise<Room | null> {
@@ -230,9 +288,40 @@ export async function getRoom(slug: string): Promise<Room | null> {
   if (cached) return cached
   const client = db()
   if (!client) return localRooms().find((r) => r.slug === slug) ?? null
-  const { data, error } = await client.from("rooms").select(ROOM_COLUMNS).eq("slug", slug).maybeSingle()
+  const { data, error } = await selectRooms((columns) => client.from("rooms").select(columns).eq("slug", slug).maybeSingle())
   fail(error)
-  return data ? fromRoomRow(data as RoomRow) : null
+  return data ? fromRoomRow(data as unknown as RoomRow) : null
+}
+
+/** Changes a public room's name, topic or rules (chat managers only; the database checks). */
+export async function updateRoom(slug: string, patch: Partial<Pick<Room, "name" | "topic" | "slowMode" | "locked" | "archived" | "staffOnly" | "minReputation">>) {
+  const client = db()
+  if (!client) throw new Error("Managing rooms needs the database. Connect Supabase first.")
+  const row: Record<string, unknown> = {}
+  if (patch.name !== undefined) row.name = patch.name.trim()
+  if (patch.topic !== undefined) row.topic = patch.topic.trim()
+  if (patch.slowMode !== undefined) row.slow_mode_seconds = Math.max(0, Math.min(3600, Math.round(patch.slowMode)))
+  if (patch.locked !== undefined) row.locked = patch.locked
+  if (patch.archived !== undefined) row.archived = patch.archived
+  if (patch.staffOnly !== undefined) row.staff_only = patch.staffOnly
+  if (patch.minReputation !== undefined) row.min_reputation = Math.max(0, Math.round(patch.minReputation))
+  const { data, error } = await client.from("rooms").update(row).eq("slug", slug).select(`${ROOM_COLUMNS}, ${RULE_COLUMNS}`).maybeSingle()
+  if (error?.code === "42703") throw new Error("Room rules are not switched on in the database yet (migration …_cms.sql).")
+  if (error?.code === "42501" || (!error && !data)) throw new Error("Your account cannot manage chat rooms.")
+  fail(error)
+  const room = fromRoomRow(data as unknown as RoomRow)
+  roomsCache = sortRooms([...(roomsCache ?? []).filter((r) => r.slug !== slug), room])
+  return room
+}
+
+/** Saves the rooms' order in one call (one line in the moderation log). */
+export async function reorderRooms(slugs: string[]) {
+  const client = db()
+  if (!client) throw new Error("Managing rooms needs the database. Connect Supabase first.")
+  const { error } = await client.rpc("cms_reorder", { what: "rooms", slugs })
+  if (error && /cms_reorder|schema cache/.test(error.message)) throw new Error("Room order is not switched on in the database yet (migration …_cms.sql).")
+  fail(error)
+  roomsCache = sortRooms((roomsCache ?? []).map((r) => (slugs.includes(r.slug) ? { ...r, position: slugs.indexOf(r.slug) } : r)))
 }
 
 export async function createRoom(input: { slug: string; name: string; topic: string }): Promise<Room> {
@@ -331,6 +420,7 @@ export async function sendMessage(
     .insert({ id, room, body: text, reply_to: replyTo })
     .select(MESSAGE_COLUMNS)
     .single()
+  if (error?.code === "42501") throw new Error(await whyNot(room))
   if (error?.code === "23505") {
     // The first attempt reached the database; only its answer was lost.
     const existing = await getMessage(id)
@@ -340,6 +430,36 @@ export async function sendMessage(
   const m = fromMessageRow(data as unknown as MessageRow)
   remember(m)
   return m
+}
+
+/** What keeps you from writing in a room right now, as the database sees it, in a sentence. */
+async function whyNot(room: string) {
+  const client = db()
+  const fallback = "Your message was not sent. Sign in, or check the room's rules."
+  if (!client) return fallback
+  const { data, error } = await client.rpc("chat_post_block", { room_slug: room })
+  if (error || typeof data !== "string") return fallback
+  return roomRuleText(data) ?? fallback
+}
+
+/** A room rule (from chat_post_block) in plain words. "slow:12" means: wait 12 seconds. */
+export function roomRuleText(block: string | null, room?: Room): string | null {
+  if (!block) return null
+  if (block.startsWith("slow:")) return `Slow mode is on here. You can write again in ${block.slice(5)} s.`
+  switch (block) {
+    case "archived":
+      return "This room is archived. You can read it, but it takes no new messages."
+    case "locked":
+      return "This room is locked. Only the team writes here; everyone can read."
+    case "staff":
+      return "This room is for the team."
+    case "reputation":
+      return `Writing here needs ${room?.minReputation ? room.minReputation.toLocaleString("en") + " " : ""}reputation. Help out in the forum to get there.`
+    case "cap":
+      return "Your account cannot write in chat rooms."
+    default:
+      return null
+  }
 }
 
 export async function editMessage(id: string, room: string, body: string): Promise<{ body: string; editedAt: string | null }> {
@@ -625,7 +745,8 @@ export function subscribeLobby(room: string, member: Member | null, handlers: Lo
       if (!client) return buildLocalLobby(entry, dispatch)
       const channel = realtimeChannel(client, topic)
       channel
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "rooms" }, (p) => {
+        .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, (p) => {
+          if (p.eventType === "DELETE") return
           const r = fromRoomRow(p.new as RoomRow)
           roomsCache = sortRooms([...(roomsCache ?? []).filter((x) => x.slug !== r.slug), r])
           dispatch("onRoom", r)

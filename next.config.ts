@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
       { source: "/orbits/:slug*", destination: "/forum", permanent: true },
       { source: "/signal", destination: "/news", permanent: true },
       { source: "/artifacts/:slug", destination: "/explore", permanent: true },
+      // Papers were replaced by the Nexverse newsroom (round 8).
+      { source: "/papers", destination: "/news", permanent: true },
+      { source: "/papers/:path*", destination: "/news", permanent: true },
     ];
   },
   turbopack: {

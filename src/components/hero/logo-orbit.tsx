@@ -6,6 +6,7 @@ import Link from "next/link"
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "motion/react"
 import { useEffect, useRef, useState } from "react"
 import { BoxIcon, DatabaseIcon, FolderGit2Icon, MessageSquareIcon, MessagesSquareIcon, WrenchIcon, type LucideIcon } from "lucide-react"
+import { LoopVideo } from "@/components/fx/loop-video"
 import type { HeroEffect, MotionLevel } from "@/lib/site-settings"
 import { cn } from "@/lib/utils"
 
@@ -36,8 +37,8 @@ type Status = "loading" | "ready" | "lost" | "failed"
  * pointer, a highlight follows the pointer across its metal, a band of light sweeps it, and the sections of
  * the site orbit it as moons you can click.
  *
- * `effect` is the admins' choice: "galaxy" (the WebGL galaxy turns behind the N), "orbit" (no WebGL: a still
- * galaxy, the moons still turn) or "still" (nothing moves). `motion` is the site's motion level; "calm" slows
+ * `effect` is the admins' choice: "galaxy" (the WebGL galaxy turns behind the N), "orbit" (no WebGL: the
+ * galaxy turns as a light looped film, the moons still turn; also the fallback when WebGL fails) or "still" (nothing moves). `motion` is the site's motion level; "calm" slows
  * everything down and "off", like the visitor's own reduced-motion setting, gives the still version.
  */
 export function LogoOrbit({ className, effect = "galaxy", motion: level = "full" }: { className?: string; effect?: HeroEffect; motion?: MotionLevel }) {
@@ -87,8 +88,11 @@ export function LogoOrbit({ className, effect = "galaxy", motion: level = "full"
           alt=""
           fill
           sizes="(min-width: 640px) 80rem, 200vw"
-          className={cn("object-cover transition-opacity duration-700", webgl && status === "ready" ? "opacity-0" : "opacity-100")}
+          className={cn("object-cover transition-opacity duration-700", (webgl && status === "ready") || (!webgl && !still) ? "opacity-0" : "opacity-100")}
         />
+        {/* no WebGL (the admins chose "orbit", or the browser has none): the galaxy still turns, as a light
+            looped film of it, played only while it is on screen (its poster is the same still) */}
+        {!webgl && !still && <LoopVideo name="galaxy" />}
         {webgl && (
           <div className={cn("absolute inset-0 transition-opacity duration-700", status === "ready" ? "opacity-100" : "opacity-0")}>
             <Galaxy density={calm ? 40 : 55} speed={calm ? 20 : 45} turbulence={calm ? 30 : 60} still={still} onStatus={setStatus} />

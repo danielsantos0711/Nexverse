@@ -7,37 +7,43 @@ import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, PlusIcon } from "lucide-react
 import { CategoryIcon } from "@/components/forum/category-icon"
 import { PersonAvatar } from "@/components/hub/bits"
 import { InterestPicker } from "@/components/settings/interest-picker"
+import { suggestHandle, useHandleCheck, WelcomeProfile, type ProfileDraft } from "@/components/settings/welcome-profile"
 import { SignInPrompt } from "@/components/studio/ui"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { categories } from "@/lib/data"
 import { listMembers, type PublicMember } from "@/lib/people"
-import { completeOnboarding, useProfile } from "@/lib/profile"
+import { completeOnboarding, updateProfile, useProfile, type Profile } from "@/lib/profile"
 import { listFollowing, toggleFollow } from "@/lib/social"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
-const STEPS = ["Interests", "Follow", "Done"] as const
+const STEPS = ["Profile", "Interests", "Follow", "Done"] as const
+const LAST = STEPS.length - 1
 const EASE = [0.23, 1, 0.32, 1] as const
 
-/** First-run onboarding: pick interests, follow a few categories and people, then land on For you. */
+/** First-run onboarding: how others see you, your interests, a few categories and people to follow, then For you. */
 export function WelcomeFlow() {
   const session = useSession()
   const { ready, profile } = useProfile()
   if (live && session.ready && !session.user) {
-    return <SignInPrompt title="Sign in to set up your feed" detail="It takes an email address and nothing else." next="/welcome" />
+    return <SignInPrompt title="Sign in to set up your profile and feed" detail="Sign in, or create a free account, and this page walks you through your name, handle, picture and interests." next="/welcome" />
   }
   if (!ready || !profile) return <WelcomeSkeleton />
-  return <Flow key={profile.id} initialInterests={profile.interests} userId={session.user?.id ?? null} name={profile.name} />
+  return <Flow key={profile.id} profile={profile} userId={session.user?.id ?? null} />
 }
 
-function Flow({ initialInterests, userId, name }: { initialInterests: string[]; userId: string | null; name: string }) {
+function Flow({ profile, userId }: { profile: Profile; userId: string | null }) {
   const router = useRouter()
   const reduce = useReducedMotion()
   const [step, setStep] = useState(0)
   const [dir, setDir] = useState(1)
-  const [interests, setInterests] = useState(initialInterests)
+  const [interests, setInterests] = useState(profile.interests)
+  const [savedDraft, setSavedDraft] = useState<ProfileDraft>(() => ({ name: profile.name, handle: profile.handle ?? "", bio: profile.bio }))
+  const [draft, setDraft] = useState<ProfileDraft>(() => ({ ...savedDraft, handle: profile.handle ?? suggestHandle(profile.name) }))
+  const handleState = useHandleCheck(draft.handle, profile.handle)
+  const name = draft.name.trim() || profile.name
   const [existing, setExisting] = useState<Set<string> | null>(null)
   const [follows, setFollows] = useState<Set<string>>(new Set())
   const [touched, setTouched] = useState(false)
@@ -78,10 +84,28 @@ function Flow({ initialInterests, userId, name }: { initialInterests: string[]; 
     setMoved(true)
     setError("")
     // The categories you picked as interests start out followed, until you change them yourself.
-    if (to === 1 && !touched) {
+    if (to === 2 && !touched) {
       setFollows((cur) => new Set([...cur, ...interests.filter((i) => i.startsWith("category:"))]))
     }
     setStep(to)
+  }
+
+  /** Saves the profile step when you continue from it. A taken handle keeps you on the step to change it. */
+  async function saveProfile() {
+    const changed = JSON.stringify(draft) !== JSON.stringify(savedDraft)
+    if (!changed) return go(1)
+    if (!draft.name.trim()) return setError("Your name cannot be empty.")
+    setBusy(true)
+    setError("")
+    try {
+      await updateProfile({ name: draft.name.trim(), handle: draft.handle || null, bio: draft.bio.trim() })
+      setSavedDraft(draft)
+      go(1)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
   }
 
   function toggle(followee: string) {
@@ -148,11 +172,17 @@ function Flow({ initialInterests, userId, name }: { initialInterests: string[]; 
           <motion.div key={step} custom={dir} variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: EASE }} className="flex flex-col gap-6 p-5 md:p-7">
             {step === 0 && (
               <>
-                <StepHead focus={moved} title={`Welcome, ${name.split(/\s+/)[0]}. What are you into?`} lead="Pick a few. They shape your For you page, and you can change them any time in settings." />
-                <InterestPicker value={interests} onChange={setInterests} />
+                <StepHead focus={moved} title={`Welcome, ${name.split(/\s+/)[0]}. How should people see you?`} lead="All of this is optional and can be changed any time in settings." />
+                <WelcomeProfile profile={profile} draft={draft} onChange={setDraft} handleState={handleState} />
               </>
             )}
             {step === 1 && (
+              <>
+                <StepHead focus={moved} title="What are you into?" lead="Pick a few. They shape your For you page, and you can change them any time in settings." />
+                <InterestPicker value={interests} onChange={setInterests} />
+              </>
+            )}
+            {step === 2 && (
               <>
                 <StepHead focus={moved} title={members.length ? "Follow a few categories and people" : "Follow a few categories"} lead="New threads, projects and links from what you follow show up in For you." />
                 <section aria-labelledby="w-cats" className="flex flex-col gap-3">
@@ -221,7 +251,7 @@ function Flow({ initialInterests, userId, name }: { initialInterests: string[]; 
                 )}
               </>
             )}
-            {step === 2 && (
+            {step === LAST && (
               <>
                 <StepHead focus={moved} title="You are all set" lead="Here is what your feed starts from. Everything can be changed later in settings." />
                 <dl className="grid grid-cols-3 gap-2.5">
@@ -244,13 +274,17 @@ function Flow({ initialInterests, userId, name }: { initialInterests: string[]; 
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {step < 2 && (
-              <Button variant="ghost" onClick={() => go(step + 1)}>
+            {step < LAST && (
+              <Button variant="ghost" onClick={() => go(step + 1)} disabled={busy}>
                 Skip
               </Button>
             )}
-            {step < 2 ? (
-              <Button onClick={() => go(step + 1)} disabled={step === 1 && existing === null}>
+            {step === 0 ? (
+              <Button onClick={saveProfile} disabled={busy || handleState === "taken" || handleState === "invalid" || handleState === "checking"}>
+                {busy ? "Saving…" : "Continue"} <ArrowRightIcon aria-hidden />
+              </Button>
+            ) : step < LAST ? (
+              <Button onClick={() => go(step + 1)} disabled={step === 2 && existing === null}>
                 Continue <ArrowRightIcon aria-hidden />
               </Button>
             ) : (
@@ -264,9 +298,11 @@ function Flow({ initialInterests, userId, name }: { initialInterests: string[]; 
       {error && (
         <div role="alert" className="flex flex-col items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
           <p>{error}</p>
-          <Button variant="secondary" size="sm" onClick={() => router.push("/for-you")}>
-            Continue anyway
-          </Button>
+          {step === LAST && (
+            <Button variant="secondary" size="sm" onClick={() => router.push("/for-you")}>
+              Continue anyway
+            </Button>
+          )}
         </div>
       )}
     </div>

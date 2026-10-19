@@ -21,7 +21,7 @@ export type FeatureKey =
   | "crews"
   | "messages"
   | "events"
-  | "video"
+  | "code"
   | "ai"
 export type Accent = "ion" | "aurora" | "nova" | "solar" | "plasma"
 export type MotionLevel = "full" | "calm" | "off"
@@ -62,7 +62,7 @@ export const FEATURES: { key: FeatureKey; label: string; href: string }[] = [
   { key: "crews", label: "Crews", href: "/crews" },
   { key: "messages", label: "Direct messages", href: "/messages" },
   { key: "events", label: "Events", href: "/events" },
-  { key: "video", label: "Video", href: "/video" },
+  { key: "code", label: "Code", href: "/code" },
   { key: "ai", label: "AI assist", href: "/settings" },
 ]
 
@@ -100,8 +100,9 @@ function merge(saved: Partial<Record<SettingKey, unknown>>): SiteSettings {
   return out as SiteSettings
 }
 
-type State = { settings: SiteSettings; ready: boolean }
-const SERVER: State = { settings: DEFAULTS, ready: false }
+/** `rows` keeps every saved row as it is, including sections other modules own (such as "menus", see lib/menus.ts). */
+type State = { settings: SiteSettings; ready: boolean; rows: Record<string, unknown> }
+const SERVER: State = { settings: DEFAULTS, ready: false, rows: {} }
 let state: State = SERVER
 let started = false
 const listeners = new Set<() => void>()
@@ -119,16 +120,17 @@ function subscribe(l: () => void) {
 async function load() {
   const c = db()
   if (!c) {
-    set({ settings: DEFAULTS, ready: true })
+    set({ settings: DEFAULTS, ready: true, rows: {} })
     return
   }
   const { data, error } = await c.from("site_settings").select("key, value")
   if (error || !data) {
     // The table may not exist yet on this database; the defaults still describe a complete site.
-    set({ settings: DEFAULTS, ready: true })
+    set({ settings: DEFAULTS, ready: true, rows: {} })
     return
   }
-  set({ settings: merge(Object.fromEntries(data.map((r) => [r.key, r.value]))), ready: true })
+  const rows = Object.fromEntries(data.map((r) => [r.key, r.value]))
+  set({ settings: merge(rows), ready: true, rows })
 }
 
 function start() {
@@ -158,7 +160,16 @@ export async function saveSiteSetting<K extends SettingKey>(key: K, value: SiteS
   if (!c) throw new Error("Site settings need the database. Connect Supabase to save them.")
   const { error } = await c.from("site_settings").upsert({ key, value }, { onConflict: "key" })
   if (error) throw new Error(error.message)
-  set({ settings: { ...state.settings, [key]: value }, ready: true })
+  set({ settings: { ...state.settings, [key]: value }, ready: true, rows: { ...state.rows, [key]: value } })
+}
+
+/** Saves a row another module owns (its own shape and checks), such as "menus". The database decides who may. */
+export async function saveSettingRow(key: string, value: unknown) {
+  const c = db()
+  if (!c) throw new Error("Site settings need the database. Connect Supabase to save them.")
+  const { error } = await c.from("site_settings").upsert({ key, value }, { onConflict: "key" })
+  if (error) throw new Error(/row-level security/i.test(error.message) ? "Your account cannot save this." : error.message)
+  set({ ...state, rows: { ...state.rows, [key]: value } })
 }
 
 export const canSaveSettings = () => live

@@ -23,7 +23,7 @@ export const SAVED_GROUPS = [
   { id: "thread", label: "Threads" },
   { id: "news", label: "News" },
   { id: "collection", label: "Collections" },
-  { id: "live", label: "GitHub, papers and Lab tools" },
+  { id: "live", label: "GitHub and Lab tools" },
   { id: "gone", label: "No longer available" },
 ] as const
 type GroupId = (typeof SAVED_GROUPS)[number]["id"]

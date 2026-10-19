@@ -39,7 +39,7 @@ export function ModerationHint({
   const abort = useRef<AbortController | null>(null)
 
   if (!ready || !isStaff || !status.ready) return null
-  if (!status.enabled) return <AiSetupNotice compact className={className} />
+  if (!status.enabled || status.jobs.moderation === false) return <AiSetupNotice compact className={className} />
 
   async function run() {
     abort.current?.abort()
@@ -108,7 +108,7 @@ export function AiSetupNotice({ compact = false, className }: { compact?: boolea
         <p className="text-muted-foreground">
           {status.enabled
             ? "Members can rewrite and translate drafts, summarize threads and draft news; staff get AI triage in the reports queue. Each member has a daily limit."
-            : "To turn it on, add ANTHROPIC_API_KEY in the Vercel project settings (Environment Variables) and redeploy. Optional: AI_MODEL and AI_DAILY_LIMIT. Until then, no AI buttons are shown to members."}
+            : "It runs on free AI providers only. An admin adds at least one free key (Gemini, Groq, OpenRouter, Cloudflare or Mistral) in the Vercel project settings and redeploys; /admin/ai lists exactly which keys and where to get them. Until then, no AI buttons are shown to members."}
         </p>
       </div>
     </div>

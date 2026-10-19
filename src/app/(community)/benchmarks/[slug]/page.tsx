@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { ArrowDownIcon, ArrowUpIcon, FileTextIcon } from "lucide-react"
@@ -43,9 +42,14 @@ async function Benchmark({ params }: { params: PageProps<"/benchmarks/[slug]">["
         </li>
         {b.usualShots !== undefined && <li className="rounded-full border border-border px-2.5 py-1">Usually {b.usualShots}-shot</li>}
         <li>
-          <Link href={`/papers/${b.arxiv}`} className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 transition-colors hover:border-ion/40 hover:text-foreground">
-            <FileTextIcon aria-hidden className="size-3" /> The paper
-          </Link>
+          <a
+            href={`https://arxiv.org/abs/${b.arxiv}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 transition-colors hover:border-ion/40 hover:text-foreground"
+          >
+            <FileTextIcon aria-hidden className="size-3" /> The paper on arXiv
+          </a>
         </li>
       </ul>
       <BenchmarkDetail slug={b.slug} />

@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export const metadata: Metadata = {
   title: "Constellations",
-  description: "Members' collections drawn as star maps: the models, datasets, papers and repos that make one idea work, in the order to read them.",
+  description: "Members' collections drawn as star maps: the models, datasets, tools and repos that make one idea work, in the order to read them.",
 }
 
 export default function ConstellationsPage() {

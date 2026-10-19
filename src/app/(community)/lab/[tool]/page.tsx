@@ -4,10 +4,20 @@ import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { CardBuilder } from "@/components/lab/card-builder"
+import { ContextCalculator } from "@/components/lab/context-calculator"
+import { EmbeddingSimilarity } from "@/components/lab/embedding-similarity"
+import { FineTuneCalculator } from "@/components/lab/fine-tune-calculator"
+import { InferenceCost } from "@/components/lab/inference-cost"
+import { JsonSchemaBuilder } from "@/components/lab/json-schema-builder"
 import { LicenceChecker } from "@/components/lab/licence-checker"
+import { LicenceCompare } from "@/components/lab/licence-compare"
 import { PromptPlayground } from "@/components/lab/prompt-playground"
+import { Quantization } from "@/components/lab/quantization"
+import { RagChunker } from "@/components/lab/rag-chunker"
+import { RegexTester } from "@/components/lab/regex-tester"
 import { TokenCost } from "@/components/lab/token-cost"
-import { getLabTool, LAB_TOOLS, labPath, type LabToolSlug } from "@/components/lab/tools"
+import { TokenCounter } from "@/components/lab/token-counter"
+import { CATEGORIES, getLabTool, LAB_TOOLS, labPath, type LabToolSlug } from "@/components/lab/tools"
 import { VramCalculator } from "@/components/lab/vram-calculator"
 import { DiscussButton } from "@/components/social/discuss-button"
 import { SaveButton } from "@/components/social/save-button"
@@ -19,6 +29,16 @@ const TOOLS: Record<LabToolSlug, () => React.ReactNode> = {
   "model-card": () => <CardBuilder kind="model" />,
   "dataset-card": () => <CardBuilder kind="dataset" />,
   prompts: () => <PromptPlayground />,
+  "token-counter": () => <TokenCounter />,
+  context: () => <ContextCalculator />,
+  "inference-cost": () => <InferenceCost />,
+  "fine-tuning": () => <FineTuneCalculator />,
+  quantization: () => <Quantization />,
+  "rag-chunks": () => <RagChunker />,
+  embeddings: () => <EmbeddingSimilarity />,
+  "json-schema": () => <JsonSchemaBuilder />,
+  regex: () => <RegexTester />,
+  "licence-compare": () => <LicenceCompare />,
 }
 
 export function generateStaticParams() {
@@ -42,7 +62,9 @@ async function Tool({ params }: { params: Promise<{ tool: string }> }) {
   const t = getLabTool((await params).tool)
   if (!t) notFound()
   const Icon = t.icon
-  const others = LAB_TOOLS.filter((x) => x.slug !== t.slug)
+  // Same category first, then the rest.
+  const others = [...LAB_TOOLS.filter((x) => x.slug !== t.slug && x.group === t.group), ...LAB_TOOLS.filter((x) => x.group !== t.group)]
+  const group = CATEGORIES.find((c) => c.id === t.group)
   return (
     <div className="shell pb-16">
       <header className="relative isolate flex flex-col gap-4 pt-8 pb-6 md:pt-10">
@@ -58,6 +80,14 @@ async function Tool({ params }: { params: Promise<{ tool: string }> }) {
           <span aria-hidden className="px-1.5 opacity-50">
             /
           </span>
+          {group && (
+            <>
+              <span>{group.label}</span>
+              <span aria-hidden className="px-1.5 opacity-50">
+                /
+              </span>
+            </>
+          )}
           <span className="text-foreground/80">{t.name}</span>
         </nav>
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">

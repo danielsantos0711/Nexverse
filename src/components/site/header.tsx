@@ -5,41 +5,7 @@ import type { Route } from "next"
 import { usePathname, useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import {
-  BoxIcon,
-  ChevronDownIcon,
-  DatabaseIcon,
-  FilmIcon,
-  FlameIcon,
-  FolderGit2Icon,
-  MenuIcon,
-  MessageSquareIcon,
-  MessagesSquareIcon,
-  NewspaperIcon,
-  PlusIcon,
-  ScrollTextIcon,
-  SearchIcon,
-  ShieldIcon,
-  SparklesIcon,
-  UsersIcon,
-  WrenchIcon,
-  type LucideIcon,
-  HeartIcon,
-  FlaskConicalIcon,
-  GitBranchIcon,
-  HomeIcon,
-  LayoutDashboardIcon,
-  CalendarDaysIcon,
-  TrophyIcon,
-  LibraryIcon,
-  OrbitIcon,
-  SwordsIcon,
-  GaugeIcon,
-  MailIcon,
-  UsersRoundIcon,
-  TargetIcon,
-  RocketIcon,
-} from "lucide-react"
+import { ChevronDownIcon, HomeIcon, MailIcon, MenuIcon, PlusIcon, SearchIcon, ShieldIcon } from "lucide-react"
 import { AccountButton } from "@/components/account/account-button"
 import { NotificationBell } from "@/components/social/notification-bell"
 import { OnlineNow } from "@/components/presence/online-now"
@@ -50,63 +16,16 @@ import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useRole } from "@/lib/roles"
+import { iconFor } from "@/components/site/icons"
+import { useMenus as useMenuData, type MenuLink } from "@/lib/menus"
 import { FEATURES, useSiteSettings, type SiteSettings } from "@/lib/site-settings"
 import { cn } from "@/lib/utils"
 
-type NavLink = { href: string; label: string; blurb: string; icon: LucideIcon; tint: string }
+type NavLink = { href: string; label: string; blurb: string; icon: string; tint: string }
+type NavMenu = { id: string; label: string; links: NavLink[] }
 
-/** Three menus, grouped by what you came to do: find things, meet people, or make something. */
-const MENUS: { id: string; label: string; links: NavLink[] }[] = [
-  {
-    id: "hub",
-    label: "Hub",
-    links: [
-      { href: "/models", label: "Models", blurb: "Weights you can run, tune and ship", icon: BoxIcon, tint: "text-model" },
-      { href: "/datasets", label: "Datasets", blurb: "Open data with its licence up front", icon: DatabaseIcon, tint: "text-dataset" },
-      { href: "/tools", label: "Tools", blurb: "Apps and libraries builders rely on", icon: WrenchIcon, tint: "text-tool" },
-      { href: "/repos", label: "Repos", blurb: "Code worth reading and forking", icon: FolderGit2Icon, tint: "text-repo" },
-      { href: "/trending", label: "Trending now", blurb: "Live from GitHub, arXiv and the hub", icon: FlameIcon, tint: "text-gold" },
-      { href: "/papers", label: "Papers", blurb: "Today's research, ready to discuss", icon: ScrollTextIcon, tint: "text-ion" },
-      { href: "/gh/topics", label: "GitHub topics", blurb: "LLMs, agents, RAG and more, rising", icon: GitBranchIcon, tint: "text-repo" },
-      { href: "/cosmos", label: "Cosmos", blurb: "The whole hub as a star map", icon: OrbitIcon, tint: "text-ion" },
-      { href: "/constellations", label: "Constellations", blurb: "Stacks drawn as star maps", icon: SparklesIcon, tint: "text-gold" },
-    ],
-  },
-  {
-    id: "community",
-    label: "Community",
-    links: [
-      { href: "/forum", label: "Forum", blurb: "Real discussions, organised by category", icon: MessageSquareIcon, tint: "text-ion" },
-      { href: "/crews", label: "Crews", blurb: "Labs, study groups and teams with a wall and a chat", icon: UsersRoundIcon, tint: "text-repo" },
-      { href: "/messages", label: "Messages", blurb: "Direct messages with other members", icon: MailIcon, tint: "text-ion" },
-      { href: "/chat", label: "Chat", blurb: "Live rooms for every corner of AI", icon: MessagesSquareIcon, tint: "text-gold" },
-      { href: "/news", label: "News", blurb: "What happened and why it matters", icon: NewspaperIcon, tint: "text-model" },
-      { href: "/people", label: "People", blurb: "Builders and labs to follow", icon: UsersIcon, tint: "text-dataset" },
-      { href: "/missions", label: "Missions", blurb: "Challenges with reputation rewards: accept, build, win", icon: TargetIcon, tint: "text-gold" },
-      { href: "/launchpad", label: "Launchpad", blurb: "Project launches, countdowns and Launch of the day", icon: RocketIcon, tint: "text-repo" },
-      { href: "/arena", label: "Arena", blurb: "Blind duels between models: vote, then see who wrote what", icon: SwordsIcon, tint: "text-model" },
-      { href: "/benchmarks", label: "Benchmarks", blurb: "Eval results from members, verified by reproduction", icon: GaugeIcon, tint: "text-dataset" },
-      { href: "/events", label: "Events", blurb: "Reading clubs, meetups and live demos", icon: CalendarDaysIcon, tint: "text-model" },
-      { href: "/leaderboard", label: "Leaderboard", blurb: "Who helped the most this week", icon: TrophyIcon, tint: "text-gold" },
-      { href: "/for-you", label: "For you", blurb: "New from what you follow and save", icon: HeartIcon, tint: "text-gold" },
-    ],
-  },
-  {
-    id: "create",
-    label: "Create",
-    links: [
-      { href: "/new/project", label: "Publish a project", blurb: "A model, dataset, tool or repo page", icon: PlusIcon, tint: "text-ion" },
-      { href: "/studio", label: "Your studio", blurb: "Everything you made, with its numbers", icon: LayoutDashboardIcon, tint: "text-gold" },
-      { href: "/video", label: "Video lab", blurb: "AI videos with their prompts, and a shot builder", icon: FilmIcon, tint: "text-model" },
-      { href: "/lab", label: "Lab", blurb: "VRAM, token cost, licences, cards", icon: FlaskConicalIcon, tint: "text-dataset" },
-      { href: "/collections", label: "Collections", blurb: "Curate your own constellation", icon: LibraryIcon, tint: "text-repo" },
-      { href: "/forum/new", label: "Start a thread", blurb: "Ask, share or start a debate", icon: MessageSquareIcon, tint: "text-model" },
-    ],
-  },
-]
-
-const DIRECT: NavLink[] = [{ href: "/explore", label: "Explore", blurb: "Search everything", icon: SearchIcon, tint: "text-ion" }]
-
+const TINT: Record<string, string> = { ion: "text-ion", gold: "text-gold", model: "text-model", dataset: "text-dataset", tool: "text-tool", repo: "text-repo" }
+const toNav = (l: MenuLink): NavLink => ({ href: l.href, label: l.label, blurb: l.description, icon: l.icon, tint: TINT[l.accent] ?? "text-ion" })
 
 // Admin is built by the admin panel; typed routes learn it once that page exists.
 const ADMIN = "/admin" as Route
@@ -123,24 +42,26 @@ function hiddenBy(settings: SiteSettings) {
   return (href: string) => hidden.includes(href) || off.some((h) => href === h || href.startsWith(h + "/"))
 }
 
-/** The menus with everything the admins switched off taken out (and menus left empty dropped). */
+/** The menus the admins built (lib/menus.ts), with everything they switched off taken out. */
 function useMenus() {
   const { settings } = useSiteSettings()
+  const data = useMenuData()
   return useMemo(() => {
-    const hide = hiddenBy(settings)
+    const menus = (groups: typeof data.header): NavMenu[] => groups.map((g) => ({ id: g.id, label: g.label, links: g.links.map(toNav) }))
     return {
-      menus: MENUS.map((m) => ({ ...m, links: m.links.filter((l) => !hide(l.href)) })).filter((m) => m.links.length > 0),
-      direct: DIRECT.filter((l) => !hide(l.href)),
-      hide,
+      menus: menus(data.header),
+      mobile: menus(data.mobile),
+      direct: data.headerLinks.map(toNav),
+      hide: hiddenBy(settings),
       name: settings.brand.name || "Nexverse",
     }
-  }, [settings])
+  }, [settings, data])
 }
 
 export function SiteHeader() {
   const pathname = usePathname()
   const openSearch = useOpenCommandMenu()
-  const { menus, direct, hide, name } = useMenus()
+  const { menus, mobile, direct, hide, name } = useMenus()
   const { isStaff } = useRole()
   const [scrolled, setScrolled] = useState(false)
 
@@ -204,7 +125,7 @@ export function SiteHeader() {
             <PlusIcon aria-hidden className="size-4" />
             Share
           </Link>
-          <MobileMenu pathname={pathname} menus={menus} direct={direct} isStaff={isStaff} name={name} />
+          <MobileMenu pathname={pathname} menus={mobile} direct={direct} isStaff={isStaff} name={name} />
         </div>
       </div>
     </header>
@@ -212,8 +133,8 @@ export function SiteHeader() {
 }
 
 /** The menu sheet for phones and tablets: the lockup, then every place in its group, then the two things to do. */
-function MobileMenu({ pathname, menus, direct, isStaff, name }: { pathname: string; menus: typeof MENUS; direct: NavLink[]; isStaff: boolean; name: string }) {
-  const groups = [{ id: "top", label: "", links: [{ href: "/", label: "Home", blurb: "", icon: HomeIcon, tint: "text-ion" }, ...direct] }, ...menus]
+function MobileMenu({ pathname, menus, direct, isStaff, name }: { pathname: string; menus: NavMenu[]; direct: NavLink[]; isStaff: boolean; name: string }) {
+  const groups: NavMenu[] = [{ id: "top", label: "", links: [{ href: "/", label: "Home", blurb: "", icon: "house", tint: "text-ion" }, ...direct] }, ...menus]
   return (
     <Sheet>
       <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu" />}>
@@ -228,12 +149,12 @@ function MobileMenu({ pathname, menus, direct, isStaff, name }: { pathname: stri
           {groups.map((m) => (
             <div key={m.id} className="flex flex-col gap-0.5">
               {m.label && <p className="px-3 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">{m.label}</p>}
-              {m.links.map((n) => {
-                const Icon = n.icon
+              {m.links.map((n, i) => {
+                const Icon = iconFor(n.icon, HomeIcon)
                 const on = isOnPath(pathname, n.href)
                 return (
                   <SheetClose
-                    key={n.href}
+                    key={`${n.href}-${i}`}
                     render={<Link href={n.href as Route} aria-current={on ? "page" : undefined} />}
                     nativeButton={false}
                     className={cn(
@@ -294,7 +215,7 @@ function MessagesLink() {
  * closing one dropdown and opening another. From the keyboard: Enter, Space or Down opens a menu and moves into
  * it, the arrow keys walk its links, Escape closes it and returns to its button.
  */
-function MainNav({ pathname, menus, direct }: { pathname: string; menus: typeof MENUS; direct: NavLink[] }) {
+function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu[]; direct: NavLink[] }) {
   const router = useRouter()
   const [open, setOpen] = useState<string | null>(null)
   const [dir, setDir] = useState(0)
@@ -439,15 +360,15 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: typeof 
                 transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
                 className="grid grid-cols-2 gap-1"
               >
-                {menu.links.map((l) => {
-                  const Icon = l.icon
+                {menu.links.map((l, i) => {
+                  const Icon = iconFor(l.icon)
                   return (
-                    <li key={l.href}>
+                    <li key={`${l.href}-${i}`}>
                       <Link
                         href={l.href as Route}
                         prefetch={false}
-                        onPointerEnter={() => router.prefetch(l.href)}
-                        onFocus={() => router.prefetch(l.href)}
+                        onPointerEnter={() => l.href.startsWith("/") && router.prefetch(l.href)}
+                        onFocus={() => l.href.startsWith("/") && router.prefetch(l.href)}
                         aria-current={isOn(l.href) ? "page" : undefined}
                         onClick={() => setOpen(null)}
                         className="group flex items-start gap-3 rounded-xl p-3 transition-colors duration-150 hover:bg-white/[0.05] focus-visible:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-ring aria-[current=page]:bg-white/[0.06]"

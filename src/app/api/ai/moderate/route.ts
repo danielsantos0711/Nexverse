@@ -1,4 +1,4 @@
-import { askJson } from "@/lib/ai/anthropic"
+import { askJson } from "@/lib/ai/llm"
 import { field } from "@/lib/ai/json"
 import { moderateRequest, readModeration } from "@/lib/ai/prompts"
 import { aiRoute } from "@/lib/ai/route"
@@ -18,3 +18,6 @@ export const POST = aiRoute({
     }
   },
 })
+
+/** Room for the router to fall back through several free models. */
+export const maxDuration = 90

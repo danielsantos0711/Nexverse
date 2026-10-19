@@ -521,7 +521,7 @@ function Editor({
             <FieldGroup>
               <LinkField id="p-repo" label="GitHub repository" placeholder="https://github.com/owner/repo" value={form.links.repo} error={errors.repo} onChange={(v) => setLink("repo", v)} />
               <div className="grid gap-6 md:grid-cols-2">
-                <LinkField id="p-paper" label="Paper" placeholder="https://arxiv.org/abs/…" value={form.links.paper} error={errors.paper} onChange={(v) => setLink("paper", v)} />
+                <LinkField id="p-paper" label="Paper or write-up" placeholder="https://… your paper, report or blog post" value={form.links.paper} error={errors.paper} onChange={(v) => setLink("paper", v)} />
                 <LinkField id="p-demo" label="Demo" placeholder="https://" value={form.links.demo} error={errors.demo} onChange={(v) => setLink("demo", v)} />
               </div>
             </FieldGroup>

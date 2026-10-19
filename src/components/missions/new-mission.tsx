@@ -31,7 +31,7 @@ export function NewMissionForm() {
     )
   }
   return (
-    <Gate action="post a mission">
+    <Gate cap="mission.create" action="post a mission">
       <Form />
     </Gate>
   )

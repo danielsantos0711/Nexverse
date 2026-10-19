@@ -68,7 +68,7 @@ export function NewMessageDialog({ open, onOpenChange }: { open: boolean; onOpen
         {!live ? (
           <p className="text-sm text-muted-foreground">This copy of Nexverse is not connected to its database, so there are no other members to write to yet.</p>
         ) : (
-          <Gate action="write a message">
+          <Gate cap="message.send" action="write a message">
             <div className="relative">
               <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input

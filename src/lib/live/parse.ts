@@ -2,11 +2,9 @@
  * Pure normalisers: raw API payloads in, typed items out. Anything malformed is dropped rather than
  * repaired, so a change on the other side shows fewer items instead of broken ones.
  */
-import { asArray, decodeEntities, hostname, isoDate, isOffSite, isOffSiteOwner, isRecord, isSafe, num, plain, safeUrl, str, stripOffSiteUrls } from "./http"
+import { asArray, decodeEntities, hostname, isoDate, isOffSite, isOffSiteOwner, isRecord, isSafe, num, plain, safeUrl, str } from "./http"
 import { isGhTopic } from "./ids"
-import type { GhReleaseItem, GhRepo, Paper } from "./types"
-
-const ARXIV_ID = /^(\d{4}\.\d{4,5}|[a-z-]+(\.[A-Z]{2})?\/\d{7})$/
+import type { GhReleaseItem, GhRepo } from "./types"
 
 /** The inner text of the first matching XML element, or "". */
 function tag(xml: string, name: string): string {
@@ -14,73 +12,11 @@ function tag(xml: string, name: string): string {
   return m ? m[1] : ""
 }
 
-function allTags(xml: string, name: string): string[] {
-  return [...xml.matchAll(new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`, "g"))].map((m) => m[1])
-}
-
 function attrs(xml: string, name: string, attr: string): string[] {
   return [...xml.matchAll(new RegExp(`<${name}\\s[^>]*?${attr}="([^"]*)"`, "g"))].map((m) => decodeEntities(m[1]))
 }
 
 const unwrap = (s: string) => s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-
-/** The first github.com/<owner>/<repo> named in a piece of text, as a clean repository URL; "" if none. */
-export function findGithubRepo(...texts: string[]): string {
-  for (const t of texts) {
-    for (const m of t.matchAll(/\bgithub\.com\/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))\/([\w.-]{1,100})/g)) {
-      const owner = m[1]
-      const repo = m[2].replace(/[.,;:)]+$/, "").replace(/\.git$/, "")
-      if (!repo || repo === "." || repo === ".." || isOffSiteOwner(owner)) continue
-      if (/^(orgs|topics|features|sponsors|marketplace|settings|about|login|join)$/i.test(owner)) continue
-      return `https://github.com/${owner}/${repo}`
-    }
-  }
-  return ""
-}
-
-/**
- * A DOM-free parser for arXiv's Atom feed. CDATA is unwrapped; markup inside text is stripped. Entries that
- * name sites Nexverse does not feature are left out of feeds (`dropOffSite`); otherwise their addresses are
- * removed from the abstract and note.
- */
-export function parseArxiv(xml: string, { dropOffSite = true }: { dropOffSite?: boolean } = {}): Paper[] {
-  const out: Paper[] = []
-  const seen = new Set<string>()
-  for (const [, entry] of xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)) {
-    const rawId = plain(tag(entry, "id"), 200)
-    const m = rawId.match(/arxiv\.org\/abs\/(.+?)(v\d+)?$/)
-    const id = m?.[1] ?? ""
-    if (!ARXIV_ID.test(id) || seen.has(id)) continue
-    const title = plain(unwrap(tag(entry, "title")), 300)
-    if (!title) continue
-    const rawSummary = plain(unwrap(tag(entry, "summary")), 4000)
-    const rawComment = plain(unwrap(tag(entry, "arxiv:comment")), 400)
-    if (dropOffSite && isOffSite(title, rawSummary, rawComment)) continue
-    if (!isSafe(title)) continue
-    seen.add(id)
-    const categories = attrs(entry, "category", "term")
-      .map((c) => str(c, 20))
-      .filter((c) => /^[a-z-]+(\.[A-Za-z-]+)?$/.test(c))
-    const primary = attrs(entry, "arxiv:primary_category", "term")[0]
-    const summary = stripOffSiteUrls(rawSummary)
-    const comment = stripOffSiteUrls(rawComment)
-    out.push({
-      id,
-      title,
-      summary,
-      authors: allTags(entry, "author")
-        .map((a) => plain(unwrap(tag(a, "name")), 80))
-        .filter(Boolean)
-        .slice(0, 60),
-      published: isoDate(plain(tag(entry, "published"), 40)),
-      updated: isoDate(plain(tag(entry, "updated"), 40)),
-      categories: primary && categories.includes(primary) ? [primary, ...categories.filter((c) => c !== primary)].slice(0, 6) : categories.slice(0, 6),
-      comment,
-      links: { arxiv: `https://arxiv.org/abs/${id}`, pdf: `https://arxiv.org/pdf/${id}`, code: findGithubRepo(comment, summary) },
-    })
-  }
-  return out
-}
 
 /** GitHub topics, minus any that name sites Nexverse does not feature. */
 export function cleanTopics(v: unknown, max = 4): string[] {

@@ -204,14 +204,14 @@ function CollectionPage({ initial }: { initial: Collection }) {
               <LayersIcon aria-hidden className="size-5" />
             </span>
             <p className="max-w-md text-sm text-muted-foreground">
-              {isOwner ? "Nothing here yet. Use “Collect” on any model, dataset, tool, paper or thread to add it." : "This collection is empty for now."}
+              {isOwner ? "Nothing here yet. Use “Collect” on any model, dataset, tool, repo or thread to add it." : "This collection is empty for now."}
             </p>
             {isOwner && (
               <div className="flex flex-wrap justify-center gap-2 text-sm">
                 {[
                   ["/models", "Models"],
                   ["/datasets", "Datasets"],
-                  ["/papers", "Papers"],
+                  ["/repos", "Repos"],
                   ["/forum", "Forum"],
                 ].map(([href, label]) => (
                   <Link key={href} href={href} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 hover:bg-white/[0.04]">
