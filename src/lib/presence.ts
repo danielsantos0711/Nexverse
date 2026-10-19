@@ -6,18 +6,21 @@ import { useSession, type Member } from "@/lib/store"
 import { db, live } from "@/lib/supabase"
 
 /**
- * Live presence: who is on Nexverse right now and which page they are on. One Supabase Realtime presence
- * channel per tab carries a signed-in member's id, display name and the path they are looking at, nothing
- * more (no IP, no query string, no device details). Signed-out visitors are not tracked, and anyone can opt
- * out with a switch that is remembered in this browser. Without a database only you are shown.
+ * Live presence: who is on Nexverse right now and which page they are on. Each signed-in member keeps one row
+ * in the `presence` table (their id comes from their session, so nobody can appear as someone else) with the
+ * path they are looking at, nothing more (no IP, no query string, no device details). Signed-out visitors
+ * are not tracked, and anyone can opt out with a switch that is remembered in this browser. Without a
+ * database only you are shown.
  */
 
 export type Visitor = { member: Member; path: string; at: number }
 
 const OPT_OUT_KEY = "nexverse-presence-off"
-const TOPIC = "presence:site"
 
-/** Pages whose address says more than "which page": a conversation id is kept private. Anything that is not a plain internal path (another site, odd characters) becomes the home page, since paths arrive from other browsers. */
+/**
+ * Pages whose address says more than "which page": a conversation id is kept private. Anything that is not a
+ * plain internal path (another site, odd characters) becomes the home page.
+ */
 export function publicPath(pathname: string) {
   const path = pathname.split(/[?#]/)[0] || "/"
   if (!/^\/(?!\/)[A-Za-z0-9/_.%-]*$/.test(path)) return "/"
@@ -72,14 +75,20 @@ export function usePresenceOptOut() {
   return useSyncExternalStore(subscribeOptOut, readOptOut, () => false)
 }
 
-// ─── The shared channel ─────────────────────────────────────────────────────────────────────────────────────
+// ─── The shared presence table ──────────────────────────────────────────────────────────────────────────────
+
+/** A row counts as online for this long after its last heartbeat (the database applies the same window). */
+const WINDOW_MS = 90_000
+const HEARTBEAT_MS = 30_000
 
 let visitors: Visitor[] = []
 const listeners = new Set<() => void>()
 let channel: RealtimeChannel | null = null
-let joined = false
+let poll: ReturnType<typeof setInterval> | undefined
+let beat: ReturnType<typeof setInterval> | undefined
 let refs = 0
 let closeTimer: ReturnType<typeof setTimeout> | undefined
+let reloadTimer: ReturnType<typeof setTimeout> | undefined
 let current: { member: Member | null; path: string } = { member: null, path: "/" }
 let tracked = ""
 
@@ -87,65 +96,61 @@ function emit() {
   for (const l of listeners) l()
 }
 
+type Row = { user_id: string; path: string; seen_at: string; who: { name: string | null } | null }
+
 /**
- * Names come from members' profiles, never from what another browser announces, and ids with no profile are
- * left out, so nobody shows up in "Online now" under a made-up name.
+ * Everyone seen in the last 90 seconds. Ids and names come from the database: each member can only write
+ * their own row (the id is their session's), and the name is read from their profile.
  */
-const names = new Map<string, string | null>()
-const asking = new Set<string>()
-
-function withProfiles(list: Visitor[]): Visitor[] {
-  return list.flatMap((v) => {
-    const name = names.get(v.member.id)
-    return name ? [{ ...v, member: { id: v.member.id, name } }] : []
-  })
-}
-
-function lookUp(ids: string[]) {
+async function load() {
   const client = db()
-  const missing = ids.filter((id) => !names.has(id) && !asking.has(id) && /^[0-9a-f-]{36}$/i.test(id)).slice(0, 100)
-  if (!client || !missing.length) return
-  for (const id of missing) asking.add(id)
-  client
-    .from("profiles")
-    .select("id, name")
-    .in("id", missing)
-    .then(({ data }) => {
-      for (const id of missing) {
-        asking.delete(id)
-        names.set(id, null)
-      }
-      for (const row of (data ?? []) as { id: string; name: string | null }[]) names.set(row.id, (row.name || "Member").slice(0, 60))
-      if (channel) {
-        visitors = withProfiles(readState(channel))
-        emit()
-      }
-    })
+  if (!client) return
+  const since = new Date(Date.now() - WINDOW_MS).toISOString()
+  const { data, error } = await client
+    .from("presence")
+    .select("user_id, path, seen_at, who:profiles(name)")
+    .gt("seen_at", since)
+    .order("seen_at", { ascending: false })
+    .limit(200)
+  if (error) return
+  visitors = ((data ?? []) as unknown as Row[]).map((r) => ({
+    member: { id: r.user_id, name: (r.who?.name || "Member").slice(0, 60) },
+    path: publicPath(r.path),
+    at: Date.parse(r.seen_at) || 0,
+  }))
+  emit()
 }
 
-/** Everyone in the channel, one row per member (their most recent tab wins). */
-function readState(ch: RealtimeChannel): Visitor[] {
-  const byMember = new Map<string, Visitor>()
-  for (const metas of Object.values(ch.presenceState<{ member?: Member; path?: string; at?: number }>())) {
-    for (const m of metas) {
-      if (!m.member?.id) continue
-      const v: Visitor = { member: { id: String(m.member.id), name: String(m.member.name ?? "Member").slice(0, 60) }, path: publicPath(String(m.path ?? "/")), at: Number(m.at) || 0 }
-      const had = byMember.get(v.member.id)
-      if (!had || had.at < v.at) byMember.set(v.member.id, v)
-    }
-  }
-  return [...byMember.values()].sort((a, b) => b.at - a.at)
+/** Changes arrive in bursts (several tabs, heartbeats); one reload covers a burst. */
+function reloadSoon() {
+  clearTimeout(reloadTimer)
+  reloadTimer = setTimeout(() => void load(), 600)
 }
 
-/** Tells the channel where this tab is, or leaves it when signed out or opted out. */
+/** Writes this member's row: where they are now. The server stamps the time. */
+async function announce() {
+  const client = db()
+  const m = current.member
+  if (!client || !m) return
+  await client.from("presence").upsert({ user_id: m.id, path: current.path }, { onConflict: "user_id" })
+}
+
+/** Tells everyone where this tab is, or leaves when signed out or opted out. */
 function sync() {
-  if (!channel || !joined) return
+  const client = db()
+  if (!client || refs === 0) return
   const off = readOptOut()
-  const key = off || !current.member ? "" : `${current.member.id}|${current.member.name}|${current.path}`
+  const key = off || !current.member ? "" : `${current.member.id}|${current.path}`
   if (key === tracked) return
+  const leaving = tracked && !key ? tracked.split("|")[0] : ""
   tracked = key
-  if (!key) channel.untrack().catch(() => {})
-  else channel.track({ member: current.member, path: current.path, at: Date.now() }).catch(() => {})
+  clearInterval(beat)
+  if (key) {
+    void announce().then(reloadSoon)
+    beat = setInterval(() => void announce(), HEARTBEAT_MS)
+  } else if (leaving) {
+    void client.from("presence").delete().eq("user_id", leaving).then(reloadSoon)
+  }
 }
 
 function open() {
@@ -153,19 +158,15 @@ function open() {
   refs++
   const client = db()
   if (!client || channel) return
-  const tabKey = crypto.randomUUID()
-  const ch = client.channel(TOPIC, { config: { presence: { key: tabKey } } })
-  ch.on("presence", { event: "sync" }, () => {
-    const all = readState(ch)
-    lookUp(all.map((v) => v.member.id))
-    visitors = withProfiles(all)
-    emit()
-  }).subscribe((status) => {
-    joined = status === "SUBSCRIBED"
-    tracked = ""
-    if (joined) sync()
-  })
-  channel = ch
+  channel = client
+    .channel(`presence-table-${crypto.randomUUID()}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "presence" }, reloadSoon)
+    .subscribe()
+  // Rows expire by time, which sends no change event: a slow poll drops members who left without a goodbye.
+  poll = setInterval(() => void load(), HEARTBEAT_MS)
+  void load()
+  tracked = ""
+  sync()
 }
 
 function close() {
@@ -174,7 +175,8 @@ function close() {
     const client = db()
     if (channel && client) client.removeChannel(channel)
     channel = null
-    joined = false
+    clearInterval(poll)
+    clearInterval(beat)
     tracked = ""
     visitors = []
     emit()
