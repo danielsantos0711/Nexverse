@@ -5,7 +5,8 @@ import { useEffect, useSyncExternalStore } from "react"
 import { CircleAlertIcon } from "lucide-react"
 import { safeNext } from "@/components/account/safe-next"
 import { LinkButton } from "@/components/link-button"
-import { authErrorMessage } from "@/lib/auth-providers"
+import { authErrorMessage, isNewUserSaveError, SIGNUP_CLOSED } from "@/lib/auth-providers"
+import { useSiteSettings } from "@/lib/site-settings"
 import { needsWelcome } from "@/lib/profile"
 import { useSession } from "@/lib/store"
 
@@ -27,7 +28,14 @@ export function AuthCallback() {
   const code = params.get("error_code") ?? hash.get("error_code")
   const description = params.get("error_description") ?? hash.get("error_description")
   const failed = Boolean(code || description || params.get("error") || hash.get("error"))
-  const problem = failed ? (code ? authErrorMessage({ code, message: description ?? "" }) : (description ?? "Something went wrong on the way back.")) : ""
+  const signupOpen = useSiteSettings().settings.access.signupOpen
+  const problem = !failed
+    ? ""
+    : !signupOpen && isNewUserSaveError(description ?? "")
+      ? SIGNUP_CLOSED
+      : code
+        ? authErrorMessage({ code, message: description ?? "" })
+        : (description ?? "Something went wrong on the way back.")
 
   useEffect(() => {
     if (!ready || !user || failed) return
