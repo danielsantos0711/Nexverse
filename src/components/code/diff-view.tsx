@@ -189,7 +189,7 @@ function FileDiff({ change, oldRepo, newRepo, mode, viewHref, review }: { change
             <p className="p-4 text-sm text-muted-foreground">Image {change.status === "removed" ? "removed" : change.status === "added" ? "added" : "changed"}. Open the file to see it.</p>
           ) : data.kind === "big" ? (
             <p className="p-4 text-sm text-muted-foreground">This file is too large to show a diff here.</p>
-          ) : data.hunks.length === 0 ? (
+          ) : data.kind !== "text" ? null : data.hunks.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground">{change.status === "renamed" ? "Moved without changes." : "Only the file mode changed."}</p>
           ) : mode === "split" ? (
             <SplitView data={data} path={change.path} review={review} />

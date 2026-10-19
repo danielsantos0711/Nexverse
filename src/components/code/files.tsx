@@ -42,6 +42,7 @@ import { shortSha } from "@/lib/code/hash"
 import { countsAsCode, imageType, isMarkdown, isReadme, langOf, looksLikeText } from "@/lib/code/lang"
 import { cleanPath, listDir, treeClash, type DirItem, type Tree } from "@/lib/code/tree"
 import { resolveTargets, type Resolved } from "@/lib/hub"
+import { getLaunch } from "@/lib/launchpad"
 import { cn } from "@/lib/utils"
 import { RepoSummaryCard, ExplainButton, useExplain } from "./ai"
 import { CodeLines } from "./code-view"
@@ -315,12 +316,26 @@ function languages(tree: Tree) {
   return [...by].map(([name, n]) => ({ name, share: n / total })).sort((a, b) => b.share - a.share)
 }
 
+/** Hub keys resolve through the hub; launches through Launchpad. */
+async function resolveLinks(keys: string[]): Promise<Record<string, Resolved>> {
+  const out = await resolveTargets(keys)
+  await Promise.all(
+    keys
+      .filter((k) => k.startsWith("launch:"))
+      .map(async (k) => {
+        const l = await getLaunch(k.slice(7)).catch(() => null)
+        if (l) out[k] = { target: k, group: "other", type: "Launch", label: l.name, summary: l.tagline, href: `/launchpad/${l.id}`, found: true }
+      }),
+  )
+  return out
+}
+
 const LINK_ICON: Record<string, typeof LinkIcon> = { thread: MessagesSquareIcon, launch: RocketIcon }
 
 function About({ tree, commit }: { tree: Tree; commit: Commit | null }) {
   const { repo, base, admin } = useRepo()
   const langs = useMemo(() => languages(tree), [tree])
-  const links = useLoad<Record<string, Resolved>>(() => (repo.links.length ? resolveTargets(repo.links) : Promise.resolve({})), [repo.links.join(" ")])
+  const links = useLoad<Record<string, Resolved>>(() => (repo.links.length ? resolveLinks(repo.links) : Promise.resolve({})), [repo.links.join(" ")])
   const resolved = repo.links.map((l) => links.data?.[l]).filter((r): r is Resolved => Boolean(r?.found))
   const thread = resolved.find((r) => r.target.startsWith("thread:"))
   const project = resolved.find((r) => r.target.startsWith("project:"))
