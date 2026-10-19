@@ -207,14 +207,25 @@ export async function Signal({ launch }: { launch?: React.ReactNode }) {
               <Lead story={lead} now={fetchedAt} />
             ) : (
               <Part title="From the newsroom" icon={NewspaperIcon}>
-                <Quiet>
-                  {news.ok
-                    ? "The newsroom has not published its first story yet. It writes short, sourced stories from official blogs and releases, each checked by an editor. "
-                    : "The newsroom is not switched on for this copy of the site yet. "}
-                  <Link href="/news#tip" className="text-ion hover:underline">
-                    Send the editors a tip
-                  </Link>
-                </Quiet>
+                <div className="rise relative isolate overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6" style={{ "--i": 1 } as React.CSSProperties}>
+                  <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 -z-10 size-64 rounded-full border border-dashed border-gold/20 motion-safe:animate-[spin_120s_linear_infinite]" />
+                  <h3 className="max-w-[30ch] font-display text-xl font-semibold tracking-[-0.02em] text-balance">
+                    {news.ok ? "The newsroom's first story is still being written" : "The newsroom is not switched on yet"}
+                  </h3>
+                  <p className="mt-2 max-w-[56ch] text-[15px] text-foreground/75">
+                    {news.ok
+                      ? "Nexverse reads official blogs, changelogs and releases every day and writes short, sourced stories, each checked by an editor before it appears here."
+                      : "Nexverse's own news needs the newsroom part of the database, which this copy of the site does not have yet."}
+                  </p>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <Link href="/news#tip" className="pressable inline-flex h-9 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground">
+                      Send the editors a tip
+                    </Link>
+                    <Link href="/news" className="pressable inline-flex h-9 items-center rounded-full bg-white/[0.06] px-4 text-sm hover:bg-white/[0.1]">
+                      How the newsroom works
+                    </Link>
+                  </div>
+                </div>
               </Part>
             )}
             {more.length > 0 && (

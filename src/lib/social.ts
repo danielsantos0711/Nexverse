@@ -445,8 +445,9 @@ export function describeTarget(target: string): TargetInfo {
       return { type, id, label: "a project", href: `/p/${id}` }
     case "duel":
       return { type, id, label: "your duel", href: `/arena/${id}` }
+    // The member video lab was retired; old notifications about a video stay readable.
     case "video":
-      return { type, id, label: "your video", href: `/video/${id}` }
+      return { type, id, label: "a video that was retired", href: "/notifications" }
     case "benchmark":
       return { type, id, label: getBenchmark(id)?.name ?? id, href: `/benchmarks/${id}` }
     case "crew":

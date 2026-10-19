@@ -263,7 +263,9 @@ create table if not exists public.code_pulls (
   to_branch text not null check (public.code_valid_ref(to_branch)),
   author_id uuid not null default auth.uid() references public.profiles (id) on delete cascade,
   comments_count integer not null default 0,
-  -- Filled when merged: the source head that was merged and the commit the target branch moved to.
+  -- Filled when merged: the target branch before the merge, the source head that was merged and the commit
+  -- the target branch moved to.
+  base_commit text,
   head_commit text,
   merge_commit text,
   merged_by uuid references public.profiles (id) on delete set null,
@@ -443,7 +445,7 @@ create policy "Pull requests of readable repositories" on public.code_pulls for 
 create policy "Members open pull requests" on public.code_pulls for insert to authenticated
   with check (
     author_id = (select auth.uid()) and public.has_cap('issue.create') and not public.is_suspended()
-    and state = 'open' and hidden_at is null and merge_commit is null and head_commit is null and merged_by is null
+    and state = 'open' and hidden_at is null and merge_commit is null and head_commit is null and base_commit is null and merged_by is null
     and public.code_can_read(repo_id) and public.code_can_read(from_repo)
     and (from_repo = repo_id or exists (select 1 from public.code_repos f where f.id = from_repo and f.forked_from = repo_id))
     and exists (select 1 from public.code_repos r where r.id = repo_id and r.archived_at is null)
@@ -1159,7 +1161,7 @@ $$;
 
 -- Merge a pull request. The browser computes the merged tree (fast-forward or a clean three-way merge); this checks
 -- permission, that the target branch has not moved, copies a fork's commits and blobs in, and moves the branch.
-create or replace function public.code_merge_pull(pull uuid, expected_base text, fast_forward boolean, merged_tree jsonb, message text) returns text
+create or replace function public.code_merge_pull(pull uuid, expected_base text, fast_forward boolean, merged_tree jsonb, message text, expected_head text default null) returns text
 language plpgsql security definer set search_path = public as $$
 declare
   p public.code_pulls;
@@ -1189,6 +1191,10 @@ begin
   select f.commit_id into head from public.code_refs f where f.repo_id = p.from_repo and f.kind = 'branch' and f.name = p.from_branch;
   if head is null then
     raise exception 'The source branch % is gone.', p.from_branch;
+  end if;
+  -- The merged tree was built from the head the merger saw; refuse if the source branch moved since.
+  if expected_head is not null and head <> expected_head then
+    raise exception 'stale_head: % got new commits since you opened this page. Reload and try again.', p.from_branch;
   end if;
 
   if p.from_repo <> p.repo_id then
@@ -1232,7 +1238,7 @@ begin
   update public.code_refs set commit_id = cid, updated_at = now() where repo_id = p.repo_id and kind = 'branch' and name = p.to_branch;
   update public.code_repos set pushed_at = now() where id = p.repo_id;
   update public.code_pulls
-  set state = 'merged', head_commit = head, merge_commit = cid, merged_by = (select auth.uid()), merged_at = now(), updated_at = now()
+  set state = 'merged', base_commit = base, head_commit = head, merge_commit = cid, merged_by = (select auth.uid()), merged_at = now(), updated_at = now()
   where id = pull;
   perform public.code__log(p.repo_id, 'pull_merged', p.title, 'pulls/' || p.number);
   perform public.notify(p.author_id, 'system', (select auth.uid()), 'codepull:' || p.id, 'Merged: ' || p.title);
@@ -1301,11 +1307,11 @@ $$;
 
 revoke execute on function public.code_register_blobs(uuid, text[]), public.code_commit(uuid, text, text, jsonb, text),
   public.code_delete_ref(uuid, text, text), public.code_fork(uuid, text, text),
-  public.code_merge_pull(uuid, text, boolean, jsonb, text), public.code_delete_repo(uuid),
+  public.code_merge_pull(uuid, text, boolean, jsonb, text, text), public.code_delete_repo(uuid),
   public.code_moderate(text, uuid, boolean, text) from public, anon;
 grant execute on function public.code_register_blobs(uuid, text[]), public.code_commit(uuid, text, text, jsonb, text),
   public.code_delete_ref(uuid, text, text), public.code_fork(uuid, text, text),
-  public.code_merge_pull(uuid, text, boolean, jsonb, text), public.code_delete_repo(uuid),
+  public.code_merge_pull(uuid, text, boolean, jsonb, text, text), public.code_delete_repo(uuid),
   public.code_moderate(text, uuid, boolean, text) to authenticated;
 grant execute on function public.code_trending(integer, integer) to anon, authenticated;
 

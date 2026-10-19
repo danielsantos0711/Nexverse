@@ -250,7 +250,7 @@ function EditorInner({ id }: { id: string }) {
           <div className="flex flex-col gap-3 xl:sticky xl:top-20">
             <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Live preview</p>
             <SearchSnippet draft={draft} />
-            <div className="max-h-[calc(100dvh-12rem)] overflow-y-auto rounded-2xl border border-border bg-background p-5 md:p-6">
+            <div className="xl:max-h-[calc(100dvh-12rem)] xl:overflow-y-auto rounded-2xl border border-border bg-background p-5 md:p-6">
               <h1 className="text-2xl font-semibold tracking-[-0.02em]">{draft.title.trim() || "Untitled page"}</h1>
               {draft.description && <p className="mt-2 text-[15px] text-muted-foreground">{draft.description}</p>}
               <div className="mt-6">{draft.blocks.length ? <PageBlocks blocks={draft.blocks} preview /> : <p className="text-sm text-muted-foreground">Add a block and it appears here as you type.</p>}</div>

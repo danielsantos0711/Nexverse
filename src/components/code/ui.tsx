@@ -3,10 +3,11 @@
 import Link from "next/link"
 import type { Route } from "next"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AlertTriangleIcon, CircleCheckIcon, CircleDotIcon, GitMergeIcon, GitPullRequestClosedIcon, GitPullRequestIcon, LockIcon, ServerOffIcon } from "lucide-react"
+import { AlertTriangleIcon, CircleCheckIcon, EyeIcon, EyeOffIcon, CircleDotIcon, GitMergeIcon, GitPullRequestClosedIcon, GitPullRequestIcon, LockIcon, ServerOffIcon } from "lucide-react"
 import { MemberAvatar } from "@/components/forum/forum-ui"
 import { Button } from "@/components/ui/button"
-import { CodeUnavailable, type Label, type Person } from "@/lib/code/api"
+import { CodeUnavailable, moderate, type Label, type Person } from "@/lib/code/api"
+import { useRole } from "@/lib/roles"
 import { cn } from "@/lib/utils"
 
 /* Small pieces shared by every Nexverse Code page. */
@@ -162,4 +163,40 @@ export const textareaCls =
 
 export function plural(n: number, one: string, many = `${one}s`) {
   return `${n.toLocaleString("en")} ${n === 1 ? one : many}`
+}
+
+/** Staff only: hide or show one item (logged in the moderation log). Renders nothing for everyone else. */
+export function StaffHide({ kind, id, hidden, onDone }: { kind: Parameters<typeof moderate>[0]; id: string; hidden: boolean; onDone: (hidden: boolean) => void }) {
+  const me = useRole()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  if (!me.isStaff) return null
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-7 rounded-full text-muted-foreground"
+        disabled={busy}
+        onClick={async () => {
+          const reason = hidden ? "" : (window.prompt("Why hide it? The reason is logged.") ?? "")
+          if (!hidden && !reason.trim()) return
+          setBusy(true)
+          setError(null)
+          try {
+            await moderate(kind, id, !hidden, reason)
+            onDone(!hidden)
+          } catch (err) {
+            setError((err as Error).message)
+          } finally {
+            setBusy(false)
+          }
+        }}
+      >
+        {hidden ? <EyeIcon aria-hidden /> : <EyeOffIcon aria-hidden />}
+        {hidden ? "Unhide" : "Hide"}
+      </Button>
+      {error && <span className="text-xs text-destructive">{error}</span>}
+    </span>
+  )
 }

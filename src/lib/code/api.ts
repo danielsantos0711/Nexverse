@@ -148,6 +148,7 @@ export type Pull = {
   toBranch: string
   author: Person | null
   comments: number
+  baseCommit: string | null
   headCommit: string | null
   mergeCommit: string | null
   mergedBy: Person | null
@@ -719,9 +720,9 @@ export async function deleteComment(kind: "issue" | "pull", id: string) {
 
 // ─── Pull requests ──────────────────────────────────────────────────────────────────────────────────────────
 
-const PULL = `id, repo_id, number, title, body, state, from_repo, from_branch, to_branch, comments_count, head_commit, merge_commit, merged_at, closed_at, hidden_at, created_at, updated_at, author:profiles!code_pulls_author_id_fkey(${P}), merger:profiles!code_pulls_merged_by_fkey(${P})`
-type PullRow = { id: string; repo_id: string; number: number; title: string; body: string; state: Pull["state"]; from_repo: string; from_branch: string; to_branch: string; comments_count: number; head_commit: string | null; merge_commit: string | null; merged_at: string | null; closed_at: string | null; hidden_at: string | null; created_at: string; updated_at: string; author: PersonRow; merger: PersonRow }
-const toPull = (r: PullRow): Pull => ({ id: r.id, repoId: r.repo_id, number: r.number, title: r.title, body: r.body, state: r.state, fromRepo: r.from_repo, fromBranch: r.from_branch, toBranch: r.to_branch, author: person(r.author), comments: r.comments_count, headCommit: r.head_commit, mergeCommit: r.merge_commit, mergedBy: person(r.merger), mergedAt: r.merged_at, closedAt: r.closed_at, hiddenAt: r.hidden_at, createdAt: r.created_at, updatedAt: r.updated_at })
+const PULL = `id, repo_id, number, title, body, state, from_repo, from_branch, to_branch, comments_count, base_commit, head_commit, merge_commit, merged_at, closed_at, hidden_at, created_at, updated_at, author:profiles!code_pulls_author_id_fkey(${P}), merger:profiles!code_pulls_merged_by_fkey(${P})`
+type PullRow = { id: string; repo_id: string; number: number; title: string; body: string; state: Pull["state"]; from_repo: string; from_branch: string; to_branch: string; comments_count: number; base_commit: string | null; head_commit: string | null; merge_commit: string | null; merged_at: string | null; closed_at: string | null; hidden_at: string | null; created_at: string; updated_at: string; author: PersonRow; merger: PersonRow }
+const toPull = (r: PullRow): Pull => ({ id: r.id, repoId: r.repo_id, number: r.number, title: r.title, body: r.body, state: r.state, fromRepo: r.from_repo, fromBranch: r.from_branch, toBranch: r.to_branch, author: person(r.author), comments: r.comments_count, baseCommit: r.base_commit, headCommit: r.head_commit, mergeCommit: r.merge_commit, mergedBy: person(r.merger), mergedAt: r.merged_at, closedAt: r.closed_at, hiddenAt: r.hidden_at, createdAt: r.created_at, updatedAt: r.updated_at })
 
 export async function listPulls(repoId: string, state: "open" | "closed" | "merged" | "all" = "open"): Promise<Pull[]> {
   let q = client().from("code_pulls").select(PULL).eq("repo_id", repoId)
@@ -772,8 +773,8 @@ export async function updatePull(id: string, patch: Partial<{ title: string; bod
   return toPull(data as unknown as PullRow)
 }
 
-export async function mergePull(id: string, expectedBase: string, fastForward: boolean, tree: Tree | null, message: string): Promise<string> {
-  const { data, error } = await client().rpc("code_merge_pull", { pull: id, expected_base: expectedBase, fast_forward: fastForward, merged_tree: tree, message })
+export async function mergePull(id: string, expectedBase: string, expectedHead: string, fastForward: boolean, tree: Tree | null, message: string): Promise<string> {
+  const { data, error } = await client().rpc("code_merge_pull", { pull: id, expected_base: expectedBase, expected_head: expectedHead, fast_forward: fastForward, merged_tree: tree, message })
   fail(error)
   return data as string
 }

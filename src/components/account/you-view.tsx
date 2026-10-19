@@ -11,6 +11,7 @@ import { PageTitle } from "@/components/hub/bits"
 import { FollowingList } from "@/components/social/following-list"
 import { SavedView } from "@/components/social/saved-view"
 import { ReputationCard } from "@/components/reputation/reputation-card"
+import { Powers } from "@/components/reputation/powers"
 import { MyPlanet } from "@/components/planet/my-planet"
 import { CosmosLink } from "@/components/cosmos/cosmos-link"
 import { MissionBadges } from "@/components/missions/mission-badges"
@@ -145,6 +146,7 @@ function Mine({
           <CosmosLink target="you" label="Find yourself in Cosmos" className="self-start" />
         </div>
       </div>
+      {userId && <Powers className="mb-8" />}
       <div role="tablist" aria-label="Your space" onKeyDown={onKey} className="glass -mx-1 mb-8 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full p-1">
         {tabs.map((t) => {
           const on = t.id === tab

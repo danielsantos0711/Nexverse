@@ -364,7 +364,7 @@ export function ThreadDiscussion({
           {lockedNote ?? "The moderators locked this thread. You can still read it, react and quote it in a new thread."}
         </div>
       ) : (
-        <Gate action="reply">
+        <Gate cap="reply.create" action="reply">
           <form onSubmit={post} className="glass flex flex-col gap-3 rounded-xl p-4">
             <label htmlFor={composerId} className="text-sm font-medium">
               Your reply

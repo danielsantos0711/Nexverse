@@ -74,7 +74,7 @@ export function SubmitResult({ benchmark, onSubmitted, className }: { benchmark?
           <DialogTitle>Submit a result</DialogTitle>
           <DialogDescription>Give the settings someone needs to run it again, and link to your logs. Others can then mark it as reproduced.</DialogDescription>
         </DialogHeader>
-        <Gate action="submit a benchmark result">
+        <Gate cap="submission.create" action="submit a benchmark result">
           <form onSubmit={submit} noValidate>
             <FieldGroup className="gap-4">
               <div className="grid gap-4 sm:grid-cols-2">

@@ -27,7 +27,7 @@ const EMPTY_POLL: NewPoll = { prompt: "", options: ["", ""], multi: false }
 /** Start a forum thread in any language, with Markdown, tags, @mentions and an optional poll. Members only. */
 export function NewThread() {
   return (
-    <Gate action="start a thread">
+    <Gate cap="thread.create" action="start a thread">
       <NewThreadForm />
     </Gate>
   )

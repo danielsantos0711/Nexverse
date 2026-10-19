@@ -21,7 +21,7 @@ create table if not exists public.news_sources (
   label text not null check (char_length(label) between 2 and 80),
   publisher text not null default '' check (char_length(publisher) <= 80),
   -- rss and site: the feed or the index page. github_releases: owner/name in repo. arxiv_query: a category in query.
-  url text check (url ~ '^https://[^\s]{4,500}$'),
+  url text check ((url ~ '^https://[^\s]{4,}$' and char_length(url) <= 508)),
   repo text check (repo ~ '^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}$'),
   -- arxiv_query: the category (cs.CL). site: the path prefix article links start with (/news/).
   query text check (char_length(query) between 1 and 120),
@@ -84,7 +84,7 @@ create table if not exists public.news_stories (
   unconfirmed boolean not null default false,
   -- [{ "url": "https://…", "title": "…", "publisher": "…" }]
   sources jsonb not null default '[]'::jsonb check (jsonb_typeof(sources) = 'array' and jsonb_array_length(sources) <= 12),
-  cover text check (cover ~ '^https://[^\s]{4,600}$'),
+  cover text check ((cover ~ '^https://[^\s]{4,}$' and char_length(cover) <= 608)),
   ai_generated boolean not null default false,
   model text check (char_length(model) <= 120),
   written_by uuid references public.profiles (id) on delete set null,
@@ -163,7 +163,7 @@ revoke execute on function public.news_stories_guard() from public, anon, authen
 create table if not exists public.news_signals (
   id bigint generated always as identity primary key,
   source_id uuid references public.news_sources (id) on delete set null,
-  url text not null check (url ~ '^https://[^\s]{4,1000}$'),
+  url text not null check ((url ~ '^https://[^\s]{4,}$' and char_length(url) <= 1008)),
   title text not null check (char_length(title) between 1 and 300),
   excerpt text not null default '' check (char_length(excerpt) <= 1200),
   publisher text not null default '' check (char_length(publisher) <= 80),
@@ -189,7 +189,7 @@ revoke all on public.news_signals from anon;
 create table if not exists public.news_tips (
   id uuid primary key default gen_random_uuid(),
   member_id uuid not null default auth.uid() references public.profiles (id) on delete cascade,
-  url text check (url ~ '^https://[^\s]{4,1000}$'),
+  url text check ((url ~ '^https://[^\s]{4,}$' and char_length(url) <= 1008)),
   note text not null check (char_length(note) between 10 and 2000),
   status text not null default 'new' check (status in ('new', 'used', 'dismissed')),
   handled_by uuid references public.profiles (id) on delete set null,

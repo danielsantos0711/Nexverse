@@ -98,7 +98,7 @@ function EmptyNewsroom({ unavailable }: { unavailable: boolean }) {
       </h2>
       <p className="mt-3 max-w-[60ch] text-muted-foreground">
         {unavailable
-          ? "Nexverse's own news needs the newsroom part of the database, which is not set up on this copy of the site yet. Members' shared stories below work already."
+          ? "Nexverse's own news needs the newsroom part of the database, which is not set up on this copy of the site yet. Members' shared stories below are not affected."
           : "Nexverse's newsroom reads official blogs, changelogs and releases every day and writes short, sourced stories. Each one is checked by an editor before it appears here. Nothing has been published yet."}
       </p>
       <div className="mt-6 flex flex-wrap gap-2">

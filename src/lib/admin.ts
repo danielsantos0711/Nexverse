@@ -315,7 +315,7 @@ export const NAV_LINKS: { href: string; label: string; group: string }[] = [
   { href: "/tools", label: "Tools", group: "Hub" },
   { href: "/repos", label: "Repos", group: "Hub" },
   { href: "/trending", label: "Trending now", group: "Hub" },
-  { href: "/papers", label: "Papers", group: "Hub" },
+  { href: "/code", label: "Code", group: "Hub" },
   { href: "/gh/topics", label: "GitHub topics", group: "Hub" },
   { href: "/cosmos", label: "Cosmos", group: "Hub" },
   { href: "/constellations", label: "Constellations", group: "Hub" },

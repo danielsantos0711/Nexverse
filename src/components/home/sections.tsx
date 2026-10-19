@@ -190,8 +190,8 @@ export function Constellations() {
     <section aria-labelledby="const-h" className="relative isolate overflow-hidden">
       <Image src="/space/deep-field.webp" alt="" fill sizes="100vw" className="fade-band -z-10 object-cover opacity-20" />
       {/* HorizonX Filament Flow: threads of gas between the stars, the way a collection ties its pieces together */}
-      <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 -z-10 w-[min(48rem,62%)] opacity-50 [mask-image:linear-gradient(90deg,transparent,#000_45%),linear-gradient(180deg,transparent,#000_22%,#000_78%,transparent)] [mask-composite:intersect] max-md:hidden">
-        <FilamentFlow className="size-full" still={still} />
+      <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 -z-10 w-[min(48rem,62%)] opacity-40 [mask-image:linear-gradient(90deg,transparent,#000_45%),linear-gradient(180deg,transparent,#000_22%,#000_78%,transparent)] [mask-composite:intersect] max-md:hidden">
+        <FilamentFlow className="size-full" still={still} settings={{ scale: 1.35, turbulence: 0.85 }} />
       </div>
       <div className="shell py-14">
         <Head

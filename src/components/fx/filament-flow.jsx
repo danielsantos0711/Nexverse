@@ -96,7 +96,7 @@ export default function FilamentFlow({ className = '', settings = {}, still = fa
         }
       }
     }
-    const boost = Math.sqrt((3200 * 220) / (STRANDS * STEPS)) * 0.8;
+    const boost = Math.sqrt((3200 * 220) / (STRANDS * STEPS)) * 0.65;
 
     let gl, program, buffer, shaders = [], uniforms = {};
     let frame = 0, last = 0, drawn = 0, time = 0, visible = true, destroyed = false, lost = false;
