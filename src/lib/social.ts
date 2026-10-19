@@ -3,6 +3,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js"
 import { categoryPath, getCategory, getConstellation, getNews, getPerson, getResource, getThread, isQuestionId, resourcePath, threadTitle } from "@/lib/data"
 import { getQuestion, useSession, type Member, type Question, type Submission } from "@/lib/store"
 import { describeLiveTarget } from "@/lib/live/ids"
+import { getBenchmark } from "@/lib/benchmarks"
 import { db, live } from "@/lib/supabase"
 
 /**
@@ -457,6 +458,18 @@ export function describeTarget(target: string): TargetInfo {
       return { type, id, label: "a shared link", href: null }
     case "project":
       return { type, id, label: "a project", href: `/p/${id}` }
+    case "duel":
+      return { type, id, label: "your duel", href: `/arena/${id}` }
+    case "benchmark":
+      return { type, id, label: getBenchmark(id)?.name ?? id, href: `/benchmarks/${id}` }
+    case "crew":
+      return { type, id, label: "a crew", href: `/crews/${id}` }
+    case "mission":
+      return { type, id, label: "a mission", href: `/missions/${id}` }
+    case "launch":
+      return { type, id, label: "a launch", href: `/launchpad/${id}` }
+    case "dm":
+      return { type, id, label: "a direct message", href: `/messages/${id}` }
     case "collection":
       return { type, id, label: "a collection", href: `/collections/${id}` }
     default: {

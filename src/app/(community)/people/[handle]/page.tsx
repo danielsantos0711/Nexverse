@@ -9,6 +9,10 @@ import { Heatmap } from "@/components/hub/heatmap"
 import { FollowButton } from "@/components/social/follow-button"
 import { ReputationCard } from "@/components/reputation/reputation-card"
 import { MotionTabs } from "@/components/hub/motion-tabs"
+import { MemberPlanet, PlanetLegend } from "@/components/planet/member-planet"
+import { CosmosLink } from "@/components/cosmos/cosmos-link"
+import { MissionBadges } from "@/components/missions/mission-badges"
+import { sampleStats } from "@/lib/community"
 import { compact, constellations, formatDate, getPerson, LANGUAGES, people, resourcesBy, threads, threadsBy } from "@/lib/data"
 
 export function generateStaticParams() {
@@ -35,20 +39,35 @@ async function Profile({ params }: { params: PageProps<"/people/[handle]">["para
   const replied = threads.filter((t) => t.author !== p.handle && t.replies.some((r) => r.author === p.handle))
   const mapped = constellations.filter((c) => c.curator === p.handle)
   const total = p.activity.reduce((a, b) => a + b, 0)
+  const rep = sampleStats(p.handle)
   const list = (items: React.ReactNode[], empty: string) => (items.length ? <ul className="flex flex-col gap-2">{items}</ul> : <p className="text-muted-foreground">{empty}</p>)
 
   return (
     <div className="shell grid grid-cols-1 gap-10 pt-10 lg:grid-cols-[18rem_1fr]">
       <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
-        <PersonAvatar handle={p.handle} size={112} className="shadow-[0_20px_80px_-20px_rgb(143_180_255/0.6)]" />
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-[-0.03em]">{p.name}</h1>
-          <p className="text-muted-foreground">
-            @{p.handle} · {p.role}
-          </p>
+        {/* The member as a planet: it grows with reputation, rings for what they wrote, moons for what they made. */}
+        <div className="relative -mx-2 -mt-4 flex flex-col items-center gap-1 lg:items-start">
+          <MemberPlanet
+            handle={p.handle}
+            size={232}
+            stats={{ points: rep.points, threads: rep.threads, replies: rep.answers, accepted: rep.accepted, projects: built.length, collections: rep.collections, events: rep.eventsHosted }}
+          />
+          <PlanetLegend className="justify-center px-2 lg:justify-start" />
+        </div>
+        <div className="flex items-center gap-3">
+          <PersonAvatar handle={p.handle} size={44} />
+          <div className="flex min-w-0 flex-col">
+            <h1 className="text-2xl leading-tight font-semibold tracking-[-0.03em]">{p.name}</h1>
+            <p className="truncate text-sm text-muted-foreground">
+              @{p.handle} · {p.role}
+            </p>
+          </div>
         </div>
         <p className="text-[15px]">{p.bio}</p>
-        <FollowButton followee={`person:${p.handle}`} base={p.followers} name={p.name} className="self-start" />
+        <div className="flex flex-wrap items-center gap-2">
+          <FollowButton followee={`person:${p.handle}`} base={p.followers} name={p.name} />
+          <CosmosLink target={`person:${p.handle}`} />
+        </div>
         <ul className="flex flex-col gap-1.5 text-sm text-muted-foreground">
           <li className="flex items-center gap-2">
             <MapPinIcon aria-hidden className="size-4" /> {p.place}
@@ -65,6 +84,7 @@ async function Profile({ params }: { params: PageProps<"/people/[handle]">["para
           ))}
         </div>
         <ReputationCard handle={p.handle} />
+        <MissionBadges who={{ handle: p.handle, name: p.name }} />
       </aside>
 
       <div className="flex min-w-0 flex-col gap-8">

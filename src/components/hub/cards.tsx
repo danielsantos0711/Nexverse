@@ -25,7 +25,7 @@ const REACH = { model: [DownloadIcon, "downloads"], dataset: [DownloadIcon, "dow
 export function ResourceCard({ r, className, rank }: { r: Resource; className?: string; rank?: number }) {
   const [ReachIcon, reachLabel] = REACH[r.kind]
   return (
-    <Spotlight className={cn("group rounded-xl border border-border bg-card/70 transition-colors hover:bg-card", className)}>
+    <Spotlight className={cn("group @container rounded-xl border border-border bg-card/70 transition-colors hover:bg-card", className)}>
       <div className="flex gap-3.5 p-3.5">
         <div className="relative size-14 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/10">
           {/* Same name as the detail page's cover, so opening a card morphs its cover into place. */}
@@ -49,7 +49,8 @@ export function ResourceCard({ r, className, rank }: { r: Resource; className?: 
             <KindTag kind={r.kind} />
             <span>{r.task}</span>
             <span className="font-mono">{r.spec}</span>
-            <span>Updated {ago(r.updated)}</span>
+            {/* the date gives way first when the card is narrow, so the numbers stay on one line */}
+            <span className="hidden @[34rem]:inline">Updated {ago(r.updated)}</span>
             <Stat icon={ReachIcon} value={r.reach} label={reachLabel} />
             <Stat icon={HeartIcon} value={r.likes} label="likes" />
           </div>

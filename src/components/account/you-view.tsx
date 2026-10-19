@@ -10,6 +10,9 @@ import { PageTitle } from "@/components/hub/bits"
 import { FollowingList } from "@/components/social/following-list"
 import { SavedView } from "@/components/social/saved-view"
 import { ReputationCard } from "@/components/reputation/reputation-card"
+import { MyPlanet } from "@/components/planet/my-planet"
+import { CosmosLink } from "@/components/cosmos/cosmos-link"
+import { MissionBadges } from "@/components/missions/mission-badges"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -121,8 +124,13 @@ function Mine({
     <>
       <PageTitle title={title} lead={lead} />
       {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
-      <div className="mb-8 max-w-md">
-        <ReputationCard />
+      <div className="mb-8 flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-8">
+        <MyPlanet seed={userId ?? "this-browser"} projects={shared?.length} />
+        <div className="flex w-full max-w-md flex-col gap-3">
+          <ReputationCard className="w-full" />
+          <MissionBadges who={userId ? { name: "You", memberId: userId } : null} />
+          <CosmosLink target="you" label="Find yourself in Cosmos" className="self-start" />
+        </div>
       </div>
       <div role="tablist" aria-label="Your space" onKeyDown={onKey} className="glass -mx-1 mb-8 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full p-1">
         {tabs.map((t) => {
