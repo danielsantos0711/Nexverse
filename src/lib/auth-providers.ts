@@ -178,6 +178,11 @@ type AuthErrorLike = { message?: string; code?: string; status?: number; reasons
 export function authErrorMessage(error: unknown): string {
   const e = (error ?? {}) as AuthErrorLike
   const message = e.message ?? ""
+  // The database refuses new accounts while an admin has closed registration (handle_new_user), which Supabase
+  // reports as a generic save error.
+  if (/database error saving new user|joining nexverse is closed/i.test(message)) {
+    return "Joining Nexverse is closed right now, so no new account was made. If you already have one, sign in the way you did before."
+  }
   switch (e.code) {
     case "invalid_credentials":
       return "That email and password do not match. Check both, or reset your password."
