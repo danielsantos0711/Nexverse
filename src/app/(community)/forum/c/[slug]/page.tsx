@@ -1,13 +1,11 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { notFound, permanentRedirect } from "next/navigation"
 import { Suspense } from "react"
-import { SquarePenIcon } from "lucide-react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { CategoryIcon } from "@/components/forum/category-icon"
 import { CategoryTopics } from "@/components/forum/category-topics"
 import { ForumHeader } from "@/components/forum/forum-header"
-import { primaryButton } from "@/components/forum/forum-ui"
+import { NewThreadLink } from "@/components/forum/new-thread-link"
 import { FollowButton } from "@/components/social/follow-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { categories, categoryPath, getCategory, getCategoryGroup } from "@/lib/data"
@@ -55,9 +53,7 @@ async function Category({ params }: { params: PageProps<"/forum/c/[slug]">["para
         }
       >
         <FollowButton followee={`category:${c.slug}`} showCount={false} name={c.name} />
-        <Link href={`/forum/new?c=${c.slug}`} className={primaryButton}>
-          <SquarePenIcon aria-hidden className="size-4" /> New thread in this category
-        </Link>
+        <NewThreadLink category={c.slug} />
       </ForumHeader>
       <Suspense fallback={<ListSkeleton />}>
         <CategoryTopics slug={c.slug} name={c.name} />

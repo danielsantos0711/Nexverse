@@ -15,7 +15,6 @@ import {
   missionCounts,
   missionState,
   missionTags,
-  sampleMissions,
   STATUSES,
   subscribeMissions,
   type Difficulty,
@@ -100,7 +99,7 @@ export function MissionsView() {
 
   const filtered = status !== "all" || difficulty !== "all" || Boolean(tag)
   const loading = missions === null || now === null
-  const noneAtAll = !loading && live && missions.length === 0
+  const noneAtAll = !loading && !error && missions.length === 0
 
   function clearFilters() {
     setStatus("all")
@@ -228,25 +227,37 @@ export function MissionsView() {
   )
 }
 
-/** With a database and no missions yet: an invitation, and the examples so people see what a mission looks like. */
+const HOW_IT_WORKS = [
+  { title: "Post", body: "Describe something you wish existed, list how you will judge it, and pledge points from your reputation." },
+  { title: "Build", body: "Members join the crew, build it, and submit a project page, a GitHub repository or a paper before the deadline." },
+  { title: "Pick", body: "You pick the winning entry. The winner gets the points and a badge; an unclaimed pledge goes back to you." },
+]
+
+/** No missions at all yet: say so plainly, invite the first one, and explain how a mission runs. */
 function FirstMission() {
-  const now = useNow()
-  const examples = useMemo(() => sampleMissions().slice(0, 3), [])
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ion/30 bg-ion/[0.04] px-6 py-10 text-center">
+    <div className="flex flex-col gap-4 rounded-xl border border-dashed border-ion/30 bg-ion/[0.04] px-5 py-10 sm:px-8">
+      <div className="flex flex-col items-center gap-3 text-center">
         <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
           <TargetIcon aria-hidden className="size-5" />
         </span>
-        <p className="max-w-md text-sm text-muted-foreground">No missions yet. Post the first: a model, dataset or tool you wish existed, with points for whoever builds it.</p>
+        <h2 className="font-sans text-base font-semibold tracking-normal">No missions yet</h2>
+        <p className="max-w-md text-sm text-muted-foreground">
+          {live
+            ? "Be the first to post one: a model, dataset or tool you wish existed, with points for whoever builds it."
+            : "Missions you post in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can see them yet."}
+        </p>
         <Link href="/missions/new" className={primaryButton}>
-          Post the first mission
+          <PlusIcon aria-hidden className="size-4" /> Post the first mission
         </Link>
       </div>
-      <h2 className="font-sans text-sm font-semibold tracking-normal text-muted-foreground">Examples of what a mission looks like</h2>
-      <ol className="flex flex-col gap-3 opacity-90">
-        {examples.map((m) => (
-          <li key={m.id}>{now !== null && <MissionCard m={m} now={now} />}</li>
+      <ol className="mx-auto grid w-full max-w-3xl gap-3 pt-2 sm:grid-cols-3">
+        {HOW_IT_WORKS.map((step, i) => (
+          <li key={step.title} className="rounded-lg border border-border bg-card/40 p-3">
+            <p className="text-xs text-muted-foreground tabular">Step {i + 1}</p>
+            <p className="text-sm font-medium">{step.title}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{step.body}</p>
+          </li>
         ))}
       </ol>
     </div>
@@ -271,7 +282,6 @@ export function MissionCard({ m, now }: { m: Mission; now: number }) {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={state} />
           <DifficultyBadge difficulty={m.difficulty} />
-          {m.sample && live && <span className="text-xs text-muted-foreground">Example</span>}
           {m.local && <span className="text-xs text-muted-foreground">Saved in this browser</span>}
         </div>
         <h2 className="font-sans text-base leading-snug font-semibold tracking-normal">

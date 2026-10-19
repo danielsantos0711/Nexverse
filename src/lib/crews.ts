@@ -1,15 +1,14 @@
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { localMember, type Room } from "@/lib/chat"
 import { getCollection, REACTIONS, type Collection, type ReactionEmoji, type Reactions, type Who } from "@/lib/community"
-import { getPerson } from "@/lib/data"
 import type { Member } from "@/lib/store"
 import { db } from "@/lib/supabase"
 
 /**
  * Crews: groups of members (a lab, a study group, a project team) with a wall of posts, a chat room of their
  * own, shared collections and a members list. With a database connected everything reads and writes Supabase
- * (see supabase/migrations/…_crews_messages.sql); without one a handful of sample crews ship with the app and
- * whatever you do (start a crew, join one, post) is kept in this browser.
+ * (see supabase/migrations/…_crews_messages.sql); without one (a browser-only copy) only the crews you start
+ * here are shown, and whatever you do with them is kept in this browser.
  */
 
 // ─── Shapes ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -76,6 +75,7 @@ export type Crew = {
   memberCount: number
   createdAt: string
   updatedAt: string
+  /** @deprecated Always false: there are no sample crews any more. */
   sample: boolean
   local: boolean
 }
@@ -90,6 +90,7 @@ export type CrewPost = {
   pinned: boolean
   createdAt: string
   editedAt: string | null
+  /** @deprecated Always false. */
   sample: boolean
   local: boolean
 }
@@ -152,7 +153,8 @@ export function validateCrew(c: CrewInput): Partial<Record<keyof CrewInput, stri
 function fail(error: { message: string; code?: string } | null): asserts error is null {
   if (!error) return
   if (error.code === "23505") throw new Error("That address is taken. Pick another one.")
-  if (/violates row-level security/.test(error.message)) throw new Error("You are not allowed to do that. Are you signed in and a member of this crew?")
+  if (/violates row-level security/.test(error.message))
+    throw new Error("You are not allowed to do that. Check that you are signed in and a member of this crew; if your account is paused, posting stays off until the pause ends (your notifications say why).")
   if (/JWT|not authenticated/i.test(error.message)) throw new Error("Your session ran out. Sign in again.")
   if (/schema cache|does not exist/.test(error.message)) throw new Error("Crews are still being switched on for this copy of Nexverse. Try again soon.")
   throw new Error(error.message)
@@ -188,167 +190,12 @@ async function requireMe() {
   return id
 }
 
-const personWho = (handle: string): Who => ({ handle, name: getPerson(handle)?.name ?? handle })
 const memberWho = (m: Member | null | undefined): Who => (m ? { name: m.name, memberId: m.id } : { name: "A member" })
 /** In a browser without a database, you write as the same "You" the chat uses. */
 const localWho = (): Who => {
   const m = localMember()
   return { name: m.name, memberId: m.id }
 }
-
-/** Keeps the fixed sample dates stable in prerendering: "n days before the preview's today". */
-const PREVIEW_DAY = Date.parse("2026-10-18T12:00:00Z")
-const daysAgo = (n: number, hour = 12) => new Date(PREVIEW_DAY - n * 864e5 + (hour - 12) * 36e5).toISOString()
-
-// ─── Sample crews (browser-only mode) ───────────────────────────────────────────────────────────────────────
-
-type SampleCrew = {
-  slug: string
-  name: string
-  blurb: string
-  icon: CrewIcon
-  color: CrewColor
-  visibility: CrewVisibility
-  tags: string[]
-  owner: string
-  admins: string[]
-  members: string[]
-  created: number
-  collections: string[]
-  /** Posts, newest last: author handle, days ago, body, pinned. */
-  posts: [string, number, string, boolean?][]
-  /** Posts, messages and joins for each of the last seven days, oldest first. */
-  activity: [number, number, number][]
-  reactions: Record<number, Partial<Record<ReactionEmoji, number>>>
-}
-
-const SAMPLE_CREW_DATA: SampleCrew[] = [
-  {
-    slug: "pt-pt-builders",
-    name: "PT-PT Builders",
-    blurb: "Models, data and evals for European Portuguese. We fine-tune small models that sound like Lisbon, not São Paulo.",
-    icon: "languages",
-    color: "ok",
-    visibility: "public",
-    tags: ["portuguese", "fine-tuning", "nlp", "evals"],
-    owner: "ines",
-    admins: ["jonas"],
-    members: ["amara", "layla", "noah"],
-    created: 40,
-    collections: ["starter-european-portuguese"],
-    posts: [
-      ["ines", 6, "**Welcome!** Start with the starter collection below, then say hello in the crew chat.\n\nWe meet on Thursdays at 18:00 Lisbon time for a 30 minute check-in.", true],
-      ["jonas", 3, "Draft of the PT-PT eval card is up. It checks for Brazilian forms like `você` used where `tu` is expected, and for spelling before the 1990 agreement."],
-      ["noah", 1, "Tried `tagus-3b-pt` with retrieval over the Diário da República. Recall at 10 went from 0.61 to 0.74 with `babel-embed`. Notes in the crew chat."],
-    ],
-    activity: [[1, 12, 0], [0, 8, 1], [2, 21, 0], [0, 5, 0], [1, 17, 2], [0, 9, 0], [1, 14, 1]],
-    reactions: { 0: { "🎉": 6, "❤️": 3 }, 1: { "👍": 4 }, 2: { "🚀": 5, "👀": 2 } },
-  },
-  {
-    slug: "agent-reliability",
-    name: "Agent Reliability Club",
-    blurb: "Agents that stop when they should. We share traces, failure cases and the guard rails that fixed them.",
-    icon: "bot",
-    color: "violet",
-    visibility: "public",
-    tags: ["agents", "tracing", "evals", "tool-use"],
-    owner: "rafa",
-    admins: ["sofia"],
-    members: ["noah", "kai", "mei", "priya"],
-    created: 28,
-    collections: ["agents-that-stop"],
-    posts: [
-      ["rafa", 9, "House rule: every failure report comes with a trace. Use `loop-guard --export` and attach the JSON.", true],
-      ["sofia", 4, "We cut cost per task by 38% by caching tool results for 60 seconds. The catch: two tools return stale prices. Write-up soon."],
-      ["kai", 2, "Is anyone using a step budget per tool instead of per run? Curious how you pick the numbers."],
-      ["mei", 0, "Shared a small eval: 40 tasks where the right move is to stop and ask. Most agents keep going."],
-    ],
-    activity: [[1, 22, 1], [2, 30, 0], [0, 18, 0], [1, 26, 1], [0, 11, 0], [1, 19, 0], [1, 24, 2]],
-    reactions: { 0: { "👍": 9 }, 1: { "🚀": 7, "🤔": 2 }, 2: { "🤔": 3 }, 3: { "👀": 4 } },
-  },
-  {
-    slug: "on-device-lab",
-    name: "On-device Lab",
-    blurb: "Quantisation, phones and laptops. What actually runs offline, and how to measure battery honestly.",
-    icon: "smartphone",
-    color: "amber",
-    visibility: "public",
-    tags: ["quantization", "mobile", "edge", "llama-cpp"],
-    owner: "priya",
-    admins: [],
-    members: ["kai", "leo", "sofia"],
-    created: 21,
-    collections: ["phone-sized-models"],
-    posts: [
-      ["priya", 5, "Battery protocol v2: airplane mode, 50% brightness, 20 prompts of 200 tokens each. Report mAh, not percent.", true],
-      ["leo", 2, "3-bit `orbit-1b-mobile` keeps 96% of the 4-bit score on our audio captions set. Worth a try if you are tight on RAM."],
-    ],
-    activity: [[0, 6, 0], [1, 9, 1], [0, 4, 0], [0, 7, 0], [1, 10, 0], [0, 3, 0], [0, 8, 1]],
-    reactions: { 0: { "👍": 5, "❤️": 2 }, 1: { "🚀": 3 } },
-  },
-  {
-    slug: "speech-commons",
-    name: "Speech Commons",
-    blurb: "Consent-first speech data and models for African languages. Invite only while we sort out data access.",
-    icon: "audio-lines",
-    color: "teal",
-    visibility: "invite",
-    tags: ["speech", "datasets", "yoruba", "swahili"],
-    owner: "tunde",
-    admins: ["amara"],
-    members: ["leo"],
-    created: 33,
-    collections: ["speech-african-languages"],
-    posts: [
-      ["tunde", 7, "Recording guide for new contributors is pinned in the crew chat. Please read the consent section first.", true],
-      ["amara", 3, "Kiswahili commons v2 is out: 1,200 more hours, all with speaker consent forms."],
-    ],
-    activity: [[0, 5, 0], [0, 3, 0], [1, 8, 0], [0, 2, 0], [0, 6, 1], [1, 4, 0], [0, 5, 0]],
-    reactions: { 0: { "❤️": 4 }, 1: { "🎉": 6 } },
-  },
-  {
-    slug: "eval-reading-group",
-    name: "Eval Reading Group",
-    blurb: "One evaluation paper a week, read slowly. We write a short summary and one thing worth trying.",
-    icon: "book-open",
-    color: "gold",
-    visibility: "public",
-    tags: ["evaluation", "papers", "reading-group"],
-    owner: "mei",
-    admins: ["noah"],
-    members: ["jonas", "ines", "rafa"],
-    created: 50,
-    collections: ["agents-that-stop", "starter-european-portuguese"],
-    posts: [
-      ["mei", 8, "This week: contamination checks. Bring one benchmark you trust and one you do not.", true],
-      ["noah", 1, "Summary from Tuesday: n-gram overlap misses paraphrased leaks. Embedding search over the training set caught 3x more."],
-    ],
-    activity: [[0, 4, 0], [1, 7, 0], [0, 2, 1], [0, 3, 0], [0, 9, 0], [1, 12, 0], [0, 5, 0]],
-    reactions: { 0: { "👍": 7 }, 1: { "👀": 5, "🚀": 2 } },
-  },
-]
-
-const sampleId = (slug: string) => `sample-${slug}`
-
-export const SAMPLE_CREWS: Crew[] = SAMPLE_CREW_DATA.map((c) => ({
-  id: sampleId(c.slug),
-  slug: c.slug,
-  name: c.name,
-  blurb: c.blurb,
-  icon: c.icon,
-  color: c.color,
-  visibility: c.visibility,
-  tags: c.tags,
-  owner: personWho(c.owner),
-  memberCount: 1 + c.admins.length + c.members.length,
-  createdAt: daysAgo(c.created),
-  updatedAt: daysAgo(c.posts.length ? c.posts[c.posts.length - 1][1] : c.created),
-  sample: true,
-  local: false,
-}))
-
-export const getSampleCrew = (slug: string) => SAMPLE_CREWS.find((c) => c.slug === slug)
-const sampleData = (crewId: string) => SAMPLE_CREW_DATA.find((c) => sampleId(c.slug) === crewId)
 
 // ─── Browser-only storage ───────────────────────────────────────────────────────────────────────────────────
 
@@ -377,13 +224,7 @@ function fromLocalCrew(c: LocalCrew): Crew {
   return { ...c, owner: localWho(), memberCount: 1, sample: false, local: true }
 }
 
-function withLocalStanding(c: Crew): Crew {
-  if (!c.sample) return c
-  const s = readStanding()[c.id]
-  return s?.role ? { ...c, memberCount: c.memberCount + 1 } : c
-}
-
-const localCrews = () => [...readLocalCrews().map(fromLocalCrew), ...SAMPLE_CREWS.map(withLocalStanding)]
+const localCrews = () => readLocalCrews().map(fromLocalCrew)
 
 // Tabs of one browser hear about each other's changes (a join, a post) so open pages stay current.
 const localListeners = new Map<string, Set<() => void>>()
@@ -453,7 +294,7 @@ const fromPostRow = (r: PostRow): CrewPost => ({
 
 // ─── Crews ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Crews to discover: most recently active first. Without a database, yours and the samples. */
+/** Crews to discover: most recently active first. Without a database, the ones you started here. */
 export async function listCrews(): Promise<Crew[]> {
   const client = db()
   if (!client) return localCrews()
@@ -649,17 +490,7 @@ export async function listMembers(c: Crew): Promise<CrewMember[]> {
   const client = db()
   if (!client) {
     const you = localWho()
-    if (c.local) return [{ ...you, key: `member:${you.memberId}`, role: "owner", joinedAt: c.createdAt }]
-    const s = sampleData(c.id)
-    if (!s) return []
-    const list: CrewMember[] = [
-      { ...personWho(s.owner), key: `person:${s.owner}`, role: "owner", joinedAt: daysAgo(s.created) },
-      ...s.admins.map((h, i) => ({ ...personWho(h), key: `person:${h}`, role: "admin" as const, joinedAt: daysAgo(s.created - 1 - i) })),
-      ...s.members.map((h, i) => ({ ...personWho(h), key: `person:${h}`, role: "member" as const, joinedAt: daysAgo(Math.max(0, s.created - 3 - i * 4)) })),
-    ]
-    const mine = readStanding()[c.id]
-    if (mine?.role) list.push({ ...you, key: `member:${you.memberId}`, role: mine.role, joinedAt: new Date().toISOString() })
-    return list
+    return c.local ? [{ ...you, key: `member:${you.memberId}`, role: "owner", joinedAt: c.createdAt }] : []
   }
   const { data, error } = await client
     .from("crew_members")
@@ -737,8 +568,7 @@ export async function acceptInvite(c: Crew, token: string): Promise<string> {
   if (!client) {
     const all = readLocal<CrewInvite[]>(invitesKey(c.id), [])
     const i = all.find((x) => x.token === token)
-    // Sample crews accept any well-formed link, so the flow can be tried without a second browser.
-    if (!c.sample && (!i || Date.parse(i.expiresAt) < Date.now() || i.uses >= i.maxUses)) throw new Error("This invite link has run out. Ask for a new one.")
+    if (!i || Date.parse(i.expiresAt) < Date.now() || i.uses >= i.maxUses) throw new Error("This invite link has run out. Ask for a new one.")
     if (i) writeLocal(invitesKey(c.id), all.map((x) => (x.token === token ? { ...x, uses: x.uses + 1 } : x)))
     if (!c.local) writeStanding(c.id, { role: "member", requested: false })
     return c.slug
@@ -751,22 +581,6 @@ export async function acceptInvite(c: Crew, token: string): Promise<string> {
 
 // ─── The wall ───────────────────────────────────────────────────────────────────────────────────────────────
 
-function samplePosts(crewId: string): CrewPost[] {
-  const s = sampleData(crewId)
-  if (!s) return []
-  return s.posts.map(([author, days, body, pinned], i) => ({
-    id: `${s.slug}-${i}`,
-    crewId,
-    author: personWho(author),
-    body,
-    pinned: Boolean(pinned),
-    createdAt: daysAgo(days, 9 + i),
-    editedAt: null,
-    sample: true,
-    local: false,
-  }))
-}
-
 /** Pinned posts first, then newest first. */
 export const sortPosts = (list: CrewPost[]) => [...list].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.createdAt.localeCompare(a.createdAt))
 
@@ -775,7 +589,7 @@ export async function listPosts(c: Crew): Promise<CrewPost[]> {
   if (!client) {
     const pins = readLocal<Record<string, boolean>>(pinsKey(c.id), {})
     const own = readLocal<CrewPost[]>(postsKey(c.id), [])
-    return sortPosts([...own, ...samplePosts(c.id)].map((p) => (p.id in pins ? { ...p, pinned: pins[p.id] } : p)))
+    return sortPosts(own.map((p) => (p.id in pins ? { ...p, pinned: pins[p.id] } : p)))
   }
   const { data, error } = await client.from("crew_posts").select(POST_COLUMNS).eq("crew_id", c.id).order("created_at", { ascending: false }).limit(100)
   fail(error)
@@ -868,13 +682,6 @@ export async function getPostReactions(c: Crew, posts: CrewPost[]): Promise<Reco
   const out: Record<string, Reactions> = Object.fromEntries(posts.map((p) => [p.id, emptyReactions()]))
   const client = db()
   if (!client) {
-    const s = sampleData(c.id)
-    if (s) {
-      for (const [i, counts] of Object.entries(s.reactions)) {
-        const r = out[`${s.slug}-${i}`]
-        if (r) for (const [e, n] of Object.entries(counts)) r[e as ReactionEmoji].count += n ?? 0
-      }
-    }
     for (const key of readLocal<string[]>(REACTIONS_KEY, [])) {
       const [postId, emoji] = key.split("|") as [string, ReactionEmoji]
       const r = out[postId]?.[emoji]
@@ -885,7 +692,7 @@ export async function getPostReactions(c: Crew, posts: CrewPost[]): Promise<Reco
     }
     return out
   }
-  const ids = posts.filter((p) => !p.sample).map((p) => p.id)
+  const ids = posts.map((p) => p.id)
   if (!ids.length) return out
   const [userId, res] = await Promise.all([me(), client.from("crew_post_reactions").select("post_id, emoji, user_id").in("post_id", ids).limit(5000)])
   fail(res.error)
@@ -921,17 +728,17 @@ const COLLECTION_ID = /^[a-z0-9-]{1,80}$/
 /** The ids of the collections a crew shares, newest first. */
 async function sharedIds(c: Crew): Promise<string[]> {
   const client = db()
-  if (!client) return [...new Set([...readLocal<string[]>(sharedKey(c.id), []), ...(sampleData(c.id)?.collections ?? [])])]
+  if (!client) return readLocal<string[]>(sharedKey(c.id), [])
   const { data, error } = await client.from("crew_collections").select("collection").eq("crew_id", c.id).order("added_at", { ascending: false }).limit(50)
   fail(error)
   return (data as { collection: string }[]).map((r) => r.collection)
 }
 
-/** The collections themselves. Private ones you cannot see are left out. */
+/** The collections themselves. Private ones you cannot see, and the app's built-in examples, are left out. */
 export async function listCrewCollections(c: Crew): Promise<Collection[]> {
   const ids = await sharedIds(c)
   const found = await Promise.all(ids.map((id) => getCollection(id).catch(() => null)))
-  return found.filter((x): x is Collection => Boolean(x))
+  return found.filter((x): x is Collection => Boolean(x) && !(x as { sample?: boolean }).sample)
 }
 
 export async function shareCollection(c: Crew, collectionId: string) {
@@ -954,7 +761,6 @@ export async function shareCollection(c: Crew, collectionId: string) {
 export async function unshareCollection(c: Crew, collectionId: string) {
   const client = db()
   if (!client) {
-    if (sampleData(c.id)?.collections.includes(collectionId)) throw new Error("Sample collections stay on sample crews.")
     writeLocal(
       sharedKey(c.id),
       readLocal<string[]>(sharedKey(c.id), []).filter((x) => x !== collectionId)
@@ -976,12 +782,8 @@ export async function getActivity(c: Crew): Promise<ActivityDay[]> {
   const today = Date.now()
   const days = Array.from({ length: 7 }, (_, i) => isoDay(today - (6 - i) * 864e5))
   if (!client) {
-    const s = sampleData(c.id)
     const own = readLocal<CrewPost[]>(postsKey(c.id), [])
-    return days.map((day, i) => {
-      const [posts, messages, joins] = s?.activity[i] ?? [0, 0, 0]
-      return { day, posts: posts + own.filter((p) => p.createdAt.slice(0, 10) === day).length, messages, joins }
-    })
+    return days.map((day) => ({ day, posts: own.filter((p) => p.createdAt.slice(0, 10) === day).length, messages: 0, joins: 0 }))
   }
   const { data, error } = await client.rpc("crew_activity", { crew: c.id })
   fail(error)

@@ -4,7 +4,7 @@ import Link from "next/link"
 import { motion, useReducedMotion } from "motion/react"
 import { useEffect, useMemo, useState } from "react"
 import { CheckIcon, SwordsIcon } from "lucide-react"
-import { LangList, SampleChip, TaskBadge } from "@/components/arena/arena-bits"
+import { LangList, TaskBadge } from "@/components/arena/arena-bits"
 import { PlayMode } from "@/components/arena/play-mode"
 import { primaryButton, rise, riseDelay } from "@/components/forum/forum-ui"
 import { TimeAgo } from "@/components/live/time"
@@ -142,7 +142,6 @@ function DuelRow({ d, voted, mine }: { d: Duel; voted: boolean; mine: boolean })
       <div className="flex flex-wrap items-center gap-2">
         <TaskBadge task={d.task} />
         <LangList langs={d.langs} />
-        {d.sample && <SampleChip />}
         {voted && (
           <span className="inline-flex items-center gap-1 rounded-full bg-ok/10 px-2 py-0.5 text-xs text-ok">
             <CheckIcon aria-hidden className="size-3" /> Voted

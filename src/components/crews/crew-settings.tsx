@@ -22,9 +22,9 @@ export function CrewSettings({ crew, role, onSaved, onMembersChanged }: { crew: 
         <h2 id="crew-edit-h" className="font-sans text-base font-semibold tracking-normal">
           Crew details
         </h2>
-        {crew.sample ? <p className="text-sm text-muted-foreground">Sample crews cannot be edited.</p> : <CrewForm crew={crew} onSaved={onSaved} />}
+        <CrewForm crew={crew} onSaved={onSaved} />
       </section>
-      {role === "owner" && !crew.sample && <DangerZone crew={crew} />}
+      {role === "owner" && <DangerZone crew={crew} />}
     </div>
   )
 }

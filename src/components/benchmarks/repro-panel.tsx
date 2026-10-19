@@ -167,7 +167,7 @@ export function ReproPanel({ result, onRepros, onDeleted }: { result: BenchmarkR
                   key={o}
                   className={cn(
                     "pressable inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring",
-                    outcome === o ? (o === "reproduced" ? "border-ok/50 bg-ok/10" : "border-destructive/50 bg-destructive/10") : "border-border text-muted-foreground hover:text-foreground"
+                    outcome === o ? (o === "reproduced" ? "border-ok/50 bg-ok/10" : "border-destructive/50 bg-destructive/10") : "border-border text-muted-foreground hover:text-foreground",
                   )}
                 >
                   <input type="radio" name={`outcome-${result.id}`} value={o} checked={outcome === o} onChange={() => setOutcome(o)} className="sr-only" />
@@ -189,7 +189,7 @@ export function ReproPanel({ result, onRepros, onDeleted }: { result: BenchmarkR
                 {busy ? "Saving…" : "Save"}
               </Button>
             </div>
-            {reproStaysLocal(result) && <p className="text-xs text-muted-foreground">{result.sample ? "Sample result: your report stays in this browser." : "This copy has no database, so your report stays in this browser."}</p>}
+            {reproStaysLocal(result) && <p className="text-xs text-muted-foreground">This copy has no database, so your report stays in this browser.</p>}
           </form>
         )}
         {error && (

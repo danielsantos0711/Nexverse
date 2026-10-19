@@ -115,7 +115,7 @@ export function LeaderboardView() {
             </>
           )}
         </div>
-        {!live && <p className="text-xs text-muted-foreground">This copy has no database, so the board is computed from the sample community (upvotes count as likes) plus what you did in this browser.</p>}
+        {!live && <p className="text-xs text-muted-foreground">This copy has no database, so the board only counts what you did in this browser.</p>}
       </div>
 
       <aside aria-label="How points work" className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
@@ -172,9 +172,13 @@ export function LeaderboardView() {
   )
 }
 
+/** A member's profile address; null for "You" in a browser-only copy. */
+const whoHref = (r: LeaderRow) => (r.who.memberId ? (`/people/${r.who.memberId}` as const) : null)
+
 function Row({ r, rank, showLevel }: { r: LeaderRow; rank: number; showLevel: boolean }) {
-  const name = r.who.handle ? (
-    <Link href={`/people/${r.who.handle}`} className="truncate rounded-sm font-medium hover:text-ion hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+  const href = whoHref(r)
+  const name = href ? (
+    <Link href={href} className="truncate rounded-sm font-medium hover:text-ion hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
       {r.who.name}
     </Link>
   ) : (
@@ -228,8 +232,8 @@ function Podium({ rows }: { rows: LeaderRow[] }) {
             <span className={cn("inline-flex items-center gap-1 text-xs font-medium", MEDALS[rank - 1])}>
               <TrophyIcon aria-hidden className="size-3.5" /> {rank === 1 ? "First" : rank === 2 ? "Second" : "Third"}
             </span>
-            {r.who.handle ? (
-              <Link href={`/people/${r.who.handle}`} className="pressable max-w-full truncate text-sm font-medium hover:text-ion">
+            {whoHref(r) ? (
+              <Link href={whoHref(r)!} className="pressable max-w-full truncate text-sm font-medium hover:text-ion">
                 {r.who.name}
               </Link>
             ) : (

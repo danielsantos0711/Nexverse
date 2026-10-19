@@ -3,7 +3,7 @@ import Link from "next/link"
 import { Suspense } from "react"
 import { HashIcon, LayersIcon } from "lucide-react"
 import { PageTitle, SectionHead } from "@/components/hub/bits"
-import { ResourceCard, ThreadRow } from "@/components/hub/cards"
+import { HubTrending } from "@/components/hub/hub-trending"
 import { Item, Stagger } from "@/components/hub/motion"
 import { FeedMeta, FeedUnavailable } from "@/components/live/bits"
 import { GitHubRepoCard } from "@/components/live/github-repo-card"
@@ -12,7 +12,6 @@ import { PillTabs } from "@/components/live/pill-tabs"
 import { ReleaseList } from "@/components/live/release-list"
 import { CardsSkeleton, RowsSkeleton, StripSkeleton } from "@/components/live/skeletons"
 import { TrendingNowLive } from "@/components/live/trending-now"
-import { resources, threads, trending } from "@/lib/data"
 import { arxivPapers, GH_TOPICS, ghTopicHref, githubReleases, githubTopicRepos, githubTrendingAi, type Feed, type GhRepo } from "@/lib/live"
 
 export const metadata: Metadata = {
@@ -113,36 +112,6 @@ async function Papers() {
   )
 }
 
-/** The hub's own favourites: sample catalogue and forum, ranked by likes and votes weighted toward recent. */
-function OnNexverse() {
-  const items = trending(resources).slice(0, 6)
-  const talk = trending(threads).slice(0, 4)
-  return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="flex flex-col gap-3">
-        <h3 className="font-sans text-sm font-medium tracking-normal text-muted-foreground">Models, datasets, tools and repos</h3>
-        <Stagger as="ol" className="flex flex-col gap-2.5">
-          {items.map((r, i) => (
-            <Item as="li" key={`${r.kind}-${r.slug}`}>
-              <ResourceCard r={r} rank={i + 1} />
-            </Item>
-          ))}
-        </Stagger>
-      </div>
-      <div className="flex flex-col gap-3">
-        <h3 className="font-sans text-sm font-medium tracking-normal text-muted-foreground">In the forum</h3>
-        <Stagger as="ol" className="glass flex flex-col divide-y divide-border overflow-hidden rounded-2xl" gap={0.04}>
-          {talk.map((t) => (
-            <Item as="li" key={t.id}>
-              <ThreadRow t={t} compact />
-            </Item>
-          ))}
-        </Stagger>
-      </div>
-    </div>
-  )
-}
-
 export default function TrendingPage() {
   return (
     <div className="shell pb-16">
@@ -182,8 +151,8 @@ export default function TrendingPage() {
             <Papers />
           </Suspense>
         </Section>
-        <Section id="hub" title="Popular on Nexverse" lead="What members are liking and discussing this week." href="/explore" action="Explore the hub">
-          <OnNexverse />
+        <Section id="hub" title="Popular on Nexverse" lead="What members published, shared and liked, and the newest threads in the forum." href="/explore" action="Explore the hub">
+          <HubTrending />
         </Section>
       </div>
     </div>

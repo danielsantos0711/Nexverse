@@ -44,7 +44,7 @@ export function Gate({
           <EmptyDescription>Anyone can read Nexverse. Taking part needs a free account, so every post has a real person behind it.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button render={<Link href={`/sign-in?next=${encodeURIComponent(path)}`} />}>Sign in or join</Button>
+          <Button nativeButton={false} render={<Link href={`/sign-in?next=${encodeURIComponent(path)}`} />}>Sign in or join</Button>
         </EmptyContent>
       </Empty>
     )
@@ -76,7 +76,7 @@ export function Gate({
         <EmptyDescription>This part of Nexverse is for the team that runs the site.</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button variant="outline" render={<Link href="/" />}>
+        <Button variant="outline" nativeButton={false} render={<Link href="/" />}>
           Back to the home page
         </Button>
       </EmptyContent>

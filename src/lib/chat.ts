@@ -30,6 +30,8 @@ export type ChatMessage = {
   replyTo: string | null
   parent: QuotedMessage | null
   reactions: Reaction[]
+  /** Hidden by moderators: only its author and staff receive it, and they see it marked. */
+  hidden?: boolean
   /** Only on messages this browser is still sending, or failed to send. */
   status?: "sending" | "failed"
   error?: string
@@ -133,6 +135,7 @@ type MessageRow = {
   author?: Member | null
   parent?: { id: string; body: string; author: Member | null } | null
   reactions?: { emoji: Emoji; user_id: string }[]
+  hidden_at?: string | null
 }
 
 const fromRoomRow = (r: RoomRow): Room => ({ slug: r.slug, name: r.name, topic: r.topic, createdBy: r.created_by, createdAt: r.created_at })
@@ -148,7 +151,21 @@ function fromMessageRow(r: MessageRow): ChatMessage {
     replyTo: r.reply_to,
     parent: r.parent ?? null,
     reactions: (r.reactions ?? []).map((x) => ({ emoji: x.emoji, userId: x.user_id })),
+    hidden: Boolean(r.hidden_at),
   }
+}
+
+// hidden_at arrives with the moderation migration (…_roles_admin.sql); reads skip it while a database lacks it.
+let hiddenColumn = true
+
+/** Runs a message select with hidden_at, and once more without it if the database does not have the column. */
+async function selectMessages<T>(run: (columns: string) => PromiseLike<{ data: T; error: { message: string; code?: string } | null }>) {
+  if (hiddenColumn) {
+    const res = await run(`${MESSAGE_COLUMNS}, hidden_at`)
+    if (res.error?.code !== "42703") return res
+    hiddenColumn = false
+  }
+  return run(MESSAGE_COLUMNS)
 }
 
 function fail(error: { message: string; code?: string } | null): asserts error is null {
@@ -260,9 +277,11 @@ export async function listMessages(room: string, { before, limit = PAGE_SIZE }: 
     const older = before ? all.filter((m) => m.createdAt < before) : all
     return { messages: older.slice(-limit), more: older.length > limit }
   }
-  let query = client.from("room_messages").select(MESSAGE_COLUMNS).eq("room", room).order("created_at", { ascending: false }).limit(limit + 1)
-  if (before) query = query.lt("created_at", before)
-  const { data, error } = await query
+  const { data, error } = await selectMessages((columns) => {
+    let query = client.from("room_messages").select(columns).eq("room", room).order("created_at", { ascending: false }).limit(limit + 1)
+    if (before) query = query.lt("created_at", before)
+    return query
+  })
   fail(error)
   const rows = data as unknown as MessageRow[]
   const messages = rows.slice(0, limit).map(fromMessageRow).reverse()
@@ -273,7 +292,7 @@ export async function listMessages(room: string, { before, limit = PAGE_SIZE }: 
 export async function getMessage(id: string): Promise<ChatMessage | null> {
   const client = db()
   if (!client) return null
-  const { data, error } = await client.from("room_messages").select(MESSAGE_COLUMNS).eq("id", id).maybeSingle()
+  const { data, error } = await selectMessages((columns) => client.from("room_messages").select(columns).eq("id", id).maybeSingle())
   fail(error)
   return data ? fromMessageRow(data as unknown as MessageRow) : null
 }

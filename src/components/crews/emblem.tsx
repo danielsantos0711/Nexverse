@@ -27,7 +27,6 @@ import {
 } from "lucide-react"
 import { ChatAvatar } from "@/components/chat/glyphs"
 import { MemberAvatar } from "@/components/forum/forum-ui"
-import { PersonAvatar } from "@/components/hub/bits"
 import type { Who } from "@/lib/community"
 import { CREW_COLORS, type CrewColor, type CrewIcon } from "@/lib/crews"
 import { cn } from "@/lib/utils"
@@ -88,19 +87,17 @@ export function CrewEmblem({ icon, color, size = 44, className }: { icon: CrewIc
   )
 }
 
-/** A face for anyone on a crew: a sample person's avatar, a member's (seeded by id, as in chat), or initials. */
+/** A face for anyone on a crew: a member's (seeded by id, as in chat), or initials. */
 export function WhoAvatar({ who, size = 28, className }: { who: Who; size?: number; className?: string }) {
-  if (who.handle) return <PersonAvatar handle={who.handle} size={size} className={className} />
   if (who.memberId) return <ChatAvatar id={who.memberId} name={who.name} size={size} className={className} />
   return <MemberAvatar name={who.name} size={size} className={className} />
 }
 
-/** "Sample" / "Saved in this browser" / "Invite only" badges in one place. */
-export function CrewBadges({ crew, className }: { crew: { visibility: string; sample: boolean; local: boolean }; className?: string }) {
+/** "Saved in this browser" / "Invite only" badges in one place. */
+export function CrewBadges({ crew, className }: { crew: { visibility: string; local: boolean }; className?: string }) {
   return (
     <span className={cn("inline-flex flex-wrap items-center gap-1.5", className)}>
       {crew.visibility === "invite" && <span className="rounded-full border border-gold/30 bg-gold/10 px-2 py-0.5 text-[11px] font-medium text-gold">Invite only</span>}
-      {crew.sample && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] text-muted-foreground">Sample</span>}
       {crew.local && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] text-muted-foreground">Saved in this browser</span>}
     </span>
   )

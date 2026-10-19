@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
-import { CalendarIcon, FileTextIcon, FolderGit2Icon, QuoteIcon } from "lucide-react"
+import { BookMarkedIcon, CalendarIcon, FileTextIcon, FolderGit2Icon, QuoteIcon, UnlockIcon } from "lucide-react"
 import { LikeButton } from "@/components/hub/like-button"
 import { MotionTabs } from "@/components/hub/motion-tabs"
 import { SaveButton } from "@/components/social/save-button"
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { compact } from "@/lib/data"
 import { areaInfo } from "@/lib/live/catalog"
 import { discussItemHref, internalHref, liveTarget, paperHref } from "@/lib/live/ids"
+import { paperRecord, type RelatedWork } from "@/lib/live/openalex"
 import { paperCitations, paperDetail, type CitedWork } from "@/lib/live/papers"
 import { ExternalLink } from "./bits"
 import { CitationBars } from "./citation-bars"
@@ -171,6 +172,68 @@ async function CitedPill({ id }: { id: string }) {
   )
 }
 
+// ─── OpenAlex: venue, open access, topic, related papers ───────────────────────────────────────────────────
+
+/** Published venue, a free PDF of the published version, and the main topic, as rows of the Details panel. */
+async function PublicationRows({ id }: { id: string }) {
+  const res = await paperRecord(id)
+  if (!res.ok) return null
+  const { venue, topic } = res.data
+  return (
+    <>
+      {venue && (
+        <InfoRow label={venue.kind === "conference" ? "Conference" : venue.kind === "journal" ? "Journal" : "Published in"}>
+          {venue.url ? (
+            <ExternalLink href={venue.url} className="inline-flex items-center gap-1 text-ion hover:underline">
+              <BookMarkedIcon aria-hidden className="size-3.5 shrink-0" />
+              <span className="line-clamp-2">{venue.name}</span>
+            </ExternalLink>
+          ) : (
+            <span className="line-clamp-2">{venue.name}</span>
+          )}
+        </InfoRow>
+      )}
+      {venue?.pdf && (
+        <InfoRow label="Open access">
+          <ExternalLink href={venue.pdf} className="inline-flex items-center gap-1 text-ion hover:underline">
+            <UnlockIcon aria-hidden className="size-3.5" /> Published PDF
+          </ExternalLink>
+        </InfoRow>
+      )}
+      {topic && (
+        <InfoRow label="Topic">
+          <span className="line-clamp-2">{topic}</span>
+        </InfoRow>
+      )}
+    </>
+  )
+}
+
+function RelatedItem({ w }: { w: RelatedWork }) {
+  return <Work w={{ title: w.title, year: w.year, citations: w.citations, arxivId: w.arxivId, doi: w.doi, authors: w.venue }} />
+}
+
+/** Up to six papers OpenAlex considers related. Nothing at all when it has none or does not answer. */
+async function RelatedPapers({ id }: { id: string }) {
+  const res = await paperRecord(id)
+  if (!res.ok || !res.data.related.length) return null
+  return (
+    <section aria-labelledby="related-h" className="flex flex-col gap-2">
+      <h2 id="related-h" className="text-base font-semibold">
+        Related papers
+      </h2>
+      <ul className="grid gap-2">
+        {res.data.related.map((w, i) => (
+          <li key={`${w.arxivId || w.doi || w.title}-${i}`}>
+            <RelatedItem w={w} />
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-muted-foreground/80">Suggested by OpenAlex from shared topics and citations.</p>
+    </section>
+  )
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────────────────────────────────────
 
 export async function PaperView({ id }: { id: string }) {
@@ -204,6 +267,9 @@ export async function PaperView({ id }: { id: string }) {
         <p className="text-[15px] leading-relaxed whitespace-pre-line text-foreground/90">{p.summary || "No abstract available."}</p>
       </section>
       {p.comment && <p className="text-sm text-muted-foreground">Authors&apos; note: {p.comment}</p>}
+      <Suspense fallback={null}>
+        <RelatedPapers id={p.id} />
+      </Suspense>
     </div>
   )
 
@@ -280,6 +346,9 @@ export async function PaperView({ id }: { id: string }) {
                 <span className="font-mono text-xs">{p.categories.join(", ")}</span>
               </InfoRow>
             )}
+            <Suspense fallback={null}>
+              <PublicationRows id={p.id} />
+            </Suspense>
             <InfoRow label="Authors">
               <span className="tabular">{p.authors.length}</span>
             </InfoRow>

@@ -3,18 +3,15 @@ import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { CrewPage } from "@/components/crews/crew-page"
-import { CREW_SLUG, getSampleCrew, SAMPLE_CREWS } from "@/lib/crews"
-import { live } from "@/lib/supabase"
+import { CREW_SLUG } from "@/lib/crews"
 
-// The sample crews are prerendered; crews members start later render on first visit.
+// Crews live in the database (or this browser) and load on first visit. One placeholder slug lets the route be
+// checked at build time; it renders the "not found" state.
 export function generateStaticParams() {
-  return SAMPLE_CREWS.map((c) => ({ slug: c.slug }))
+  return [{ slug: "crew-placeholder" }]
 }
 
-export async function generateMetadata({ params }: PageProps<"/crews/[slug]">): Promise<Metadata> {
-  const c = getSampleCrew((await params).slug)
-  return c ? { title: `${c.name} · Crews`, description: c.blurb } : { title: "Crew" }
-}
+export const metadata: Metadata = { title: "Crew" }
 
 export default function Page({ params }: PageProps<"/crews/[slug]">) {
   return (
@@ -30,7 +27,7 @@ async function Crew({ params }: { params: PageProps<"/crews/[slug]">["params"] }
   // The page reads ?invite= in the browser, so it waits inside its own boundary.
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <CrewPage slug={slug} initial={live ? undefined : getSampleCrew(slug)} />
+      <CrewPage slug={slug} />
     </Suspense>
   )
 }

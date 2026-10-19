@@ -76,9 +76,7 @@ export function DotChart({ bench, results }: { bench: Benchmark; results: Benchm
   return (
     <figure className="flex flex-col gap-3">
       <figcaption className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs text-muted-foreground">
-        <span>
-          {bench.metric[0].toUpperCase() + bench.metric.slice(1)} by model, best first. Each dot is one submitted result.
-        </span>
+        <span>{bench.metric[0].toUpperCase() + bench.metric.slice(1)} by model, best first. Each dot is one submitted result.</span>
         <span className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1.5">
             <svg width="12" height="12" aria-hidden>
@@ -134,7 +132,11 @@ export function DotChart({ bench, results }: { bench: Benchmark; results: Benchm
                         <motion.circle
                           initial={reduce ? false : { cx: labelW, opacity: 0 }}
                           animate={{ cx, opacity: 1 }}
-                          transition={{ duration: reduce ? 0 : 0.7, delay: reduce ? 0 : 0.05 * i + 0.04 * j, ease: [0.23, 1, 0.32, 1] }}
+                          transition={{
+                            duration: reduce ? 0 : 0.7,
+                            delay: reduce ? 0 : 0.05 * i + 0.04 * j,
+                            ease: [0.23, 1, 0.32, 1],
+                          }}
                           cy={cy}
                           r={verified ? 5.5 : 4.5}
                           fill={verified ? DOT : "var(--card)"}
@@ -184,12 +186,7 @@ function Tooltip({ tip, bench, width }: { tip: Tip; bench: Benchmark; width: num
       <p className="truncate text-muted-foreground">{r.model}</p>
       {settings && <p className="mt-1 truncate text-muted-foreground">{settings}</p>}
       <p className="mt-1 text-muted-foreground">
-        {s.verified
-          ? `Reproduced by ${s.reproduced}${s.failed ? `, ${s.failed} could not` : ""}`
-          : s.failed
-            ? `${s.failed} could not reproduce`
-            : "Not reproduced yet"}
-        {r.sample && " · sample"}
+        {s.verified ? `Reproduced by ${s.reproduced}${s.failed ? `, ${s.failed} could not` : ""}` : s.failed ? `${s.failed} could not reproduce` : "Not reproduced yet"}
       </p>
     </div>
   )

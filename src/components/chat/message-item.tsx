@@ -2,7 +2,9 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { memo, useEffect, useRef, useState } from "react"
-import { CornerUpLeftIcon, LinkIcon, MoreHorizontalIcon, PencilIcon, RotateCwIcon, SmilePlusIcon, Trash2Icon, XIcon } from "lucide-react"
+import { CornerUpLeftIcon, LinkIcon, MoreHorizontalIcon, PencilIcon, RotateCwIcon, SmilePlusIcon, Trash2Icon, XIcon, EyeOffIcon } from "lucide-react"
+import { ModMenu } from "@/components/moderation/mod-menu"
+import { ReportButton } from "@/components/moderation/report-button"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ChatAvatar } from "@/components/chat/glyphs"
@@ -91,6 +93,11 @@ export const MessageItem = memo(function MessageItem({ message: m, grouped, me, 
           <EditBox message={m} onSave={(body) => actions.onEdit(m, body)} onCancel={actions.onEditDone} />
         ) : (
           <>
+            {m.hidden && (
+              <span className="mb-0.5 inline-flex items-center gap-1 rounded-full border border-gold/25 bg-gold/10 px-2 py-0.5 text-[11px] font-medium text-gold" title="Only its author and the moderators can see this">
+                <EyeOffIcon aria-hidden className="size-3" /> Hidden by moderators
+              </span>
+            )}
             <MessageBody text={m.body} me={me?.name} />
             {m.editedAt && (
               <span className="text-[11px] text-muted-foreground" title={`Edited ${fullDate(m.editedAt)}`}>
@@ -230,6 +237,8 @@ function Toolbar({ message: m, mine, canWrite, actions }: { message: ChatMessage
           <CornerUpLeftIcon aria-hidden />
         </Button>
       )}
+      {!mine && <ReportButton targetKind="room_message" targetId={m.id} targetUrl={`/chat/${m.room}`} label="Report message" iconOnly className="size-6" />}
+      <ModMenu kind="room_message" id={m.id} hidden={m.hidden} />
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button variant="ghost" size="icon-xs" aria-label="More actions" />}>
           <MoreHorizontalIcon aria-hidden />

@@ -2,123 +2,113 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
-import { SparklesIcon } from "lucide-react"
+import { useEffect, useState } from "react"
+import { MessageSquareIcon, SparklesIcon } from "lucide-react"
 import { categoryIcon } from "@/components/forum/category-icon"
-import { NewsCard, ResourceCard, ThreadRow } from "@/components/hub/cards"
+import { HubCard, NewsShareCard } from "@/components/hub/cards"
+import { TimeAgo } from "@/components/live/time"
 import { FollowButton } from "@/components/social/follow-button"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  byDateDesc,
-  categories,
-  categoryPath,
-  constellationsWith,
-  getCategory,
-  getPerson,
-  getResource,
-  lastActivity,
-  news,
-  newsAbout,
-  resources,
-  resourcesBy,
-  threads,
-  threadsAbout,
-  threadsBy,
-  threadsIn,
-  trending,
-  type NewsItem,
-  type Resource,
-  type Thread,
-} from "@/lib/data"
-import { listFollowing, useBookmarks } from "@/lib/social"
-import { useSession } from "@/lib/store"
+import { categories, categoryPath, getCategory, KINDS, type ResourceKind } from "@/lib/data"
+import { fromProject, fromShare, listHub, listShares, type HubEntry, type Share } from "@/lib/hub"
+import { useProfile } from "@/lib/profile"
+import { listProjects } from "@/lib/projects"
+import { getMemberNames, listFollowing } from "@/lib/social"
+import { listQuestions, useSession, type Question } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 
 type Item =
-  | { key: string; kind: "thread"; date: string; why: string; t: Thread }
-  | { key: string; kind: "resource"; date: string; why: string; r: Resource }
-  | { key: string; kind: "news"; date: string; why: string; n: NewsItem }
+  | { key: string; kind: "thread"; date: string; why: string; q: Question }
+  | { key: string; kind: "hub"; date: string; why: string; e: HubEntry }
+  | { key: string; kind: "news"; date: string; why: string; s: Share }
 
 const FILTERS = [
   { id: "all", label: "Everything" },
   { id: "thread", label: "Forum" },
-  { id: "resource", label: "Hub" },
+  { id: "hub", label: "Hub" },
   { id: "news", label: "News" },
 ] as const
 type Filter = (typeof FILTERS)[number]["id"]
 
 /**
- * Builds the personal feed from what you follow (people, categories) and what you saved (resources):
- * their new topics and releases, the discussions and stories about what you saved, newest first,
- * each with a line saying why it is here.
+ * The personal feed, from real activity only: what the members you follow published, shared and asked, new
+ * threads in the categories you follow, and new projects of the kinds you said you are into. Newest first, each
+ * with a line saying why it is here.
  */
-function buildFeed(follows: string[], saved: string[]): Item[] {
+async function buildFeed(follows: string[], interests: string[]): Promise<Item[]> {
   const items = new Map<string, Item>()
   const add = (item: Item) => {
     if (!items.has(item.key)) items.set(item.key, item)
   }
+  const members = follows.filter((f) => f.startsWith("member:")).map((f) => f.slice(7)).slice(0, 12)
+  const cats = follows.filter((f) => f.startsWith("category:")).map((f) => f.slice(9)).slice(0, 12)
+  const kinds = interests.filter((i) => i.startsWith("kind:")).map((i) => i.slice(5)).filter((k): k is ResourceKind => k in KINDS)
+  const names = await getMemberNames(members).catch(() => ({}) as Record<string, string>)
 
-  for (const f of follows) {
-    const [type, id] = f.split(":")
-    if (type === "person") {
-      const name = getPerson(id)?.name ?? id
-      for (const t of threadsBy(id)) add({ key: `thread:${t.id}`, kind: "thread", date: lastActivity(t), why: `${name} posted this`, t })
-      for (const r of resourcesBy(id)) add({ key: `${r.kind}:${r.slug}`, kind: "resource", date: r.updated, why: `${name} published this`, r })
-    }
-    if (type === "category") {
-      const name = getCategory(id)?.name ?? id
-      for (const t of threadsIn(id)) add({ key: `thread:${t.id}`, kind: "thread", date: lastActivity(t), why: `New in ${name}, which you follow`, t })
-    }
-  }
-
-  for (const s of saved) {
-    const [kind, slug] = s.split(":")
-    if (!["model", "dataset", "tool", "repo"].includes(kind)) continue
-    const r = getResource(slug)
-    if (!r) continue
-    for (const t of threadsAbout(slug)) add({ key: `thread:${t.id}`, kind: "thread", date: lastActivity(t), why: `About ${r.name}, which you saved`, t })
-    for (const n of newsAbout(slug)) add({ key: `news:${n.id}`, kind: "news", date: n.date, why: `Mentions ${r.name}, which you saved`, n })
-    // Other stars of the constellations it belongs to: what people use alongside it.
-    for (const c of constellationsWith(slug))
-      for (const star of c.stars) {
-        const other = getResource(star)
-        if (other && star !== slug && !saved.includes(`${other.kind}:${star}`))
-          add({ key: `${other.kind}:${star}`, kind: "resource", date: other.updated, why: `Used with ${r.name} in ${c.name}`, r: other })
+  await Promise.all([
+    ...members.map(async (id) => {
+      const name = names[id] ?? "A member you follow"
+      const [projects, shares, threads] = await Promise.all([
+        listProjects({ owner: id, limit: 10 }).catch(() => []),
+        listShares({ author: id, limit: 10 }).catch(() => [] as Share[]),
+        listQuestions({ author: id, limit: 10 }).catch(() => [] as Question[]),
+      ])
+      for (const p of projects.filter((p) => p.status === "published")) add({ key: `project:${p.id}`, kind: "hub", date: p.publishedAt ?? p.updatedAt, why: `${name} published this`, e: fromProject(p) })
+      for (const s of shares) {
+        if (s.kind === "news") add({ key: `share:${s.id}`, kind: "news", date: s.createdAt, why: `${name} shared this`, s })
+        else add({ key: `share:${s.id}`, kind: "hub", date: s.createdAt, why: `${name} shared this`, e: fromShare(s) })
       }
-  }
-
-  return [...items.values()].sort((a, b) => byDateDesc({ date: a.date }, { date: b.date }))
+      for (const q of threads) add({ key: `thread:${q.id}`, kind: "thread", date: q.createdAt, why: `${name} asked this`, q })
+    }),
+    ...cats.map(async (slug) => {
+      const name = getCategory(slug)?.name ?? slug
+      for (const q of await listQuestions({ orbit: slug, limit: 10 }).catch(() => [] as Question[])) add({ key: `thread:${q.id}`, kind: "thread", date: q.createdAt, why: `New in ${name}, which you follow`, q })
+    }),
+    ...kinds.map(async (k) => {
+      for (const p of await listProjects({ kind: k, limit: 6 }).catch(() => [])) add({ key: `project:${p.id}`, kind: "hub", date: p.publishedAt ?? p.updatedAt, why: `New ${KINDS[k].label.toLowerCase()}, one of your interests`, e: fromProject(p) })
+    }),
+  ])
+  return [...items.values()].sort((a, b) => b.date.localeCompare(a.date))
 }
 
 export function ForYouView() {
   const reduce = useReducedMotion()
   const { ready, user } = useSession()
-  const bookmarks = useBookmarks()
+  const { profile } = useProfile()
   const [follows, setFollows] = useState<string[] | null>(null)
+  const [feed, setFeed] = useState<Item[] | null>(null)
   const [filter, setFilter] = useState<Filter>("all")
   const userId = user?.id ?? null
+  const interests = (profile?.interests ?? []).join(",")
 
   useEffect(() => {
     if (live && !ready) return
     let stale = false
     listFollowing(userId)
-      .then((list) => !stale && setFollows(list.map((f) => f.followee)))
-      .catch(() => !stale && setFollows([]))
+      .then(async (list) => {
+        const f = list.map((x) => x.followee)
+        const items = await buildFeed(f, interests ? interests.split(",") : [])
+        if (stale) return
+        setFollows(f)
+        setFeed(items)
+      })
+      .catch(() => {
+        if (stale) return
+        setFollows([])
+        setFeed([])
+      })
     return () => {
       stale = true
     }
-  }, [ready, userId])
+  }, [ready, userId, interests])
 
-  const saved = useMemo(() => bookmarks.list.map((b) => b.target), [bookmarks.list])
-  const feed = useMemo(() => (follows ? buildFeed(follows, saved) : []), [follows, saved])
-  const shown = filter === "all" ? feed : feed.filter((i) => i.kind === filter)
-
-  if (!follows || !bookmarks.ready) {
+  if (!follows || !feed) {
     return (
-      <div className="flex flex-col gap-3" aria-busy>
+      <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading your feed">
         {[0, 1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-20 rounded-xl" />
         ))}
@@ -126,8 +116,9 @@ export function ForYouView() {
     )
   }
 
-  if (feed.length === 0) return <StartHere />
+  if (feed.length === 0) return <StartHere followsSomething={follows.length > 0} />
 
+  const shown = filter === "all" ? feed : feed.filter((i) => i.kind === filter)
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -138,12 +129,13 @@ export function ForYouView() {
             return (
               <button
                 key={f.id}
+                type="button"
                 role="radio"
                 aria-checked={on}
                 onClick={() => setFilter(f.id)}
-                className={cn("pressable relative rounded-full px-3 py-1 text-sm transition-colors", on ? "text-background" : "text-muted-foreground hover:text-foreground")}
+                className={cn("pressable relative rounded-full px-3 py-1 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none", on ? "text-background" : "text-muted-foreground hover:text-foreground")}
               >
-                {on && <motion.span layoutId="for-you-filter" className="absolute inset-0 rounded-full bg-foreground" transition={{ type: "spring", bounce: 0.15, duration: 0.4 }} />}
+                {on && <motion.span layoutId="for-you-filter" className="absolute inset-0 rounded-full bg-foreground" transition={reduce ? { duration: 0 } : { type: "spring", bounce: 0.15, duration: 0.4 }} />}
                 <span className="relative">
                   {f.label} <span className="tabular opacity-70">{count}</span>
                 </span>
@@ -152,57 +144,92 @@ export function ForYouView() {
           })}
         </div>
         <p className="text-sm text-muted-foreground">
-          Built from {follows.length} {follows.length === 1 ? "follow" : "follows"} and {saved.length} saved {saved.length === 1 ? "item" : "items"}.{" "}
+          Built from {follows.length} {follows.length === 1 ? "follow" : "follows"} and your interests.{" "}
           <Link href="/you" className="text-ion hover:underline">
             Manage
           </Link>
         </p>
       </div>
-      <ol className="flex flex-col gap-3">
-        <AnimatePresence initial={false} mode="popLayout">
-          {shown.map((item, i) => (
-            <motion.li
-              key={item.key}
-              layout={!reduce}
-              initial={reduce ? false : { opacity: 0, transform: "translateY(12px)" }}
-              animate={{ opacity: 1, transform: "translateY(0px)" }}
-              exit={{ opacity: 0, transform: "scale(0.98)" }}
-              transition={{ duration: 0.4, ease: EASE, delay: Math.min(i, 8) * 0.04 }}
-              className="flex flex-col gap-1.5"
-            >
-              <span className="flex items-center gap-1.5 pl-1 text-xs text-muted-foreground">
-                <SparklesIcon aria-hidden className="size-3 text-gold" />
-                {item.why}
-              </span>
-              {item.kind === "thread" && (
-                <div className="rounded-xl border border-border bg-card/60">
-                  <ThreadRow t={item.t} />
-                </div>
-              )}
-              {item.kind === "resource" && <ResourceCard r={item.r} />}
-              {item.kind === "news" && <NewsCard n={item.n} />}
-            </motion.li>
-          ))}
-        </AnimatePresence>
-      </ol>
+      {shown.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nothing of this kind in your feed yet.</p>
+      ) : (
+        <ol className="flex flex-col gap-3">
+          <AnimatePresence initial={false} mode="popLayout">
+            {shown.map((item, i) => (
+              <motion.li
+                key={item.key}
+                layout={!reduce}
+                initial={reduce ? false : { opacity: 0, transform: "translateY(12px)" }}
+                animate={{ opacity: 1, transform: "translateY(0px)" }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4, ease: EASE, delay: reduce ? 0 : Math.min(i, 8) * 0.04 }}
+                className="flex flex-col gap-1.5"
+              >
+                <span className="flex items-center gap-1.5 pl-1 text-xs text-muted-foreground">
+                  <SparklesIcon aria-hidden className="size-3 text-gold" />
+                  {item.why}
+                </span>
+                {item.kind === "thread" && <ThreadRow q={item.q} />}
+                {item.kind === "hub" && <HubCard e={item.e} />}
+                {item.kind === "news" && <NewsShareCard s={item.s} />}
+              </motion.li>
+            ))}
+          </AnimatePresence>
+        </ol>
+      )}
     </div>
   )
 }
 
-/** First visit: nothing followed yet. Offer the busiest categories and what is rising, each one click to follow or save. */
-function StartHere() {
-  const busiest = [...categories].sort((a, b) => threadsIn(b.slug).length - threadsIn(a.slug).length).slice(0, 6)
-  const rising = trending(resources).slice(0, 4)
-  const latest = [...threads].sort((a, b) => byDateDesc({ date: lastActivity(a) }, { date: lastActivity(b) })).slice(0, 3)
+export function ThreadRow({ q }: { q: Question }) {
+  return (
+    <Link href={`/forum/${q.id}`} className="flex flex-col gap-1 rounded-xl border border-border bg-card/60 p-4 transition-colors hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+      <span lang={q.lang} className="font-medium">
+        {q.title}
+      </span>
+      <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+        <span className="text-ion">{getCategory(q.orbit)?.name ?? q.orbit}</span>
+        <span>{q.author?.name ?? (q.local ? "You" : "A member")}</span>
+        <TimeAgo date={q.createdAt} />
+        <span className="inline-flex items-center gap-1">
+          <MessageSquareIcon aria-hidden className="size-3" /> {q.answerCount} <span className="sr-only">replies</span>
+        </span>
+      </span>
+    </Link>
+  )
+}
+
+/** Nothing in the feed yet: offer categories to follow and what is newest on the site, each from real data. */
+function StartHere({ followsSomething }: { followsSomething: boolean }) {
+  const { ready } = useSession()
+  const [hub, setHub] = useState<HubEntry[] | null>(null)
+  const [threads, setThreads] = useState<Question[] | null>(null)
+  const [news, setNews] = useState<Share[] | null>(null)
+
+  useEffect(() => {
+    if (live && !ready) return
+    let stale = false
+    listHub({ limit: 4 }).then((h) => !stale && setHub(h.entries.slice(0, 4))).catch(() => !stale && setHub([]))
+    listQuestions({ limit: 4 }).then((q) => !stale && setThreads(q)).catch(() => !stale && setThreads([]))
+    listShares({ kind: "news", limit: 2, featuredFirst: true }).then((s) => !stale && setNews(s)).catch(() => !stale && setNews([]))
+    return () => {
+      stale = true
+    }
+  }, [ready])
+
   return (
     <div className="flex flex-col gap-10">
       <p className="max-w-[62ch] text-muted-foreground">
-        Your feed fills up as you follow categories and people, and save models, datasets, tools or repos. Here is a start.
+        {followsSomething
+          ? "The members and categories you follow have not posted anything yet. Follow a few more, or pick interests in settings, and your feed fills up."
+          : "Your feed fills up as you follow members and forum categories and pick interests. Here is a start."}
       </p>
-      <section className="flex flex-col gap-3">
-        <h2 className="font-medium">Follow a few categories</h2>
+      <section aria-labelledby="fy-cats" className="flex flex-col gap-3">
+        <h2 id="fy-cats" className="font-medium">
+          Follow a few categories
+        </h2>
         <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {busiest.map((c) => {
+          {categories.slice(0, 9).map((c) => {
             const Icon = categoryIcon(c.icon)
             return (
               <li key={c.slug} className="flex items-center gap-3 rounded-xl border border-border bg-card/60 p-3">
@@ -218,31 +245,57 @@ function StartHere() {
             )
           })}
         </ul>
+        <Link href="/people" className="text-sm text-ion hover:underline">
+          Find members to follow →
+        </Link>
       </section>
-      <section className="flex flex-col gap-3">
-        <h2 className="font-medium">Rising in the hub</h2>
-        <div className="grid gap-3 md:grid-cols-2">
-          {rising.map((r) => (
-            <ResourceCard key={r.slug} r={r} />
-          ))}
+      {hub && hub.length > 0 && (
+        <section aria-labelledby="fy-hub" className="flex flex-col gap-3">
+          <h2 id="fy-hub" className="font-medium">
+            New in the hub
+          </h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            {hub.map((e) => (
+              <HubCard key={e.key} e={e} />
+            ))}
+          </div>
+        </section>
+      )}
+      {threads && threads.length > 0 && (
+        <section aria-labelledby="fy-threads" className="flex flex-col gap-3">
+          <h2 id="fy-threads" className="font-medium">
+            New in the forum
+          </h2>
+          <div className="flex flex-col gap-2">
+            {threads.map((q) => (
+              <ThreadRow key={q.id} q={q} />
+            ))}
+          </div>
+        </section>
+      )}
+      {news && news.length > 0 && (
+        <section aria-labelledby="fy-news" className="flex flex-col gap-3">
+          <h2 id="fy-news" className="font-medium">
+            Latest news
+          </h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            {news.map((s) => (
+              <NewsShareCard key={s.id} s={s} />
+            ))}
+          </div>
+        </section>
+      )}
+      {hub?.length === 0 && threads?.length === 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
+          <p className="flex-1">Nexverse is new and quiet. Start something people can follow.</p>
+          <Button nativeButton={false} size="sm" render={<Link href="/forum/new" />}>
+            Start a thread
+          </Button>
+          <Button nativeButton={false} size="sm" variant="secondary" render={<Link href="/new/project" />}>
+            Publish a project
+          </Button>
         </div>
-      </section>
-      <section className="flex flex-col gap-3">
-        <h2 className="font-medium">Talked about right now</h2>
-        <div className="divide-y divide-border rounded-xl border border-border bg-card/60">
-          {latest.map((t) => (
-            <ThreadRow key={t.id} t={t} compact />
-          ))}
-        </div>
-      </section>
-      <section className="flex flex-col gap-3">
-        <h2 className="font-medium">Latest news</h2>
-        <div className="grid gap-3 md:grid-cols-2">
-          {[...news].sort(byDateDesc).slice(0, 2).map((n) => (
-            <NewsCard key={n.id} n={n} />
-          ))}
-        </div>
-      </section>
+      )}
     </div>
   )
 }

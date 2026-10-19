@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 
 /**
  * The mission badges someone has earned (won a mission, won three, won a Commander mission, posted a mission
- * that found its winner), for profile pages. Pass a sample person (handle) or a member (memberId); with neither,
+ * that found its winner), for profile pages. Pass a member (memberId); with neither,
  * and no database, it shows what this browser earned. Renders nothing until there is at least one badge.
  */
 export function MissionBadges({ who, className }: { who: Who | null; className?: string }) {

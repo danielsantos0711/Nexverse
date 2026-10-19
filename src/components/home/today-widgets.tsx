@@ -7,8 +7,8 @@ import { useNow } from "@/components/live/time"
 import { Deadline, Insignia, Reward } from "@/components/missions/mission-bits"
 import { TaskBadge } from "@/components/arena/arena-bits"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getRatings, listDuels, SAMPLE_DUELS, type Duel, type Rating } from "@/lib/arena"
-import { isTakingEntries, listMissions, sampleMissions, type Mission } from "@/lib/missions"
+import { getRatings, listDuels, type Duel, type Rating } from "@/lib/arena"
+import { isTakingEntries, listMissions, type Mission } from "@/lib/missions"
 
 /** The three open missions with the biggest rewards, for the home page. */
 export function MissionsToday() {
@@ -27,7 +27,7 @@ export function MissionsToday() {
 
   const open =
     missions && now !== null
-      ? (missions.some((m) => isTakingEntries(m, now)) ? missions : sampleMissions(now))
+      ? missions
           .filter((m) => isTakingEntries(m, now))
           .sort((a, b) => b.reward - a.reward)
           .slice(0, 3)
@@ -46,7 +46,7 @@ export function MissionsToday() {
           ))}
         </div>
       ) : open.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No mission is taking entries right now. Post the first one.</p>
+        <p className="rounded-xl border border-dashed border-white/[0.1] px-4 py-5 text-sm text-muted-foreground">No mission is taking entries right now. Post one: describe the challenge, set a reward, and pilots sign up.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {open.map((m) => (
@@ -87,10 +87,11 @@ export function ArenaToday() {
   useEffect(() => {
     let on = true
     listDuels()
-      .then((all) => on && setDuel(all[0] ?? SAMPLE_DUELS[0] ?? null))
-      .catch(() => on && setDuel(SAMPLE_DUELS[0] ?? null))
+      .then((all) => on && setDuel(all[0] ?? null))
+      .catch(() => on && setDuel(null))
+    // only ratings members' votes produced; never example numbers
     getRatings({ task: null, lang: null })
-      .then((r) => on && setTop(r.rows.slice(0, 4)))
+      .then((r) => on && setTop(r.source === "members" ? r.rows.slice(0, 4) : []))
       .catch(() => on && setTop([]))
     return () => {
       on = false
@@ -112,7 +113,7 @@ export function ArenaToday() {
           <span className="text-xs text-muted-foreground">Two answers, names hidden until you vote</span>
         </Link>
       ) : (
-        <p className="text-sm text-muted-foreground">No duel is waiting. Post one with two answers.</p>
+        <p className="rounded-xl border border-dashed border-white/[0.1] px-4 py-5 text-sm text-muted-foreground">No duel is waiting for a verdict. Post one: a prompt and two answers, names hidden until people vote.</p>
       )}
       {top && top.length > 0 && (
         <ol className="grid grid-cols-2 gap-2" aria-label="Top rated models">

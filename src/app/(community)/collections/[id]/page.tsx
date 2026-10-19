@@ -3,16 +3,15 @@ import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { CollectionDetail } from "@/components/collections/collection-detail"
-import { getSampleCollection, isUuid, SAMPLE_COLLECTIONS } from "@/lib/community"
+import { isUuid } from "@/lib/community"
 
+// Collections are members' (database ids, or ids saved in this browser) and may be private, so they load in the
+// browser. One placeholder id lets the route be checked at build time; it renders the "not here" state.
 export function generateStaticParams() {
-  return SAMPLE_COLLECTIONS.map((c) => ({ id: c.id }))
+  return [{ id: "00000000-0000-4000-8000-000000000000" }]
 }
 
-export async function generateMetadata({ params }: PageProps<"/collections/[id]">): Promise<Metadata> {
-  const c = getSampleCollection((await params).id)
-  return c ? { title: c.title, description: c.description } : { title: "Collection" }
-}
+export const metadata: Metadata = { title: "Collection" }
 
 export default function CollectionPage({ params }: PageProps<"/collections/[id]">) {
   return (
@@ -24,9 +23,6 @@ export default function CollectionPage({ params }: PageProps<"/collections/[id]"
 
 async function Collection({ params }: { params: PageProps<"/collections/[id]">["params"] }) {
   const { id } = await params
-  const sample = getSampleCollection(id)
-  if (sample) return <CollectionDetail id={id} initial={sample} />
-  // Members' collections live in the database (or this browser) and may be private, so they load in the browser.
-  if (isUuid(id)) return <CollectionDetail id={id} />
-  notFound()
+  if (!isUuid(id)) notFound()
+  return <CollectionDetail id={id.toLowerCase()} />
 }

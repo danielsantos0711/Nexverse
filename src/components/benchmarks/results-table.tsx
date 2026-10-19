@@ -1,10 +1,9 @@
 "use client"
 
-import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Fragment, useMemo, useState } from "react"
 import { ArrowDownIcon, ArrowUpIcon, ChevronDownIcon } from "lucide-react"
-import { ReproBadge, SampleTag } from "@/components/benchmarks/bench-bits"
+import { ReproBadge } from "@/components/benchmarks/bench-bits"
 import { ReproPanel } from "@/components/benchmarks/repro-panel"
 import { TimeAgo } from "@/components/live/time"
 import { better, formatScore, reproSummary, type Benchmark, type BenchmarkResult, type Repro } from "@/lib/benchmarks"
@@ -74,7 +73,10 @@ export function ResultsTable({
           initial={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
           animate={reduce ? { opacity: 1 } : { height: "auto", opacity: 1 }}
           exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
-          transition={{ duration: reduce ? 0.12 : 0.28, ease: [0.23, 1, 0.32, 1] }}
+          transition={{
+            duration: reduce ? 0.12 : 0.28,
+            ease: [0.23, 1, 0.32, 1],
+          }}
           className="overflow-hidden"
         >
           <div className="px-4 pt-1 pb-4">
@@ -140,7 +142,6 @@ export function ResultsTable({
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="flex flex-wrap items-center gap-1.5">
                   <span className="truncate font-medium">{r.model}</span>
-                  {r.sample && <SampleTag />}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {settings(r)} · {r.hardware || "hardware not given"}
@@ -181,14 +182,7 @@ export function ResultsTable({
                 <tr className={cn("border-b border-border transition-colors hover:bg-white/[0.02]", open === r.id && "bg-white/[0.02]")}>
                   <td className="w-[30%] py-3 pr-3 pl-4">
                     <span className="flex min-w-0 items-center gap-1.5">
-                      {r.modelSlug ? (
-                        <Link href={`/models/${r.modelSlug}`} className="max-w-60 truncate font-medium hover:text-ion focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
-                          {r.model}
-                        </Link>
-                      ) : (
-                        <span className="max-w-60 truncate font-medium">{r.model}</span>
-                      )}
-                      {r.sample && <SampleTag className="shrink-0" />}
+                      <span className="max-w-60 truncate font-medium">{r.model}</span>
                       {r.local && <span className="text-xs text-muted-foreground">this browser</span>}
                     </span>
                   </td>
@@ -260,7 +254,7 @@ function SortHeader({
         className={cn(
           "inline-flex items-center gap-1 rounded-md px-1 py-1 transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
           align === "right" && "flex-row-reverse",
-          on && "text-foreground"
+          on && "text-foreground",
         )}
       >
         {label}

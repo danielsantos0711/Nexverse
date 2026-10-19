@@ -162,3 +162,63 @@ export async function saveSiteSetting<K extends SettingKey>(key: K, value: SiteS
 }
 
 export const canSaveSettings = () => live
+
+// Presets the admin panel offers, and helpers every part of the site can use to follow the settings.
+
+/** Accent presets. Each one replaces the site's ion colour (links, focus rings, live things) on the dark ground. */
+export const ACCENTS: { id: Accent; label: string; blurb: string; color: string; foreground: string }[] = [
+  { id: "ion", label: "Ion blue", blurb: "The original: cool and calm", color: "#8fb4ff", foreground: "#061026" },
+  { id: "aurora", label: "Aurora", blurb: "Green of the northern lights", color: "#7fe0c4", foreground: "#03201a" },
+  { id: "nova", label: "Nova violet", blurb: "A young star's glow", color: "#b9a7ff", foreground: "#140b33" },
+  { id: "solar", label: "Solar gold", blurb: "Warm, like a sunrise from orbit", color: "#e9c27c", foreground: "#1f1606" },
+  { id: "plasma", label: "Plasma rose", blurb: "Hot and bright, for launches", color: "#ff9fc6", foreground: "#2a0716" },
+]
+
+export const MOTION_LEVELS: { id: MotionLevel; label: string; blurb: string }[] = [
+  { id: "full", label: "Full", blurb: "Every animation, unless a visitor asks their device for less" },
+  { id: "calm", label: "Calm", blurb: "No looping background motion; transitions stay" },
+  { id: "off", label: "Off", blurb: "No animation anywhere except what is essential" },
+]
+
+export const HERO_EFFECTS: { id: HeroEffect; label: string; blurb: string }[] = [
+  { id: "galaxy", label: "Galaxy", blurb: "The animated galaxy behind the home page" },
+  { id: "orbit", label: "Orbit", blurb: "A lighter ring of orbits" },
+  { id: "still", label: "Still", blurb: "A still image of space, no animation" },
+]
+
+export const ANNOUNCEMENT_TONES: { id: SiteSettings["announcement"]["tone"]; label: string }[] = [
+  { id: "info", label: "News" },
+  { id: "launch", label: "Launch" },
+  { id: "warning", label: "Heads-up" },
+]
+
+/** A link the settings may hold: a path on this site ("/forum", "/events?kind=ama") or a https address. */
+export function isSafeHref(href: string) {
+  const h = href.trim()
+  if (/^\/(?![/\\])[A-Za-z0-9/_.~%?=&#+-]*$/.test(h)) return true
+  try {
+    const u = new URL(h)
+    return u.protocol === "https:" && !u.username && !u.password && Boolean(u.hostname)
+  } catch {
+    return false
+  }
+}
+
+/** Whether a navigation link should show: not hidden by the admins, and not in a part of the site that is switched off. */
+export function isLinkVisible(settings: SiteSettings, href: string) {
+  if (settings.nav.hidden.includes(href)) return false
+  const area = FEATURES.find((f) => f.key !== "ai" && (href === f.href || href.startsWith(f.href + "/")))
+  return !area || settings.features[area.key] !== false
+}
+
+/** The feature a path belongs to, if any ("/missions/new" belongs to missions). AI assist is not a place, so it never matches. */
+export function featureForPath(path: string): FeatureKey | null {
+  return FEATURES.find((f) => f.key !== "ai" && (path === f.href || path.startsWith(f.href + "/")))?.key ?? null
+}
+
+/** The home sections in the admins' order, with any section added since they saved appended (visible) at the end. */
+export function orderedHomeSections(settings: SiteSettings) {
+  const known = new Set(HOME_SECTIONS.map((s) => s.id))
+  const saved = (Array.isArray(settings.home.sections) ? settings.home.sections : []).filter((s, i, all) => known.has(s.id) && all.findIndex((t) => t.id === s.id) === i)
+  return [...saved, ...HOME_SECTIONS.filter((s) => !saved.some((t) => t.id === s.id)).map(({ id }) => ({ id, visible: true }))]
+}

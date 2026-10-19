@@ -457,7 +457,7 @@ function NotificationsSection({ profile }: { profile: Profile }) {
   return (
     <Section id="notifications" title="Notifications" lead={off ? "Notifications need a database connected to this copy of Nexverse." : "Choose what reaches your bell. Changes save as you switch them."}>
       <ul className="flex flex-col divide-y divide-border">
-        {NOTIFY_OPTIONS.map((o) => (
+        {NOTIFY_OPTIONS.filter((o) => o.kind !== "digest").map((o) => (
           <li key={o.kind} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
             <div className="flex min-w-0 flex-col">
               <span id={`nt-${o.kind}`} className="text-sm font-medium">

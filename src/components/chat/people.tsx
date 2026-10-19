@@ -78,7 +78,7 @@ export function PeoplePanel({ room, crowd, me }: { room: Room | undefined; crowd
             </div>
             {room.topic && <p className="mt-3 text-sm text-muted-foreground">{room.topic}</p>}
             <p className="mt-3 text-xs text-muted-foreground">
-              {room.createdBy ? `Opened by a member on ${created.format(new Date(room.createdAt))}` : "One of the rooms Nexverse started with"}
+              {room.createdBy ? `Opened on ${created.format(new Date(room.createdAt))}` : "One of the rooms Nexverse started with"}
             </p>
           </>
         ) : (

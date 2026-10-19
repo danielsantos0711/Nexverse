@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils"
 const EASE = [0.23, 1, 0.32, 1] as const
 
 /**
- * Follow a person ("person:<handle>"), a member ("member:<uuid>"), a forum category ("category:<slug>") or a chat
- * room ("room:<slug>"). `base` is a sample follower count added to members' follows. Signed-out visitors are sent
+ * Follow a member ("member:<uuid>"), a forum category ("category:<slug>") or a chat room ("room:<slug>"). The count
+ * is real follows; `base` is an optional offset nobody passes. Signed-out visitors are sent
  * to sign in. Hidden on your own member profile.
  */
 export function FollowButton({

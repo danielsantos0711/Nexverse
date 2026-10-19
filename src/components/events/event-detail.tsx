@@ -4,7 +4,7 @@ import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { CalendarCheckIcon, CalendarPlusIcon, CheckIcon, ExternalLinkIcon, MapPinIcon, MessagesSquareIcon, MonitorIcon, StarIcon, Trash2Icon, UsersIcon } from "lucide-react"
+import { CalendarCheckIcon, CalendarPlusIcon, CheckIcon, ExternalLinkIcon, MapPinIcon, MonitorIcon, StarIcon, Trash2Icon, UsersIcon } from "lucide-react"
 import { AvatarStack, KindBadge } from "@/components/events/event-bits"
 import { EventWhen, useMounted } from "@/components/events/event-time"
 import { Breadcrumbs, PosterAvatar } from "@/components/forum/forum-ui"
@@ -15,20 +15,21 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
-import { deleteEvent, eventIcs, getAttendees, getEvent, googleCalendarHref, sampleThreadTitle, setRsvp, type Attendees, type CommunityEvent, type RsvpStatus, type Who } from "@/lib/community"
+import { deleteEvent, eventIcs, googleCalendarHref, setRsvp, type Attendees, type CommunityEvent, type RsvpStatus, type Who } from "@/lib/community"
+import { getAttendees, getEvent } from "@/lib/events"
 import { useSession } from "@/lib/store"
+import { ModMenu, ReportButton } from "@/components/moderation"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 
 /** One event: when (in your time zone), where, who is going, RSVP and add-to-calendar. */
-export function EventDetail({ id, initial }: { id: string; initial?: CommunityEvent }) {
-  const [event, setEvent] = useState<CommunityEvent | null | undefined>(initial)
+export function EventDetail({ id }: { id: string }) {
+  const [event, setEvent] = useState<CommunityEvent | null | undefined>(undefined)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    if (initial) return
     let stale = false
     getEvent(id)
       .then((e) => {
@@ -40,7 +41,7 @@ export function EventDetail({ id, initial }: { id: string; initial?: CommunityEv
     return () => {
       stale = true
     }
-  }, [id, initial])
+  }, [id])
 
   if (error) return <Missing title="This event could not be loaded" detail={error} />
   if (event === undefined) return <PageSkeleton />
@@ -57,7 +58,6 @@ function EventPage({ event: e }: { event: CommunityEvent }) {
   const past = now !== null && Date.parse(e.endsAt) < now
   const happening = now !== null && Date.parse(e.startsAt) <= now && !past
   const isHost = e.local || Boolean(user && e.host.memberId === user.id)
-  const thread = e.thread ? sampleThreadTitle(e.thread) : null
 
   async function remove() {
     setConfirmDelete(false)
@@ -87,7 +87,15 @@ function EventPage({ event: e }: { event: CommunityEvent }) {
               {e.local && <span className="text-xs text-muted-foreground">Saved in this browser only</span>}
             </div>
             <h1 className="text-xl leading-snug font-semibold tracking-[-0.015em] md:text-2xl">{e.title}</h1>
-            <HostLine host={e.host} />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <HostLine host={e.host} />
+              {!e.local && (
+                <div className="flex items-center gap-1">
+                  <ReportButton targetKind="event" targetId={e.id} targetUrl={`/events/${e.id}`} />
+                  <ModMenu kind="event" id={e.id} onDone={(act) => act === "remove" && router.push("/events")} />
+                </div>
+              )}
+            </div>
           </header>
 
           <dl className="glass grid grid-cols-1 gap-4 rounded-xl p-4 sm:grid-cols-2 md:p-5">
@@ -135,19 +143,6 @@ function EventPage({ event: e }: { event: CommunityEvent }) {
             </h2>
             {e.description ? <PostBody source={e.description} /> : <p className="text-sm text-muted-foreground">The host has not added a description.</p>}
           </section>
-
-          {thread && e.thread && (
-            <Link
-              href={`/forum/${e.thread}`}
-              className="glass flex items-center gap-3 rounded-xl p-4 transition-colors hover:bg-white/[0.04] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              <MessagesSquareIcon aria-hidden className="size-5 shrink-0 text-ion" />
-              <span className="flex min-w-0 flex-col">
-                <span className="text-xs text-muted-foreground">Read first, discuss after</span>
-                <span className="truncate text-sm font-medium">{thread}</span>
-              </span>
-            </Link>
-          )}
 
           {isHost && (
             <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">

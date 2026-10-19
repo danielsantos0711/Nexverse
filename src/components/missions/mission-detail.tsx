@@ -28,6 +28,7 @@ import { Breadcrumbs, PosterAvatar } from "@/components/forum/forum-ui"
 import { PostBody } from "@/components/forum/post-body"
 import { TimeAgo, useNow } from "@/components/live/time"
 import { Deadline, deadlineText, DifficultyBadge, Reward, StatusBadge } from "@/components/missions/mission-bits"
+import { Gate } from "@/components/moderation/gate"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
@@ -120,7 +121,6 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
   const [error, setError] = useState("")
   const state = now === null ? null : missionState(m, now)
   const isPoster = m.local || Boolean(user && m.poster.memberId === user.id)
-  const readOnly = m.sample && live
   const winnerEntry = crew?.entries.find((e) => e.id === m.winnerEntryId) ?? null
 
   async function remove() {
@@ -143,7 +143,6 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
             <div className="flex flex-wrap items-center gap-2">
               {state ? <StatusBadge status={state} /> : <Skeleton className="h-5 w-20 rounded-full" />}
               <DifficultyBadge difficulty={m.difficulty} />
-              {readOnly && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs text-muted-foreground">Example mission</span>}
               {m.local && <span className="text-xs text-muted-foreground">Saved in this browser only</span>}
             </div>
             <h1 className="text-xl leading-snug font-semibold tracking-[-0.015em] md:text-2xl">{m.title}</h1>
@@ -186,7 +185,7 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
             </div>
           </dl>
 
-          {!isPoster && !readOnly && now !== null && isTakingEntries(m, now) && (
+          {!isPoster && now !== null && isTakingEntries(m, now) && (
             <a
               href="#crew"
               className="pressable inline-flex h-10 w-fit items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:hidden"
@@ -231,7 +230,7 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
             </ul>
           </section>
 
-          <EntriesSection m={m} crew={crew} isPoster={isPoster && !readOnly} now={now} reload={reload} />
+          <EntriesSection m={m} crew={crew} isPoster={isPoster} now={now} reload={reload} />
 
           <section aria-labelledby="timeline-h" className="flex flex-col gap-3">
             <h2 id="timeline-h" className="font-sans text-base font-semibold tracking-normal">
@@ -240,7 +239,7 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
             {crew && now !== null ? <Timeline events={missionTimeline(m, crew, now)} now={now} /> : <Skeleton className="h-32 w-full rounded-xl" />}
           </section>
 
-          {isPoster && !readOnly && m.status !== "completed" && m.entryCount === 0 && (
+          {isPoster && m.status !== "completed" && m.entryCount === 0 && (
             <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
               <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)}>
                 <Trash2Icon aria-hidden /> Call off this mission
@@ -255,8 +254,12 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
         </div>
 
         <aside id="crew" aria-label="Crew and your entry" className="scroll-mt-20 flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
-          <CrewPanel m={m} crew={crew} isPoster={isPoster} readOnly={readOnly} now={now} reload={reload} />
-          {!isPoster && !readOnly && crew && now !== null && (isTakingEntries(m, now) || crew.myEntry) && <EntryForm m={m} crew={crew} now={now} reload={reload} />}
+          <CrewPanel m={m} crew={crew} isPoster={isPoster} now={now} reload={reload} />
+          {!isPoster && crew && now !== null && (isTakingEntries(m, now) || crew.myEntry) && (
+            <Gate action="submit an entry">
+              <EntryForm m={m} crew={crew} now={now} reload={reload} />
+            </Gate>
+          )}
         </aside>
       </div>
 
@@ -484,7 +487,7 @@ function EntriesSection({ m, crew, isPoster, now, reload }: { m: Mission; crew: 
   )
 }
 
-function CrewPanel({ m, crew, isPoster, readOnly, now, reload }: { m: Mission; crew: MissionCrew | null; isPoster: boolean; readOnly: boolean; now: number | null; reload: () => Promise<void> }) {
+function CrewPanel({ m, crew, isPoster, now, reload }: { m: Mission; crew: MissionCrew | null; isPoster: boolean; now: number | null; reload: () => Promise<void> }) {
   const router = useRouter()
   const { user } = useSession()
   const reduce = useReducedMotion()
@@ -564,9 +567,7 @@ function CrewPanel({ m, crew, isPoster, readOnly, now, reload }: { m: Mission; c
         <p className="text-sm text-muted-foreground">{open ? "No pilots yet. Be the first to accept." : "Nobody flew this one."}</p>
       )}
 
-      {readOnly ? (
-        <p className="text-xs text-muted-foreground">This is an example, so it can’t be accepted. Real missions from members appear on the missions page.</p>
-      ) : isPoster ? (
+      {isPoster ? (
         <p className="text-xs text-muted-foreground">You posted this mission. Pilots’ entries appear on this page for you to review.</p>
       ) : open && crew ? (
         <Button onClick={toggle} disabled={busy || Boolean(crew.joined && crew.myEntry)} variant={crew.joined ? "secondary" : "default"} className="h-10 w-full rounded-full">
@@ -582,7 +583,7 @@ function CrewPanel({ m, crew, isPoster, readOnly, now, reload }: { m: Mission; c
         </Button>
       ) : null}
       {crew?.joined && crew.myEntry && open && <p className="text-xs text-muted-foreground">Withdraw your entry first if you want to leave the crew.</p>}
-      {!signedIn && open && !readOnly && <p className="text-xs text-muted-foreground">Sign in to accept. It takes an email address and nothing else.</p>}
+      {!signedIn && open && <p className="text-xs text-muted-foreground">Sign in to accept. It takes an email address and nothing else.</p>}
       <p role="status" className={cn("text-sm", error ? "text-destructive" : "sr-only")}>
         {error || status}
       </p>

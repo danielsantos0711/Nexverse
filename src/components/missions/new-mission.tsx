@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { CheckSquareIcon, PlusIcon, SparklesIcon, XIcon } from "lucide-react"
@@ -8,6 +7,7 @@ import { useMounted } from "@/components/events/event-time"
 import { MarkdownComposer } from "@/components/forum/markdown-composer"
 import { TagInput } from "@/components/forum/tags"
 import { Insignia } from "@/components/missions/mission-bits"
+import { Gate } from "@/components/moderation/gate"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils"
 /** Post a mission. Renders in the browser only, because the deadline defaults depend on your clock. */
 export function NewMissionForm() {
   const mounted = useMounted()
-  const { ready, user } = useSession()
+  const { ready } = useSession()
   if (!mounted || (live && !ready)) {
     return (
       <div className="glass flex flex-col gap-4 rounded-2xl p-6" aria-busy="true" aria-label="Loading form">
@@ -30,20 +30,11 @@ export function NewMissionForm() {
       </div>
     )
   }
-  if (live && !user) {
-    return (
-      <div className="glass flex flex-col items-start gap-4 rounded-2xl p-6">
-        <p>Sign in to post a mission. It takes an email address and nothing else.</p>
-        <Link
-          href={`/sign-in?next=${encodeURIComponent("/missions/new")}`}
-          className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground"
-        >
-          Sign in
-        </Link>
-      </div>
-    )
-  }
-  return <Form />
+  return (
+    <Gate action="post a mission">
+      <Form />
+    </Gate>
+  )
 }
 
 const pad = (n: number) => String(n).padStart(2, "0")
@@ -296,7 +287,7 @@ function Form() {
                 {available === undefined
                   ? "Checking your points…"
                   : available === null
-                    ? "Without a database, points are not held from you in this preview."
+                    ? "This copy of Nexverse has no database, so no points are held from you."
                     : `You have ${Math.max(0, available).toLocaleString("en")} points free. The reward is held from your reputation now and goes to the winner, or back to you if the mission expires.`}
               </FieldDescription>
             )}

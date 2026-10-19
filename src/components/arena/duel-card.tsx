@@ -4,12 +4,13 @@ import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { CrownIcon, EqualIcon, ThumbsDownIcon } from "lucide-react"
-import { LangList, OutputText, SampleChip, SIDE_COLOR, TaskBadge, typingTarget, useArenaSalt } from "@/components/arena/arena-bits"
+import { LangList, OutputText, SIDE_COLOR, TaskBadge, typingTarget, useArenaSalt } from "@/components/arena/arena-bits"
 import { PosterAvatar } from "@/components/forum/forum-ui"
 import { TimeAgo } from "@/components/live/time"
 import { Kbd } from "@/components/ui/kbd"
 import { Skeleton } from "@/components/ui/skeleton"
 import { flipped, getReveal, isMine, storedChoice, vote, type Choice, type Duel, type DuelModel, type Reveal } from "@/lib/arena"
+import { useRole } from "@/lib/roles"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -54,8 +55,10 @@ export function DuelCard({
   const [justVoted, setJustVoted] = useState(false)
   const flip = salt ? flipped(duel.id, salt) : false
   const mine = isMine(duel, member?.id)
-  const needsSignIn = live && !duel.sample && ready && !user
-  const sessionPending = live && !duel.sample && !ready
+  const role = useRole()
+  const needsSignIn = live && ready && !user
+  const sessionPending = live && (!ready || (Boolean(user) && !role.ready))
+  const paused = live && Boolean(user) && role.suspended
 
   useEffect(() => {
     if (blind || (live && !ready)) return
@@ -71,7 +74,7 @@ export function DuelCard({
 
   const cast = useCallback(
     async (shown: Shown) => {
-      if (busy || reveal || mine || needsSignIn || sessionPending || !salt) return
+      if (busy || reveal || mine || needsSignIn || sessionPending || paused || !salt) return
       setBusy(shown)
       setError("")
       const choice = storedChoice(shown, flip)
@@ -86,7 +89,7 @@ export function DuelCard({
         setBusy(null)
       }
     },
-    [busy, reveal, mine, needsSignIn, sessionPending, salt, flip, duel, onVoted]
+    [busy, reveal, mine, needsSignIn, sessionPending, paused, salt, flip, duel, onVoted]
   )
 
   // Keys 1–4 vote; the hook re-binds when the card's state changes so a stale vote can never fire.
@@ -122,7 +125,6 @@ export function DuelCard({
         <div className="flex flex-wrap items-center gap-2">
           <TaskBadge task={duel.task} />
           <LangList langs={duel.langs} />
-          {duel.sample && <SampleChip />}
           {duel.local && <span className="text-xs text-muted-foreground">Saved in this browser</span>}
           <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground">
             <PosterAvatar poster={duel.author} size={18} />
@@ -195,13 +197,16 @@ export function DuelCard({
             <TallyBar reveal={reveal} left={left} right={right} />
             <p className="text-sm text-muted-foreground" aria-live="polite">
               {mine && !reveal.mine ? "You posted this duel, so it is not yours to vote on." : resultLine(reveal, shownMine)}
-              {duel.sample && reveal.mine && " Votes on sample duels stay in this browser."}
             </p>
             {footer}
           </motion.div>
         ) : checking || sessionPending ? (
           <motion.div key="checking" exit={{ opacity: 0 }}>
             <Skeleton className="h-11 w-full rounded-full" />
+          </motion.div>
+        ) : paused ? (
+          <motion.div key="paused" exit={{ opacity: 0 }} className="rounded-xl border border-gold/25 bg-gold/[0.06] px-4 py-3 text-sm text-muted-foreground">
+            Your account is paused, so voting is too. You can still read every duel.
           </motion.div>
         ) : needsSignIn ? (
           <motion.div key="signin" exit={{ opacity: 0 }} className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card/40 px-4 py-3 text-sm">
@@ -250,7 +255,7 @@ export function DuelCard({
               ))}
             </div>
             <p className="text-xs text-muted-foreground max-md:hidden">
-              Judge the answers, not the style you expect from a model. Names appear after you vote{duel.sample ? "; votes on sample duels stay in this browser" : ""}.
+              Judge the answers, not the style you expect from a model. Names appear after you vote.
             </p>
           </motion.div>
         )}

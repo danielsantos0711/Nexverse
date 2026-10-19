@@ -1,15 +1,12 @@
 import Link from "next/link"
-import { ArrowUpIcon, FileTextIcon, FlameIcon, FolderGit2Icon, HeartIcon, MessageSquareIcon, StarIcon } from "lucide-react"
-import { KIND_ICONS } from "@/components/hub/bits"
-import { compact, resourcePath, resources, threads, threadTitle, trending } from "@/lib/data"
+import { FileTextIcon, FlameIcon, FolderGit2Icon, StarIcon } from "lucide-react"
+import { compact } from "@/lib/data"
 import { arxivPapers, githubTrendingAi, type GhRepo, type Paper } from "@/lib/live"
 import { ghHref, paperHref } from "@/lib/live/ids"
 import { cn } from "@/lib/utils"
 
 type Icon = React.ComponentType<{ className?: string }>
 type Chip = { key: string; href: string; label: string; icon: Icon; tone: string; metric?: string; metricIcon?: Icon }
-
-const KIND_TONE = { model: "text-model", dataset: "text-dataset", tool: "text-tool", repo: "text-repo" } as const
 
 /** Interleaves the lists so the strip alternates between sources. */
 function interleave<T>(lists: T[][]): T[] {
@@ -18,25 +15,14 @@ function interleave<T>(lists: T[][]): T[] {
   return out
 }
 
-/** The hub's own trending items and threads, as chips. Sample data, so always available. */
-function hubChips(): Chip[] {
-  const items: Chip[] = trending(resources)
-    .slice(0, 6)
-    .map((r) => ({ key: `r-${r.kind}-${r.slug}`, href: resourcePath(r), label: r.name, icon: KIND_ICONS[r.kind], tone: KIND_TONE[r.kind], metric: compact(r.likes), metricIcon: HeartIcon }))
-  const talk: Chip[] = trending(threads)
-    .slice(0, 4)
-    .map((t) => ({ key: `t-${t.id}`, href: `/forum/${t.id}`, label: threadTitle(t), icon: MessageSquareIcon, tone: "text-ion", metric: compact(t.votes), metricIcon: ArrowUpIcon }))
-  return interleave([items, talk])
-}
-
 /**
- * A slow marquee of what is trending right now on GitHub, on arXiv and on Nexverse itself. It pauses on
+ * A slow marquee of what is trending right now on GitHub and arXiv, every item opening on Nexverse. It pauses on
  * hover; with reduced motion it stops and becomes a plain horizontally scrollable row.
  */
 export function TrendingNow({ repos = [], papers = [], className }: { repos?: GhRepo[]; papers?: Paper[]; className?: string }) {
   const gh: Chip[] = repos.map((r) => ({ key: `gh-${r.fullName}`, href: ghHref(r.owner, r.name), label: r.fullName, icon: FolderGit2Icon, tone: "text-repo", metric: compact(r.stars), metricIcon: StarIcon }))
   const pap: Chip[] = papers.map((p) => ({ key: `p-${p.id}`, href: paperHref(p.id), label: p.title, icon: FileTextIcon, tone: "text-gold", metric: p.categories[0] }))
-  const chips = interleave([gh, pap, hubChips()])
+  const chips = interleave([gh, pap])
   if (chips.length < 3) return null
 
   const row = (hidden: boolean) =>
@@ -77,7 +63,7 @@ export function TrendingNow({ repos = [], papers = [], className }: { repos?: Gh
   )
 }
 
-/** TrendingNow with its own data: rising GitHub repositories, the newest papers and the hub's own favourites. */
+/** TrendingNow with its own data: rising GitHub repositories and the newest papers. */
 export async function TrendingNowLive({ className }: { className?: string }) {
   // The same arguments as the /papers list, so both share one cache entry.
   const [repos, papers] = await Promise.all([githubTrendingAi(8), arxivPapers("all", 30)])

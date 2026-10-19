@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { GaugeIcon, SwordsIcon } from "lucide-react"
 import { Sparkline } from "@/components/arena/arena-bits"
-import { ReproBadge, SampleTag } from "@/components/benchmarks/bench-bits"
+import { ReproBadge } from "@/components/benchmarks/bench-bits"
 import { Skeleton } from "@/components/ui/skeleton"
 import { confidence, getModelRating, type Rating, type RatingSource } from "@/lib/arena"
 import { BENCHMARKS, better, formatScore, getBenchmark, listResults, type BenchmarkResult } from "@/lib/benchmarks"
@@ -12,7 +12,12 @@ import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
-type Arena = { rating: Rating | null; rank: number; of: number; source: RatingSource }
+type Arena = {
+  rating: Rating | null
+  rank: number
+  of: number
+  source: RatingSource
+}
 
 /**
  * A model's community scores, for its hub page: its arena rating (rank, votes, trend) and its best result on
@@ -44,7 +49,11 @@ export function ModelScores({ slug, className }: { slug: string; className?: str
     for (const b of BENCHMARKS) {
       const list = (results ?? []).filter((r) => r.benchmark === b.slug)
       if (!list.length) continue
-      out.push({ slug: b.slug, count: list.length, result: list.reduce((x, y) => (better(b, y.score, x.score) ? y : x)) })
+      out.push({
+        slug: b.slug,
+        count: list.length,
+        result: list.reduce((x, y) => (better(b, y.score, x.score) ? y : x)),
+      })
     }
     return out
   }, [results])
@@ -72,7 +81,9 @@ export function ModelScores({ slug, className }: { slug: string; className?: str
             {r ? (
               <>
                 <div className="flex flex-col">
-                  <span className="text-xs text-muted-foreground">Arena rating{arena?.source === "samples" ? " (samples)" : ""}</span>
+                  <span className="text-xs text-muted-foreground">
+                    Arena rating
+                  </span>
                   <span className="text-xl font-semibold">{r.rating}</span>
                 </div>
                 <div className="flex flex-col text-xs text-muted-foreground">
@@ -109,9 +120,7 @@ export function ModelScores({ slug, className }: { slug: string; className?: str
                       className="flex items-center gap-3 rounded-xl border border-border bg-card/40 px-3.5 py-3 transition-colors hover:bg-white/[0.04] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                     >
                       <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="flex items-center gap-1.5 text-sm font-medium">
-                          {b.name} {result.sample && <SampleTag />}
-                        </span>
+                        <span className="flex items-center gap-1.5 text-sm font-medium">{b.name} </span>
                         <span className="truncate text-xs text-muted-foreground">
                           {b.metric}
                           {result.quantisation && ` · ${result.quantisation}`}

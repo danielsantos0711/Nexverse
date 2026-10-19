@@ -1,15 +1,19 @@
 "use client"
 
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { AnimatePresence, motion } from "motion/react"
 import { useState } from "react"
 import { CheckCircle2Icon, NewspaperIcon } from "lucide-react"
+import { AiAssistButton } from "@/components/ai/ai-assist-button"
+import { NewsDraftHelper } from "@/components/ai/news-draft-helper"
 import { KIND_ICONS } from "@/components/hub/bits"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { KINDS, type ResourceKind } from "@/lib/data"
+import { sharePath } from "@/lib/hub"
 import { createSubmission, useSession, type Submission, type SubmissionKind } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -21,8 +25,12 @@ const OPTIONS: { kind: SubmissionKind; label: string; hint: string }[] = [
 
 /** Share a link to anything: a model, dataset, tool, repo or a news story. */
 export function ShareForm() {
-  const { ready, user } = useSession()
-  const [kind, setKind] = useState<SubmissionKind>("model")
+  const { ready } = useSession()
+  const params = useSearchParams()
+  const [kind, setKind] = useState<SubmissionKind>(() => {
+    const k = params.get("kind")
+    return OPTIONS.some((o) => o.kind === k) ? (k as SubmissionKind) : "model"
+  })
   const [title, setTitle] = useState("")
   const [url, setUrl] = useState("")
   const [summary, setSummary] = useState("")
@@ -30,17 +38,6 @@ export function ShareForm() {
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<Submission | null>(null)
-
-  if (live && ready && !user) {
-    return (
-      <div className="glass flex flex-col items-start gap-4 rounded-2xl p-6">
-        <p>Sign in to share. It takes an email address and nothing else.</p>
-        <Link href="/sign-in?next=/share" className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground">
-          Sign in
-        </Link>
-      </div>
-    )
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -84,10 +81,10 @@ export function ShareForm() {
         >
           <CheckCircle2Icon aria-hidden className="size-8 text-ok" />
           <h2 className="text-2xl font-semibold">{done.title} is in the sky.</h2>
-          <p className="text-muted-foreground">{done.local ? "This copy has no database, so it is saved in this browser only." : "Everyone can find it now, in Explore and on your page."}</p>
+          <p className="text-muted-foreground">{done.local ? "This copy has no database, so it is saved in this browser only." : `Everyone can find it now, in ${done.kind === "news" ? "News" : KINDS[done.kind as ResourceKind].plural} and on your profile.`}</p>
           <div className="flex flex-wrap gap-3">
-            <Link href={done.kind === "news" ? "/news" : KINDS[done.kind as ResourceKind].path} className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground">
-              See it listed
+            <Link href={sharePath(done) as `/news/${string}`} className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+              Open its page
             </Link>
             <Button
               variant="secondary"
@@ -140,8 +137,23 @@ export function ShareForm() {
                 <Input id="s-url" value={url} onChange={(e) => setUrl(e.target.value)} type="url" inputMode="url" maxLength={500} placeholder="https://" className="h-11 bg-background/60" />
               </Field>
             </div>
+            {kind === "news" && (
+              <NewsDraftHelper
+                url={url}
+                title={title}
+                notes={summary}
+                onApply={(d) => {
+                  setTitle(d.title.slice(0, 120))
+                  setSummary(d.summary.slice(0, 500))
+                  setTags(d.tags.join(", "))
+                }}
+              />
+            )}
             <Field>
-              <FieldLabel htmlFor="s-summary">In one or two sentences</FieldLabel>
+              <div className="flex items-center justify-between gap-2">
+                <FieldLabel htmlFor="s-summary">In one or two sentences</FieldLabel>
+                <AiAssistButton value={summary} onAccept={(t) => setSummary(t.slice(0, 500))} />
+              </div>
               <Textarea id="s-summary" value={summary} onChange={(e) => setSummary(e.target.value)} maxLength={500} rows={3} placeholder={kind === "news" ? "What happened, and why it matters." : "What it does and who it is for."} className="bg-background/60" />
             </Field>
             <Field>

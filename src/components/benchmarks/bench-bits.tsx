@@ -11,12 +11,16 @@ export function ReproBadge({ result, className, compact }: { result: Pick<Benchm
         className={cn("inline-flex shrink-0 items-center gap-1 rounded-full bg-ok/10 px-2 py-0.5 text-xs font-medium text-ok", className)}
         title={`Reproduced by ${s.reproduced}${s.failed ? `, not by ${s.failed}` : ""}`}
       >
-        <BadgeCheckIcon aria-hidden className="size-3.5" /> Verified{!compact && s.reproduced > 1 ? ` ×${s.reproduced}` : ""}
+        <BadgeCheckIcon aria-hidden className="size-3.5" /> Verified
+        {!compact && s.reproduced > 1 ? ` ×${s.reproduced}` : ""}
       </span>
     )
   if (s.disputed)
     return (
-      <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive", className)} title={`${s.failed} could not reproduce`}>
+      <span
+        className={cn("inline-flex shrink-0 items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive", className)}
+        title={`${s.failed} could not reproduce`}
+      >
         <CircleAlertIcon aria-hidden className="size-3.5" /> Disputed
       </span>
     )
@@ -25,8 +29,4 @@ export function ReproBadge({ result, className, compact }: { result: Pick<Benchm
       <CircleDashedIcon aria-hidden className="size-3.5" /> {compact ? "Unchecked" : "Not reproduced yet"}
     </span>
   )
-}
-
-export function SampleTag({ className }: { className?: string }) {
-  return <span className={cn("rounded-full bg-gold/10 px-2 py-0.5 text-xs text-gold", className)}>Sample</span>
 }

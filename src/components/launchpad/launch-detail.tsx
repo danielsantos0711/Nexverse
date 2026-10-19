@@ -79,7 +79,6 @@ function LaunchPage({ initial }: { initial: Launch }) {
   const meRef = useRef<string | null>(null)
   const phase = now === null ? null : launchPhase(l, now)
   const isOwner = l.local || Boolean(user && l.owner.memberId === user.id)
-  const readOnly = l.sample && live
   const subject = subjectOf(l)
 
   const loadSide = useCallback(async (current: Launch) => {
@@ -154,7 +153,6 @@ function LaunchPage({ initial }: { initial: Launch }) {
                 <CrownIcon aria-hidden className="size-3.5" /> Launch of the day
               </span>
             )}
-            {readOnly && <span className="rounded-full bg-white/[0.08] px-2 py-0.5 text-xs text-muted-foreground">Example launch</span>}
             {l.local && <span className="text-xs text-muted-foreground">Saved in this browser only</span>}
           </div>
           <h1 className="text-2xl leading-tight font-semibold tracking-[-0.02em]">{l.name}</h1>
@@ -236,11 +234,7 @@ function LaunchPage({ initial }: { initial: Launch }) {
             </section>
           )}
 
-          {readOnly ? (
-            <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">Comments open on members’ launches.</p>
-          ) : (
-            <ThreadDiscussion threadId={`launch-${l.id}`} heading="Comments" />
-          )}
+          <ThreadDiscussion threadId={`launch-${l.id}`} heading="Comments" />
 
           {isOwner && phase === "scheduled" && (
             <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
@@ -266,7 +260,7 @@ function LaunchPage({ initial }: { initial: Launch }) {
               </>
             ) : (
               <>
-                <BoostButton launch={l} state={boostState(l, now, { isOwner, readOnly })} count={l.boosts} incoming={incoming} onBoost={() => void onBoost()} className="self-start" />
+                <BoostButton launch={l} state={boostState(l, now, { isOwner })} count={l.boosts} incoming={incoming} onBoost={() => void onBoost()} className="self-start" />
                 <p className="text-sm text-muted-foreground tabular">
                   {rank ? (
                     rank.crowned ? (
@@ -287,9 +281,6 @@ function LaunchPage({ initial }: { initial: Launch }) {
               <p role="alert" className="text-sm text-destructive">
                 {error}
               </p>
-            )}
-            {!live && phase === "live" && !l.local && !l.boosted && (
-              <p className="text-xs text-muted-foreground">This preview keeps your boost in this browser. Open the page in a second tab to watch it arrive live.</p>
             )}
           </section>
 

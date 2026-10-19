@@ -9,7 +9,7 @@ import { getLikes, setLike, useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
-/** Like anything. The sample count is the baseline; members' likes from the database are added to it. */
+/** Like anything: the count is members' real likes (or this browser's, without a database). `base` is an optional offset, unused. */
 export function LikeButton({ target, base = 0, className, label = "Like" }: { target: string; base?: number; className?: string; label?: string }) {
   const { ready, user } = useSession()
   const router = useRouter()

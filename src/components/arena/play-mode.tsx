@@ -53,8 +53,8 @@ export function PlayMode() {
     Promise.all([listDuels(), myVotes()])
       .then(([duels, votes]) => {
         if (stale) return
-        // Members' duels first (newest first), then the samples. Signed-out visitors can play the samples.
-        const open = duels.filter((d) => !votes[d.id] && !isMine(d, member?.id) && (d.sample || !live || user))
+        // Newest first. Guests see the duels too; the card asks them to sign in before they vote.
+        const open = duels.filter((d) => !votes[d.id] && !isMine(d, member?.id))
         setQueue(open)
         setIndex(0)
         setVoted(false)
@@ -129,6 +129,7 @@ export function PlayMode() {
 
   return (
     <div id="play" className="flex flex-col gap-4">
+      {queue.length > 0 && (
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
         <span className="inline-flex items-center gap-1.5" aria-live="polite">
           <motion.span
@@ -152,14 +153,15 @@ export function PlayMode() {
           <Kbd>1</Kbd>–<Kbd>4</Kbd> vote · <Kbd>N</Kbd> next · <Kbd>S</Kbd> skip
         </span>
       </div>
+      )}
 
       {live && ready && !user && (
         <p className="rounded-lg border border-border bg-card/40 px-3 py-2 text-sm text-muted-foreground">
-          You are playing the community samples.{" "}
+          Anyone can read the duels.{" "}
           <Link href={`/sign-in?next=${encodeURIComponent("/arena")}`} className="text-ion underline-offset-4 hover:underline">
             Sign in
           </Link>{" "}
-          to vote on members’ duels and move their ratings.
+          to vote and move the ratings.
         </p>
       )}
 
@@ -214,7 +216,7 @@ export function PlayMode() {
               <p className="max-w-md text-sm text-muted-foreground">
                 {queue.length
                   ? "You have voted on every duel there is. Post one of your own, or see how the models rank now."
-                  : "No duels waiting for your vote. Post one, or come back when members have added more."}
+                  : "No duels yet. Give two models the same prompt, paste both answers, and let the community vote blind."}
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 <Link href="/arena/new" className={primaryButton}>

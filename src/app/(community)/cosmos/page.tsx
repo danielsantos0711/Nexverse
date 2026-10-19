@@ -1,19 +1,26 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
 import { CosmosView } from "@/components/cosmos/cosmos-view"
+import { githubTrendingAi } from "@/lib/live"
 
 export const metadata: Metadata = {
   title: "Cosmos",
-  description: "The whole Nexverse hub as a star map: every model, dataset, tool, repo, project, person and forum category, grouped into galaxies and joined by what they build together.",
+  description: "Nexverse as a star map: what members published and shared, the members themselves, every forum category and the AI repositories rising on GitHub.",
 }
 
 export default function CosmosPage() {
   return (
-    // The focused star lives in the query string (?focus=model:orbit-8b), which is read in the browser.
+    // The focused star lives in the query string (?focus=project:<id>), which is read in the browser.
     <Suspense fallback={<MapSkeleton />}>
-      <CosmosView />
+      <StarMapWithRepos />
     </Suspense>
   )
+}
+
+/** Rising GitHub repositories are fetched on the server (cached); members' data loads in the browser. */
+async function StarMapWithRepos() {
+  const feed = await githubTrendingAi(40)
+  return <CosmosView github={feed.items} />
 }
 
 function MapSkeleton() {

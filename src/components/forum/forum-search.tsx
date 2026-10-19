@@ -5,10 +5,11 @@ import { useId, useRef, useState } from "react"
 import { SearchIcon, XIcon } from "lucide-react"
 import { PosterAvatar } from "@/components/forum/forum-ui"
 import { searchTopics, type Topic } from "@/components/forum/topics"
-import { ago, getCategory } from "@/lib/data"
+import { TimeAgo } from "@/components/live/time"
+import { getCategory } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
-/** Searches thread titles (and their English translations) across sample and members' threads. */
+/** Searches the loaded threads by title and tag, as you type. */
 export function ForumSearch({ topics, className, placeholder = "Search threads" }: { topics: Topic[]; className?: string; placeholder?: string }) {
   const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
@@ -80,8 +81,8 @@ export function ForumSearch({ topics, className, placeholder = "Search threads" 
                         {t.title}
                       </span>
                       <span className="truncate text-xs text-muted-foreground">
-                        {getCategory(t.category)?.name ?? "Forum"} · {ago(t.activity)}
-                        {t.english && ` · ${t.english}`}
+                        {getCategory(t.category)?.name ?? "Forum"} · <TimeAgo date={t.activity} />
+                        {t.tags.length > 0 && ` · #${t.tags.slice(0, 3).join(" #")}`}
                       </span>
                     </span>
                   </Link>
@@ -89,7 +90,7 @@ export function ForumSearch({ topics, className, placeholder = "Search threads" 
               ))}
             </ul>
           ) : (
-            <p className="p-4 text-sm text-muted-foreground">No thread titles match “{query.trim()}”.</p>
+            <p className="p-4 text-sm text-muted-foreground">No threads match “{query.trim()}”.</p>
           )}
           {results.length > shown.length && <p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">Showing 8 of {results.length}. Add a word to narrow it down.</p>}
         </div>

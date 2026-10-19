@@ -3,82 +3,119 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
-import { PencilIcon, Trash2Icon } from "lucide-react"
+import { PencilIcon, QuoteIcon, RotateCwIcon, Trash2Icon } from "lucide-react"
 import { AddToCollection } from "@/components/collections/add-to-collection"
-import { ThreadDiscussion } from "@/components/forum/discussion"
-import { Breadcrumbs, EditedMarker, SolvedBadge } from "@/components/forum/forum-ui"
+import { selectionIn, ThreadDiscussion, type QuoteRequest } from "@/components/forum/discussion"
+import { getForumThread, listForumThreads, type ForumReply, type ForumThread } from "@/components/forum/forum-data"
+import { Breadcrumbs, EditedMarker, HiddenBadge, LockedBadge, PinnedBadge, SolvedBadge } from "@/components/forum/forum-ui"
+import { ThreadSummary } from "@/components/ai/thread-summary"
 import { MarkdownComposer } from "@/components/forum/markdown-composer"
 import { PollCard } from "@/components/forum/poll"
 import { PostBody } from "@/components/forum/post-body"
+import { PostModeration } from "@/components/forum/post-moderation"
 import { PostReactions } from "@/components/forum/reactions"
 import { TagInput, TagList } from "@/components/forum/tags"
-import { AcceptedAnswer, Post, SimilarThreads, ThreadStats } from "@/components/forum/thread-parts"
-import { similarTopics, type Poster } from "@/components/forum/topics"
+import { Post, SimilarThreads, ThreadStats } from "@/components/forum/thread-parts"
+import type { Poster, Topic } from "@/components/forum/topics"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { LangTag } from "@/components/hub/bits"
-import { LikeButton } from "@/components/hub/like-button"
 import { SaveButton } from "@/components/social/save-button"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { FieldError } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { editThread, getThreadExtras, memberCandidate, mentionedMemberIds, type MentionCandidate, type Reply, type ThreadExtras } from "@/lib/community"
+import { editThread, memberCandidate, mentionedMemberIds, type MentionCandidate } from "@/lib/community"
 import { categoryPath, getCategory } from "@/lib/data"
-import { deleteQuestion, getQuestion, useSession, type Question } from "@/lib/store"
+import { deleteQuestion, useSession } from "@/lib/store"
 
-const answerPoster = (a: Reply): Poster => ({ name: a.local ? "You" : (a.author?.name ?? "A member") })
+const replyPoster = (a: ForumReply): Poster => ({ name: a.local ? "You" : (a.author?.name ?? "A member") })
 
 type Editing = { title: string; body: string; tags: string[]; picked: MentionCandidate[]; error: string; busy: boolean }
 
-/** A thread a member started, loaded from the database (or from this browser in a local copy). */
+/** A forum thread from the database (or from this browser in a copy without one): the first post, its replies and the reply box. */
 export function MemberThread({ id }: { id: string }) {
   const router = useRouter()
-  const { user } = useSession()
-  const [q, setQ] = useState<Question | null | undefined>(undefined)
-  const [extras, setExtras] = useState<ThreadExtras>({ tags: [], editedAt: null, acceptedAnswerId: null })
-  const [answers, setAnswers] = useState<Reply[]>([])
+  const { ready, user } = useSession()
+  const [q, setQ] = useState<ForumThread | null | undefined>(undefined)
+  const [answers, setAnswers] = useState<ForumReply[]>([])
   const [accepted, setAccepted] = useState<string | null>(null)
+  const [similar, setSimilar] = useState<Topic[]>([])
   const [editing, setEditing] = useState<Editing | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [quote, setQuote] = useState<QuoteRequest | null>(null)
   const [error, setError] = useState("")
+  const [loadError, setLoadError] = useState("")
+  const [attempt, setAttempt] = useState(0)
 
+  // Loads once the session is known: authors and staff also receive threads moderators hid.
   useEffect(() => {
+    if (!ready) return
     let stale = false
-    getQuestion(id)
-      .then(async (x) => {
+    getForumThread(id)
+      .then((x) => {
         if (stale) return
-        if (!x) {
-          setQ(null)
-          return
-        }
-        const more = await getThreadExtras(x).catch(() => ({ tags: [], editedAt: null, acceptedAnswerId: x.acceptedAnswerId }))
-        if (stale) return
-        setExtras(more)
-        setAccepted(more.acceptedAnswerId)
         setQ(x)
-        document.title = `${x.title} · Nexverse`
+        setLoadError("")
+        if (!x) return
+        setAccepted(x.acceptedAnswerId)
+        document.title = `${x.title} · Forum · Nexverse`
+        listForumThreads({ category: x.orbit, limit: 8 })
+          .then((list) => !stale && setSimilar(list.filter((t) => t.id !== x.id).slice(0, 5)))
+          .catch(() => {})
       })
-      .catch((e: Error) => !stale && setError(e.message))
+      .catch((e: Error) => !stale && setLoadError(e.message))
     return () => {
       stale = true
     }
-  }, [id])
+  }, [id, ready, user?.id, attempt])
 
   const participantsForMentions = useMemo(() => (q?.author && q.author.id !== user?.id ? [memberCandidate(q.author)] : []), [q?.author, user?.id])
 
-  if (error && q === undefined) return <Missing title="This thread could not be loaded" detail={error} />
+  if (loadError && !q) {
+    return (
+      <Empty className="mx-auto max-w-xl py-24">
+        <EmptyHeader>
+          <EmptyTitle>This thread could not be loaded</EmptyTitle>
+          <EmptyDescription>{loadError}</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent className="flex-row justify-center">
+          <Button variant="secondary" onClick={() => setAttempt((n) => n + 1)}>
+            <RotateCwIcon aria-hidden /> Try again
+          </Button>
+          <Button variant="ghost" nativeButton={false} render={<Link href="/forum" />}>
+            Back to the forum
+          </Button>
+        </EmptyContent>
+      </Empty>
+    )
+  }
   if (q === undefined) return <PageSkeleton />
-  if (q === null) return <Missing title="This thread is not here" detail="It may have been deleted by the person who started it." />
+  // Deleted, never existed, or hidden by moderators (others do not receive hidden threads at all).
+  // Shown in place: the site-wide 404 page brings its own header, and this page already has one.
+  if (q === null) {
+    return (
+      <Empty className="mx-auto max-w-xl py-24">
+        <EmptyHeader>
+          <EmptyTitle>This thread is not here</EmptyTitle>
+          <EmptyDescription>It may have been deleted, or the link is wrong.</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button variant="secondary" nativeButton={false} render={<Link href="/forum" />}>
+            Back to the forum
+          </Button>
+        </EmptyContent>
+      </Empty>
+    )
+  }
 
   const cat = getCategory(q.orbit)
-  const isAuthor = q.local || Boolean(user && q.author?.id === user.id)
+  const isAuthor = q.local || Boolean(user && q.authorId === user.id)
   const author: Poster = { name: q.local ? "You" : (q.author?.name ?? "A member") }
-  const acceptedIndex = answers.findIndex((a) => a.id === accepted)
-  const acceptedReply = acceptedIndex >= 0 ? answers[acceptedIndex] : null
-  const participants = [author, ...answers.map(answerPoster)].filter((p, i, all) => all.findIndex((x) => x.name === p.name) === i)
-  const similar = cat ? similarTopics(q.id, cat.slug) : []
+  const solved = answers.some((a) => a.id === accepted)
+  const participants = [author, ...answers.map(replyPoster)].filter((p, i, all) => all.findIndex((x) => x.name === p.name) === i)
   const names = [q.author?.name, ...answers.map((a) => a.author?.name)].filter((n): n is string => Boolean(n))
+  const crumbs = [{ label: "Forum", href: "/forum" }, ...(cat ? [{ label: cat.name, href: categoryPath(cat.slug) }] : []), { label: q.title }]
 
   async function remove() {
     if (!q) return
@@ -96,8 +133,7 @@ export function MemberThread({ id }: { id: string }) {
     setEditing({ ...editing, busy: true, error: "" })
     try {
       const editedAt = await editThread(q, { title: editing.title, body: editing.body, tags: editing.tags, mentions: mentionedMemberIds(editing.body, editing.picked) })
-      setQ({ ...q, title: editing.title.trim(), body: editing.body.trim() })
-      setExtras((x) => ({ ...x, tags: editing.tags, editedAt }))
+      setQ({ ...q, title: editing.title.trim(), body: editing.body.trim(), tags: editing.tags, editedAt })
       setEditing(null)
     } catch (e) {
       setEditing((x) => x && { ...x, busy: false, error: (e as Error).message })
@@ -106,7 +142,7 @@ export function MemberThread({ id }: { id: string }) {
 
   return (
     <div className="shell pt-6 pb-16 lg:pt-8">
-      <Breadcrumbs items={[{ label: "Forum", href: "/forum" }, ...(cat ? [{ label: cat.name, href: categoryPath(cat.slug) }] : []), { label: q.title }]} />
+      <Breadcrumbs items={crumbs} />
 
       <div className="mt-5 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="flex min-w-0 flex-col gap-5">
@@ -125,26 +161,31 @@ export function MemberThread({ id }: { id: string }) {
             )}
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               {cat && (
-                <Link href={categoryPath(cat.slug)} className="rounded-full border border-ion/25 bg-ion/10 px-2.5 py-0.5 text-xs text-ion transition-colors hover:bg-ion/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+                <Link
+                  href={categoryPath(cat.slug)}
+                  className="rounded-full border border-ion/25 bg-ion/10 px-2.5 py-0.5 text-xs text-ion transition-colors hover:bg-ion/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
                   {cat.name}
                 </Link>
               )}
               <LangTag lang={q.lang} />
-              {acceptedReply && <SolvedBadge />}
-              {!editing && <TagList tags={extras.tags} hrefBase={cat ? categoryPath(cat.slug) : undefined} />}
-              {isAuthor && !editing && (
-                <span className="ml-auto flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => setEditing({ title: q.title, body: q.body, tags: extras.tags, picked: [], error: "", busy: false })}>
-                    <PencilIcon aria-hidden /> Edit
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)}>
-                    <Trash2Icon aria-hidden /> Delete thread
-                  </Button>
-                </span>
-              )}
+              {q.pinned && <PinnedBadge />}
+              {q.locked && <LockedBadge />}
+              {q.hidden && <HiddenBadge />}
+              {solved && <SolvedBadge />}
+              {!editing && <TagList tags={q.tags} hrefBase={cat ? categoryPath(cat.slug) : undefined} />}
             </div>
+            {q.hidden && (
+              <p className="rounded-lg border border-gold/25 bg-gold/[0.06] px-3 py-2 text-sm text-muted-foreground">
+                {isAuthor ? "Moderators hid this thread. Only you and the moderators can see it." : "Hidden from members. Only its author and the moderators can see it."}
+              </p>
+            )}
             {q.local && <p className="text-sm text-muted-foreground">Saved on this device only. This copy of Nexverse has no database, so nobody else can see it.</p>}
-            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            )}
           </header>
 
           <Post
@@ -152,14 +193,42 @@ export function MemberThread({ id }: { id: string }) {
             original
             poster={author}
             date={q.createdAt}
-            note={<EditedMarker at={extras.editedAt} />}
+            hidden={q.hidden}
+            note={<EditedMarker at={q.editedAt} />}
             actions={
               !editing && (
                 <>
-                  {!q.local && <LikeButton target={`thread:${q.id}`} label="Upvote" />}
+                  <PostReactions target={`thread:${q.id}`} />
+                  {!q.locked && (
+                    <Button variant="ghost" size="sm" onClick={() => setQuote({ key: Date.now(), name: author.name, body: selectionIn("post-1") ?? q.body ?? q.title, author: q.author })}>
+                      <QuoteIcon aria-hidden /> Quote
+                    </Button>
+                  )}
                   {!q.local && <SaveButton target={`thread:${q.id}`} />}
                   {!q.local && <AddToCollection target={`thread:${q.id}`} />}
-                  <PostReactions target={`thread:${q.id}`} />
+                  {isAuthor && (
+                    <Button variant="ghost" size="sm" onClick={() => setEditing({ title: q.title, body: q.body, tags: q.tags, picked: [], error: "", busy: false })}>
+                      <PencilIcon aria-hidden /> Edit
+                    </Button>
+                  )}
+                  {isAuthor && (
+                    <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)}>
+                      <Trash2Icon aria-hidden /> Delete thread
+                    </Button>
+                  )}
+                  {!q.local && (
+                    <PostModeration
+                      kind="question"
+                      id={q.id}
+                      mine={isAuthor}
+                      anchor="post-1"
+                      hidden={q.hidden}
+                      onModerated={(act) =>
+                        act === "remove" ? router.push(cat ? categoryPath(cat.slug) : "/forum") : setQ((x) => x && { ...x, hidden: act === "hide" ? true : act === "unhide" ? false : x.hidden })
+                      }
+                      thread={{ pinned: q.pinned, locked: q.locked, onChange: (f) => setQ((x) => x && { ...x, ...f }) }}
+                    />
+                  )}
                 </>
               )
             }
@@ -201,28 +270,28 @@ export function MemberThread({ id }: { id: string }) {
 
           <PollCard question={q} />
 
-          {acceptedReply && (
-            <AcceptedAnswer n={acceptedIndex + 2} poster={answerPoster(acceptedReply)} date={acceptedReply.createdAt}>
-              <PostBody source={acceptedReply.body} names={names} />
-            </AcceptedAnswer>
-          )}
-
           <ThreadDiscussion
             threadId={q.id}
             question={q}
             acceptedId={accepted}
             startAt={2}
             participants={participantsForMentions}
+            locked={q.locked}
+            quote={quote}
             onChange={(next, acceptedAnswerId) => {
               setAnswers(next)
               setAccepted(acceptedAnswerId)
-              setQ((x) => x && { ...x, answerCount: next.length, acceptedAnswerId })
             }}
           />
         </div>
 
         <aside aria-label="Thread details" className="flex flex-col gap-6 lg:sticky lg:top-20 lg:self-start">
-          <ThreadStats replies={answers.length} views={null} participants={participants} created={q.createdAt} lastReply={answers.at(-1)?.createdAt ?? null} />
+          <ThreadStats replies={answers.length} participants={participants} created={q.createdAt} lastReply={answers.at(-1)?.createdAt ?? null} />
+          <ThreadSummary
+            threadId={q.id}
+            title={q.title}
+            posts={[{ author: author.name, body: q.body ?? "" }, ...answers.map((a) => ({ author: replyPoster(a).name, body: a.body }))]}
+          />
           <SimilarThreads topics={similar} categoryName={cat?.name} />
         </aside>
       </div>
@@ -231,7 +300,9 @@ export function MemberThread({ id }: { id: string }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete this thread?</DialogTitle>
-            <DialogDescription>The thread, its replies and its poll disappear for everyone. This can’t be undone.</DialogDescription>
+            <DialogDescription>
+              The thread, its replies and its poll disappear for everyone. This can’t be undone.
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
@@ -244,21 +315,5 @@ export function MemberThread({ id }: { id: string }) {
         </DialogContent>
       </Dialog>
     </div>
-  )
-}
-
-function Missing({ title, detail }: { title: string; detail: string }) {
-  return (
-    <Empty className="mx-auto max-w-xl py-24">
-      <EmptyHeader>
-        <EmptyTitle>{title}</EmptyTitle>
-        <EmptyDescription>{detail}</EmptyDescription>
-      </EmptyHeader>
-      <EmptyContent>
-        <Link href="/forum" className="text-ion hover:underline">
-          Back to the forum
-        </Link>
-      </EmptyContent>
-    </Empty>
   )
 }

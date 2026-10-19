@@ -9,7 +9,8 @@ import { PageSkeleton } from "@/components/app/page-skeleton"
 import { Cover, KIND_ICONS, KindTag } from "@/components/hub/bits"
 import { MarkdownEditor } from "@/components/studio/markdown-editor"
 import { TagInput } from "@/components/studio/tag-input"
-import { ConfirmDialog, SignInPrompt, StatusPill, StudioHead } from "@/components/studio/ui"
+import { Gate } from "@/components/moderation/gate"
+import { ConfirmDialog, StatusPill, StudioHead } from "@/components/studio/ui"
 import { fromRows, toRows, VersionsEditor, type VersionRow } from "@/components/studio/versions-editor"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
@@ -36,6 +37,7 @@ import {
   type ProjectInput,
   type ProjectStatus,
 } from "@/lib/projects"
+import { useRole } from "@/lib/roles"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -79,6 +81,7 @@ const KIND_LIST = Object.keys(KINDS) as ResourceKind[]
 /** Create a project (no id) or edit one of yours. Members only when a database is connected. */
 export function ProjectEditor({ id }: { id?: string }) {
   const { ready, user } = useSession()
+  const role = useRole()
   const params = useSearchParams()
   const [loaded, setLoaded] = useState<{ project: Project | null; error: string } | null>(null)
 
@@ -94,11 +97,12 @@ export function ProjectEditor({ id }: { id?: string }) {
   }, [id, ready])
 
   if (live && !ready) return <PageSkeleton />
-  if (live && !user) {
+  if (live && (!user || role.suspended)) {
+    // Guests get the way in; suspended members are told why they cannot publish right now.
     return (
       <div className="shell max-w-3xl pb-16">
-        <StudioHead title={id ? "Edit project" : "New project"} />
-        <SignInPrompt title="Sign in to publish a project" detail="Your models, datasets, tools and repos get their own page on Nexverse, with a README, a changelog and a place to talk about them." />
+        <StudioHead title={id ? "Edit project" : "New project"} lead="Your models, datasets, tools and repos get their own page on Nexverse, with a README, a changelog and a place to talk about them." />
+        <Gate action="publish a project">{null}</Gate>
       </div>
     )
   }

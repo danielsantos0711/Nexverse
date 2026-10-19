@@ -68,7 +68,7 @@ export function LaunchpadView() {
   }
 
   const isOwner = (l: Launch) => l.local || Boolean(user && l.owner.memberId === user.id)
-  const stateOf = (l: Launch) => boostState(l, now, { isOwner: isOwner(l), readOnly: l.sample && live })
+  const stateOf = (l: Launch) => boostState(l, now, { isOwner: isOwner(l) })
 
   if (!view) {
     return (
@@ -99,14 +99,34 @@ export function LaunchpadView() {
       )}
 
       {empty ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-ion/30 bg-ion/[0.04] px-6 py-14 text-center">
-          <span className="grid size-11 place-items-center rounded-full bg-ion/10 text-ion">
-            <RocketIcon aria-hidden className="size-5 -rotate-45" />
-          </span>
-          <p className="max-w-md text-sm text-muted-foreground">Nothing on the pad yet. Schedule the first launch: pick a project, a time, and members boost it on the day.</p>
-          <Link href="/launchpad/new" className={primaryButton}>
-            Schedule a launch
-          </Link>
+        <div className="flex flex-col gap-5 rounded-2xl border border-dashed border-ion/30 bg-ion/[0.04] px-5 py-10 sm:px-8">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <span className="grid size-11 place-items-center rounded-full bg-ion/10 text-ion">
+              <RocketIcon aria-hidden className="size-5 -rotate-45" />
+            </span>
+            <h2 className="font-sans text-base font-semibold tracking-normal">Nothing on the pad yet</h2>
+            <p className="max-w-md text-sm text-muted-foreground">
+              {live
+                ? "Schedule the first launch: pick one of your published projects and a time, and members boost it on the day."
+                : "Launches you schedule in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can see or boost them."}
+            </p>
+            <Link href="/launchpad/new" className={primaryButton}>
+              <PlusIcon aria-hidden className="size-4" /> Schedule the first launch
+            </Link>
+          </div>
+          <ol className="mx-auto grid w-full max-w-3xl gap-3 sm:grid-cols-3">
+            {[
+              ["Countdown", "Your launch gets a page with a countdown as soon as you schedule it, up to 90 days ahead."],
+              ["Launch day", "For 24 hours from launch time, members boost it once each. Boosts arrive live."],
+              ["Launch of the day", "The launch with the most boosts among those launched on a day (UTC) wins that day."],
+            ].map(([title, body], i) => (
+              <li key={title} className="rounded-lg border border-border bg-card/40 p-3">
+                <p className="text-xs text-muted-foreground tabular">Step {i + 1}</p>
+                <p className="text-sm font-medium">{title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{body}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">

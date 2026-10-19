@@ -9,7 +9,8 @@ import { DateTile, EventWhen } from "@/components/events/event-time"
 import { primaryButton, rise, riseDelay } from "@/components/forum/forum-ui"
 import { useNow } from "@/components/live/time"
 import { Skeleton } from "@/components/ui/skeleton"
-import { EVENT_KINDS, getAttendeesMany, listEvents, SAMPLE_EVENTS, type Attendees, type CommunityEvent, type EventKind } from "@/lib/community"
+import { EVENT_KINDS, type Attendees, type CommunityEvent, type EventKind } from "@/lib/community"
+import { getAttendeesMany, listEvents } from "@/lib/events"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -26,11 +27,12 @@ export function EventsView() {
   const { ready, user } = useSession()
   const now = useNow()
   const reduce = useReducedMotion()
-  const [events, setEvents] = useState<CommunityEvent[]>(SAMPLE_EVENTS)
+  const [events, setEvents] = useState<CommunityEvent[]>([])
   const [attendees, setAttendees] = useState<Record<string, Attendees>>({})
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState("")
   const [view, setView] = useState<View>("upcoming")
+  const [attempt, setAttempt] = useState(0)
   const [kind, setKind] = useState<EventKind | "all">("all")
 
   useEffect(() => {
@@ -40,6 +42,7 @@ export function EventsView() {
       .then(async (list) => {
         if (stale) return
         setEvents(list)
+        setError("")
         const a = await getAttendeesMany(list).catch(() => ({}))
         if (!stale) setAttendees(a)
       })
@@ -48,7 +51,7 @@ export function EventsView() {
     return () => {
       stale = true
     }
-  }, [ready, user?.id])
+  }, [ready, user?.id, attempt])
 
   const { upcoming, past, mine } = useMemo(() => {
     const t = now ?? 0
@@ -118,12 +121,15 @@ export function EventsView() {
 
       {error && (
         <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          Members’ events could not be loaded ({error}). Showing the community calendar only.
+          Events could not be loaded ({error}).{" "}
+          <button type="button" onClick={() => setAttempt((n) => n + 1)} className="underline underline-offset-2">
+            Try again
+          </button>
         </p>
       )}
 
       <div id="events-panel" role="tabpanel" aria-label={VIEWS.find((v) => v.value === view)?.label} aria-busy={now === null || !loaded}>
-        {now === null ? (
+        {now === null || !loaded ? (
           <ul className="flex flex-col gap-3" aria-hidden>
             {[0, 1, 2].map((i) => (
               <li key={i}>
@@ -139,23 +145,27 @@ export function EventsView() {
               </li>
             ))}
           </ol>
-        ) : (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 px-6 py-14 text-center">
+        ) : error && events.length === 0 ? null : (
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ion/30 bg-ion/[0.04] px-6 py-14 text-center">
             <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
               <CalendarDaysIcon aria-hidden className="size-5" />
             </span>
             <p className="text-sm text-muted-foreground">
-              {view === "mine"
-                ? "You have not RSVP’d to anything yet. Pick an event and say you’re going or interested."
-                : view === "past"
-                  ? "No past events here yet."
-                  : kind === "all"
-                    ? "Nothing on the calendar right now. Host the next one."
-                    : `No upcoming ${EVENT_KINDS[kind].plural.toLowerCase()}. Host one.`}
+              {events.length === 0
+                ? live
+                  ? "No events yet. Host the first one: a paper club, a meetup, office hours or an AMA, online or in person."
+                  : "Events you create in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can see them yet."
+                : view === "mine"
+                  ? "You have not RSVP’d to anything yet. Pick an event and say you’re going or interested."
+                  : view === "past"
+                    ? "No past events yet."
+                    : kind === "all"
+                      ? "Nothing on the calendar right now. Host the next one."
+                      : `No upcoming ${EVENT_KINDS[kind].plural.toLowerCase()}. Host one.`}
             </p>
-            {view !== "mine" && (
+            {(view !== "mine" || events.length === 0) && (
               <Link href="/events/new" className={primaryButton}>
-                Create an event
+                <CalendarPlusIcon aria-hidden className="size-4" /> {events.length === 0 ? "Host the first event" : "Create an event"}
               </Link>
             )}
           </div>

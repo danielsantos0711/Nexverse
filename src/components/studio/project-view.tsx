@@ -7,15 +7,18 @@ import { ExternalLinkIcon, FileTextIcon, FolderGit2Icon, MonitorPlayIcon, Pencil
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { ThreadDiscussion } from "@/components/forum/discussion"
 import { Chip, Cover, KIND_ICONS, KindTag, LangTag } from "@/components/hub/bits"
+import { CompareButton } from "@/components/hub/compare"
 import { LikeButton } from "@/components/hub/like-button"
+import { ModMenu, ReportButton } from "@/components/moderation"
 import { Markdown } from "@/components/live/markdown"
+import { TimeAgo } from "@/components/live/time"
 import { ProfileAvatar } from "@/components/settings/profile-avatar"
 import { DiscussButton } from "@/components/social/discuss-button"
 import { FollowButton } from "@/components/social/follow-button"
 import { SaveButton } from "@/components/social/save-button"
 import { StatusPill } from "@/components/studio/ui"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
-import { ago, formatDate, KINDS, LANGUAGES } from "@/lib/data"
+import { formatDate, KINDS, LANGUAGES } from "@/lib/data"
 import { getProject, licenseLabel, projectPath, projectTarget, projectThreadId, type Project } from "@/lib/projects"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
@@ -56,7 +59,6 @@ function Page({ p, mine }: { p: Project; mine: boolean }) {
   const ownerName = p.local ? "You" : (p.owner?.name ?? "A member")
   const draft = p.status === "draft"
   const repo = p.links.repo.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+?)\/?$/)
-  const updated = p.updatedAt.slice(0, 10)
 
   const enter = (delay = 0) => (reduce ? {} : { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.35, delay, ease: [0.23, 1, 0.32, 1] as const } })
 
@@ -99,7 +101,10 @@ function Page({ p, mine }: { p: Project; mine: boolean }) {
           <motion.div {...enter(0.05)} className="flex flex-wrap items-center gap-2">
             {!draft && <LikeButton target={projectTarget(p.id)} />}
             {!draft && <SaveButton target={projectTarget(p.id)} />}
+            {!draft && <CompareButton project={{ id: p.id, name: p.name, kind: p.kind }} />}
             {!draft && <DiscussButton title={p.name} href={href} category={DISCUSS_CATEGORY[p.kind]} />}
+            {!draft && !mine && <ReportButton targetKind="project" targetId={p.id} targetUrl={href} />}
+            {!draft && <ModMenu kind="project" id={p.id} />}
             {mine && (
               <Link
                 href={`${href}/edit`}
@@ -170,7 +175,7 @@ function Page({ p, mine }: { p: Project; mine: boolean }) {
             <Row label="Kind" value={KINDS[p.kind].label} />
             <Row label="Licence" value={licenseLabel(p.license)} />
             {p.versions[0] && <Row label="Latest" value={<span className="font-mono">{p.versions[0].version}</span>} />}
-            <Row label="Updated" value={<time dateTime={p.updatedAt}>{ago(updated)}</time>} />
+            <Row label="Updated" value={<TimeAgo date={p.updatedAt} />} />
             {p.publishedAt && <Row label="Published" value={<time dateTime={p.publishedAt}>{formatDate(p.publishedAt)}</time>} />}
             {p.langs.length > 0 && (
               <div className="flex flex-col gap-2 border-t border-border pt-3">
