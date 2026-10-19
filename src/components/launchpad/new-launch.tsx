@@ -31,7 +31,7 @@ export function NewLaunchForm() {
     )
   }
   return (
-    <Gate action="schedule a launch">
+    <Gate cap="launch.create" action="schedule a launch">
       <Form />
     </Gate>
   )

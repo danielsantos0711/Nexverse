@@ -51,7 +51,7 @@ export function AiAssistButton({
   label?: string
   className?: string
 }) {
-  const { usable } = useAiReady()
+  const { usable } = useAiReady("rewrite")
   const [job, setJob] = useState<Job | null>(null)
   const [result, setResult] = useState<{ text: string; before: string; note?: string } | null>(null)
   const [error, setError] = useState<AiRequestError | Error | null>(null)

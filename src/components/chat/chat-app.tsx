@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
-import { PlusIcon } from "lucide-react"
+import { ArchiveIcon, ChevronRightIcon, LockIcon, PlusIcon, ShieldIcon, TimerIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { CreateRoomDialog } from "@/components/chat/create-room"
@@ -188,43 +188,16 @@ function RoomRail({
         )}
       </div>
       <nav aria-label="Chat rooms" className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-        <ul className="flex flex-col gap-0.5">
-          {rooms.map((r) => {
-            const isActive = r.slug === active
-            const count = isActive ? 0 : (unread[r.slug] ?? 0)
-            const here = online[r.slug] ?? 0
-            return (
-              <li key={r.slug}>
-                <Link
-                  href={roomHref(r.slug)}
-                  onClick={onNavigate}
-                  aria-current={isActive ? "page" : undefined}
-                  aria-label={`${r.name}${count ? `, ${count} unread` : ""}${here ? `, ${here} online` : ""}`}
-                  className={cn(
-                    "group relative flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors",
-                    isActive ? "bg-white/[0.07] text-foreground" : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
-                    count > 0 && "font-medium text-foreground"
-                  )}
-                >
-                  {isActive && <span aria-hidden className="absolute top-1.5 bottom-1.5 left-0 w-0.5 rounded-full bg-ion" />}
-                  <RoomGlyph slug={r.slug} active={isActive} size={26} />
-                  <span className="min-w-0 flex-1 truncate">{r.name}</span>
-                  {here > 0 && (
-                    <span aria-hidden className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular">
-                      <span className="size-1.5 rounded-full bg-ok" />
-                      {here}
-                    </span>
-                  )}
-                  {count > 0 && (
-                    <span aria-hidden className="min-w-5 rounded-full bg-ion px-1.5 text-center text-[11px] leading-5 font-semibold text-ion-foreground tabular">
-                      {count > 99 ? "99+" : count}
-                    </span>
-                  )}
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
+        <RoomList rooms={rooms.filter((r) => !r.archived)} active={active} unread={unread} online={online} onNavigate={onNavigate} />
+        {rooms.some((r) => r.archived) && (
+          <details className="group mt-3" open={rooms.some((r) => r.archived && r.slug === active) || undefined}>
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+              <ChevronRightIcon aria-hidden className="size-3.5 transition-transform group-open:rotate-90" />
+              <ArchiveIcon aria-hidden className="size-3.5" /> Archived rooms
+            </summary>
+            <RoomList rooms={rooms.filter((r) => r.archived)} active={active} unread={unread} online={online} onNavigate={onNavigate} />
+          </details>
+        )}
       </nav>
       <div className="border-t border-border p-3 text-xs text-muted-foreground">
         {!live ? (
@@ -249,5 +222,63 @@ function RoomRail({
         )}
       </div>
     </div>
+  )
+}
+
+/** One list of rooms in the rail, each with its unread count, who is online and its rules at a glance. */
+function RoomList({
+  rooms,
+  active,
+  unread,
+  online,
+  onNavigate,
+}: {
+  rooms: Room[]
+  active: string
+  unread: Record<string, number>
+  online: Record<string, number>
+  onNavigate: () => void
+}) {
+  return (
+    <ul className="flex flex-col gap-0.5">
+      {rooms.map((r) => {
+        const isActive = r.slug === active
+        const count = isActive ? 0 : (unread[r.slug] ?? 0)
+        const here = online[r.slug] ?? 0
+        return (
+          <li key={r.slug}>
+            <Link
+              href={roomHref(r.slug)}
+              onClick={onNavigate}
+              aria-current={isActive ? "page" : undefined}
+              aria-label={`${r.name}${r.staffOnly ? ", team only" : ""}${r.locked && !r.archived ? ", locked" : ""}${r.slowMode ? ", slow mode" : ""}${count ? `, ${count} unread` : ""}${here ? `, ${here} online` : ""}`}
+              className={cn(
+                "group relative flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors",
+                isActive ? "bg-white/[0.07] text-foreground" : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
+                count > 0 && "font-medium text-foreground"
+              )}
+            >
+              {isActive && <span aria-hidden className="absolute top-1.5 bottom-1.5 left-0 w-0.5 rounded-full bg-ion" />}
+              <RoomGlyph slug={r.slug} active={isActive} size={26} />
+              <span className="min-w-0 flex-1 truncate">{r.name}</span>
+              {r.staffOnly && <ShieldIcon aria-hidden className="size-3 shrink-0 text-gold" />}
+              {r.locked && !r.archived && <LockIcon aria-hidden className="size-3 shrink-0 text-gold" />}
+              {r.slowMode ? <TimerIcon aria-hidden className="size-3 shrink-0 text-muted-foreground" /> : null}
+              {here > 0 && (
+                <span aria-hidden className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular">
+                  <span className="size-1.5 rounded-full bg-ok" />
+                  {here}
+                </span>
+              )}
+              {count > 0 && (
+                <span aria-hidden className="min-w-5 rounded-full bg-ion px-1.5 text-center text-[11px] leading-5 font-semibold text-ion-foreground tabular">
+                  {count > 99 ? "99+" : count}
+                </span>
+              )}
+            </Link>
+          </li>
+        )
+      })}
+    </ul>
   )
 }

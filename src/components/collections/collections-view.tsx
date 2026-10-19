@@ -175,7 +175,7 @@ export function CollectionsView() {
             <DialogTitle>New collection</DialogTitle>
             <DialogDescription>Gather models, datasets, papers, repos and threads, with a note on why each one matters.</DialogDescription>
           </DialogHeader>
-          <Gate action="start a collection">
+          <Gate cap="collection.create" action="start a collection">
           <CollectionForm
             submitLabel="Create collection"
             onCancel={() => setCreating(false)}

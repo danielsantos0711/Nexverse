@@ -26,8 +26,10 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "
 import { FieldError } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { editThread, memberCandidate, mentionedMemberIds, type MentionCandidate } from "@/lib/community"
-import { categoryPath, getCategory } from "@/lib/data"
+import { categoryPath } from "@/lib/data"
+import { accentChip, findCategory, postBlockText, useForumMap } from "@/lib/forum-categories"
 import { deleteQuestion, useSession } from "@/lib/store"
+import { cn } from "@/lib/utils"
 
 const replyPoster = (a: ForumReply): Poster => ({ name: a.local ? "You" : (a.author?.name ?? "A member") })
 
@@ -37,6 +39,7 @@ type Editing = { title: string; body: string; tags: string[]; picked: MentionCan
 export function MemberThread({ id }: { id: string }) {
   const router = useRouter()
   const { ready, user } = useSession()
+  const map = useForumMap()
   const [q, setQ] = useState<ForumThread | null | undefined>(undefined)
   const [answers, setAnswers] = useState<ForumReply[]>([])
   const [accepted, setAccepted] = useState<string | null>(null)
@@ -109,7 +112,7 @@ export function MemberThread({ id }: { id: string }) {
     )
   }
 
-  const cat = getCategory(q.orbit)
+  const cat = findCategory(map, q.orbit)
   const isAuthor = q.local || Boolean(user && q.authorId === user.id)
   const author: Poster = { name: q.local ? "You" : (q.author?.name ?? "A member") }
   const solved = answers.some((a) => a.id === accepted)
@@ -163,7 +166,7 @@ export function MemberThread({ id }: { id: string }) {
               {cat && (
                 <Link
                   href={categoryPath(cat.slug)}
-                  className="rounded-full border border-ion/25 bg-ion/10 px-2.5 py-0.5 text-xs text-ion transition-colors hover:bg-ion/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  className={cn("rounded-full border px-2.5 py-0.5 text-xs transition-colors hover:brightness-125 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none", accentChip(cat.accent))}
                 >
                   {cat.name}
                 </Link>
@@ -226,6 +229,7 @@ export function MemberThread({ id }: { id: string }) {
                       onModerated={(act) =>
                         act === "remove" ? router.push(cat ? categoryPath(cat.slug) : "/forum") : setQ((x) => x && { ...x, hidden: act === "hide" ? true : act === "unhide" ? false : x.hidden })
                       }
+                      orbit={q.orbit}
                       thread={{ pinned: q.pinned, locked: q.locked, onChange: (f) => setQ((x) => x && { ...x, ...f }) }}
                     />
                   )}
@@ -276,7 +280,8 @@ export function MemberThread({ id }: { id: string }) {
             acceptedId={accepted}
             startAt={2}
             participants={participantsForMentions}
-            locked={q.locked}
+            locked={q.locked || Boolean(cat?.archived)}
+            lockedNote={!q.locked && cat?.archived ? postBlockText("archived", cat) : undefined}
             quote={quote}
             onChange={(next, acceptedAnswerId) => {
               setAnswers(next)

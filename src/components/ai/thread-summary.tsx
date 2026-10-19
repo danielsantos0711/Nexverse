@@ -62,7 +62,7 @@ export function ThreadSummary({
   minPosts?: number
   className?: string
 }) {
-  const { usable } = useAiReady()
+  const { usable } = useAiReady("summary")
   const cacheKey = `${KEY}${threadId}.${posts.length}`
   // A summary made earlier in this tab for exactly this thread state, or one made just now.
   const raw = useSyncExternalStore(subscribeCache, () => readRaw(cacheKey), () => null)

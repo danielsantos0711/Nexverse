@@ -2,24 +2,28 @@
 
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import { LockIcon, LockOpenIcon, PinIcon, PinOffIcon, ShieldIcon } from "lucide-react"
+import { EyeIcon, EyeOffIcon, LockIcon, LockOpenIcon, PinIcon, PinOffIcon, ShieldIcon } from "lucide-react"
 import { setThreadFlag } from "@/components/forum/forum-data"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ModMenu } from "@/components/moderation/mod-menu"
 import { ReportButton } from "@/components/moderation/report-button"
+import { categoryModerate, findCategory, useForumMap } from "@/lib/forum-categories"
 import type { ModAction } from "@/lib/moderation"
 import { useRole } from "@/lib/roles"
+import { useSession } from "@/lib/store"
 
 type ThreadFlags = { pinned: boolean; locked: boolean; onChange: (next: { pinned: boolean; locked: boolean }) => void }
 
 /**
  * The moderation controls under a forum post: Report for everyone but its author, the staff menu (hide, unhide,
- * remove) and, on a thread, the forum's own staff tools (pin, lock). The database checks every action
- * (reports need an account; moderate_content and set_thread_flag are staff-only).
+ * remove) and, on a thread, the forum's own tools (pin, lock). A category's own moderators get pin, lock and hide
+ * in that category. The database checks every action (moderate_content and set_thread_flag are staff-only;
+ * forum_moderate also lets the category's moderators in).
  */
 export function PostModeration({
   kind,
   id,
+  orbit,
   mine,
   anchor,
   hidden,
@@ -28,6 +32,8 @@ export function PostModeration({
 }: {
   kind: "question" | "answer"
   id: string
+  /** The thread's category, so its moderators get their tools. */
+  orbit?: string
   mine: boolean
   /** The post's anchor on the page ("post-3"), so a report links straight to it. */
   anchor: string
@@ -36,30 +42,63 @@ export function PostModeration({
   thread?: ThreadFlags
 }) {
   const path = usePathname()
+  const { isStaff } = useRole()
+  const { user } = useSession()
+  const map = useForumMap()
+  const cat = orbit ? findCategory(map, orbit) : undefined
+  const categoryMod = !isStaff && Boolean(user && cat?.moderators.includes(user.id))
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
       {!mine && <ReportButton targetKind={kind} targetId={id} targetUrl={`${path}#${anchor}`} />}
-      {kind === "question" && thread && <ThreadTools id={id} thread={thread} />}
+      {(isStaff || categoryMod) && (kind === "answer" ? categoryMod : Boolean(thread)) && (
+        <Tools kind={kind} id={id} thread={kind === "question" ? thread : undefined} hidden={hidden} viaCategory={categoryMod} onModerated={onModerated} />
+      )}
       <ModMenu kind={kind} id={id} hidden={hidden} onDone={onModerated} />
     </span>
   )
 }
 
-function ThreadTools({ id, thread }: { id: string; thread: ThreadFlags }) {
-  const { isStaff } = useRole()
+function Tools({
+  kind,
+  id,
+  thread,
+  hidden,
+  viaCategory,
+  onModerated,
+}: {
+  kind: "question" | "answer"
+  id: string
+  thread?: ThreadFlags
+  hidden?: boolean
+  viaCategory: boolean
+  onModerated?: (act: ModAction) => void
+}) {
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
 
-  if (!isStaff) return null
-
   async function flip(flag: "pin" | "lock") {
-    if (busy) return
+    if (busy || !thread) return
     const on = flag === "pin" ? !thread.pinned : !thread.locked
     setBusy(true)
     setError("")
     try {
-      await setThreadFlag(id, flag, on)
+      if (viaCategory) await categoryModerate("question", id, on ? flag : flag === "pin" ? "unpin" : "unlock")
+      else await setThreadFlag(id, flag, on)
       thread.onChange({ pinned: flag === "pin" ? on : thread.pinned, locked: flag === "lock" ? on : thread.locked })
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function hide() {
+    if (busy) return
+    setBusy(true)
+    setError("")
+    try {
+      await categoryModerate(kind, id, hidden ? "unhide" : "hide")
+      onModerated?.(hidden ? "unhide" : "hide")
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -78,19 +117,30 @@ function ThreadTools({ id, thread }: { id: string; thread: ThreadFlags }) {
             />
           }
         >
-          <ShieldIcon aria-hidden className="size-4" /> Thread tools
+          <ShieldIcon aria-hidden className="size-4" /> {kind === "question" ? "Thread tools" : "Moderate"}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-52">
+        <DropdownMenuContent align="start" className="w-56">
           <DropdownMenuGroup>
-            <DropdownMenuLabel>Moderators</DropdownMenuLabel>
-            <DropdownMenuItem disabled={busy} onClick={() => flip("pin")}>
-              {thread.pinned ? <PinOffIcon aria-hidden /> : <PinIcon aria-hidden />}
-              {thread.pinned ? "Unpin from the category" : "Pin to the top of the category"}
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={busy} onClick={() => flip("lock")}>
-              {thread.locked ? <LockOpenIcon aria-hidden /> : <LockIcon aria-hidden />}
-              {thread.locked ? "Unlock replies" : "Lock replies"}
-            </DropdownMenuItem>
+            <DropdownMenuLabel>{viaCategory ? "Category moderator" : "Moderators"}</DropdownMenuLabel>
+            {thread && (
+              <>
+                <DropdownMenuItem disabled={busy} onClick={() => flip("pin")}>
+                  {thread.pinned ? <PinOffIcon aria-hidden /> : <PinIcon aria-hidden />}
+                  {thread.pinned ? "Unpin from the category" : "Pin to the top of the category"}
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={busy} onClick={() => flip("lock")}>
+                  {thread.locked ? <LockOpenIcon aria-hidden /> : <LockIcon aria-hidden />}
+                  {thread.locked ? "Unlock replies" : "Lock replies"}
+                </DropdownMenuItem>
+              </>
+            )}
+            {/* Staff hide from their own menu; category moderators hide here. */}
+            {viaCategory && (
+              <DropdownMenuItem disabled={busy} onClick={hide}>
+                {hidden ? <EyeIcon aria-hidden /> : <EyeOffIcon aria-hidden />}
+                {hidden ? "Show again" : kind === "question" ? "Hide this thread" : "Hide this reply"}
+              </DropdownMenuItem>
+            )}
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>

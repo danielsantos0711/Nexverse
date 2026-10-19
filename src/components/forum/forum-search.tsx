@@ -6,11 +6,12 @@ import { SearchIcon, XIcon } from "lucide-react"
 import { PosterAvatar } from "@/components/forum/forum-ui"
 import { searchTopics, type Topic } from "@/components/forum/topics"
 import { TimeAgo } from "@/components/live/time"
-import { getCategory } from "@/lib/data"
+import { findCategory, useForumMap } from "@/lib/forum-categories"
 import { cn } from "@/lib/utils"
 
 /** Searches the loaded threads by title and tag, as you type. */
 export function ForumSearch({ topics, className, placeholder = "Search threads" }: { topics: Topic[]; className?: string; placeholder?: string }) {
+  const map = useForumMap()
   const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
@@ -81,7 +82,7 @@ export function ForumSearch({ topics, className, placeholder = "Search threads" 
                         {t.title}
                       </span>
                       <span className="truncate text-xs text-muted-foreground">
-                        {getCategory(t.category)?.name ?? "Forum"} · <TimeAgo date={t.activity} />
+                        {findCategory(map, t.category)?.name ?? "Forum"} · <TimeAgo date={t.activity} />
                         {t.tags.length > 0 && ` · #${t.tags.slice(0, 3).join(" #")}`}
                       </span>
                     </span>

@@ -2,7 +2,7 @@
 
 import { AlertCircleIcon, SparklesIcon } from "lucide-react"
 import { useSession } from "@/lib/store"
-import { useAiStatus, type AiRequestError } from "@/lib/ai-client"
+import { useAiStatus, type AiJob, type AiRequestError } from "@/lib/ai-client"
 import { cn } from "@/lib/utils"
 
 /*
@@ -10,11 +10,15 @@ import { cn } from "@/lib/utils"
  * diff for previews, and the gate that decides whether a member-facing AI control renders at all.
  */
 
-/** True when AI is configured and a member is signed in. Member-facing controls render nothing otherwise. */
-export function useAiReady() {
+/**
+ * True when AI is configured (for `job`, when given, or any job) and a member is signed in. Member-facing
+ * controls render nothing otherwise.
+ */
+export function useAiReady(job?: AiJob) {
   const status = useAiStatus()
   const { user } = useSession()
-  return { ready: status.ready, usable: status.enabled && Boolean(user), enabled: status.enabled }
+  const enabled = status.enabled && (!job || status.jobs[job] === true)
+  return { ready: status.ready, usable: enabled && Boolean(user), enabled }
 }
 
 /** Marks text as machine-written and editable. Always shown next to AI output. */

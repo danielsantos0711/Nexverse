@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Signing in", robots: { index: false 
 
 export default function AuthCallbackPage() {
   return (
-    <div className="shell max-w-xl pt-20 pb-16">
+    <div className="shell flex max-w-xl flex-col pt-20 pb-16">
       <Suspense>
         <AuthCallback />
       </Suspense>

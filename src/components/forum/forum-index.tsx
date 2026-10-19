@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo } from "react"
-import { CalendarDaysIcon, EyeOffIcon, MessageCircleIcon, RotateCwIcon, SparklesIcon, SquarePenIcon, SwordsIcon } from "lucide-react"
+import { ArchiveIcon, CalendarDaysIcon, EyeOffIcon, MessageCircleIcon, RotateCwIcon, SparklesIcon, SquarePenIcon, SwordsIcon } from "lucide-react"
 import { CategoryIcon } from "@/components/forum/category-icon"
 import { ForumSearch } from "@/components/forum/forum-search"
 import { PosterAvatar, primaryButton, rise, riseDelay } from "@/components/forum/forum-ui"
@@ -12,7 +12,8 @@ import { useForumThreads } from "@/components/forum/use-forum-threads"
 import { TimeAgo } from "@/components/live/time"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { categoriesIn, categoryGroups, categoryPath, compact, getCategory, plural, type Category } from "@/lib/data"
+import { categoryPath, compact, plural } from "@/lib/data"
+import { accentChip, findCategory, useForumMap, visibleGroups, type ForumCategory } from "@/lib/forum-categories"
 import { cn } from "@/lib/utils"
 
 const COLS = "md:grid-cols-[minmax(0,1fr)_4.5rem_4.5rem_16rem]"
@@ -20,8 +21,10 @@ const COLS = "md:grid-cols-[minmax(0,1fr)_4.5rem_4.5rem_16rem]"
 /** The forum's front page: category groups with their real thread counts and newest thread, search, and the latest threads. */
 export function ForumIndex() {
   const { topics, status, error, retry } = useForumThreads()
+  const map = useForumMap()
+  const groups = useMemo(() => visibleGroups(map), [map])
   const loading = status === "loading"
-  const stats = useMemo(() => statsByCategory(topics), [topics])
+  const stats = useMemo(() => statsByCategory(topics, map.categories.map((c) => c.slug)), [topics, map.categories])
   const latest = useMemo(() => latestFirst(topics).slice(0, 6), [topics])
   const replies = topics.reduce((n, t) => n + t.replies, 0)
   const active = [...stats.values()].filter((s) => s.threads > 0).length
@@ -73,7 +76,7 @@ export function ForumIndex() {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="flex min-w-0 flex-col gap-8">
-          {categoryGroups.map((g, gi) => (
+          {groups.map(({ group: g, categories }, gi) => (
             <section key={g.slug} id={g.slug} aria-labelledby={`${g.slug}-h`} className="scroll-mt-24">
               <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 px-1">
                 <h2 id={`${g.slug}-h`} className="font-sans text-base font-semibold tracking-normal">
@@ -89,7 +92,7 @@ export function ForumIndex() {
                   <span>Latest</span>
                 </div>
                 <ul aria-label={`${g.name} categories`} className="divide-y divide-border">
-                  {categoriesIn(g.slug).map((c, i) => (
+                  {categories.map((c, i) => (
                     <li key={c.slug} className={rise} style={riseDelay(gi * 3 + i)}>
                       <CategoryRow c={c} s={stats.get(c.slug)!} loading={loading} />
                     </li>
@@ -115,7 +118,7 @@ export function ForumIndex() {
               <ol className="flex flex-col">
                 {latest.map((t, i) => (
                   <li key={t.id} className={rise} style={riseDelay(i)}>
-                    <LatestItem t={t} />
+                    <LatestItem t={t} category={findCategory(map, t.category)?.name} />
                   </li>
                 ))}
               </ol>
@@ -179,11 +182,11 @@ export function ForumIndex() {
   )
 }
 
-function CategoryRow({ c, s, loading }: { c: Category; s: CategoryStats; loading: boolean }) {
+function CategoryRow({ c, s, loading }: { c: ForumCategory; s: CategoryStats; loading: boolean }) {
   return (
     <div className={cn("group relative grid grid-cols-1 gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.03] md:items-center md:gap-4", COLS)}>
       <div className="flex min-w-0 items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-ion/20 bg-ion/10 text-ion transition-transform duration-200 group-hover:-translate-y-0.5 motion-reduce:transform-none">
+        <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg border transition-transform duration-200 group-hover:-translate-y-0.5 motion-reduce:transform-none", accentChip(c.accent))}>
           <CategoryIcon name={c.icon} className="size-4" />
         </span>
         <div className="flex min-w-0 flex-col gap-0.5">
@@ -193,7 +196,12 @@ function CategoryRow({ c, s, loading }: { c: Category; s: CategoryStats; loading
           >
             {c.name}
           </Link>
-          <p className="text-sm text-muted-foreground">{c.blurb}</p>
+          {c.blurb && <p className="text-sm text-muted-foreground">{c.blurb}</p>}
+          {c.archived && (
+            <p className="flex items-center gap-1 text-xs text-gold">
+              <ArchiveIcon aria-hidden className="size-3" /> Archived · read only
+            </p>
+          )}
           {!loading && s.threads > 0 && (
             <p className="text-xs text-muted-foreground tabular md:hidden">
               {plural(s.threads, "thread")} · {plural(s.replies, "reply", "replies")}
@@ -235,8 +243,8 @@ function CategoryRow({ c, s, loading }: { c: Category; s: CategoryStats; loading
               </span>
             </div>
           </div>
-        ) : c.slug === "announcements" ? (
-          <span className="text-sm text-muted-foreground">No announcements yet</span>
+        ) : c.staffOnlyPosting || c.archived ? (
+          <span className="text-sm text-muted-foreground">No threads yet</span>
         ) : (
           <Link
             href={`/forum/new?c=${c.slug}`}
@@ -259,8 +267,7 @@ function Figure({ label, value }: { label: string; value: number }) {
   )
 }
 
-function LatestItem({ t }: { t: Topic }) {
-  const cat = getCategory(t.category)
+function LatestItem({ t, category }: { t: Topic; category?: string }) {
   return (
     <div className="relative flex items-start gap-2.5 rounded-lg p-2 transition-[background-color,transform] duration-200 hover:-translate-y-px hover:bg-white/[0.04] motion-reduce:transform-none">
       <PosterAvatar poster={t.lastPoster} size={24} className="mt-0.5" />
@@ -274,7 +281,7 @@ function LatestItem({ t }: { t: Topic }) {
         </Link>
         <span className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
           {t.hidden && <EyeOffIcon aria-label="Hidden by moderators" className="size-3 shrink-0 text-gold" />}
-          {cat?.name ?? "Forum"} · {t.replies ? `${t.lastPoster.name} replied` : `${t.author.name} posted`} <TimeAgo date={t.activity} />
+          {category ?? "Forum"} · {t.replies ? `${t.lastPoster.name} replied` : `${t.author.name} posted`} <TimeAgo date={t.activity} />
         </span>
       </div>
     </div>
@@ -285,9 +292,11 @@ function LatestItem({ t }: { t: Topic }) {
 export function LegacyCategoryRedirect() {
   const params = useSearchParams()
   const router = useRouter()
+  const map = useForumMap()
   const c = params.get("c")
+  const known = c ? findCategory(map, c) : undefined
   useEffect(() => {
-    if (c && getCategory(c)) router.replace(categoryPath(c))
-  }, [c, router])
+    if (known) router.replace(categoryPath(known.slug))
+  }, [known, router])
   return null
 }

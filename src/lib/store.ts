@@ -1,5 +1,6 @@
-import type { User } from "@supabase/supabase-js"
+import type { Provider, User, UserIdentity } from "@supabase/supabase-js"
 import { useSyncExternalStore } from "react"
+import { authErrorMessage } from "@/lib/auth-providers"
 import type { LanguageCode } from "@/lib/data"
 import { db, live } from "@/lib/supabase"
 
@@ -271,24 +272,126 @@ export function useSession() {
   )
 }
 
-/** Sends a sign-in link. With `createAccount` false (the admins closed joining), only existing members get one. */
-export async function signInWithEmail(email: string, next: string, createAccount = true) {
-  const client = db()
-  if (!client) throw new Error("Sign-in is not switched on for this copy of Nexverse.")
-  const redirect = new URL("/auth/callback", window.location.origin)
-  redirect.searchParams.set("next", next)
-  const { error } = await client.auth.signInWithOtp({ email, options: { emailRedirectTo: redirect.toString(), shouldCreateUser: createAccount } })
-  if (error && !createAccount && /signups? not allowed|not found/i.test(error.message)) {
-    throw new Error("Joining is closed for now, and there is no account with that address.")
+// ─── Signing in ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/** A sign-in failure: `message` is already a plain sentence for the form, `code` is Supabase's error code. */
+export class AuthFailure extends Error {
+  code: string | undefined
+  constructor(error: unknown) {
+    super(authErrorMessage(error))
+    this.code = (error as { code?: string } | null)?.code
   }
-  fail(error)
 }
 
-export async function signOut() {
+function authClient() {
+  const client = db()
+  if (!client) throw new Error("Sign-in is not switched on for this copy of Nexverse.")
+  return client
+}
+
+function authFail(error: unknown) {
+  if (error) throw new AuthFailure(error)
+}
+
+/** Where an email link or a social sign-in comes back to: the callback page, which then follows `next`. */
+function callbackUrl(next: string) {
+  const redirect = new URL("/auth/callback", window.location.origin)
+  redirect.searchParams.set("next", next)
+  return redirect.toString()
+}
+
+/** Sends a sign-in link. With `createAccount` false (the admins closed joining), only existing members get one. */
+export async function signInWithEmail(email: string, next: string, createAccount = true) {
+  const { error } = await authClient().auth.signInWithOtp({ email, options: { emailRedirectTo: callbackUrl(next), shouldCreateUser: createAccount } })
+  if (error && !createAccount && (error.code === "otp_disabled" || error.code === "signup_disabled" || /signups? not allowed|not found/i.test(error.message))) {
+    throw new Error("Joining is closed for now, and there is no account with that address.")
+  }
+  authFail(error)
+}
+
+export async function signInWithPassword(email: string, password: string) {
+  const { data, error } = await authClient().auth.signInWithPassword({ email, password })
+  authFail(error)
+  return data.user
+}
+
+/**
+ * Creates an account with a password. Returns "confirm" when Supabase wants the address confirmed first
+ * (the usual case), "signed-in" when the account is ready at once.
+ */
+export async function signUpWithPassword(input: { email: string; password: string; name: string; next: string }): Promise<"confirm" | "signed-in"> {
+  const { data, error } = await authClient().auth.signUp({
+    email: input.email,
+    password: input.password,
+    options: { emailRedirectTo: callbackUrl(input.next), data: { name: input.name } },
+  })
+  authFail(error)
+  // With confirmation on, Supabase answers an address that already has an account with a user that has no
+  // identities (so strangers cannot probe which emails exist). Say so plainly to the person who typed it.
+  if (data.user && (data.user.identities ?? []).length === 0) throw new AuthFailure({ code: "user_already_exists" })
+  return data.session ? "signed-in" : "confirm"
+}
+
+/** Sends the confirmation email for a new account again. */
+export async function resendConfirmation(email: string, next: string) {
+  const { error } = await authClient().auth.resend({ type: "signup", email, options: { emailRedirectTo: callbackUrl(next) } })
+  authFail(error)
+}
+
+/** Sends a link that opens /reset-password with a short-lived session for choosing a new password. */
+export async function sendPasswordReset(email: string) {
+  const { error } = await authClient().auth.resetPasswordForEmail(email, { redirectTo: new URL("/reset-password", window.location.origin).toString() })
+  authFail(error)
+}
+
+/** Opens the provider's own sign-in page; it comes back to /auth/callback. */
+export async function signInWithProvider(provider: Provider, next: string) {
+  const { error } = await authClient().auth.signInWithOAuth({ provider, options: { redirectTo: callbackUrl(next) } })
+  authFail(error)
+}
+
+/** Sets a new password. `nonce` is the code from the reauthentication email, when Supabase asked for one. */
+export async function updatePassword(password: string, nonce?: string) {
+  const { error } = await authClient().auth.updateUser(nonce ? { password, nonce } : { password })
+  authFail(error)
+}
+
+/** Emails a one-time code that proves it is you, for a password change Supabase wants confirmed. */
+export async function sendReauthentication() {
+  const { error } = await authClient().auth.reauthenticate()
+  authFail(error)
+}
+
+/** Starts an email change. Supabase emails a confirmation link (to both addresses when secure change is on). */
+export async function updateEmail(email: string) {
+  const { error } = await authClient().auth.updateUser({ email }, { emailRedirectTo: callbackUrl("/settings#security") })
+  authFail(error)
+}
+
+/** The ways you can sign in: email and any linked social accounts. */
+export async function listIdentities(): Promise<UserIdentity[]> {
+  const { data, error } = await authClient().auth.getUserIdentities()
+  authFail(error)
+  return data?.identities ?? []
+}
+
+/** Links another sign-in to your account. Leaves the page for the provider and comes back to settings. */
+export async function linkProvider(provider: Provider) {
+  const { error } = await authClient().auth.linkIdentity({ provider, options: { redirectTo: callbackUrl("/settings#security") } })
+  authFail(error)
+}
+
+export async function unlinkIdentity(identity: UserIdentity) {
+  const { error } = await authClient().auth.unlinkIdentity(identity)
+  authFail(error)
+}
+
+/** Signs out here ("local"), on every other device ("others") or everywhere ("global"). */
+export async function signOut(scope: "local" | "others" | "global" = "local") {
   const client = db()
   if (!client) return
-  const { error } = await client.auth.signOut()
-  fail(error)
+  const { error } = await client.auth.signOut({ scope })
+  authFail(error)
 }
 
 // What members share: links to models, datasets, tools, repos and news, and the likes they give.

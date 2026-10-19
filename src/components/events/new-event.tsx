@@ -42,7 +42,7 @@ export function NewEventForm() {
     )
   }
   return (
-    <Gate action="host an event">
+    <Gate cap="event.create" action="host an event">
       <Form />
     </Gate>
   )

@@ -56,9 +56,9 @@ export const latestFirst = (list: Topic[]) => [...list].sort(byActivity)
 
 export type CategoryStats = { threads: number; replies: number; latest: Topic | null }
 
-/** Thread and reply counts and the newest thread for every category. */
-export function statsByCategory(list: Topic[]) {
-  const stats = new Map<string, CategoryStats>(categories.map((c) => [c.slug, { threads: 0, replies: 0, latest: null }]))
+/** Thread and reply counts and the newest thread for every category (the forum's live list, or the presets). */
+export function statsByCategory(list: Topic[], slugs: string[] = categories.map((c) => c.slug)) {
+  const stats = new Map<string, CategoryStats>(slugs.map((slug) => [slug, { threads: 0, replies: 0, latest: null }]))
   for (const t of list) {
     const s = stats.get(t.category)
     if (!s) continue

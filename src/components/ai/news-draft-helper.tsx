@@ -29,7 +29,7 @@ export function NewsDraftHelper({
   onApply: (draft: { title: string; summary: string; tags: string[] }) => void
   className?: string
 }) {
-  const { usable } = useAiReady()
+  const { usable } = useAiReady("news")
   const reduce = useReducedMotion()
   const [draft, setDraft] = useState<NewsDraft | null>(null)
   const [error, setError] = useState<Error | null>(null)

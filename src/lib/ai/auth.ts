@@ -10,7 +10,8 @@ import { AiError, NOT_CONFIGURED } from "./errors"
 export type Caller = {
   id: string
   token: string
-  role: "member" | "moderator" | "admin"
+  /** The site role from profiles.role: member, moderator, admin, or any role the roles work adds. */
+  role: string
   staff: boolean
 }
 
@@ -45,7 +46,7 @@ export async function requireMember(request: Request): Promise<Caller> {
 
   // Role and suspension. Before the roles migration is applied these columns may not exist; treat that as
   // an ordinary member who is not suspended.
-  let role: Caller["role"] = "member"
+  let role = "member"
   try {
     const res = await fetch(`${env.url}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=role,suspended_until`, {
       headers: { ...headers, accept: "application/json" },
@@ -55,7 +56,7 @@ export async function requireMember(request: Request): Promise<Caller> {
     if (res.ok) {
       const rows = (await res.json()) as { role?: unknown; suspended_until?: unknown }[]
       const row = rows[0]
-      if (row?.role === "moderator" || row?.role === "admin") role = row.role
+      if (typeof row?.role === "string" && /^[a-z_]{2,30}$/.test(row.role)) role = row.role
       if (typeof row?.suspended_until === "string" && new Date(row.suspended_until).getTime() > Date.now()) {
         throw new AiError(403, "suspended", "Your account is suspended, so AI assist is paused.")
       }
@@ -63,5 +64,7 @@ export async function requireMember(request: Request): Promise<Caller> {
   } catch (err) {
     if (err instanceof AiError) throw err
   }
-  return { id: userId, token, role, staff: role !== "member" }
+  // Staff means the moderation roles. Other roles (contributor, editor, custom) are not staff here; their
+  // abilities come from has_cap() in the database.
+  return { id: userId, token, role, staff: role === "moderator" || role === "admin" }
 }

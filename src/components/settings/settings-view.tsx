@@ -4,9 +4,11 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useEffect, useId, useRef, useState } from "react"
-import { BellIcon, CheckCircle2Icon, ImageUpIcon, LogOutIcon, SparklesIcon, Trash2Icon, UserIcon, type LucideIcon } from "lucide-react"
+import type { User } from "@supabase/supabase-js"
+import { BellIcon, CheckCircle2Icon, ImageUpIcon, LogOutIcon, ShieldCheckIcon, SparklesIcon, Trash2Icon, UserIcon, type LucideIcon } from "lucide-react"
 import { InterestPicker } from "@/components/settings/interest-picker"
 import { ProfileAvatar } from "@/components/settings/profile-avatar"
+import { SecuritySection } from "@/components/settings/security-section"
 import { ConfirmDialog, SignInPrompt, StudioHead } from "@/components/studio/ui"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -40,10 +42,11 @@ const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "profile", label: "Profile", icon: UserIcon },
   { id: "interests", label: "Interests", icon: SparklesIcon },
   { id: "notifications", label: "Notifications", icon: BellIcon },
+  { id: "security", label: "Security", icon: ShieldCheckIcon },
   { id: "account", label: "Account", icon: LogOutIcon },
 ]
 
-/** Settings: profile, interests, notification switches and the account itself. */
+/** Settings: profile, interests, notification switches, sign-in security and the account itself. */
 export function SettingsView() {
   const session = useSession()
   const { ready, profile, error } = useProfile()
@@ -52,7 +55,7 @@ export function SettingsView() {
     return (
       <>
         <StudioHead title="Settings" lead="Your profile, what you are interested in and how Nexverse reaches you." />
-        <SignInPrompt title="Sign in to change your settings" detail="It takes an email address and nothing else." next="/settings" />
+        <SignInPrompt title="Sign in to change your settings" detail="Your profile, interests, notifications and sign-in security live here." next="/settings" />
       </>
     )
   }
@@ -67,16 +70,17 @@ export function SettingsView() {
       </>
     )
   }
-  return <Settings key={profile.id} profile={profile} email={session.user?.email ?? null} />
+  return <Settings key={profile.id} profile={profile} user={session.user} />
 }
 
-function Settings({ profile, email }: { profile: Profile; email: string | null }) {
+function Settings({ profile, user }: { profile: Profile; user: User | null }) {
+  const email = user?.email ?? null
   return (
     <>
       <StudioHead title="Settings" lead={profile.local ? "This copy of Nexverse has no database, so your settings are kept in this browser." : `Signed in as ${email ?? profile.name}.`} />
       <div className="grid grid-cols-1 gap-8 pb-16 lg:grid-cols-[12rem_minmax(0,1fr)]">
         <nav aria-label="Settings sections" className="-mx-1 flex gap-1 overflow-x-auto px-1 lg:sticky lg:top-20 lg:flex-col lg:self-start">
-          {SECTIONS.map((s) => (
+          {SECTIONS.filter((s) => s.id !== "security" || (user && !profile.local)).map((s) => (
             <a
               key={s.id}
               href={`#${s.id}`}
@@ -93,6 +97,11 @@ function Settings({ profile, email }: { profile: Profile; email: string | null }
           <ProfileSection profile={profile} />
           <InterestsSection profile={profile} />
           <NotificationsSection profile={profile} />
+          {user && !profile.local && (
+            <Section id="security" title="Security" lead="How you sign in, and the devices that are signed in.">
+              <SecuritySection user={user} name={profile.name} />
+            </Section>
+          )}
           <AccountSection profile={profile} email={email} />
         </div>
       </div>
