@@ -13,7 +13,9 @@ import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
 import { GlowCard } from "@/components/hub/glow-card"
-import { BlackHole, GravityWell, PlasmaOrb } from "./fx"
+import { HalftoneOrbit } from "@/components/fx"
+import { useQuality } from "@/lib/perf"
+import { GravityWell, PlasmaOrb } from "./fx"
 import { loadBuilders, loadCollections, loadHotThreads, since, useLoad, type HotThread } from "./hub-data"
 import { Slot } from "./slot"
 
@@ -338,6 +340,7 @@ function StarMap({ seed, count }: { seed: string; count: number }) {
 /** Builders as worlds: real members, each one's planet grown from their reputation. */
 export function BuilderWorlds() {
   const builders = useLoad(() => loadBuilders(8), [])
+  const still = useQuality() === "off"
   const { member } = useSession()
   const seat = {
     you: useCopy("home.builders.seat.you", "Your planet"),
@@ -390,11 +393,10 @@ export function BuilderWorlds() {
             <li className="rise w-[9rem] shrink-0 snap-start md:w-auto" style={{ "--i": builders.length } as React.CSSProperties}>
               <Link href={member ? "/you" : "/sign-in"} className="press group flex flex-col items-center gap-1 rounded-2xl px-1 pt-1 pb-3 text-center hover:bg-white/[0.03]">
                 <span aria-hidden className="relative grid size-[140px] place-items-center">
-                  {/* HorizonX Plasma Orb: a new world still forming, waiting for its member; it brightens on hover */}
-                  <span className="absolute inset-[6%] rounded-full bg-[radial-gradient(closest-side,rgb(143_180_255/0.35),rgb(42_79_214/0.15)_60%,transparent)]" />
-                  <PlasmaOrb className="absolute inset-0" />
-                  <span className="absolute right-3 bottom-3 grid size-8 place-items-center rounded-full border border-white/15 bg-[#0b0e16]/90 text-muted-foreground transition-colors group-hover:border-ion/60 group-hover:text-ion">
-                    <UserPlusIcon className="size-4" />
+                  {/* HorizonX Halftone Orbit: the orbit waiting for a planet */}
+                  <HalftoneOrbit className="absolute inset-0 opacity-70 transition-opacity duration-300 group-hover:opacity-100" still={still} />
+                  <span className="relative grid size-20 place-items-center rounded-full border border-dashed border-white/20 text-muted-foreground transition-colors group-hover:border-ion/60 group-hover:text-ion">
+                    <UserPlusIcon className="size-5" />
                   </span>
                 </span>
                 <span className="w-full truncate text-sm font-medium">{member ? seat.you : seat.guest}</span>
@@ -418,23 +420,24 @@ export function BuilderWorlds() {
 }
 
 /**
- * The close: "join the universe" as a cinematic band. HorizonX Cinematic Black Hole turns on the right (on top
- * on phones), its light bent over the disk, and one thing to do sits on the left. It is the biggest effect on
- * screen when the band is in view, so it gets the turn to animate; with motion off it is one still frame.
+ * The close: "join the universe" as a band. HorizonX Plasma Orb, a glass world with a living core, glows on the
+ * right (on top on phones) and one thing to do sits on the left. It is the biggest effect on screen when the
+ * band is in view, so it gets the turn to animate; hovering the band lifts its plasma; with motion off, or on
+ * a slow computer, it is one still frame.
  */
 export function Close() {
   return (
     <section aria-labelledby="join-h" className="shell">
-      <div className="relative isolate overflow-hidden rounded-3xl border border-white/[0.06] bg-[#030308] shadow-[0_40px_120px_-60px_rgb(216_197_158/0.3)]">
-        <div aria-hidden className="relative aspect-[16/10] w-full md:absolute md:inset-y-0 md:right-0 md:aspect-auto md:w-[70%]">
-          {/* a soft ring stands in before the scene draws, and where WebGL2 is not available */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_32%_12%_at_50%_52%,transparent_40%,rgb(216_197_158/0.18)_55%,transparent_75%)]" />
-          <BlackHole className="absolute inset-0 size-full" />
+      <div className="relative isolate overflow-hidden rounded-3xl border border-white/[0.06] bg-[#05060a] shadow-[0_40px_120px_-60px_rgb(143_180_255/0.35)]">
+        <div aria-hidden className="relative mx-auto aspect-square w-[min(100%,22rem)] md:absolute md:top-1/2 md:right-[6%] md:w-[min(46%,30rem)] md:-translate-y-1/2">
+          {/* a soft glow stands in before the orb draws, and where WebGL2 is not available */}
+          <div className="absolute inset-[20%] rounded-full bg-[radial-gradient(closest-side,rgb(143_180_255/0.4),rgb(42_79_214/0.18)_60%,transparent)]" />
+          <PlasmaOrb className="absolute inset-0" />
         </div>
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_12%_85%,rgb(143_180_255/0.08),transparent_55%)]" />
         <div className="relative flex max-w-lg flex-col justify-center gap-5 px-6 pt-0 pb-10 md:min-h-[30rem] md:px-14 md:py-14">
-          <p className="rise inline-flex items-center gap-2 text-xs tracking-[0.18em] text-gold/85 uppercase">
-            <span aria-hidden className="h-px w-6 bg-gold/60" /> <Copy k="home.close.eyebrow">Join the universe</Copy>
+          <p className="rise inline-flex items-center gap-2 text-xs tracking-[0.18em] text-ion/80 uppercase">
+            <span aria-hidden className="h-px w-6 bg-ion/60" /> <Copy k="home.close.eyebrow">Join the universe</Copy>
           </p>
           <h2 id="join-h" className="rise font-display text-2xl font-semibold tracking-[-0.03em] text-balance md:text-[2.1rem] md:leading-[1.1]" style={{ "--i": 1 } as React.CSSProperties}>
             <Copy k="home.close.title">Put your work in the sky.</Copy>
@@ -445,7 +448,7 @@ export function Close() {
           <div className="rise flex flex-wrap items-center gap-4" style={{ "--i": 3 } as React.CSSProperties}>
             <Link
               href="/share"
-              className="pressable group inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 font-medium text-primary-foreground shadow-[0_10px_40px_-12px_rgb(255_255_255/0.45)] transition-[box-shadow] hover:shadow-[0_10px_50px_-6px_rgb(216_197_158/0.6)]"
+              className="pressable group inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 font-medium text-primary-foreground shadow-[0_10px_40px_-12px_rgb(255_255_255/0.45)] transition-[box-shadow] hover:shadow-[0_10px_50px_-6px_rgb(143_180_255/0.7)]"
             >
               <Copy k="home.close.primary">Share what you built</Copy>
               <ArrowRightIcon aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />

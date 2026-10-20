@@ -522,141 +522,57 @@ html[data-fx="off"] .sky-twinkle {
   inherits: false;
 }
 
-/* In the components layer, so Tailwind utilities on the same element (absolute, fixed, rounded-*) win. */
+/* Round 10: Daniel preferred plain blur (as on the notifications panel) to the Liquid Glass material, so these
+   classes now draw exactly that: a light top highlight, a hairline border and a backdrop blur. No rim, sheen or
+   refraction. In the components layer, so Tailwind utilities on the same element win. */
 @layer components {
 .liquid-glass,
 .liquid-glass-strong,
 .liquid-glass-pill {
-  position: relative;
-  isolation: isolate;
-  background-color: var(--lg-fill);
-  /* the inner refraction: light enters at the top edge and bends down into the pane */
-  background-image:
-    radial-gradient(120% 70% at 50% -10%, var(--lg-light), transparent 58%),
-    linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0) 40%, rgb(143 180 255 / 0.025));
-  border: 1px solid var(--lg-rim-soft);
-  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
-  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.12),
-    inset 0 -1px 0 rgb(255 255 255 / 0.03),
-    var(--lg-shadow);
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.015));
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 20px 50px -24px rgb(0 0 0 / 0.7);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
 }
-/* The specular rim: bright at the top left, a cool fringe down one side, a warm one up the other. A masked
-   border, so it costs one layer and never repaints. */
-.liquid-glass::before,
-.liquid-glass-strong::before,
-.liquid-glass-pill::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  z-index: 0;
-  border-radius: inherit;
-  padding: 1px;
-  pointer-events: none;
-  background: linear-gradient(
-    140deg,
-    var(--lg-rim) 0%,
-    rgb(255 255 255 / 0.14) 16%,
-    var(--lg-fringe-cool) 30%,
-    rgb(255 255 255 / 0.02) 52%,
-    var(--lg-fringe-warm) 78%,
-    rgb(255 255 255 / 0.22) 100%
-  );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  opacity: 0.55;
-  transition: opacity 260ms var(--ease-out);
-}
-.liquid-glass > *,
-.liquid-glass-strong > *,
-.liquid-glass-pill > * {
-  position: relative;
-  z-index: 1;
-}
+/* Surfaces that hold reading text over busy pages (dialogs, sheets, the command palette, menus). */
 .liquid-glass-strong {
-  background-color: var(--lg-fill-strong);
+  background: color-mix(in oklab, var(--popover) 82%, transparent);
 }
 .liquid-glass-pill {
   border-radius: 999px;
-  --lg-light: rgb(255 255 255 / 0.12);
   transition:
-    transform 180ms var(--ease-out),
+    transform 160ms var(--ease-out),
     background-color 200ms ease;
 }
-.liquid-glass-pill::before {
-  opacity: 0.7;
-}
 @media (hover: hover) and (pointer: fine) {
-  .liquid-glass:hover::before,
-  .liquid-glass-pill:hover::before,
-  .liquid-glass-strong:hover::before {
-    opacity: 1;
-  }
   .liquid-glass-pill:hover {
-    background-color: rgb(24 28 38 / 0.62);
+    background-color: rgb(255 255 255 / 0.06);
   }
 }
 .liquid-glass-pill:active {
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 .liquid-glass-pill[aria-pressed="true"],
 .liquid-glass-pill[aria-current="page"],
 .liquid-glass-pill[aria-selected="true"] {
-  background-color: rgb(143 180 255 / 0.16);
-  --lg-light: rgb(201 217 255 / 0.22);
+  background-color: rgb(143 180 255 / 0.14);
 }
-
-/* Pointer sheen: a soft light that follows the pointer across a <Glass> surface. The layer clips; the light
-   inside it is moved by transform only. */
 .lg-sheen {
-  position: absolute !important;
-  inset: 0;
-  z-index: 0 !important;
-  overflow: hidden;
-  border-radius: inherit;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 320ms var(--ease-out);
+  display: none !important;
 }
-.lg-sheen > i {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 360px;
-  height: 360px;
-  margin: -180px 0 0 -180px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(255 255 255 / 0.13), rgb(201 217 255 / 0.05) 45%, transparent);
-  will-change: transform;
+:root.light .liquid-glass,
+:root.light .liquid-glass-pill,
+:root[data-theme="light"] .liquid-glass,
+:root[data-theme="light"] .liquid-glass-pill {
+  background: rgb(255 255 255 / 0.6);
 }
-[data-glass-lit] > .lg-sheen {
-  opacity: 1;
-}
-/* Edge refraction (Chromium, high quality only): the SVG filter in <GlassDefs> bends the backdrop at the rim. */
-:root[data-glass-refract] .lg-refract {
-  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
-  backdrop-filter: url(#lg-refraction) blur(calc(var(--lg-blur) * 0.6)) saturate(var(--lg-sat));
-}
-
-/* Quality tiers (set on <html> by <GlassDefs> from useQuality): cheaper glass on slower machines. */
-:root[data-glass="medium"] {
-  --lg-blur: 10px;
-}
-:root[data-glass="low"] .liquid-glass,
-:root[data-glass="low"] .liquid-glass-strong,
-:root[data-glass="low"] .liquid-glass-pill,
-:root[data-glass="off"] .liquid-glass,
-:root[data-glass="off"] .liquid-glass-strong,
-:root[data-glass="off"] .liquid-glass-pill {
+/* Slower machines and reduced transparency: no blur, a solid panel. */
+:root[data-glass="low"] :is(.liquid-glass, .liquid-glass-strong, .liquid-glass-pill),
+:root[data-glass="off"] :is(.liquid-glass, .liquid-glass-strong, .liquid-glass-pill) {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  background-color: rgb(16 19 27 / 0.96);
-}
-:root[data-glass="low"] .lg-sheen,
-:root[data-glass="off"] .lg-sheen {
-  display: none;
+  background: var(--popover);
 }
 @media (prefers-reduced-transparency: reduce) {
   .liquid-glass,
@@ -664,16 +580,14 @@ html[data-fx="off"] .sky-twinkle {
   .liquid-glass-pill {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    background-color: var(--popover);
+    background: var(--popover);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .liquid-glass-pill:active {
     transform: none;
   }
-  .lg-sheen {
-    display: none;
-  }
+}
 }
 
 /* Glass keys (adapted from HorizonX "Glass Keys", its azure tone): keycaps of frosted glass lit from behind.
@@ -1109,34 +1023,17 @@ html[data-fx="off"] .sky-twinkle {
   }
 }
 
-/* Liquid Glass for cards in long lists: the same light and rim drawn with shadows only, no backdrop blur (the
-   ground behind a list is plain, so blurring it would cost a layer per card and show nothing). No pseudo
-   elements either, so it combines with .spotlight and the HorizonX layers. */
+/* Cards in long lists: a plain card surface (no blur: the ground behind a list is plain). */
 .liquid-glass-flat {
-  background-color: rgb(14 17 24 / 0.72);
-  background-image:
-    radial-gradient(120% 70% at 50% -10%, rgb(255 255 255 / 0.055), transparent 58%),
-    linear-gradient(180deg, rgb(255 255 255 / 0.03), transparent 40%);
-  border: 1px solid rgb(255 255 255 / 0.07);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.09),
-    inset 1px 0 0 rgb(143 180 255 / 0.05),
-    inset -1px 0 0 rgb(216 197 158 / 0.04),
-    0 12px 30px -20px rgb(0 0 0 / 0.9);
+  background-color: var(--card);
+  border: 1px solid var(--border);
   transition:
     background-color 200ms ease,
-    box-shadow 200ms ease,
     border-color 200ms ease;
 }
 @media (hover: hover) and (pointer: fine) {
   .liquid-glass-flat:hover {
-    background-color: rgb(18 22 31 / 0.84);
-    border-color: rgb(255 255 255 / 0.1);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.15),
-      inset 1px 0 0 rgb(143 180 255 / 0.1),
-      inset -1px 0 0 rgb(216 197 158 / 0.08),
-      0 16px 36px -20px rgb(0 0 0 / 0.95);
+    border-color: color-mix(in oklab, var(--foreground) 16%, transparent);
   }
 }
 .glass-tabs.liquid-glass-pill:active {

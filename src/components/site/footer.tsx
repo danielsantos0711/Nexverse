@@ -5,7 +5,6 @@ import type { Route } from "next"
 import { Lockup } from "@/components/brand"
 import { useMenus } from "@/lib/menus"
 import { useSiteSettings } from "@/lib/site-settings"
-import { AskNexverse } from "@/components/assistant/ask-nexverse"
 import { Copy } from "@/components/content/copy"
 import { MobileTabBar } from "@/components/site/mobile-tab-bar"
 
@@ -76,7 +75,6 @@ export function SiteFooter() {
         </p>
       </div>
       <MobileTabBar />
-      <AskNexverse />
     </footer>
   )
 }

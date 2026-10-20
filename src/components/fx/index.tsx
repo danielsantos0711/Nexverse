@@ -13,6 +13,8 @@ import dynamic from "next/dynamic"
  *   ParticleSphere  HorizonX "Particle Sphere": a draggable sphere of points (2D canvas)      ./particle-sphere
  *   GlowCard        HorizonX "Border Glow": a lamp on a card's rim near the pointer           @/components/hub/glow-card
  *   VideoEmbed      click-to-load YouTube / Vimeo / file player                               ./video-embed
+ *   BlackHole       HorizonX "Cinematic Black Hole" (raw WebGL2 port), 16:9 contained, for     ./black-hole
+ *                   error and not-found pages: the page fell past the event horizon
  *
  * WebGL effects each hold a GPU context: use at most two or three on one screen. (HorizonX "Dust Vortex" lives
  * in @/components/auth-fx/dust-vortex, on an opaque ground, for the sign-in screens.)
@@ -25,3 +27,5 @@ export const FilamentFlow = dynamic(() => import("./filament-flow"), { ssr: fals
 export const HalftoneOrbit = dynamic(() => import("./halftone-orbit"), { ssr: false })
 
 export const ParticleSphere = dynamic(() => import("./particle-sphere").then((m) => m.ParticleSphere), { ssr: false })
+
+export const BlackHole = dynamic(() => import("./black-hole"), { ssr: false })

@@ -110,12 +110,14 @@ export function Glass({
   className?: string
   children?: React.ReactNode
 } & Omit<React.HTMLAttributes<HTMLElement>, "className" | "children">) {
-  const quality = useQuality()
-  const on = sheen && (quality === "high" || quality === "medium")
+  // Round 10: plain blur only (Daniel's choice), so no pointer sheen and no edge refraction.
+  void sheen
+  void refract
+  const on = false
   const ref = useGlassSheen<HTMLElement>(on)
   const Tag = as ?? "div"
   return (
-    <Tag ref={ref} className={cn(VARIANT[variant], refract && "lg-refract", className)} {...rest}>
+    <Tag ref={ref} className={cn(VARIANT[variant], className)} {...rest}>
       {on && <GlassSheen />}
       {children}
     </Tag>
