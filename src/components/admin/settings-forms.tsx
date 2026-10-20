@@ -463,6 +463,7 @@ function ThemeFields({ value, change, errors }: FieldsProps<"theme">) {
         value={value.secondary}
         error={errors.secondary}
         allowEmpty
+        base="#d8c59e"
         onChange={(s) => change({ ...value, secondary: s })}
         help="The warm colour of highlights and badges. Leave empty for the built-in champagne."
       />
@@ -488,7 +489,7 @@ function ThemeFields({ value, change, errors }: FieldsProps<"theme">) {
 }
 
 /** A colour: a picker and the same value as #rrggbb text. */
-function ColorField({ id, label, value, onChange, help, error, allowEmpty }: { id: string; label: string; value: string; onChange: (v: string) => void; help?: string; error?: string; allowEmpty?: boolean }) {
+function ColorField({ id, label, value, onChange, help, error, allowEmpty, base = "#8fb4ff" }: { id: string; label: string; value: string; onChange: (v: string) => void; help?: string; error?: string; allowEmpty?: boolean; base?: string }) {
   const valid = HEX.test(value)
   return (
     <Field data-invalid={error ? true : undefined}>
@@ -497,7 +498,7 @@ function ColorField({ id, label, value, onChange, help, error, allowEmpty }: { i
         <input
           type="color"
           aria-label={`${label}: pick`}
-          value={valid ? value.toLowerCase() : "#8fb4ff"}
+          value={valid ? value.toLowerCase() : base}
           onChange={(e) => onChange(e.target.value)}
           className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-input bg-transparent p-1"
         />

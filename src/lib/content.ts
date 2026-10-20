@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useSyncExternalStore } from "react"
 import { conform, isContentKey, seoFor, visibilityFor, type Seo, type Visibility } from "@/lib/content-shape"
 import { db, live } from "@/lib/supabase"
+import { refreshContent } from "@/lib/content-actions"
 
 /*
  * Editable site content. Every piece of copy or curated list on a page goes through these hooks with a key
@@ -247,6 +248,8 @@ export async function saveContent(key: string, kind: ContentKind, value: unknown
   if (meta.path && meta.path.startsWith("/")) row.path = meta.path.slice(0, 200)
   const { error } = await c.from("site_content").upsert(row, { onConflict: "key" })
   if (error) throw new Error(friendly(error.message))
+  // Server-rendered pages read a cached copy; expire it so the next visitor gets the change too
+  void c.auth.getSession().then(({ data }) => (data.session ? refreshContent(data.session.access_token, key) : null)).catch(() => {})
   const values = { ...state.values }
   if (value === null) delete values[key]
   else values[key] = value

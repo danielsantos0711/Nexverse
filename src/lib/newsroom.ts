@@ -55,9 +55,9 @@ export type PullQuote = { text: string; source: number | null }
 
 export type Depth = "short" | "standard" | "deep"
 export const DEPTHS: { id: Depth; label: string; blurb: string }[] = [
-  { id: "short", label: "Short", blurb: "One pass from the collected pages: a brief of 150 to 400 words." },
-  { id: "standard", label: "Standard", blurb: "Reads up to two related official pages, plans, writes 450 to 800 words, then fact-checks." },
-  { id: "deep", label: "Deep", blurb: "Reads up to four related official pages, plans, writes 700 to 1,400 words in sections, then fact-checks every claim." },
+  { id: "short", label: "Short", blurb: "One pass from the collected pages: a brief of 150 to 450 words." },
+  { id: "standard", label: "Standard", blurb: "Reads up to two related official pages, plans, writes 400 to 900 words, then fact-checks." },
+  { id: "deep", label: "Deep", blurb: "Reads up to four related official pages, plans, writes 700 to 1,600 words in sections, then fact-checks every claim." },
 ]
 export const isDepth = (v: unknown): v is Depth => v === "short" || v === "standard" || v === "deep"
 
