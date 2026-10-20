@@ -11,7 +11,8 @@ import { useSiteSettings } from "@/lib/site-settings"
  *   - the hardware ceiling: CPU cores, device memory, a software GPU (SwiftShader, llvmpipe), a phone-sized
  *     touch screen, and Data Saver;
  *   - the measured tier: while any effect is mounted, a frame-rate probe watches the page in 2-second windows.
- *     Two slow windows in a row (under ~62% of the display's own rate) step it down one tier; a long run of
+ *     Two slow windows in a row (under ~62% of the display's own rate), or one very slow one (under ~35%),
+ *     step it down one tier; a long run of
  *     smooth windows steps it back up, at most twice per visit so it cannot see-saw. It never measures its
  *     way to "off";
  *   - the admins' motion level (settings.theme.motion): "calm" caps at "medium", "off" is "off";
@@ -117,7 +118,7 @@ function probeWindow() {
     probeRaf = 0
     if (!users) return
     if (!first) first = now
-    else if (now - prev > 250) gap = true // a stall from outside (tab switch, debugger): not our frame rate
+    else if (now - prev > 1500) gap = true // a stall from outside (tab switch, debugger): not our frame rate
     prev = now
     frames++
     if (now - first < 2000) {
@@ -127,7 +128,7 @@ function probeWindow() {
     windows++
     if (!gap && !document.hidden) judge(((frames - 1) * 1000) / (now - first))
     // measure closely at first, then only now and then: the probe itself should cost nothing
-    probeTimer = window.setTimeout(probeWindow, windows < 6 || slow || smooth ? 0 : 12000)
+    probeTimer = window.setTimeout(probeWindow, windows < 6 || slow ? 0 : 12000)
   }
   probeRaf = requestAnimationFrame(tick)
 }
@@ -138,7 +139,9 @@ function judge(fps: number) {
   const limit = ceiling ?? "high"
   if (fps < refresh * 0.62) {
     smooth = 0
-    if (++slow >= 2 && rank(measured) > rank("low")) {
+    // two slow windows in a row step down; a very slow one (under ~35%) steps down at once
+    slow += fps < refresh * 0.35 ? 2 : 1
+    if (slow >= 2 && rank(measured) > rank("low")) {
       measured = ORDER[rank(measured) - 1]
       slow = 0
       emit()

@@ -375,7 +375,8 @@ declare
 begin
   if tg_op = 'UPDATE' then
     if new.path <> old.path or new.target_id <> old.target_id or new.target_kind <> old.target_kind or new.owner_id <> old.owner_id
-       or new.size <> old.size or new.sha256 <> old.sha256 or new.download_count <> old.download_count then
+       or new.size <> old.size or new.sha256 <> old.sha256
+       or (new.download_count <> old.download_count and coalesce(current_setting('nexverse.counting', true), '') <> 'on') then
       raise exception 'Only the name, version and note of a file can change.';
     end if;
     return new;
@@ -491,7 +492,10 @@ begin
   end if;
   insert into public.file_downloads (file_id, member_id, day) values (file, me, current_date) on conflict do nothing;
   if found then
+    -- file_rules only lets the count change from here
+    perform set_config('nexverse.counting', 'on', true);
     update public.files set download_count = download_count + 1 where id = file returning download_count into total;
+    perform set_config('nexverse.counting', '', true);
   else
     total := f.download_count;
   end if;
