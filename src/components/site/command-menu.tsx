@@ -91,7 +91,7 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
   const { settings } = useSiteSettings()
   const { isStaff } = useRole()
   const { pages: menuPages } = useMenus()
-  const placeholder = useCopy("search.placeholder", "Search the universe: pages, threads, projects, people…")
+  const placeholder = useCopy("search.placeholder", "Search the universe…")
   const empty = useCopy("search.empty", "No star matches that yet. Try another word, or ask in the forum.")
   const goTo = useCopy("search.goto", "Jump to")
 

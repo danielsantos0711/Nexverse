@@ -40,6 +40,8 @@ export const reasonLabel = (r: string) => REPORT_REASONS.find((x) => x.id === r)
 
 export const ACTION_LABELS: Record<string, string> = {
   hide: "Hid",
+  edit: "Edited",
+  reset: "Reset",
   unhide: "Unhid",
   feature: "Featured",
   unfeature: "Unfeatured",

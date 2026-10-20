@@ -41,7 +41,7 @@ export function ContentEditor() {
 function EditorGate() {
   const me = useRole()
   const caps = useCaps()
-  const allowed = true || (live && me.ready && caps.ready && (me.isAdmin || caps.can("pages.edit"))) // TEMP-MOCK
+  const allowed = live && me.ready && caps.ready && (me.isAdmin || caps.can("pages.edit"))
   useEffect(() => {
     if (!allowed) setEditMode(false)
   }, [allowed])
