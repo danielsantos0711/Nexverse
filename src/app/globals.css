@@ -1274,6 +1274,13 @@ html[data-fx="off"] .sky-twinkle {
 
   /* The inline AI moment: a slim pill with the plasma orb on its left (HorizonX Assistant Pill) and, while the
      model thinks, a band of Siri Wave behind its label. Plain blur, never glass. */
+  .ai-pill,
+  .ai-card {
+    --apl-deep: #2b4fd6;
+    --apl-body: #8fb4ff;
+    --apl-glow: #c9d9ff;
+    --apl-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
   .ai-pill {
     position: relative;
     isolation: isolate;
@@ -1363,4 +1370,15 @@ html[data-fx="off"] .explore-planet {
   .nx-skeleton {
     animation: none;
   }
+}
+
+/* A member's "Calm motion" (Settings › Your experience): every animation becomes an instant change, like the
+   system's reduce-motion setting, for this member only. */
+html[data-calm] *,
+html[data-calm] *::before,
+html[data-calm] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }

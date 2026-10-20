@@ -139,7 +139,7 @@ export function LaunchpadView() {
             incoming={view.winner ? incoming[view.winner.id] : 0}
             onBoost={onBoost}
           />
-          <section aria-labelledby="board-h" className="glass flex flex-col gap-3 rounded-2xl p-4 md:p-5">
+          <section aria-labelledby="board-h" className="border border-border bg-card flex flex-col gap-3 rounded-2xl p-4 md:p-5">
             <div className="flex items-center justify-between gap-2">
               <h2 id="board-h" className="flex items-center gap-2 font-sans text-base font-semibold tracking-normal">
                 <RocketIcon aria-hidden className="size-4 -rotate-45 text-ion" /> <Copy k="launchpad.launchpad-view.todays-board">Today’s board</Copy>
@@ -196,7 +196,7 @@ export function LaunchpadView() {
             <CalendarClockIcon aria-hidden className="size-4 text-ion" /> <Copy k="launchpad.launchpad-view.coming-up">Coming up</Copy>
           </h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[18rem_minmax(0,1fr)]">
-            <div className="glass rounded-2xl p-4">
+            <div className="border border-border bg-card rounded-2xl p-4">
               <LaunchCalendar launches={view.calendar} now={now!} selected={day} onSelect={setDay} />
             </div>
             <div className="flex flex-col gap-2">
@@ -284,7 +284,7 @@ function Spotlight({
   const l = winner ?? next
   if (!l) {
     return (
-      <section className="glass flex flex-col items-start justify-center gap-3 rounded-2xl p-6">
+      <section className="border border-border bg-card flex flex-col items-start justify-center gap-3 rounded-2xl p-6">
         <p className="text-sm text-muted-foreground"><Copy k="launchpad.launchpad-view.no-launch-today-and-nothing">No launch today and nothing scheduled.</Copy></p>
         <Link href="/launchpad/new" className={primaryButton}>
           <Copy k="launchpad.launchpad-view.schedule-a-launch">Schedule a launch</Copy>

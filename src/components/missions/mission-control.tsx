@@ -37,7 +37,7 @@ const TILES: MissionStatus[] = ["open", "in-progress", "review", "completed", "e
  */
 export function MissionControl({ counts, status, onStatus, live }: { counts: MissionCounts | null; status: MissionStatus | "all"; onStatus: (s: MissionStatus | "all") => void; live: boolean }) {
   return (
-    <section aria-label="Mission control" className="glass relative overflow-hidden rounded-2xl">
+    <section aria-label="Mission control" className="border border-border bg-card relative overflow-hidden rounded-2xl">
       {/* A thin scan line along the top edge, like a console that is switched on. */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-ion/60 to-transparent" />
       <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-2.5">

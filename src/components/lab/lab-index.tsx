@@ -178,7 +178,7 @@ function Cards({ tools }: { tools: LabTool[] }) {
         return (
           <li key={t.slug} className="animate-in fill-mode-both fade-in-0 slide-in-from-bottom-1 duration-500 motion-reduce:animate-none" style={{ animationDelay: `${Math.min(k, 8) * 40}ms` }}>
             <GlowCard className="h-full rounded-2xl border border-border bg-card/70 transition-colors hover:bg-card">
-              <Link
+              <Link data-nav-item
                 href={labPath(t.slug)}
                 data-tool={t.slug}
                 className="group relative flex h-full flex-col gap-4 rounded-2xl p-5 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"

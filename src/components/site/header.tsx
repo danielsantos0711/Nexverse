@@ -17,6 +17,7 @@ import { GlassDefs } from "@/components/glass/glass"
 import { CreateSheet, openCreate } from "@/components/site/create-sheet"
 import { GO_KEYS, isTyping } from "@/components/site/shortcuts"
 import { Toaster } from "@/components/site/toaster"
+import { shortcutsOn, UiPrefsApplier } from "@/components/settings/ui-prefs"
 import { GlassKeys } from "@/components/glass/glass-keys"
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useRole } from "@/lib/roles"
@@ -64,18 +65,30 @@ function useMenus() {
 }
 
 /**
- * The site-wide keys: / opens search, G then a letter jumps to a place (GO_KEYS). C (create) lives in the sheet.
+ * The site-wide keys: / opens search, G then a letter jumps to a place (GO_KEYS), J and K move through the page's
+ * list. C (create) lives in the sheet.
  */
 function useSiteShortcuts(openSearch: () => void) {
   const router = useRouter()
   useEffect(() => {
     let g = 0
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e)) return
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e) || !shortcutsOn()) return
       const k = e.key.toLowerCase()
       if (k === "/") {
         e.preventDefault()
         openSearch()
+        return
+      }
+      // J and K walk the page's main list (any element marked data-nav-item); Enter opens the focused one.
+      if (k === "j" || k === "k") {
+        const items = [...document.querySelectorAll<HTMLElement>("[data-nav-item]")].filter((el) => el.offsetParent !== null)
+        if (!items.length) return
+        e.preventDefault()
+        const at = items.indexOf(document.activeElement as HTMLElement)
+        const next = items[at < 0 ? (k === "j" ? 0 : items.length - 1) : Math.min(items.length - 1, Math.max(0, at + (k === "j" ? 1 : -1)))]
+        next.focus({ preventScroll: true })
+        next.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })
         return
       }
       if (g && Date.now() - g < 900) {
@@ -174,6 +187,7 @@ export function SiteHeader() {
       </div>
       <CreateSheet />
       <Toaster />
+      <UiPrefsApplier />
     </header>
   )
 }

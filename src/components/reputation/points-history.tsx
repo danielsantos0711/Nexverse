@@ -78,7 +78,7 @@ export function PointsHistory({ memberId, self = false, className }: { memberId:
   const total = (tally ?? []).reduce((a, t) => a + t.points, 0)
   const week = (tally ?? []).reduce((a, t) => a + t.week, 0)
 
-  const shown = day ? (events ?? []).filter((e) => dayKey(e.at) === day) : events ?? []
+  const shown = useMemo(() => (day ? (events ?? []).filter((e) => dayKey(e.at) === day) : events ?? []), [day, events])
   const groups = useMemo(() => {
     const out: { key: string; items: PointEvent[] }[] = []
     for (const e of shown) {
@@ -93,7 +93,7 @@ export function PointsHistory({ memberId, self = false, className }: { memberId:
   if (!live) {
     return (
       <p className={cn("rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground", className)}>
-        <Copy k="points-history.offline">Points are counted by the site's database, which this copy of Nexverse is not connected to.</Copy>
+        <Copy k="points-history.offline">Points are counted by the site&apos;s database, which this copy of Nexverse is not connected to.</Copy>
       </p>
     )
   }

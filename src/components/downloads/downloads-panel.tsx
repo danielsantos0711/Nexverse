@@ -53,7 +53,7 @@ import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
-type Upload = { key: string; name: string; size: number; stage: "waiting" | UploadStage | "done" | "error"; share: number; detail?: string; error?: string; resumable: boolean }
+type Upload = { key: string; name: string; size: number; stage: "waiting" | UploadStage | "done" | "error"; share: number; detail?: string; error?: string; resumable: boolean; retry?: boolean }
 
 const ICONS: [RegExp, typeof FileIcon][] = [
   [/\.(zip|tar|gz|tgz|bz2|xz|7z|rar|zst)$/i, FileArchiveIcon],
@@ -370,7 +370,7 @@ function Uploader({ kind, targetId, versions, count, onAdded }: { kind: FileTarg
   async function run(key: string) {
     const f = files.current.get(key)
     if (!f) return
-    patch(key, { stage: "hashing", share: 0, error: undefined, detail: undefined })
+    patch(key, { stage: "hashing", share: 0, error: undefined, detail: undefined, retry: false })
     try {
       const added = await uploadFile(kind, targetId, f, {
         version,
@@ -385,7 +385,7 @@ function Uploader({ kind, targetId, versions, count, onAdded }: { kind: FileTarg
       setUsage((u) => (u === null ? u : u + added.size))
     } catch (e) {
       const msg = (e as Error).message
-      patch(key, { stage: "error", error: /cancelled/i.test(msg) ? "Cancelled." : msg })
+      patch(key, { stage: "error", error: /cancelled/i.test(msg) ? "Cancelled." : msg, retry: true })
     } finally {
       controls.current.delete(key)
     }
@@ -518,7 +518,7 @@ function Uploader({ kind, targetId, versions, count, onAdded }: { kind: FileTarg
                         <XIcon aria-hidden />
                       </Button>
                     )}
-                    {u.stage === "error" && files.current.has(u.key) && (
+                    {u.stage === "error" && u.retry && (
                       <Button variant="ghost" size="sm" onClick={() => enqueue(u.key)}>
                         <RotateCcwIcon aria-hidden /> Retry
                       </Button>

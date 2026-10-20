@@ -1,10 +1,10 @@
 import type { Metadata } from "next"
+import { AreaCrumbs } from "@/components/site/area-crumbs"
 import { LockIcon, SparklesIcon } from "lucide-react"
 import { PageTitle } from "@/components/hub/bits"
 import { LabHeroFx, LabIndex } from "@/components/lab/lab-index"
 import { getLabTools } from "@/lib/lists/server"
 import { seoMetadata } from "@/lib/content-server"
-import { Copy } from "@/components/content/copy"
 
 export async function generateMetadata(): Promise<Metadata> {
   return seoMetadata("/lab", {
@@ -23,7 +23,7 @@ export default async function Page() {
       <div className="relative isolate">
         <LabHeroFx />
         <PageTitle k="lab.header"
-          eyebrow={<Copy k="lab.header.eyebrow">Lab</Copy>}
+          eyebrow={<AreaCrumbs />}
           title="Tools for building with AI"
           lead="Quick, honest answers to the questions that come up every week: what will it cost, will it fit, how should I split it, can I use it. Run prompts on free models and compare them side by side."
         >

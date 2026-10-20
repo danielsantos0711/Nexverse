@@ -6,7 +6,7 @@ import { PageSkeleton } from "@/components/app/page-skeleton"
 import { KIND_ICONS, PageTitle, SectionHead } from "@/components/hub/bits"
 import { Item, Stagger } from "@/components/hub/motion"
 import { ResourceIndex } from "@/components/hub/resource-index"
-import { ShareDetail } from "@/components/hub/share-detail"
+import { HubItem } from "@/components/hub/hub-item"
 import { FeedMeta, FeedUnavailable } from "@/components/live/bits"
 import { GitHubRepoCard } from "@/components/live/github-repo-card"
 import { CardsSkeleton, RowsSkeleton } from "@/components/live/skeletons"
@@ -125,14 +125,17 @@ async function LiveRepos({ kind }: { kind?: ResourceKind }) {
  * id lets the route be checked during the build; it renders the "not here" state. Old sample slugs 404.
  */
 export function resourceParams() {
-  return [{ slug: "00000000-0000-4000-8000-000000000000" }]
+  return [{ slug: "00000000-0000-4000-8000-000000000000", rest: [] as string[] }]
 }
 
 export function resourceTitle(kind: ResourceKind) {
   return KINDS[kind].label
 }
 
-export function ResourceDetailPage({ kind, params }: { kind: ResourceKind; params: Promise<{ slug: string }> }) {
+type DetailParams = Promise<{ slug: string; rest?: string[] }>
+
+/** A project (with its tabs as sub-paths) or a shared link, under /models/<id>, /datasets/<id> … */
+export function ResourceDetailPage({ kind, params }: { kind: ResourceKind; params: DetailParams }) {
   return (
     <Suspense fallback={<PageSkeleton />}>
       <ResourceDetail kind={kind} params={params} />
@@ -140,8 +143,8 @@ export function ResourceDetailPage({ kind, params }: { kind: ResourceKind; param
   )
 }
 
-async function ResourceDetail({ kind, params }: { kind: ResourceKind; params: Promise<{ slug: string }> }) {
-  const { slug } = await params
+async function ResourceDetail({ kind, params }: { kind: ResourceKind; params: DetailParams }) {
+  const { slug, rest } = await params
   if (!isHubId(slug)) notFound()
-  return <ShareDetail kind={kind} id={slug.toLowerCase()} />
+  return <HubItem kind={kind} id={slug.toLowerCase()} rest={(rest ?? []).map((s) => decodeURIComponent(s))} />
 }

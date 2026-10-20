@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { AreaCrumbs } from "@/components/site/area-crumbs"
 import Link from "next/link"
 import { Suspense } from "react"
 import { PageTitle } from "@/components/hub/bits"
@@ -19,7 +20,7 @@ export default function ConstellationsPage() {
       <PageTitle
         k="constellations.header"
         backdrop="warp"
-        eyebrow="Collections, drawn as star maps"
+        eyebrow={<span className="flex flex-wrap items-center gap-x-2.5 gap-y-1"><AreaCrumbs /><span aria-hidden className="opacity-40">·</span>Collections, drawn as star maps</span>}
         title="Constellations"
         lead="Every public collection with two or more things in it becomes a constellation: each item a star, joined in the order its curator put them. Point at a star to see what it is; open one to read the whole collection with its notes."
       >

@@ -1,54 +1,117 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { motion, useReducedMotion } from "motion/react"
-import { useEffect, useState } from "react"
-import { CalendarClockIcon, ExternalLinkIcon, FileTextIcon, FolderGit2Icon, LinkIcon, LockIcon, MonitorPlayIcon, PencilIcon, ScaleIcon, StarIcon, TagIcon, UsersIcon } from "lucide-react"
-import { DownloadsPanel } from "@/components/downloads/downloads-panel"
-import { Gallery } from "@/components/studio/gallery"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
+import { CalendarClockIcon, DownloadCloudIcon, LinkIcon, LockIcon, SettingsIcon, StarIcon } from "lucide-react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
-import { ThreadDiscussion } from "@/components/forum/discussion"
-import { Chip, Cover, KIND_ICONS, KindTag, LangTag } from "@/components/hub/bits"
+import { Chip, Cover, TYPE_ICONS } from "@/components/hub/bits"
 import { CompareButton } from "@/components/hub/compare"
 import { LikeButton } from "@/components/hub/like-button"
 import { ModMenu, ReportButton } from "@/components/moderation"
-import { Markdown } from "@/components/live/markdown"
-import { TimeAgo } from "@/components/live/time"
-import { ProfileAvatar } from "@/components/settings/profile-avatar"
 import { DiscussButton } from "@/components/social/discuss-button"
-import { FollowButton } from "@/components/social/follow-button"
 import { SaveButton } from "@/components/social/save-button"
 import { StatusPill } from "@/components/studio/ui"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
-import { formatDate, KINDS, LANGUAGES } from "@/lib/data"
-import { canEditProject, getProject, isScheduled, licenseLabel, projectPath, projectTarget, projectThreadId, pub, type Project } from "@/lib/projects"
-import { findLicense } from "@/lib/publish/licenses"
+import { ActivityPanel, ApiPanel, AppsPanel, CodePanel, DiscussionsPanel, FilesPanel, OverviewPanel, SettingsPanel, type PanelProps } from "@/components/studio/project-panels"
+import { BenchmarksPanel, ModelFacts, ProvidersPanel } from "@/components/studio/model-panels"
+import { DatasetViewer } from "@/components/studio/dataset-panels"
+import { compact, KINDS } from "@/lib/data"
+import { formatBytes } from "@/lib/editor/media"
+import { listFiles, type HostedFile } from "@/lib/publish/files"
+import { ACCENTS, canEditProject, getProject, isScheduled, projectHref, projectTarget, pub, recordProjectView, SOURCE_SITES, typeLabel, typeOf, type Project, type ProjectType } from "@/lib/projects"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
+
+/*
+ * A project's page (round 10: a project is a repository). One address, <kind path>/<id>, with tabs as
+ * sub-paths: /models/<id>/providers, /datasets/<id>/viewer, /tools/<id>/tree/main/src … The code views of a
+ * connected repository live here too, so nothing sends people to a separate Code page.
+ */
 
 const DISCUSS_CATEGORY = { model: "models", dataset: "data", tool: "show", repo: "show" } as const
 
+type Tab = { id: string; label: string }
+
+const CODE_VIEWS = new Set(["tree", "blob", "edit", "new", "upload", "commits", "commit", "compare", "branches", "tags", "issues", "pulls", "pull", "releases"])
+
+function tabsFor(type: ProjectType, hasCode: boolean, mine: boolean): Tab[] {
+  const code: Tab[] = hasCode
+    ? [
+        { id: "code", label: "Code" },
+        { id: "issues", label: "Issues" },
+        { id: "pulls", label: "Pull requests" },
+        { id: "releases", label: "Releases" },
+      ]
+    : mine
+      ? [{ id: "code", label: "Code" }]
+      : []
+  const tail: Tab[] = [{ id: "discussions", label: "Discussions" }, ...(mine ? [{ id: "settings", label: "Settings" }] : [])]
+  if (type === "model")
+    return [
+      { id: "overview", label: "Model card" },
+      { id: "providers", label: "Providers" },
+      { id: "benchmarks", label: "Benchmarks" },
+      { id: "api", label: "API" },
+      { id: "activity", label: "Activity" },
+      { id: "apps", label: "Apps using it" },
+      { id: "files", label: "Files and versions" },
+      ...code,
+      ...tail,
+    ]
+  if (type === "dataset")
+    return [
+      { id: "overview", label: "Dataset card" },
+      { id: "viewer", label: "Viewer" },
+      { id: "files", label: "Files and versions" },
+      { id: "api", label: "Use it" },
+      { id: "activity", label: "Activity" },
+      { id: "apps", label: "Built on it" },
+      ...code,
+      ...tail,
+    ]
+  return [{ id: "overview", label: "Overview" }, { id: "files", label: "Files and versions" }, ...code, { id: "activity", label: "Activity" }, { id: "apps", label: "Used by" }, ...tail]
+}
+
+/** Which tab a sub-path belongs to, and the code view to show for it. */
+function route(rest: string[], tabs: Tab[], openOn?: string): { tab: string; code: string[] } {
+  const head = rest[0]
+  if (!head) {
+    const start = openOn && openOn !== "settings" && tabs.some((t) => t.id === openOn) ? openOn : "overview"
+    return { tab: start, code: [] }
+  }
+  if (head === "downloads" || head === "versions") return { tab: "files", code: [] }
+  if (head === "card" || head === "model-card") return { tab: "overview", code: [] }
+  if (head === "code") return { tab: "code", code: rest.slice(1) }
+  if (CODE_VIEWS.has(head)) return { tab: head === "pull" ? "pulls" : head === "issues" || head === "pulls" || head === "releases" ? head : "code", code: rest }
+  if (tabs.some((t) => t.id === head)) return { tab: head, code: [] }
+  return { tab: "overview", code: [] }
+}
+
 /** A member's project page, loaded in the browser (drafts are visible to their owner only). */
-export function ProjectView({ id }: { id: string }) {
+export function ProjectView({ id, rest = [], initial }: { id: string; rest?: string[]; initial?: Project | null }) {
   const { ready, user } = useSession()
-  const [state, setState] = useState<{ project: Project | null; error: string } | null>(null)
+  const [state, setState] = useState<{ project: Project | null; error: string } | null>(initial ? { project: initial, error: "" } : null)
 
   useEffect(() => {
+    if (initial) return
     // Drafts are readable by their owner only, so wait for the session before asking.
     if (live && !ready) return
     let stale = false
     getProject(id)
-      .then((project) => {
-        if (stale) return
-        setState({ project, error: "" })
-        if (project) document.title = `${project.name} · Nexverse`
-      })
+      .then((project) => !stale && setState({ project, error: "" }))
       .catch((e: Error) => !stale && setState({ project: null, error: e.message }))
     return () => {
       stale = true
     }
-  }, [id, ready, user?.id])
+  }, [id, ready, user?.id, initial])
+
+  const p = state?.project
+  useEffect(() => {
+    if (p) document.title = `${p.name} · Nexverse`
+  }, [p])
 
   if (!state) return <PageSkeleton />
   if (state.error) return <Missing title="This project could not be loaded" detail={state.error} />
@@ -56,34 +119,63 @@ export function ProjectView({ id }: { id: string }) {
     return (
       <Missing
         title="This project is not here"
-        detail={
-          user
-            ? "It may have been deleted or unpublished by its owner, or the address is wrong."
-            : "It may be for signed-in members only, not published yet, or deleted. Sign in to check."
-        }
+        detail={user ? "It may have been deleted or unpublished by its owner, or the address is wrong." : "It may be for signed-in members only, not published yet, or deleted. Sign in to check."}
         signIn={!user && live}
       />
     )
-  return <Page p={state.project} mine={canEditProject(state.project, user?.id)} owner={state.project.local || Boolean(user && state.project.ownerId === user.id)} />
+  return (
+    <Page
+      p={state.project}
+      rest={rest}
+      mine={canEditProject(state.project, user?.id)}
+      owner={state.project.local || Boolean(user && state.project.ownerId === user.id)}
+      onProject={(project) => setState({ project, error: "" })}
+    />
+  )
 }
 
-function Page({ p, mine, owner }: { p: Project; mine: boolean; owner: boolean }) {
+function Page({ p, rest, mine, owner, onProject }: { p: Project; rest: string[]; mine: boolean; owner: boolean; onProject: (p: Project) => void }) {
   const o = pub(p)
-  const scheduled = isScheduled(p)
-  const licence = findLicense(p.license)
-  const reduce = useReducedMotion()
-  const KindIcon = KIND_ICONS[p.kind]
-  const href = projectPath(p.id)
-  const ownerName = p.local ? "You" : (p.owner?.name ?? "A member")
+  const type = typeOf(p)
   const draft = p.status === "draft"
-  const repo = p.links.repo.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+?)\/?$/)
+  const scheduled = isScheduled(p)
+  const base = projectHref(p)
+  const tabs = useMemo(() => tabsFor(type, Boolean(p.codeRepoId), mine), [type, p.codeRepoId, mine])
+  const { tab, code } = route(rest, tabs, p.appearance?.openOn)
+  const accent = ACCENTS.find((a) => a.id === p.appearance?.accent)?.hex ?? "#8fb4ff"
+  const TypeIcon = TYPE_ICONS[type]
+  const ownerName = p.local ? "You" : (p.owner?.name ?? "A member")
+  const reduce = useReducedMotion()
 
-  const enter = (delay = 0) => (reduce ? {} : { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.35, delay, ease: [0.23, 1, 0.32, 1] as const } })
+  const [files, setFiles] = useState<HostedFile[]>([])
+  const [loadedFiles, setFilesReady] = useState(false)
+  const filesReady = loadedFiles || Boolean(p.local)
+  useEffect(() => {
+    if (p.local) return
+    let stale = false
+    listFiles("project", p.id)
+      .then((r) => !stale && setFiles(r.files))
+      .catch(() => null)
+      .finally(() => !stale && setFilesReady(true))
+    return () => {
+      stale = true
+    }
+  }, [p.id, p.local])
+
+  useEffect(() => {
+    if (!draft && !p.local && !mine) recordProjectView(p.id).catch(() => null)
+  }, [p.id, draft, p.local, mine])
+
+  const downloads = files.reduce((n, f) => n + f.downloads, 0)
+  const bytes = files.reduce((n, f) => n + f.size, 0)
+  const props: PanelProps = { p, files, filesReady, mine, owner, base, onProject }
+  const enter = (delay = 0) => (reduce ? {} : { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.3, delay, ease: [0.23, 1, 0.32, 1] as const } })
+  const ds = p.specs?.dataset
 
   return (
-    <>
+    <div style={{ "--project-accent": accent } as React.CSSProperties}>
       <div className="relative isolate overflow-hidden border-b border-border">
-        <div className="absolute inset-0 -z-10 opacity-60">
+        <div className="absolute inset-0 -z-10 opacity-50">
           {o.coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- member cover picture
             <img src={o.coverUrl} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
@@ -91,19 +183,27 @@ function Page({ p, mine, owner }: { p: Project; mine: boolean; owner: boolean })
             <Cover seed={p.slug + "banner"} kind={p.kind} />
           )}
         </div>
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background/30 via-background/70 to-background" />
-        <div className="shell flex flex-col gap-5 pt-8 pb-7 md:pt-10">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background/40 via-background/80 to-background" />
+        <div className="shell flex flex-col gap-5 pt-7 pb-0 md:pt-9">
           <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
             <Link href={KINDS[p.kind].path} className="inline-flex items-center gap-1.5 hover:text-foreground">
-              <KindIcon aria-hidden className="size-4" />
+              <TypeIcon aria-hidden className="size-4" />
               {KINDS[p.kind].plural}
             </Link>
             <span aria-hidden>/</span>
-            <span className="truncate">{ownerName}</span>
+            {p.owner ? (
+              <Link href={`/people/${p.owner.handle ?? p.owner.id}` as "/"} className="truncate hover:text-foreground">
+                {ownerName}
+              </Link>
+            ) : (
+              <span className="truncate">{ownerName}</span>
+            )}
+            <span aria-hidden>/</span>
+            <span className="truncate text-foreground">{p.slug}</span>
           </nav>
 
           {!draft && !p.local && (scheduled || o.visibility !== "public") && (
-            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card/70 px-4 py-2.5 text-sm">
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-2.5 text-sm">
               {scheduled ? <CalendarClockIcon aria-hidden className="size-4 text-gold" /> : o.visibility === "members" ? <LockIcon aria-hidden className="size-4 text-ion" /> : <LinkIcon aria-hidden className="size-4 text-ion" />}
               <span className="text-muted-foreground">
                 {scheduled
@@ -114,246 +214,142 @@ function Page({ p, mine, owner }: { p: Project; mine: boolean; owner: boolean })
               </span>
             </div>
           )}
-
           {(draft || p.local) && (
-            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card/70 px-4 py-2.5 text-sm">
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-2.5 text-sm">
               {p.local ? <StatusPill tone="local">On this device</StatusPill> : <StatusPill tone="draft">Draft</StatusPill>}
-              <span className="text-muted-foreground">
-                {p.local ? "This copy of Nexverse has no database, so only you can see this page." : "Only you can see this page until you publish it."}
-              </span>
+              <span className="text-muted-foreground">{p.local ? "This copy of Nexverse has no database, so only you can see this page." : "Only you can see this page until you publish it."}</span>
+              {mine && !p.local && (
+                <Link href={`${base}/settings` as "/"} className="ml-auto text-ion hover:underline">
+                  Review and publish
+                </Link>
+              )}
             </div>
           )}
 
-          <motion.div {...enter()} className="flex flex-wrap items-center gap-4">
-            <div className="size-16 shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/15 md:size-20">
+          <motion.div {...enter()} className="flex flex-wrap items-start gap-4">
+            <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/15 md:size-20">
               <Cover seed={p.slug} kind={p.kind} />
+              {p.appearance?.emoji && <span className="absolute inset-0 grid place-items-center text-3xl md:text-4xl">{p.appearance.emoji}</span>}
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              {o.featuredAt && (
-                <span className="inline-flex items-center gap-1 self-start rounded-full bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">
-                  <StarIcon aria-hidden className="size-3" /> Featured
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: `color-mix(in oklab, ${accent} 15%, transparent)`, color: accent }}>
+                  <TypeIcon aria-hidden className="size-3" /> {typeLabel(type)}
                 </span>
-              )}
+                {o.featuredAt && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">
+                    <StarIcon aria-hidden className="size-3" /> Featured
+                  </span>
+                )}
+              </div>
               <h1 className="text-2xl font-semibold tracking-[-0.02em] break-words md:text-3xl">{p.name}</h1>
               <p className="text-muted-foreground">{p.summary}</p>
+              {p.source && (
+                <p className="text-xs text-muted-foreground">
+                  Imported from {SOURCE_SITES[p.source.site]} · <span className="font-mono">{p.source.ref}</span>
+                </p>
+              )}
             </div>
           </motion.div>
+
+          {type === "model" && p.specs?.model && <ModelFacts specs={p.specs.model} />}
+          {type === "dataset" && (ds?.rows || ds?.bytes || files.length > 0) && (
+            <div className="flex flex-wrap gap-2 text-sm">
+              {ds?.rows ? <Chip>{compact(ds.rows)} rows</Chip> : null}
+              {ds?.bytes || bytes ? <Chip>{formatBytes(ds?.bytes || bytes)}</Chip> : null}
+              {ds?.splits?.length ? <Chip>{ds.splits.length} splits</Chip> : null}
+              {ds?.formats?.map((f) => (
+                <Chip key={f} className="font-mono">
+                  {f}
+                </Chip>
+              ))}
+            </div>
+          )}
 
           <motion.div {...enter(0.05)} className="flex flex-wrap items-center gap-2">
             {!draft && <LikeButton target={projectTarget(p.id)} />}
             {!draft && <SaveButton target={projectTarget(p.id)} />}
             {!draft && <CompareButton project={{ id: p.id, name: p.name, kind: p.kind }} />}
-            {!draft && <DiscussButton title={p.name} href={href} category={DISCUSS_CATEGORY[p.kind]} />}
-            {!draft && !mine && <ReportButton targetKind="project" targetId={p.id} targetUrl={href} />}
+            {!draft && <DiscussButton title={p.name} href={base} category={DISCUSS_CATEGORY[p.kind]} />}
+            {!draft && !mine && <ReportButton targetKind="project" targetId={p.id} targetUrl={base} />}
             {!draft && <ModMenu kind="project" id={p.id} />}
-            {mine && (
-              <Link
-                href={`${href}/edit`}
-                className="pressable inline-flex h-9 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-              >
-                <PencilIcon aria-hidden className="size-4" /> Edit
+            {filesReady && files.length > 0 && (
+              <Link href={`${base}/files` as "/"} className="pressable inline-flex h-9 items-center gap-2 rounded-full border border-border bg-card px-3.5 text-sm hover:border-white/20">
+                <DownloadCloudIcon aria-hidden className="size-4" /> {files.length} {files.length === 1 ? "file" : "files"}
+                {downloads > 0 && <span className="text-muted-foreground">· {compact(downloads)} downloads</span>}
               </Link>
             )}
-            <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
-            <KindTag kind={p.kind} />
-            {p.license !== "unspecified" && <Chip className="font-mono">{p.license}</Chip>}
-            {p.versions[0] && <Chip className="font-mono">v{p.versions[0].version.replace(/^v/i, "")}</Chip>}
+            {mine && (
+              <Link href={`${base}/settings` as "/"} className="pressable inline-flex h-9 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+                <SettingsIcon aria-hidden className="size-4" /> Settings
+              </Link>
+            )}
           </motion.div>
+
+          <TabBar tabs={tabs} current={tab} base={base} />
         </div>
       </div>
 
-      <div className="shell grid grid-cols-1 gap-10 pt-8 pb-16 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="flex min-w-0 flex-col gap-12">
-          <section aria-labelledby="readme-h" className="flex flex-col gap-3">
-            <h2 id="readme-h" className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <FileTextIcon aria-hidden className="size-4" /> README
-            </h2>
-            {p.readme.trim() ? (
-              <div className="rounded-2xl border border-border bg-card/40 p-5 md:p-7">
-                <Markdown source={p.readme} ctx={{ source: "none" }} embeds />
-              </div>
-            ) : (
-              <p className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-                {mine ? (
-                  <>
-                    No README yet. <Link href={`${href}/edit`} className="text-ion hover:underline">Write one</Link> so people know how to use it.
-                  </>
-                ) : (
-                  "The owner has not written a README yet."
-                )}
-              </p>
-            )}
-          </section>
-
-          {o.gallery.length > 0 && <Gallery items={o.gallery} name={p.name} />}
-
-          {!p.local && (
-            <DownloadsPanel
-              kind="project"
-              targetId={p.id}
-              canEdit={mine}
-              zipName={`${p.slug}${p.versions[0] ? `-${p.versions[0].version}` : ""}`}
-              versions={p.versions.map((v) => v.version)}
-            />
-          )}
-
-          {p.versions.length > 0 && (
-            <section aria-labelledby="changelog-h" className="flex flex-col gap-4">
-              <h2 id="changelog-h" className="text-base font-semibold">
-                Changelog
-              </h2>
-              <ol className="relative flex flex-col gap-6 border-l border-border pl-5">
-                {p.versions.map((v, i) => (
-                  <li key={v.id ?? v.version} className="relative flex flex-col gap-1.5">
-                    <span aria-hidden className={`absolute top-1.5 -left-[25px] size-2.5 rounded-full ring-4 ring-background ${i === 0 ? "bg-ion" : "bg-muted-foreground/50"}`} />
-                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                      <h3 className="font-mono text-sm font-semibold">{v.version}</h3>
-                      <time dateTime={v.releasedOn} className="text-xs text-muted-foreground">
-                        {formatDate(v.releasedOn)}
-                      </time>
-                      {i === 0 && <span className="rounded-full bg-ion/10 px-2 py-0.5 text-xs text-ion">Latest</span>}
-                    </div>
-                    {v.notes ? <Markdown source={v.notes} ctx={{ source: "none" }} className="text-sm [&_p]:my-1.5" /> : <p className="text-sm text-muted-foreground">No notes.</p>}
-                  </li>
-                ))}
-              </ol>
-            </section>
-          )}
-
-          {!draft && (
-            <ThreadDiscussion
-              threadId={projectThreadId(p.id)}
-              heading="Discussion"
-              locked={!o.commentsEnabled}
-              lockedNote={o.commentsEnabled ? undefined : "The authors closed comments on this project."}
-            />
-          )}
-        </div>
-
-        <aside aria-label="About this project" className="flex flex-col gap-6 lg:sticky lg:top-20 lg:self-start">
-          <section aria-label="Details" className="glass flex flex-col gap-3 rounded-2xl p-5 text-sm">
-            <Row label="Kind" value={KINDS[p.kind].label} />
-            <Row
-              label="Licence"
-              value={
-                licence?.url ? (
-                  <a href={licence.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-ion" title={licence.short}>
-                    <ScaleIcon aria-hidden className="size-3.5" /> {licenseLabel(p.license)}
-                  </a>
-                ) : (
-                  licenseLabel(p.license)
-                )
-              }
-            />
-            {p.versions[0] && <Row label="Latest" value={<span className="font-mono">{p.versions[0].version}</span>} />}
-            <Row label="Updated" value={<TimeAgo date={p.updatedAt} />} />
-            {p.publishedAt && <Row label="Published" value={<time dateTime={p.publishedAt}>{formatDate(p.publishedAt)}</time>} />}
-            {p.langs.length > 0 && (
-              <div className="flex flex-col gap-2 border-t border-border pt-3">
-                <span className="text-xs text-muted-foreground">Languages</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {p.langs.map((l) => (
-                    <span key={l} className="inline-flex items-center gap-1.5 rounded-md bg-secondary px-2 py-0.5 text-xs">
-                      <LangTag lang={l} className="border-0 p-0" /> <span lang={l}>{LANGUAGES[l].native}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {p.tags.length > 0 && (
-              <div className="flex flex-col gap-2 border-t border-border pt-3">
-                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <TagIcon aria-hidden className="size-3.5" /> Tags
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {p.tags.map((t) => (
-                    <Link key={t} href={`${KINDS[p.kind].path}?q=${encodeURIComponent(t)}`} className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground">
-                      #{t}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-
-          {(p.links.repo || p.links.paper || p.links.demo || o.extraLinks.length > 0) && (
-            <section aria-labelledby="links-h" className="flex flex-col gap-2 rounded-2xl border border-border bg-card/60 p-5 text-sm">
-              <h2 id="links-h" className="mb-1 text-xs font-medium text-muted-foreground">
-                Links
-              </h2>
-              {repo && (
-                <>
-                  <Link href={`/gh/${repo[1]}/${repo[2]}`} className="flex items-center gap-2 hover:text-ion">
-                    <FolderGit2Icon aria-hidden className="size-4 shrink-0" />
-                    <span className="truncate">
-                      {repo[1]}/{repo[2]}
-                    </span>
-                  </Link>
-                  <a href={p.links.repo} target="_blank" rel="noopener noreferrer nofollow ugc" className="ml-6 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                    Open on GitHub <ExternalLinkIcon aria-hidden className="size-3" />
-                  </a>
-                </>
-              )}
-              {p.links.paper && <External href={p.links.paper} icon={FileTextIcon} label="Paper" />}
-              {p.links.demo && <External href={p.links.demo} icon={MonitorPlayIcon} label="Demo" />}
-              {o.extraLinks.map((l) => (
-                <External key={l.url} href={l.url} icon={LinkIcon} label={l.label} />
-              ))}
-            </section>
-          )}
-
-          <section aria-label="Owner" className="flex items-center gap-3 rounded-2xl border border-border bg-card/60 p-5">
-            <ProfileAvatar name={ownerName} seed={p.owner?.id} url={p.owner?.avatarUrl} size={40} />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate font-medium">{ownerName}</span>
-              {p.owner?.handle && <span className="truncate text-xs text-muted-foreground">@{p.owner.handle}</span>}
-            </div>
-            {p.owner && !owner && <FollowButton followee={`member:${p.owner.id}`} name={p.owner.name} showCount={false} />}
-          </section>
-
-          {o.coauthors.length > 0 && (
-            <section aria-labelledby="coauthors-h" className="flex flex-col gap-3 rounded-2xl border border-border bg-card/60 p-5">
-              <h2 id="coauthors-h" className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <UsersIcon aria-hidden className="size-3.5" /> Co-authors
-              </h2>
-              <ul className="flex flex-col gap-2">
-                {o.coauthors.map((c) => (
-                  <li key={c.id}>
-                    <Link href={`/people/${c.handle ?? c.id}`} className="flex items-center gap-2.5 rounded-lg hover:text-ion">
-                      <ProfileAvatar name={c.name} seed={c.id} url={c.avatarUrl} size={28} />
-                      <span className="min-w-0 truncate text-sm">{c.name}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </aside>
+      <div className="shell pt-7 pb-16">
+        <motion.div key={tab} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}>
+          {tab === "overview" && <OverviewPanel {...props} />}
+          {tab === "providers" && <ProvidersPanel p={p} />}
+          {tab === "benchmarks" && <BenchmarksPanel p={p} />}
+          {tab === "api" && <ApiPanel {...props} />}
+          {tab === "activity" && <ActivityPanel {...props} />}
+          {tab === "apps" && <AppsPanel {...props} />}
+          {tab === "files" && <FilesPanel {...props} />}
+          {tab === "viewer" && (filesReady ? <DatasetViewer p={p} files={files} /> : <div className="h-96 animate-pulse rounded-2xl bg-card" />)}
+          {(tab === "code" || tab === "issues" || tab === "pulls" || tab === "releases") && <CodePanel {...props} rest={tab === "code" ? code : code.length ? code : [tab]} />}
+          {tab === "discussions" && <DiscussionsPanel {...props} />}
+          {tab === "settings" && (mine ? <SettingsPanel {...props} /> : <p className="text-sm text-muted-foreground">Only the authors change this project&apos;s settings.</p>)}
+        </motion.div>
       </div>
-    </>
+    </div>
   )
 }
 
-function External({ href, icon: Icon, label }: { href: string; icon: typeof FileTextIcon; label: string }) {
-  let host = href
-  try {
-    host = new URL(href).hostname.replace(/^www\./, "")
-  } catch {}
-  return (
-    <a href={href} target="_blank" rel="noopener noreferrer nofollow ugc" className="flex items-center gap-2 hover:text-ion">
-      <Icon aria-hidden className="size-4 shrink-0" />
-      <span>{label}</span>
-      <span className="truncate text-xs text-muted-foreground">{host}</span>
-      <ExternalLinkIcon aria-hidden className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
-    </a>
-  )
-}
+/** The tabs: links (each has its own address), a sliding underline, scrolls sideways on small screens, and ←/→ move between them. */
+function TabBar({ tabs, current, base }: { tabs: Tab[]; current: string; base: string }) {
+  const uid = useId()
+  const router = useRouter()
+  const ref = useRef<HTMLDivElement>(null)
+  const href = useCallback((id: string) => (id === "overview" ? base : `${base}/${id}`), [base])
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  useEffect(() => {
+    const el = ref.current?.querySelector<HTMLElement>('[aria-current="page"]')
+    el?.scrollIntoView({ block: "nearest", inline: "nearest" })
+  }, [current])
+
+  function onKey(e: React.KeyboardEvent) {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return
+    const i = tabs.findIndex((t) => t.id === current)
+    const next = tabs[(i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length]
+    e.preventDefault()
+    router.push(href(next.id) as "/", { scroll: false })
+    requestAnimationFrame(() => ref.current?.querySelector<HTMLElement>(`[data-tab="${next.id}"]`)?.focus())
+  }
+
   return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-right">{value}</span>
+    <div ref={ref} onKeyDown={onKey} className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:px-0">
+      <nav aria-label="Project sections" className="flex min-w-max gap-1">
+        {tabs.map((t) => {
+          const on = t.id === current
+          return (
+            <Link
+              key={t.id}
+              data-tab={t.id}
+              href={href(t.id) as "/"}
+              scroll={false}
+              aria-current={on ? "page" : undefined}
+              className={cn("relative px-3 py-2.5 text-sm whitespace-nowrap transition-colors duration-150 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none", on ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
+            >
+              {t.label}
+              {on && <motion.span layoutId={`${uid}-tab`} className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-[var(--project-accent)]" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />}
+            </Link>
+          )
+        })}
+      </nav>
     </div>
   )
 }

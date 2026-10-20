@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { AreaCrumbs } from "@/components/site/area-crumbs"
 import Link from "next/link"
 import { Suspense } from "react"
 import { LayersIcon } from "lucide-react"
@@ -17,8 +18,12 @@ export default function CollectionsPage() {
       <PageTitle
         k="collections.header"
         eyebrow={
-          <span className="inline-flex items-center gap-2">
-            <LayersIcon aria-hidden className="size-4 text-ion" /> Star charts drawn by members
+          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <AreaCrumbs />
+            <span aria-hidden className="opacity-40">·</span>
+            <span className="inline-flex items-center gap-2">
+              <LayersIcon aria-hidden className="size-4 text-ion" /> Star charts drawn by members
+            </span>
           </span>
         }
         title="Collections"

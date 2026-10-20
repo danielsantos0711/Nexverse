@@ -247,7 +247,7 @@ function LaunchPage({ initial }: { initial: Launch }) {
         </div>
 
         <aside aria-label="Launch board" className="order-first flex flex-col gap-4 lg:sticky lg:top-20 lg:order-none lg:self-start">
-          <section aria-labelledby="pad-h" className={cn("glass flex flex-col gap-4 rounded-2xl p-5", phase === "live" && "border-ok/25 shadow-[0_0_40px_-12px_rgb(110_231_183/0.35)]")}>
+          <section aria-labelledby="pad-h" className={cn("border border-border bg-card flex flex-col gap-4 rounded-2xl p-5", phase === "live" && "border-ok/25 shadow-[0_0_40px_-12px_rgb(110_231_183/0.35)]")}>
             <h2 id="pad-h" className="flex items-center gap-2 font-sans text-sm font-semibold tracking-normal">
               <RocketIcon aria-hidden className="size-4 -rotate-45 text-ion" />
               {phase === "scheduled" ? "Countdown" : phase === "live" ? "Launch day" : "Final count"}

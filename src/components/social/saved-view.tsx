@@ -272,7 +272,7 @@ function SavedRow({ info }: { info: ItemInfo }) {
     </>
   )
   return info.href ? (
-    <Link href={info.href as "/"} className="flex flex-col gap-0.5 rounded-xl border border-border bg-card/70 p-4 transition-colors hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+    <Link data-nav-item href={info.href as "/"} className="flex flex-col gap-0.5 rounded-xl border border-border bg-card/70 p-4 transition-colors hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
       {body}
     </Link>
   ) : (

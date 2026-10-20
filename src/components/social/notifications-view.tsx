@@ -7,6 +7,7 @@ import { BellIcon, CheckCheckIcon, CircleIcon, CircleDotIcon, Trash2Icon } from 
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { NotificationItem } from "@/components/social/notification-item"
 import { Button } from "@/components/ui/button"
+import { toast } from "@/components/site/toaster"
 import { deleteNotification, loadMoreNotifications, markAllRead, markRead, useNotifications, type Notification } from "@/lib/social"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
@@ -66,7 +67,10 @@ function Inbox() {
 
   function run(p: Promise<unknown>) {
     setActionError("")
-    p.catch((e: Error) => setActionError(e.message))
+    p.catch((e: Error) => {
+      setActionError(e.message)
+      toast(e.message, { tone: "error" })
+    })
   }
 
   async function loadMore() {
@@ -117,7 +121,7 @@ function Inbox() {
             )
           })}
         </div>
-        <Button variant="secondary" onClick={() => run(markAllRead())} disabled={unread === 0}>
+        <Button variant="secondary" onClick={() => run(markAllRead().then(() => toast(`${unread} marked as read.`)))} disabled={unread === 0}>
           <CheckCheckIcon aria-hidden /> <Copy k="notifications.notifications-view.mark-all-read">Mark all read</Copy>
         </Button>
       </div>

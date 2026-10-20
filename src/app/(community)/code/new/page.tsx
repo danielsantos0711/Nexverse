@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
-import { FolderPlusIcon } from "lucide-react"
+import Link from "next/link"
+import { FolderPlusIcon, SparklesIcon } from "lucide-react"
 import { NewRepo } from "@/components/code/new-repo"
 import { ForumHeader } from "@/components/forum/forum-header"
 import { seoMetadata } from "@/lib/content-server"
@@ -21,6 +22,12 @@ export default function NewRepoPage() {
           </span>
         }
       />
+      <Link href="/new/project?code=1&type=other" className="mb-6 flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-sm transition-colors hover:border-white/20">
+        <SparklesIcon aria-hidden className="size-4 shrink-0 text-ion" />
+        <span className="text-muted-foreground">
+          <span className="font-medium text-foreground">Publishing a model, dataset, tool or app?</span> Start a project instead: it gets this repository as its Code tab, plus a card, files, activity and discussions.
+        </span>
+      </Link>
       <NewRepo />
     </div>
   )

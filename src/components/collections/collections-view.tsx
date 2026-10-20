@@ -54,7 +54,8 @@ export function CollectionsView() {
   const view: View = isView(raw) ? raw : "discover"
   const [lists, setLists] = useState<Lists>({ discover: null, mine: null, following: null })
   const [error, setError] = useState("")
-  const [creating, setCreating] = useState(false)
+  // ?new=1 (from the Create sheet) opens the form straight away for members.
+  const [creating, setCreating] = useState(() => params.get("new") === "1")
   const signedOut = live && ready && !user
 
   useEffect(() => {

@@ -191,7 +191,7 @@ function CategoryRow({ c, s, loading }: { c: ForumCategory; s: CategoryStats; lo
           <CategoryIcon name={c.icon} className="size-4" />
         </span>
         <div className="flex min-w-0 flex-col gap-0.5">
-          <Link
+          <Link data-nav-item
             href={categoryPath(c.slug)}
             className="w-fit rounded-sm text-[15px] font-medium after:absolute after:inset-0 after:rounded-[inherit] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset group-hover:text-ion"
           >
@@ -273,7 +273,7 @@ function LatestItem({ t, category }: { t: Topic; category?: string }) {
     <div className="relative flex items-start gap-2.5 rounded-lg p-2 transition-[background-color,transform] duration-200 hover:-translate-y-px hover:bg-white/[0.04] motion-reduce:transform-none">
       <PosterAvatar poster={t.lastPoster} size={24} className="mt-0.5" />
       <div className="flex min-w-0 flex-col gap-0.5">
-        <Link
+        <Link data-nav-item
           href={t.href}
           lang={t.lang}
           className="line-clamp-2 rounded-sm text-sm leading-snug after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring"

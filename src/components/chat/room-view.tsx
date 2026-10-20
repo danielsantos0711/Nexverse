@@ -1,36 +1,80 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { ArchiveIcon, ArrowDownIcon, LockIcon, MenuIcon, ShieldIcon, TimerIcon, UsersIcon, XIcon } from "lucide-react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react"
+import {
+  ArchiveIcon,
+  ArrowDownIcon,
+  BellOffIcon,
+  BookmarkIcon,
+  CalendarIcon,
+  KeyboardIcon,
+  LockIcon,
+  MenuIcon,
+  MoreVerticalIcon,
+  PaletteIcon,
+  PanelRightIcon,
+  PinIcon,
+  RowsIcon,
+  ScrollTextIcon,
+  SearchIcon,
+  ShieldIcon,
+  SparklesIcon,
+  StarIcon,
+  StarsIcon,
+  TimerIcon,
+  UsersIcon,
+  XIcon,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Composer, type ComposerHandle } from "@/components/chat/composer"
+import { useAiReady } from "@/components/ai/ai-bits"
+import { Composer, type ComposerHandle, type ComposerSend } from "@/components/chat/composer"
 import { continues, dayKey, dayLabel, roomHref, signInHref, typingLine } from "@/components/chat/format"
 import { RoomGlyph } from "@/components/chat/glyphs"
-import { MessageItem, type MessageActions } from "@/components/chat/message-item"
+import { MessageItem, type MessageActions, type MessageFeatures, type Translation } from "@/components/chat/message-item"
 import { PresenceStack, type Crowd } from "@/components/chat/people"
+import { PollDialog } from "@/components/chat/poll-dialog"
+import { RoomPanel, type PanelTab } from "@/components/chat/room-panel"
+import { CatchUpDialog, RoomStyleDialog, ShortcutsDialog } from "@/components/chat/room-tools"
+import { ai } from "@/lib/ai-client"
+import { useCaps } from "@/lib/caps"
 import {
+  ACCENT_VALUE,
   applyReaction,
   cachedMessages,
   cacheMessages,
+  chatExtras,
   deleteMessage,
   editMessage,
+  getMessage,
   lastRead,
+  listAround,
   listMessages,
+  listThread,
   live,
   markRead,
+  pinMessage,
   roomRuleText,
   sendMessage,
   subscribeRoom,
   toggleReaction,
   type ChatMessage,
   type Emoji,
+  type MessagePatch,
   type Presence,
   type Room,
 } from "@/lib/chat"
+import type { CommandAction } from "@/lib/chat-commands"
+import { parsePollArg } from "@/lib/chat-commands"
+import { createPoll, getPolls, setPollClosed, setSaved, useSavedIds, useSocialPrefs, vote, type Poll, type PollInput } from "@/lib/chat-features"
+import type { LanguageCode } from "@/lib/data"
 import { useRole } from "@/lib/roles"
 import type { Member } from "@/lib/store"
 
@@ -46,7 +90,9 @@ type Props = {
   onPresence: (list: Presence[]) => void
   onRead: () => void
   onOpenRooms: () => void
-  onOpenPeople: () => void
+  onRoomChange?: (r: Room) => void
+  /** A crew's captain and officers style their crew's room; the database checks it. */
+  canStyle?: boolean
 }
 
 /** Confirmed messages in time order, then the ones still sending, in the order they were written. */
@@ -56,16 +102,33 @@ function place(list: ChatMessage[], m: ChatMessage) {
   return next.sort((a, b) => (a.status ? 1 : 0) - (b.status ? 1 : 0) || (a.status ? 0 : a.createdAt.localeCompare(b.createdAt)))
 }
 
+/** Applies a live change: only the fields it carries. */
+function patch(m: ChatMessage, u: MessagePatch): ChatMessage {
+  const next = { ...m }
+  for (const [k, v] of Object.entries(u)) if (v !== undefined) (next as Record<string, unknown>)[k] = v
+  return next
+}
+
 const NEAR_BOTTOM = 80
 
-export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unreadElsewhere, onPresence, onRead, onOpenRooms, onOpenPeople }: Props) {
+export function RoomView({ slug, room: roomProp, missing, me, canWrite, ready, crowd, unreadElsewhere, onPresence, onRead, onOpenRooms, onRoomChange, canStyle }: Props) {
   // Posting is for members whose account is not paused; the database refuses the rest anyway.
   const role = useRole()
+  const router = useRouter()
+  const caps = useCaps()
   const reduce = useReducedMotion()
+  const prefs = useSocialPrefs()
+  const savedIds = useSavedIds()
+  const summaryAi = useAiReady("summary")
+  const translateAi = useAiReady("translate")
+  const [look, setLook] = useState<Room | null>(null)
+  const room = look && roomProp && look.slug === roomProp.slug ? { ...roomProp, ...look } : roomProp
   const name = room?.name ?? slug
   const [messages, setMessages] = useState<ChatMessage[]>(() => cachedMessages(slug) ?? [])
   const [status, setStatus] = useState<"loading" | "ready" | "error">(() => (cachedMessages(slug) ? "ready" : "loading"))
   const [more, setMore] = useState(false)
+  // After a jump into the past, newer messages wait below; "Jump to latest" reloads them.
+  const [detached, setDetached] = useState(false)
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [typing, setTyping] = useState<Record<string, { name: string; until: number }>>({})
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null)
@@ -79,6 +142,19 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
   // Read the clock only in the browser (in the effect below), so the page can be prerendered.
   const [now, setNow] = useState(0)
   const [readMark, setReadMark] = useState<string | null>(null)
+  const [extras, setExtras] = useState(false)
+  const [polls, setPolls] = useState<Record<string, Poll>>({})
+  const [translations, setTranslations] = useState<Record<string, Translation>>({})
+  const [thread, setThread] = useState<{ root: ChatMessage | null; replies: ChatMessage[]; loading: boolean }>({ root: null, replies: [], loading: false })
+  const [tab, setTab] = useState<PanelTab>("people")
+  const [panelWide, setPanelWide] = useState(true)
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [searchSeed, setSearchSeed] = useState("")
+  const [pinsVersion, setPinsVersion] = useState(0)
+  const [pollOpen, setPollOpen] = useState<{ question: string; options: string[] } | null>(null)
+  const [catchUp, setCatchUp] = useState(false)
+  const [styling, setStyling] = useState(false)
+  const [shortcuts, setShortcuts] = useState(false)
   // Slow mode: when you may write again, and a clock that ticks only while you wait.
   const [slowUntil, setSlowUntil] = useState(0)
   const [tick, setTick] = useState(0)
@@ -98,6 +174,17 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
   // Staff write everywhere; everyone else follows the room's rules (the database checks them too).
   const exempt = role.isStaff || !live
   const closed = room && !exempt ? (room.archived ? "archived" : room.locked ? "locked" : null) : null
+  const isCrewRoom = room?.kind === "crew"
+  const canManage = canWrite && (isCrewRoom ? Boolean(canStyle) : !live || role.isStaff || caps.can("chat.manage"))
+  const features: MessageFeatures = {
+    threads: extras || !live,
+    pins: extras || !live,
+    canPin: canManage,
+    save: canWrite,
+    translate: translateAi.usable,
+  }
+  const compact = prefs.chat.density === "compact"
+  const accent = room?.accent ? ACCENT_VALUE[room.accent] : null
 
   const scroller = useRef<HTMLDivElement>(null)
   const composer = useRef<ComposerHandle>(null)
@@ -108,6 +195,8 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
   const messagesRef = useRef(messages)
   const meRef = useRef(me)
   const moreRef = useRef(more)
+  const threadRef = useRef(thread)
+  const pollsRef = useRef(polls)
   const loadingOlderRef = useRef(false)
   const jumpedToHash = useRef(false)
 
@@ -115,25 +204,46 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
     messagesRef.current = messages
     meRef.current = me
     moreRef.current = more
+    threadRef.current = thread
+    pollsRef.current = polls
   })
 
   // Where this reader left off, for the "New" line. Read once per visit to the room.
   useEffect(() => {
-    setReadMark(lastRead(slug))
+    let stale = false
+    void Promise.resolve().then(() => !stale && setReadMark(lastRead(slug)))
+    return () => {
+      stale = true
+    }
   }, [slug])
 
-  // First page, then every change as it happens.
+  // First page (or the page around a linked message), then every change as it happens.
   useEffect(() => {
     let stale = false
-    listMessages(slug)
-      .then(({ messages: page, more: hasMore }) => {
+    const hash = typeof location !== "undefined" && location.hash.startsWith("#m-") ? location.hash.slice(3) : null
+    const first = async () => {
+      if (hash && live) {
+        const target = await getMessage(hash).catch(() => null)
+        if (target && target.room === slug && !target.threadRoot) {
+          const around = await listAround(slug, target.createdAt)
+          return { messages: around.messages, more: around.more, newer: around.newer }
+        }
+      }
+      const page = await listMessages(slug)
+      return { ...page, newer: false }
+    }
+    first()
+      .then(({ messages: page, more: hasMore, newer }) => {
         if (stale) return
+        setExtras(chatExtras())
         setMessages((current) => {
+          if (newer) return page
           const pending = current.filter((m) => m.status)
           const fresh = current.filter((m) => !m.status && !page.some((p) => p.id === m.id) && m.createdAt > (page.at(-1)?.createdAt ?? ""))
           return [...page, ...fresh, ...pending]
         })
         setMore(hasMore)
+        setDetached(newer)
         setStatus("ready")
       })
       .catch((e: Error) => {
@@ -146,10 +256,29 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
     }
   }, [slug])
 
+  // Polls in view: load the ones not loaded yet.
+  const pollIds = messages.filter((m) => m.kind === "poll" && !m.status).map((m) => m.id)
+  const pollKey = pollIds.filter((id) => !polls[id]).join(",")
+  useEffect(() => {
+    if (!pollKey) return
+    let stale = false
+    getPolls(pollKey.split(","))
+      .then((found) => !stale && setPolls((p) => ({ ...found, ...p })))
+      .catch(() => {})
+    return () => {
+      stale = true
+    }
+  }, [pollKey])
+
   useEffect(() => {
     if (!ready) return
     const handle = subscribeRoom(slug, me, {
       onInsert: (m) => {
+        if (m.threadRoot) {
+          const t = threadRef.current
+          if (t.root?.id === m.threadRoot) setThread((x) => ({ ...x, replies: place(x.replies, m) }))
+          return
+        }
         const isNew = !messagesRef.current.some((x) => x.id === m.id)
         if (isNew) liveIds.current.add(m.id)
         setMessages((list) => place(list, m))
@@ -164,19 +293,30 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
         }
         if (isNew && !atBottomRef.current && m.author?.id !== meRef.current?.id) setNewCount((n) => n + 1)
       },
-      onUpdate: (u) => setMessages((list) => list.map((m) => (m.id === u.id ? { ...m, body: u.body, editedAt: u.editedAt } : m))),
-      onDelete: (id) =>
+      onUpdate: (u) => {
+        setMessages((list) => list.map((m) => (m.id === u.id ? patch(m, u) : m)))
+        setThread((t) => (t.root?.id === u.id ? { ...t, root: patch(t.root, u) } : t.replies.some((r) => r.id === u.id) ? { ...t, replies: t.replies.map((r) => (r.id === u.id ? patch(r, u) : r)) } : t))
+        if (u.pinnedAt !== undefined) setPinsVersion((v) => v + 1)
+      },
+      onDelete: (id) => {
         setMessages((list) =>
-          list.some((m) => m.id === id || m.replyTo === id)
-            ? list.filter((m) => m.id !== id).map((m) => (m.replyTo === id ? { ...m, parent: null } : m))
-            : list
-        ),
-      onReaction: (r) =>
-        setMessages((list) =>
-          list.some((m) => m.id === r.messageId)
-            ? list.map((m) => (m.id === r.messageId ? { ...m, reactions: applyReaction(m.reactions, { emoji: r.emoji, userId: r.userId }, r.on) } : m))
-            : list
-        ),
+          list.some((m) => m.id === id || m.replyTo === id) ? list.filter((m) => m.id !== id).map((m) => (m.replyTo === id ? { ...m, parent: null } : m)) : list
+        )
+        setThread((t) => (t.root?.id === id ? { root: null, replies: [], loading: false } : { ...t, replies: t.replies.filter((r) => r.id !== id) }))
+      },
+      onReaction: (r) => {
+        const apply = (m: ChatMessage) => (m.id === r.messageId ? { ...m, reactions: applyReaction(m.reactions, { emoji: r.emoji, userId: r.userId }, r.on) } : m)
+        setMessages((list) => (list.some((m) => m.id === r.messageId) ? list.map(apply) : list))
+        setThread((t) => (t.root?.id === r.messageId || t.replies.some((x) => x.id === r.messageId) ? { ...t, root: t.root && apply(t.root), replies: t.replies.map(apply) } : t))
+      },
+      onVote: (v) =>
+        setPolls((all) => {
+          const p = all[v.messageId]
+          if (!p) return all
+          const rest = p.votes.filter((x) => !(x.userId === v.userId && x.choice === v.choice))
+          return { ...all, [v.messageId]: { ...p, votes: v.on ? [...rest, { userId: v.userId, choice: v.choice }] : rest } }
+        }),
+      onPoll: (p) => setPolls((all) => (all[p.messageId] ? { ...all, [p.messageId]: { ...all[p.messageId], closesAt: p.closesAt } } : all)),
       onPresence,
       onTyping: (who) => setTyping((t) => ({ ...t, [who.id]: { name: who.name, until: Date.now() + 4000 } })),
     })
@@ -212,8 +352,8 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
   }, [])
 
   useEffect(() => {
-    if (status === "ready") cacheMessages(slug, messages)
-  }, [slug, messages, status])
+    if (status === "ready" && !detached) cacheMessages(slug, messages)
+  }, [slug, messages, status, detached])
 
   // Scrolling: keep to the bottom while the reader is there, hold still while older messages load above.
   useLayoutEffect(() => {
@@ -228,8 +368,11 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
       jumpedToHash.current = true
       const target = typeof location !== "undefined" && location.hash.startsWith("#m-") ? document.getElementById(location.hash.slice(1)) : null
       if (target) {
+        // The scroll this causes updates "at the bottom" through onScroll.
+        atBottomRef.current = false
         target.scrollIntoView({ block: "center" })
-        setHighlight(location.hash.slice(3))
+        const id = location.hash.slice(3)
+        requestAnimationFrame(() => setHighlight(id))
         return
       }
     }
@@ -263,14 +406,14 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
   const latest = messages.findLast((m) => !m.status)?.createdAt
   useEffect(() => {
     function read() {
-      if (document.visibilityState !== "visible" || !atBottomRef.current) return
+      if (document.visibilityState !== "visible" || !atBottomRef.current || detached) return
       markRead(slug, latest ?? new Date().toISOString())
       onRead()
     }
     read()
     document.addEventListener("visibilitychange", read)
     return () => document.removeEventListener("visibilitychange", read)
-  }, [slug, latest, atBottom]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug, latest, atBottom, detached]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOlder = useCallback(async () => {
     const el = scroller.current
@@ -303,58 +446,204 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
     if (el.scrollTop < 240) loadOlder()
   }
 
-  function toLatest() {
+  async function toLatest() {
     const el = scroller.current
     if (!el) return
+    if (detached) {
+      try {
+        const page = await listMessages(slug)
+        setMessages(page.messages)
+        setMore(page.more)
+        setDetached(false)
+      } catch (e) {
+        return setError((e as Error).message)
+      }
+    }
     atBottomRef.current = true
     setAtBottom(true)
     setNewCount(0)
-    el.scrollTo({ top: el.scrollHeight, behavior: reduce ? "auto" : "smooth" })
+    requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: reduce || detached ? "auto" : "smooth" }))
+  }
+
+  /** Shows the room as it was at a moment: a day picked to jump to, or a message from search or pins. */
+  async function showAt(at: string, focus?: string) {
+    try {
+      const around = await listAround(slug, at)
+      if (!around.messages.length) return setNotice("Nothing was said on or after that day")
+      setMessages(around.messages)
+      setMore(around.more)
+      setDetached(around.newer)
+      atBottomRef.current = false
+      setAtBottom(false)
+      setSheetOpen(false)
+      const id = focus ?? around.messages.find((m) => m.createdAt >= at)?.id ?? around.messages[0].id
+      requestAnimationFrame(() => {
+        document.getElementById(`m-${id}`)?.scrollIntoView({ block: "center" })
+        setHighlight(id)
+      })
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
+  function jumpTo(m: ChatMessage) {
+    if (m.room !== slug) {
+      router.push(`${roomHref(m.room)}#m-${m.threadRoot ?? m.id}` as Route)
+      return
+    }
+    if (m.threadRoot) {
+      openThreadById(m.threadRoot)
+      return
+    }
+    const target = document.getElementById(`m-${m.id}`)
+    if (target) {
+      setSheetOpen(false)
+      target.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" })
+      setHighlight(m.id)
+      return
+    }
+    void showAt(m.createdAt, m.id)
+  }
+
+  function jumpToDate(arg: string) {
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(arg.trim()) ? new Date(`${arg.trim()}T00:00:00`) : new Date(arg)
+    if (Number.isNaN(d.getTime())) return setNotice("Write the date like 2026-10-01")
+    void showAt(d.toISOString())
+  }
+
+  // ---- Threads and the panel ------------------------------------------------------------------------------
+
+  function openPanel(t: PanelTab) {
+    setTab(t)
+    setPanelWide(true)
+    if (!matchMedia("(min-width: 80rem)").matches) setSheetOpen(true)
+  }
+
+  function openThread(root: ChatMessage) {
+    setThread({ root, replies: [], loading: true })
+    openPanel("thread")
+    listThread(slug, root.id)
+      .then((replies) => setThread((t) => (t.root?.id === root.id ? { ...t, replies, loading: false } : t)))
+      .catch((e: Error) => {
+        setError(e.message)
+        setThread((t) => ({ ...t, loading: false }))
+      })
+  }
+
+  function openThreadById(id: string) {
+    const root = messagesRef.current.find((m) => m.id === id)
+    if (root) return openThread(root)
+    getMessage(id)
+      .then((m) => m && openThread(m))
+      .catch(() => {})
   }
 
   // ---- Writing -------------------------------------------------------------------------------------------
 
   async function deliver(draft: ChatMessage) {
+    const inThread = Boolean(draft.threadRoot)
+    const put = (m: ChatMessage) => (inThread ? setThread((t) => ({ ...t, replies: place(t.replies, m) })) : setMessages((list) => place(list, m)))
     try {
-      const sent = await sendMessage(slug, draft.body, { id: draft.id, replyTo: draft.replyTo, parent: draft.parent })
-      setMessages((list) => place(list, sent))
+      const sent = await sendMessage(slug, draft.body, {
+        id: draft.id,
+        replyTo: draft.replyTo,
+        parent: draft.parent,
+        kind: draft.kind,
+        attachments: draft.attachments,
+        mentions: draft.mentions,
+        threadRoot: draft.threadRoot,
+      })
+      put(sent)
     } catch (e) {
-      setMessages((list) => place(list, { ...draft, status: "failed", error: (e as Error).message }))
+      put({ ...draft, status: "failed", error: (e as Error).message })
     }
   }
 
-  function send(body: string) {
-    if (!me || waiting) return
+  function startSlow() {
     if (room?.slowMode && !exempt) {
       const n = Date.now()
       setTick(n)
       setSlowUntil(n + room.slowMode * 1000)
     }
-    const draft: ChatMessage = {
+  }
+
+  function draftOf(msg: ComposerSend, threadRoot: string | null): ChatMessage {
+    const quote = threadRoot ? null : replyTo
+    return {
       id: crypto.randomUUID(),
       room: slug,
-      body,
+      body: msg.body,
       createdAt: new Date().toISOString(),
       editedAt: null,
       author: me,
-      replyTo: replyTo?.id ?? null,
-      parent: replyTo ? { id: replyTo.id, body: replyTo.body, author: replyTo.author } : null,
+      replyTo: quote?.id ?? null,
+      parent: quote ? { id: quote.id, body: quote.body, author: quote.author } : null,
       reactions: [],
+      kind: msg.kind,
+      attachments: msg.attachments,
+      mentions: msg.mentions,
+      threadRoot,
+      replyCount: 0,
+      lastReplyAt: null,
+      pinnedAt: null,
       status: "sending",
     }
+  }
+
+  function send(msg: ComposerSend) {
+    if (!me || waiting) return
+    startSlow()
+    const draft = draftOf(msg, null)
     liveIds.current.add(draft.id)
     atBottomRef.current = true
     setAtBottom(true)
     setReplyTo(null)
     setReadMark(null)
     setError("")
+    if (detached) void toLatest()
     setMessages((list) => place(list, draft))
     deliver(draft)
+  }
+
+  function sendInThread(msg: ComposerSend) {
+    const root = thread.root
+    if (!me || !root || waiting) return
+    startSlow()
+    const draft = draftOf(msg, root.id)
+    setThread((t) => ({ ...t, replies: place(t.replies, draft) }))
+    const bump = (m: ChatMessage) => (m.id === root.id ? { ...m, replyCount: m.replyCount + 1, lastReplyAt: draft.createdAt } : m)
+    setMessages((list) => list.map(bump))
+    setThread((t) => (t.root ? { ...t, root: bump(t.root) } : t))
+    deliver(draft)
+  }
+
+  async function postPoll(input: PollInput) {
+    const { message, poll } = await createPoll(slug, input)
+    startSlow()
+    liveIds.current.add(message.id)
+    setPolls((p) => ({ ...p, [message.id]: poll }))
+    setMessages((list) => place(list, message))
+    atBottomRef.current = true
+    setAtBottom(true)
+  }
+
+  function onCommand(action: CommandAction, arg: string) {
+    if (action === "poll") return setPollOpen(parsePollArg(arg))
+    if (action === "catchup") return summaryAi.usable ? setCatchUp(true) : setNotice("AI is not switched on for this site yet")
+    if (action === "search") {
+      setSearchSeed(arg)
+      return openPanel("search")
+    }
+    if (action === "jump") return arg ? jumpToDate(arg) : openPanel("search")
+    if (action === "pins") return openPanel("pins")
+    if (action === "saved") return openPanel("saved")
+    if (action === "help") return setShortcuts(true)
   }
 
   // Message actions go through a ref so the memoised rows don't redraw when this component does.
   const impl = {
     onReply: (m: ChatMessage) => {
+      if (m.threadRoot) return openThreadById(m.threadRoot)
       setReplyTo(m)
       setEditingId(null)
       composer.current?.focus()
@@ -363,8 +652,11 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
       const who = meRef.current
       if (!who || !canWrite) return
       const on = !m.reactions.some((r) => r.emoji === emoji && r.userId === who.id)
-      const flip = (state: boolean) =>
-        setMessages((list) => list.map((x) => (x.id === m.id ? { ...x, reactions: applyReaction(x.reactions, { emoji, userId: who.id }, state) } : x)))
+      const apply = (state: boolean) => (x: ChatMessage) => (x.id === m.id ? { ...x, reactions: applyReaction(x.reactions, { emoji, userId: who.id }, state) } : x)
+      const flip = (state: boolean) => {
+        setMessages((list) => list.map(apply(state)))
+        setThread((t) => ({ ...t, root: t.root && apply(state)(t.root), replies: t.replies.map(apply(state)) }))
+      }
       flip(on)
       toggleReaction(m, emoji, who.id, on).catch((e: Error) => {
         flip(!on)
@@ -372,7 +664,7 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
       })
     },
     onCopyLink: (m: ChatMessage) => {
-      const url = `${location.origin}${roomHref(slug)}#m-${m.id}`
+      const url = `${location.origin}${roomHref(slug)}#m-${m.threadRoot ?? m.id}`
       navigator.clipboard?.writeText(url).then(
         () => setNotice("Link copied"),
         () => setNotice("Couldn't copy the link")
@@ -399,15 +691,73 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
     },
     onRetry: (m: ChatMessage) => {
       const draft = { ...m, status: "sending" as const, error: undefined }
-      setMessages((list) => place(list, draft))
+      if (m.threadRoot) setThread((t) => ({ ...t, replies: place(t.replies, draft) }))
+      else setMessages((list) => place(list, draft))
       deliver(draft)
     },
-    onDiscard: (m: ChatMessage) => setMessages((list) => list.filter((x) => x.id !== m.id)),
+    onDiscard: (m: ChatMessage) => {
+      setMessages((list) => list.filter((x) => x.id !== m.id))
+      setThread((t) => ({ ...t, replies: t.replies.filter((x) => x.id !== m.id) }))
+    },
     onJump: (id: string) => {
       const target = document.getElementById(`m-${id}`)
-      if (!target) return setNotice("That message is further back in the room")
+      if (!target) {
+        getMessage(id)
+          .then((m) => (m ? jumpTo(m) : setNotice("That message is gone")))
+          .catch(() => setNotice("That message is further back in the room"))
+        return
+      }
       target.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" })
       setHighlight(id)
+    },
+    onThread: (m: ChatMessage) => openThread(m),
+    onPin: (m: ChatMessage, pin: boolean) => {
+      const at = pin ? new Date().toISOString() : null
+      const set = (value: string | null) => setMessages((list) => list.map((x) => (x.id === m.id ? { ...x, pinnedAt: value } : x)))
+      set(at)
+      pinMessage(m, pin)
+        .then((v) => {
+          set(v)
+          setPinsVersion((n) => n + 1)
+          setNotice(pin ? "Pinned for everyone" : "Unpinned")
+        })
+        .catch((e: Error) => {
+          set(m.pinnedAt)
+          setError(e.message)
+        })
+    },
+    onSave: (m: ChatMessage, saved: boolean) =>
+      setSaved(m, saved).then(
+        () => setNotice(saved ? "Saved. Find it under Saved" : "Removed from saved"),
+        (e: Error) => setError(e.message)
+      ),
+    onTranslate: (m: ChatMessage) => {
+      if (translations[m.id]?.text) return setTranslations((t) => ({ ...t, [m.id]: { ...t[m.id], text: undefined } }))
+      setTranslations((t) => ({ ...t, [m.id]: { loading: true } }))
+      ai.translate({ text: m.body.slice(0, 2000), to: prefs.chat.translateTo as LanguageCode })
+        .then((r) => setTranslations((t) => ({ ...t, [m.id]: { text: r.data.text, from: r.data.from } })))
+        .catch((e: Error) => setTranslations((t) => ({ ...t, [m.id]: { error: e.message } })))
+    },
+    onVote: (m: ChatMessage, choice: number, on: boolean) => {
+      const poll = pollsRef.current[m.id]
+      const who = meRef.current
+      if (!poll || !who) return
+      const before = poll.votes
+      const optimistic = on && !poll.multi ? [...before.filter((v) => v.userId !== who.id), { userId: who.id, choice }] : on ? [...before, { userId: who.id, choice }] : before.filter((v) => !(v.userId === who.id && v.choice === choice))
+      setPolls((p) => ({ ...p, [m.id]: { ...poll, votes: optimistic } }))
+      vote(poll, slug, choice, on)
+        .then((votes) => setPolls((p) => ({ ...p, [m.id]: { ...p[m.id], votes } })))
+        .catch((e: Error) => {
+          setPolls((p) => ({ ...p, [m.id]: { ...p[m.id], votes: before } }))
+          setError(e.message)
+        })
+    },
+    onClosePoll: (m: ChatMessage, close: boolean) => {
+      const poll = pollsRef.current[m.id]
+      if (!poll) return
+      setPollClosed(poll, close)
+        .then((closesAt) => setPolls((p) => ({ ...p, [m.id]: { ...p[m.id], closesAt } })))
+        .catch((e: Error) => setError(e.message))
     },
   }
   const implRef = useRef(impl)
@@ -426,6 +776,12 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
       onRetry: (m) => implRef.current.onRetry(m),
       onDiscard: (m) => implRef.current.onDiscard(m),
       onJump: (id) => implRef.current.onJump(id),
+      onThread: (m) => implRef.current.onThread(m),
+      onPin: (m, p) => implRef.current.onPin(m, p),
+      onSave: (m, s) => implRef.current.onSave(m, s),
+      onTranslate: (m) => implRef.current.onTranslate(m),
+      onVote: (m, c, on) => implRef.current.onVote(m, c, on),
+      onClosePoll: (m, c) => implRef.current.onClosePoll(m, c),
     }),
     []
   )
@@ -435,20 +791,59 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
     if (!m) return
     setDeleting(null)
     const before = messagesRef.current
+    const threadBefore = threadRef.current
     setMessages((list) => list.filter((x) => x.id !== m.id).map((x) => (x.replyTo === m.id ? { ...x, parent: null } : x)))
+    setThread((t) => (t.root?.id === m.id ? { root: null, replies: [], loading: false } : { ...t, replies: t.replies.filter((x) => x.id !== m.id) }))
     try {
       await deleteMessage(m.id, slug)
     } catch (e) {
       setMessages(before)
+      setThread(threadBefore)
       setError((e as Error).message)
     }
   }
 
   function editLast() {
     if (!me) return
-    const mine = messagesRef.current.findLast((m) => !m.status && m.author?.id === me.id)
+    const mine = messagesRef.current.findLast((m) => !m.status && m.author?.id === me.id && m.kind !== "poll" && m.kind !== "sticker")
     if (mine) setEditingId(mine.id)
   }
+
+  // Keyboard: room-wide shortcuts that don't fight the message box.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement | null
+      const typingHere = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)
+      if (e.altKey && !e.metaKey && !e.ctrlKey) {
+        const k = e.key.toLowerCase()
+        if (k === "f" || e.code === "KeyF") {
+          e.preventDefault()
+          return openPanel("search")
+        }
+        if (k === "p" || e.code === "KeyP") {
+          e.preventDefault()
+          return openPanel("pins")
+        }
+        if (k === "s" || e.code === "KeyS") {
+          e.preventDefault()
+          return openPanel("saved")
+        }
+      }
+      if (typingHere) return
+      if (e.key === "?" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        setShortcuts(true)
+      } else if (e.key === "Escape" && e.shiftKey) {
+        e.preventDefault()
+        void toLatest()
+      } else if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        composer.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  })
 
   // ---- Drawing -------------------------------------------------------------------------------------------
 
@@ -458,6 +853,7 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
   }, [messages, readMark, me?.id])
 
   const typingNames = Object.values(typing).map((t) => t.name)
+  const rulesOpen = Boolean(room?.rules && !prefs.chat.readRules.includes(slug))
 
   const rows: React.ReactNode[] = []
   messages.forEach((m, i) => {
@@ -468,9 +864,14 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
       rows.push(
         <li key={`day-${dayKey(m.createdAt)}`} className="sticky top-0 z-10 my-2 flex items-center gap-3 px-4">
           <span aria-hidden className="h-px flex-1 bg-border" />
-          <span className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+          <button
+            type="button"
+            onClick={() => openPanel("search")}
+            title="Jump to another day"
+            className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+          >
             {dayLabel(m.createdAt, now)}
-          </span>
+          </button>
           <span aria-hidden className="h-px flex-1 bg-border" />
         </li>
       )
@@ -487,7 +888,7 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
       <MessageItem
         key={m.id}
         message={m}
-        grouped={!newDay && !isFirstNew && continues(prev, m)}
+        grouped={!newDay && !isFirstNew && continues(prev, m) && m.kind !== "poll"}
         me={me}
         canWrite={canWrite}
         animateIn={liveIds.current.has(m.id)}
@@ -495,6 +896,11 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
         highlighted={highlight === m.id}
         now={now}
         actions={actions}
+        features={features}
+        poll={polls[m.id]}
+        saved={savedIds.has(m.id)}
+        translation={translations[m.id]}
+        compact={compact}
       />
     )
   })
@@ -512,186 +918,353 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
     )
   }
 
+  const panel = (
+    <RoomPanel
+      tab={tab === "thread" && !thread.root ? "people" : tab}
+      onTab={setTab}
+      slug={slug}
+      room={room}
+      crowd={crowd}
+      me={me}
+      canWrite={canWrite}
+      now={now}
+      actions={actions}
+      features={features}
+      polls={polls}
+      savedIds={savedIds}
+      thread={{ ...thread, onSend: sendInThread, onTyping: () => sub.current?.typing() }}
+      pinsVersion={pinsVersion}
+      searchSeed={searchSeed}
+      onJump={jumpTo}
+      onJumpDate={jumpToDate}
+      onClose={() => setPanelWide(false)}
+    />
+  )
+
+  const style = accent ? ({ "--room-accent": accent } as CSSProperties) : undefined
+
   return (
-    <section aria-labelledby="chat-room-title" className="relative flex min-w-0 flex-1 flex-col">
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-2 md:px-4">
-        <Button variant="ghost" size="icon-sm" className="relative md:hidden" aria-label="Show rooms" onClick={onOpenRooms}>
-          <MenuIcon aria-hidden />
-          {unreadElsewhere && <span aria-hidden className="absolute top-1 right-1 size-2 rounded-full bg-ion" />}
-        </Button>
-        <RoomGlyph slug={slug} active size={26} />
-        <div className="min-w-0 flex-1">
-          <h1 id="chat-room-title" className="truncate text-sm leading-tight font-semibold">
-            {name}
-          </h1>
-          {room?.topic && <p className="truncate text-xs text-muted-foreground">{room.topic}</p>}
-        </div>
-        <RoomRules room={room} />
-        <button
-          type="button"
-          onClick={() => {
-            // On wide screens the people are already in the right-hand column.
-            if (!matchMedia("(min-width: 80rem)").matches) onOpenPeople()
-          }}
-          className="flex items-center gap-2 rounded-full py-1 pr-2 pl-1 text-xs text-muted-foreground hover:bg-white/[0.04] hover:text-foreground xl:cursor-default xl:hover:bg-transparent"
-          aria-label={`${crowd.total} here now. Show who's here`}
-        >
-          <PresenceStack crowd={crowd} />
-          {crowd.total === 0 ? <UsersIcon aria-hidden className="size-4" /> : <span className="tabular">{crowd.total} here</span>}
-        </button>
-      </header>
-
-      <div className="relative min-h-0 flex-1">
-        <div aria-hidden className="starfield opacity-30 [mask-image:radial-gradient(80%_60%_at_50%_0%,black,transparent)]">
-          <i />
-          <i />
-          <i />
-        </div>
-        <div
-          ref={scroller}
-          onScroll={onScroll}
-          role="log"
-          aria-live="polite"
-          aria-relevant="additions"
-          aria-label={`Messages in ${name}`}
-          aria-busy={status === "loading"}
-          tabIndex={0}
-          className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain py-3 outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
-        >
-          {status === "loading" ? (
-            <StreamSkeleton />
-          ) : status === "error" && messages.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
-              <p>Couldn’t load this room. {error}</p>
-              <Button size="sm" variant="secondary" onClick={() => location.reload()}>
-                Try again
-              </Button>
-            </div>
-          ) : messages.length === 0 ? (
-            <EmptyRoom slug={slug} room={room} canWrite={canWrite} />
+    <>
+      <section aria-labelledby="chat-room-title" className="relative flex min-w-0 flex-1 flex-col" style={style}>
+        {accent && <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-px bg-[var(--room-accent)] opacity-70" />}
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-2 md:px-4">
+          <Button variant="ghost" size="icon-sm" className="relative md:hidden" aria-label="Show rooms" onClick={onOpenRooms}>
+            <MenuIcon aria-hidden />
+            {unreadElsewhere && <span aria-hidden className="absolute top-1 right-1 size-2 rounded-full bg-ion" />}
+          </Button>
+          {room?.emoji ? (
+            <span aria-hidden className="grid size-[26px] shrink-0 place-items-center rounded-full text-base" style={{ background: accent ? `color-mix(in oklab, ${accent} 22%, transparent)` : "rgb(255 255 255 / 0.06)" }}>
+              {room.emoji}
+            </span>
           ) : (
-            <>
-              {more ? (
-                <div className="flex justify-center py-3">
-                  <Button size="xs" variant="ghost" onClick={loadOlder} disabled={loadingOlder}>
-                    {loadingOlder ? "Loading older messages…" : "Load older messages"}
-                  </Button>
-                </div>
-              ) : (
-                <RoomStart slug={slug} room={room} />
-              )}
-              <ol className="flex flex-col pb-2">
-                <AnimatePresence initial={false}>{rows}</AnimatePresence>
-              </ol>
-            </>
+            <RoomGlyph slug={slug} active size={26} />
           )}
-        </div>
+          <div className="min-w-0 flex-1">
+            <h1 id="chat-room-title" className="truncate text-sm leading-tight font-semibold">
+              {name}
+            </h1>
+            {room?.topic && <p className="truncate text-xs text-muted-foreground">{room.topic}</p>}
+          </div>
+          <RoomRules room={room} />
+          {summaryAi.usable && canWrite && (
+            <Button variant="ghost" size="sm" className="hidden gap-1.5 text-ion sm:inline-flex" onClick={() => setCatchUp(true)}>
+              <SparklesIcon aria-hidden /> Catch me up
+            </Button>
+          )}
+          <Button variant="ghost" size="icon-sm" aria-label="Search this room" title="Search this room" className="hidden sm:inline-flex" onClick={() => openPanel("search")}>
+            <SearchIcon aria-hidden />
+          </Button>
+          <button
+            type="button"
+            onClick={() => openPanel("people")}
+            className="flex items-center gap-2 rounded-full py-1 pr-2 pl-1 text-xs text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
+            aria-label={`${crowd.total} here now. Show who's here`}
+          >
+            <PresenceStack crowd={crowd} />
+            {crowd.total === 0 ? <UsersIcon aria-hidden className="size-4" /> : <span className="tabular">{crowd.total} here</span>}
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="ghost" size="icon-sm" aria-label="Room options">
+                  <MoreVerticalIcon aria-hidden />
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="end" className="w-56">
+              {summaryAi.usable && canWrite && (
+                <DropdownMenuItem onClick={() => setCatchUp(true)}>
+                  <SparklesIcon aria-hidden /> Catch me up
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={() => openPanel("search")}>
+                <SearchIcon aria-hidden /> Search and jump to a date
+              </DropdownMenuItem>
+              {features.pins && (
+                <DropdownMenuItem onClick={() => openPanel("pins")}>
+                  <PinIcon aria-hidden /> Pinned messages
+                </DropdownMenuItem>
+              )}
+              {features.save && (
+                <DropdownMenuItem onClick={() => openPanel("saved")}>
+                  <BookmarkIcon aria-hidden /> Saved messages
+                </DropdownMenuItem>
+              )}
+              {room?.rules && (
+                <DropdownMenuItem onClick={() => prefs.setChat({ readRules: prefs.chat.readRules.filter((r) => r !== slug) })}>
+                  <ScrollTextIcon aria-hidden /> Show the room rules
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem className="hidden xl:flex" onClick={() => setPanelWide((w) => !w)}>
+                <PanelRightIcon aria-hidden /> {panelWide ? "Hide the side panel" : "Show the side panel"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {canWrite && !isCrewRoom && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const on = !prefs.chat.starred.includes(slug)
+                      prefs.setChat({ starred: on ? [...prefs.chat.starred, slug] : prefs.chat.starred.filter((r) => r !== slug) })
+                    }}
+                  >
+                    <StarIcon aria-hidden /> {prefs.chat.starred.includes(slug) ? "Unstar this room" : "Star this room"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const on = !prefs.chat.muted.includes(slug)
+                      prefs.setChat({ muted: on ? [...prefs.chat.muted, slug] : prefs.chat.muted.filter((r) => r !== slug) })
+                    }}
+                  >
+                    <BellOffIcon aria-hidden /> {prefs.chat.muted.includes(slug) ? "Unmute this room" : "Mute this room"}
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuItem onClick={() => prefs.setChat({ density: compact ? "cozy" : "compact" })}>
+                <RowsIcon aria-hidden /> {compact ? "Cozy messages" : "Compact messages"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => prefs.setChat({ stars: !prefs.chat.stars })}>
+                <StarsIcon aria-hidden /> {prefs.chat.stars ? "Hide the starfield" : "Show the starfield"}
+              </DropdownMenuItem>
+              {canManage && room && live && (
+                <DropdownMenuItem onClick={() => setStyling(true)}>
+                  <PaletteIcon aria-hidden /> Room look and rules
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={() => setShortcuts(true)}>
+                <KeyboardIcon aria-hidden /> Keyboard shortcuts
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </header>
 
-        <AnimatePresence>
-          {!atBottom && status === "ready" && messages.length > 0 && (
+        <AnimatePresence initial={false}>
+          {rulesOpen && room?.rules && (
             <motion.div
-              initial={reduce ? false : { opacity: 0, transform: "translate(-50%, 8px)" }}
-              animate={{ opacity: 1, transform: "translate(-50%, 0px)" }}
-              exit={reduce ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, transform: "translate(-50%, 8px)" }}
-              transition={{ type: "spring", duration: 0.25, bounce: 0 }}
-              className="absolute bottom-3 left-1/2 z-20"
+              initial={reduce ? false : { opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={reduce ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, height: 0 }}
+              transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+              className="shrink-0 overflow-hidden border-b border-border"
             >
-              <Button size="sm" onClick={toLatest} className="shadow-lg shadow-black/40">
-                <ArrowDownIcon aria-hidden data-icon="inline-start" />
-                {newCount > 0 ? `${newCount} new ${newCount === 1 ? "message" : "messages"}` : "Jump to latest"}
-              </Button>
+              <div className="flex items-start gap-3 px-4 py-2.5 text-sm" style={{ background: accent ? `color-mix(in oklab, ${accent} 8%, transparent)` : "rgb(143 180 255 / 0.05)" }}>
+                <ScrollTextIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-[var(--room-accent,var(--ion))]" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">House rules</p>
+                  <p className="line-clamp-4 whitespace-pre-line text-foreground/90">{room.rules}</p>
+                </div>
+                <Button size="xs" variant="secondary" onClick={() => prefs.setChat({ readRules: [...prefs.chat.readRules, slug] })}>
+                  Got it
+                </Button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
 
-      <div className="shrink-0 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-4 md:pb-3">
-        <div className="flex h-6 items-center gap-2 px-1 text-xs text-muted-foreground" aria-hidden={typingNames.length === 0}>
-          {typingNames.length > 0 && (
-            <>
-              <TypingDots />
-              <span className="truncate">{typingLine(typingNames)}…</span>
-            </>
+        <div className="relative min-h-0 flex-1">
+          {prefs.chat.stars && (
+            <div aria-hidden className="starfield opacity-30 [mask-image:radial-gradient(80%_60%_at_50%_0%,black,transparent)]">
+              <i />
+              <i />
+              <i />
+            </div>
           )}
-          <span role="status" className="ml-auto shrink-0 text-ion">
-            {notice}
-          </span>
+          <div
+            ref={scroller}
+            onScroll={onScroll}
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+            aria-label={`Messages in ${name}`}
+            aria-busy={status === "loading"}
+            tabIndex={0}
+            className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain py-3 outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
+          >
+            {status === "loading" ? (
+              <StreamSkeleton />
+            ) : status === "error" && messages.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
+                <p>Couldn’t load this room. {error}</p>
+                <Button size="sm" variant="secondary" onClick={() => location.reload()}>
+                  Try again
+                </Button>
+              </div>
+            ) : messages.length === 0 ? (
+              <EmptyRoom slug={slug} room={room} canWrite={canWrite} />
+            ) : (
+              <>
+                {more ? (
+                  <div className="flex justify-center py-3">
+                    <Button size="xs" variant="ghost" onClick={loadOlder} disabled={loadingOlder}>
+                      {loadingOlder ? "Loading older messages…" : "Load older messages"}
+                    </Button>
+                  </div>
+                ) : (
+                  <RoomStart slug={slug} room={room} />
+                )}
+                <ol className="flex flex-col pb-2">
+                  <AnimatePresence initial={false}>{rows}</AnimatePresence>
+                </ol>
+                {detached && (
+                  <div className="flex justify-center py-3">
+                    <Button size="xs" variant="secondary" onClick={toLatest}>
+                      <CalendarIcon aria-hidden data-icon="inline-start" /> Newer messages · back to now
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <AnimatePresence>
+            {(!atBottom || detached) && status === "ready" && messages.length > 0 && (
+              <motion.div
+                initial={reduce ? false : { opacity: 0, transform: "translate(-50%, 8px)" }}
+                animate={{ opacity: 1, transform: "translate(-50%, 0px)" }}
+                exit={reduce ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, transform: "translate(-50%, 8px)" }}
+                transition={{ type: "spring", duration: 0.25, bounce: 0 }}
+                className="absolute bottom-3 left-1/2 z-20"
+              >
+                <Button size="sm" onClick={toLatest} className="shadow-lg shadow-black/40">
+                  <ArrowDownIcon aria-hidden data-icon="inline-start" />
+                  {newCount > 0 ? `${newCount} new ${newCount === 1 ? "message" : "messages"}` : "Jump to latest"}
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-        {error && (
-          <div role="alert" className="mb-1.5 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-sm text-destructive">
-            <span className="flex-1">{error}</span>
-            <Button variant="ghost" size="icon-xs" aria-label="Dismiss" onClick={() => setError("")}>
-              <XIcon aria-hidden />
-            </Button>
-          </div>
-        )}
-        {!ready || (live && canWrite && !role.ready) ? (
-          <Skeleton className="h-12 w-full rounded-xl" />
-        ) : canWrite && role.suspended ? (
-          <div role="status" className="glass flex items-start gap-3 rounded-xl px-4 py-3 text-sm text-muted-foreground">
-            <ShieldIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-gold" />
-            <p>
-              Your account is paused{role.suspendedUntil ? ` until ${new Date(role.suspendedUntil).toLocaleDateString()}` : ""}. You can still read every room. Check your notifications for the
-              reason.
-            </p>
-          </div>
-        ) : canWrite && closed ? (
-          <div role="status" className="glass flex items-start gap-3 rounded-xl px-4 py-3 text-sm text-muted-foreground">
-            {closed === "archived" ? <ArchiveIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-gold" /> : <LockIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-gold" />}
-            <p>{roomRuleText(closed, room)}</p>
-          </div>
-        ) : canWrite ? (
-          <>
-          {waiting > 0 && (
-            <p role="status" className="mb-1.5 flex items-center gap-1.5 px-1 text-xs text-gold">
-              <TimerIcon aria-hidden className="size-3.5" /> Slow mode: you can write again in {waiting} s.
-            </p>
-          )}
-          <Composer
-            ref={composer}
-            room={slug}
-            roomName={name}
-            replyTo={replyTo}
-            onCancelReply={() => setReplyTo(null)}
-            onSend={send}
-            onTyping={() => sub.current?.typing()}
-            onEditLast={editLast}
-            hold={waiting > 0}
-          />
-          </>
-        ) : (
-          <div className="glass flex flex-col items-start gap-2 rounded-xl px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">Sign in with your email to join the conversation.</p>
-            <Link
-              href={signInHref(slug)}
-              className="pressable inline-flex h-9 shrink-0 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground"
-            >
-              Sign in to chat
-            </Link>
-          </div>
-        )}
-      </div>
 
-      <Dialog open={deleting !== null} onOpenChange={(o) => !o && setDeleting(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete this message?</DialogTitle>
-            <DialogDescription>It disappears for everyone, and replies to it lose their quote. This can’t be undone.</DialogDescription>
-          </DialogHeader>
-          {deleting && (
-            <p className="line-clamp-3 rounded-lg border border-border bg-white/[0.03] px-3 py-2 text-sm text-muted-foreground">{deleting.body}</p>
+        <div className="shrink-0 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-4 md:pb-3">
+          <div className="flex h-6 items-center gap-2 px-1 text-xs text-muted-foreground" aria-hidden={typingNames.length === 0 && !notice}>
+            {typingNames.length > 0 && (
+              <>
+                <TypingDots />
+                <span className="truncate">{typingLine(typingNames)}…</span>
+              </>
+            )}
+            <span role="status" className="ml-auto shrink-0 text-ion">
+              {notice}
+            </span>
+          </div>
+          {error && (
+            <div role="alert" className="mb-1.5 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-sm text-destructive">
+              <span className="flex-1">{error}</span>
+              <Button variant="ghost" size="icon-xs" aria-label="Dismiss" onClick={() => setError("")}>
+                <XIcon aria-hidden />
+              </Button>
+            </div>
           )}
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleting(null)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </section>
+          {!ready || (live && canWrite && !role.ready) ? (
+            <Skeleton className="h-12 w-full rounded-xl" />
+          ) : canWrite && role.suspended ? (
+            <div role="status" className="glass flex items-start gap-3 rounded-xl px-4 py-3 text-sm text-muted-foreground">
+              <ShieldIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-gold" />
+              <p>
+                Your account is paused{role.suspendedUntil ? ` until ${new Date(role.suspendedUntil).toLocaleDateString()}` : ""}. You can still read every room. Check your notifications for the
+                reason.
+              </p>
+            </div>
+          ) : canWrite && closed ? (
+            <div role="status" className="glass flex items-start gap-3 rounded-xl px-4 py-3 text-sm text-muted-foreground">
+              {closed === "archived" ? <ArchiveIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-gold" /> : <LockIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-gold" />}
+              <p>{roomRuleText(closed, room)}</p>
+            </div>
+          ) : canWrite ? (
+            <>
+              {waiting > 0 && (
+                <p role="status" className="mb-1.5 flex items-center gap-1.5 px-1 text-xs text-gold">
+                  <TimerIcon aria-hidden className="size-3.5" /> Slow mode: you can write again in {waiting} s.
+                </p>
+              )}
+              <Composer
+                ref={composer}
+                room={slug}
+                roomName={name}
+                replyTo={replyTo}
+                onCancelReply={() => setReplyTo(null)}
+                onSend={send}
+                onTyping={() => sub.current?.typing()}
+                onEditLast={editLast}
+                onAction={onCommand}
+                hold={waiting > 0}
+                features={{ pictures: extras || !live, stickers: extras || !live, polls: extras || !live, mentions: live, ai: summaryAi.usable }}
+              />
+            </>
+          ) : (
+            <div className="glass flex flex-col items-start gap-2 rounded-xl px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">Sign in with your email to join the conversation.</p>
+              <Link href={signInHref(slug)} className="pressable inline-flex h-9 shrink-0 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground">
+                Sign in to chat
+              </Link>
+            </div>
+          )}
+        </div>
+
+        <Dialog open={deleting !== null} onOpenChange={(o) => !o && setDeleting(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete this message?</DialogTitle>
+              <DialogDescription>It disappears for everyone, and replies to it lose their quote. This can’t be undone.</DialogDescription>
+            </DialogHeader>
+            {deleting && <p className="line-clamp-3 rounded-lg border border-border bg-white/[0.03] px-3 py-2 text-sm text-muted-foreground">{deleting.body}</p>}
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setDeleting(null)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={confirmDelete}>
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <PollDialog open={pollOpen !== null} onOpenChange={(o) => !o && setPollOpen(null)} initial={pollOpen ?? undefined} onCreate={postPoll} />
+        {summaryAi.usable && <CatchUpDialog open={catchUp} onOpenChange={setCatchUp} room={name} messages={messages} since={lastRead(slug)} />}
+        {room && canManage && (
+          <RoomStyleDialog
+            open={styling}
+            onOpenChange={setStyling}
+            room={room}
+            onSaved={(r) => {
+              setLook(r)
+              onRoomChange?.(r)
+              setNotice("Room look saved")
+            }}
+          />
+        )}
+        <ShortcutsDialog open={shortcuts} onOpenChange={setShortcuts} />
+      </section>
+
+      {panelWide && (
+        <aside aria-label="Room details" className="hidden w-80 shrink-0 flex-col border-l border-border bg-card/40 xl:flex">
+          {panel}
+        </aside>
+      )}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="right" className="w-[92%] max-w-sm gap-0 p-0">
+          <SheetTitle className="sr-only">Room details</SheetTitle>
+          {panel}
+        </SheetContent>
+      </Sheet>
+    </>
   )
 }
 
@@ -753,7 +1326,7 @@ function EmptyRoom({ slug, room, canWrite }: { slug: string; room: Room | undefi
       <h2 className="text-lg font-semibold">Welcome to {room?.name ?? slug}</h2>
       {room?.topic && <p className="max-w-md text-sm text-muted-foreground">{room.topic}</p>}
       <p className="text-sm text-muted-foreground">
-        {canWrite ? "It's quiet here. Say hello and start the conversation." : live ? "It's quiet here. Sign in to start the conversation." : "It's quiet here."}
+        {canWrite ? "It's quiet here. Say hello, start a poll with /poll, or send a sticker." : live ? "It's quiet here. Sign in to start the conversation." : "It's quiet here."}
       </p>
     </div>
   )
@@ -774,4 +1347,3 @@ function StreamSkeleton() {
     </div>
   )
 }
-

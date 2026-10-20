@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { AreaCrumbs } from "@/components/site/area-crumbs"
 import Link from "next/link"
 import { Suspense } from "react"
 import { PlusIcon, SendIcon } from "lucide-react"
@@ -18,7 +19,7 @@ export default function NewsPage() {
     <div className="shell pb-20">
       <PageTitle
         k="news.header"
-        eyebrow={<Copy k="news.header.eyebrow">The Nexverse newsroom</Copy>}
+        eyebrow={<span className="flex flex-wrap items-center gap-x-2.5 gap-y-1"><AreaCrumbs /><span aria-hidden className="opacity-40">·</span><Copy k="news.header.eyebrow">The Nexverse newsroom</Copy></span>}
         title="News"
         lead="What changed in AI, researched from the official sources, cited claim by claim and checked by an editor. Rumours and leaks are always marked unconfirmed."
       >

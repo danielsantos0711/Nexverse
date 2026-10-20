@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
-import { ProjectEditor } from "@/components/studio/project-editor"
+import { ProjectRedirect } from "@/components/studio/project-redirect"
 import { isProjectId } from "@/lib/projects"
 
 type Params = Promise<{ id: string }>
@@ -24,5 +24,5 @@ export default function EditProjectPage({ params }: { params: Params }) {
 async function Edit({ params }: { params: Params }) {
   const { id } = await params
   if (!isProjectId(id)) notFound()
-  return <ProjectEditor id={id.toLowerCase()} />
+  return <ProjectRedirect id={id.toLowerCase()} tab="settings" />
 }

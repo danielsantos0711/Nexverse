@@ -24,7 +24,7 @@ export function NewLaunchForm() {
   const { ready } = useSession()
   if (!mounted || (live && !ready)) {
     return (
-      <div className="glass flex flex-col gap-4 rounded-2xl p-6" aria-busy="true" aria-label="Loading form">
+      <div className="border border-border bg-card flex flex-col gap-4 rounded-2xl p-6" aria-busy="true" aria-label="Loading form">
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-10 w-1/2" />
@@ -140,7 +140,7 @@ function Form() {
   const selectCls = "h-10 w-full rounded-lg border border-input bg-background/60 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
 
   return (
-    <form onSubmit={submit} noValidate className="glass rounded-2xl p-5 md:p-7">
+    <form onSubmit={submit} noValidate className="border border-border bg-card rounded-2xl p-5 md:p-7">
       <FieldGroup>
         <Field data-invalid={errors.subject ? true : undefined}>
           <FieldLabel htmlFor="ln-subject"><Copy k="launchpad-new.new-launch.project-to-launch">Project to launch</Copy></FieldLabel>

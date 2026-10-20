@@ -7,6 +7,7 @@ import { ArrowRightIcon, CommandIcon, PlusIcon, SearchIcon, SparklesIcon } from 
 import { Copy } from "@/components/content/copy"
 import { GlassKeys } from "@/components/glass/glass-keys"
 import { PageBackdrop } from "@/components/glass/page-backdrop"
+import { GlowCard } from "@/components/hub/glow-card"
 import { useOpenCommandMenu } from "@/components/site/command-menu"
 import { openCreate } from "@/components/site/create-sheet"
 import { iconFor } from "@/components/site/icons"
@@ -107,6 +108,7 @@ export function ExploreMap() {
   const { header } = useMenus()
   const openSearch = useOpenCommandMenu()
   const [counts, setCounts] = useState<Record<string, number>>({})
+  const [countsReady, setCountsReady] = useState(false)
   const [fresh, setFresh] = useState<Fresh[] | null>(null)
   const [q, setQ] = useState("")
   const [hot, setHot] = useState<string | null>(null)
@@ -114,7 +116,11 @@ export function ExploreMap() {
 
   useEffect(() => {
     let on = true
-    void loadCounts().then((c) => on && setCounts(c))
+    void loadCounts().then((c) => {
+      if (!on) return
+      setCounts(c)
+      setCountsReady(true)
+    })
     void loadFresh()
       .then((f) => on && setFresh(f))
       .catch(() => on && setFresh([]))
@@ -179,7 +185,7 @@ export function ExploreMap() {
       ) : (
         <div className="flex flex-col gap-6">
           {groups.map((g, gi) => (
-            <Galaxy key={g.id} group={g} index={gi} counts={counts} hot={hot} setHot={setHot} />
+            <Galaxy key={g.id} group={g} index={gi} counts={counts} loading={!countsReady} hot={hot} setHot={setHot} />
           ))}
         </div>
       )}
@@ -224,11 +230,13 @@ function KeyTile({ keys, label, href }: { keys: string[]; label: string; href?: 
 }
 
 /** One galaxy: the orbit drawing beside its places. Pointing at a place lights its planet, and the reverse. */
-function Galaxy({ group, index, counts, hot, setHot }: { group: MenuGroup; index: number; counts: Record<string, number>; hot: string | null; setHot: (h: string | null) => void }) {
+function Galaxy({ group, index, counts, loading, hot, setHot }: { group: MenuGroup; index: number; counts: Record<string, number>; loading: boolean; hot: string | null; setHot: (h: string | null) => void }) {
   const total = group.links.reduce((n, l) => n + (counts[l.href.split(/[?#]/)[0]] ?? 0), 0)
   return (
-    <section id={group.id} aria-labelledby={`g-${group.id}`} className="nx-enter scroll-mt-24 overflow-hidden rounded-3xl border border-border bg-card" style={{ "--i": index * 2 } as React.CSSProperties}>
-      <div className="grid gap-0 md:grid-cols-[17rem_1fr]">
+    <section id={group.id} aria-labelledby={`g-${group.id}`} className="nx-enter scroll-mt-24" style={{ "--i": index * 2 } as React.CSSProperties}>
+      {/* HorizonX Border Glow: a lamp in the card's rim follows the pointer */}
+      <GlowCard className="rounded-3xl" reach={220}>
+      <div className="grid gap-0 overflow-hidden rounded-3xl border border-border bg-card md:grid-cols-[17rem_1fr]">
         <div className="relative flex flex-col items-center gap-4 border-b border-border bg-white/[0.015] p-5 md:border-r md:border-b-0">
           <Orbit group={group} hot={hot} setHot={setHot} spin={index % 2 ? -1 : 1} />
           <div className="flex flex-col items-center gap-1 text-center">
@@ -236,7 +244,13 @@ function Galaxy({ group, index, counts, hot, setHot }: { group: MenuGroup; index
               {group.label}
             </h2>
             {group.blurb && <p className="text-sm text-muted-foreground">{group.blurb}</p>}
-            {total > 0 && <p className="text-xs text-muted-foreground tabular-nums">{total.toLocaleString("en")} {total === 1 ? "thing" : "things"} made here so far</p>}
+            {loading ? (
+              <span role="status" className="hx-orbit text-ion" style={{ "--size": "1rem" } as React.CSSProperties}>
+                <span className="sr-only">Counting…</span>
+              </span>
+            ) : (
+              total > 0 && <p className="nx-fade text-xs text-muted-foreground tabular-nums">{total.toLocaleString("en")} {total === 1 ? "thing" : "things"} made here so far</p>
+            )}
           </div>
         </div>
         <ul className="grid gap-1 p-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -248,6 +262,7 @@ function Galaxy({ group, index, counts, hot, setHot }: { group: MenuGroup; index
             return (
               <li key={`${l.href}-${i}`} className="nx-enter" style={{ "--i": i + index * 2 } as React.CSSProperties}>
                 <Link
+                  data-nav-item
                   href={l.href as Route}
                   onPointerEnter={() => setHot(l.href)}
                   onPointerLeave={() => setHot(null)}
@@ -277,6 +292,7 @@ function Galaxy({ group, index, counts, hot, setHot }: { group: MenuGroup; index
           })}
         </ul>
       </div>
+      </GlowCard>
     </section>
   )
 }

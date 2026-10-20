@@ -52,7 +52,7 @@ export function FeatureStory({ story, names }: { story: Story; names?: CategoryN
             {story.unconfirmed && <UnconfirmedBadge />}
           </p>
           <h2 className="font-display text-[1.6rem] leading-[1.12] font-semibold tracking-[-0.025em] text-balance md:text-[2.1rem]">
-            <Link href={storyHref(story)} className={cn("decoration-ion/50 underline-offset-4 group-hover:underline", COVER_LINK, "focus-visible:after:rounded-[2rem]")}>
+            <Link data-nav-item href={storyHref(story)} className={cn("decoration-ion/50 underline-offset-4 group-hover:underline", COVER_LINK, "focus-visible:after:rounded-[2rem]")}>
               {story.title}
             </Link>
           </h2>
@@ -88,7 +88,7 @@ export function TopStory({ story, names }: { story: Story; names?: CategoryNames
           {story.unconfirmed && <UnconfirmedBadge />}
         </p>
         <h3 className="font-display text-xl leading-snug font-semibold tracking-[-0.015em] text-balance">
-          <Link href={storyHref(story)} className={cn(COVER_LINK, "focus-visible:after:rounded-3xl")}>
+          <Link data-nav-item href={storyHref(story)} className={cn(COVER_LINK, "focus-visible:after:rounded-3xl")}>
             {story.title}
           </Link>
         </h3>
@@ -117,7 +117,7 @@ export function StoryCard({ story, names, className }: { story: Story; names?: C
           {story.unconfirmed && <UnconfirmedBadge />}
         </p>
         <h3 className="text-[17px] leading-snug font-semibold text-balance">
-          <Link href={storyHref(story)} className={cn(COVER_LINK, "focus-visible:after:rounded-2xl")}>
+          <Link data-nav-item href={storyHref(story)} className={cn(COVER_LINK, "focus-visible:after:rounded-2xl")}>
             {story.title}
           </Link>
         </h3>
@@ -141,7 +141,7 @@ export function StoryRow({ story, names, className }: { story: Story; names?: Ca
           {story.unconfirmed && <UnconfirmedBadge className="px-1.5 py-0 text-[11px]" />}
         </p>
         <h3 className="line-clamp-3 text-[15px] leading-snug font-medium group-hover:text-foreground">
-          <Link href={storyHref(story)} className={cn(COVER_LINK, "focus-visible:after:rounded-xl")}>
+          <Link data-nav-item href={storyHref(story)} className={cn(COVER_LINK, "focus-visible:after:rounded-xl")}>
             {story.title}
           </Link>
         </h3>

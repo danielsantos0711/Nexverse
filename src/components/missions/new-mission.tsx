@@ -7,6 +7,10 @@ import { useMounted } from "@/components/events/event-time"
 import { MarkdownComposer } from "@/components/forum/markdown-composer"
 import { TagInput } from "@/components/forum/tags"
 import { Insignia } from "@/components/missions/mission-bits"
+import { LookPicker, SpaceCover } from "@/components/missions/mission-cover"
+import { Textarea } from "@/components/ui/textarea"
+import { listMissions, type Mission } from "@/lib/missions"
+import { MILESTONE_MAX, MISSION_KIND_ORDER, MISSION_KINDS, type Accent, type MissionKind } from "@/lib/missions-look"
 import { Gate } from "@/components/moderation/gate"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
@@ -24,7 +28,7 @@ export function NewMissionForm() {
   const { ready } = useSession()
   if (!mounted || (live && !ready)) {
     return (
-      <div className="glass flex flex-col gap-4 rounded-2xl p-6" aria-busy="true" aria-label="Loading form">
+      <div className="border border-border bg-card flex flex-col gap-4 rounded-2xl p-6" aria-busy="true" aria-label="Loading form">
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-10 w-1/2" />
@@ -57,6 +61,16 @@ function Form() {
   const [criteria, setCriteria] = useState<string[]>([""])
   const [reward, setReward] = useState("25")
   const [tags, setTags] = useState<string[]>([])
+  const [kind, setKind] = useState<MissionKind>("bounty")
+  const [cover, setCover] = useState<string | null>("pattern:nebula")
+  const [accent, setAccent] = useState<Accent>("ion")
+  const [steps, setSteps] = useState("")
+  const [prize, setPrize] = useState("")
+  const [team, setTeam] = useState(false)
+  const [chainPrev, setChainPrev] = useState("")
+  const [mine, setMine] = useState<Mission[] | null>(null)
+  const [seed] = useState(() => crypto.randomUUID())
+  const { user } = useSession()
   const [date, setDate] = useState(() => localDate(new Date(Date.now() + 14 * 864e5)))
   const [bounds] = useState(() => ({
     min: localDate(new Date(Date.now() + 2 * 864e5)),
@@ -79,6 +93,18 @@ function Form() {
     }
   }, [])
 
+  // Quests continue one of your own missions: load them when "Quest" is picked.
+  useEffect(() => {
+    if (kind !== "quest" || mine) return
+    let stale = false
+    listMissions()
+      .then((all) => !stale && setMine(all.filter((m) => m.local || (user && m.poster.memberId === user.id))))
+      .catch(() => !stale && setMine([]))
+    return () => {
+      stale = true
+    }
+  }, [kind, mine, user])
+
   useEffect(() => {
     if (focusNext.current !== null) {
       criteriaRefs.current[focusNext.current]?.focus()
@@ -94,6 +120,15 @@ function Form() {
     reward: reward.trim() === "" ? 0 : Number(reward),
     tags,
     deadline: endOfDay(date),
+    look: {
+      kind,
+      cover,
+      accent,
+      milestones: steps.split("\n").map((x) => x.trim()).filter(Boolean),
+      prize,
+      team,
+      chainPrev: kind === "quest" && chainPrev ? chainPrev : null,
+    },
   }
 
   function setCriterion(i: number, v: string) {
@@ -135,7 +170,7 @@ function Form() {
   const deadline = input.deadline ? new Date(input.deadline) : null
 
   return (
-    <form onSubmit={submit} noValidate className="glass rounded-2xl p-5 md:p-7">
+    <form onSubmit={submit} noValidate className="border border-border bg-card rounded-2xl p-5 md:p-7">
       <FieldGroup>
         <Field data-invalid={errors.title ? true : undefined}>
           <FieldLabel htmlFor="ms-title"><Copy k="missions-new.new-mission.what-should-be-built">What should be built?</Copy></FieldLabel>
@@ -150,6 +185,49 @@ function Form() {
           />
           {errors.title ? <FieldError id="ms-title-error">{errors.title}</FieldError> : <FieldDescription><Copy k="missions-new.new-mission.one-line-that-says-what">One line that says what done looks like.</Copy></FieldDescription>}
         </Field>
+
+        <FieldSet>
+          <FieldLegend variant="label">Type</FieldLegend>
+          <div role="radiogroup" aria-label="Type" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {MISSION_KIND_ORDER.map((k) => {
+              const on = kind === k
+              return (
+                <label
+                  key={k}
+                  className={cn(
+                    "pressable flex cursor-pointer flex-col gap-1 rounded-lg border px-3 py-2.5 text-sm transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring",
+                    on ? "border-ion/60 bg-ion/10" : "border-border bg-card/50 text-muted-foreground hover:bg-card hover:text-foreground",
+                  )}
+                >
+                  <input type="radio" name="kind" value={k} checked={on} onChange={() => setKind(k)} className="sr-only" />
+                  <span className="font-medium text-foreground">{MISSION_KINDS[k].label}</span>
+                  <span className="text-xs text-muted-foreground">{MISSION_KINDS[k].blurb}</span>
+                </label>
+              )
+            })}
+          </div>
+          {kind === "quest" && (
+            <div className="mt-2 flex flex-col gap-1.5">
+              <label htmlFor="ms-chain" className="text-sm">
+                Continues
+              </label>
+              {mine === null ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <select id="ms-chain" value={chainPrev} onChange={(e) => setChainPrev(e.target.value)} className="h-10 w-full rounded-lg border border-input bg-background/60 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <option value="" className="bg-popover">
+                    {mine.length ? "The first step of a new quest" : "The first step of a new quest (you have no other missions yet)"}
+                  </option>
+                  {mine.map((m) => (
+                    <option key={m.id} value={m.id} className="bg-popover">
+                      {m.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+        </FieldSet>
 
         <FieldSet>
           <FieldLegend variant="label">Difficulty</FieldLegend>
@@ -322,6 +400,41 @@ function Form() {
           <TagInput id="ms-tags" value={tags} onChange={setTags} describedBy={errors.tags ? "ms-tags-error" : undefined} />
           {errors.tags ? <FieldError id="ms-tags-error">{errors.tags}</FieldError> : <FieldDescription><Copy k="missions-new.new-mission.up-to-5-like-portuguese">Up to 5, like portuguese or speech, so the right pilots find it.</Copy></FieldDescription>}
         </Field>
+
+        <FieldSet>
+          <FieldLegend variant="label">Milestones (optional)</FieldLegend>
+          <FieldDescription className="-mt-1">Steps on the way, one per line. Pilots tick them off and the crew sees how far everyone got.</FieldDescription>
+          <Textarea id="ms-milestones" value={steps} onChange={(e) => setSteps(e.target.value)} rows={3} placeholder={"Collect the data\nTrain a baseline\nPublish the weights"} className="bg-background/60" />
+          {errors.milestones ? <FieldError>{errors.milestones}</FieldError> : <FieldDescription>Up to {MILESTONE_MAX}.</FieldDescription>}
+        </FieldSet>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field data-invalid={errors.prize ? true : undefined}>
+            <FieldLabel htmlFor="ms-prize">Prize beyond the points (optional)</FieldLabel>
+            <Input id="ms-prize" value={prize} maxLength={200} onChange={(e) => setPrize(e.target.value)} placeholder="A shout-out in the newsroom" className="bg-background/60" />
+            {errors.prize && <FieldError>{errors.prize}</FieldError>}
+          </Field>
+          <label className="flex items-start gap-2 self-end rounded-lg border border-border bg-card/50 p-3 text-sm">
+            <input type="checkbox" checked={team} onChange={(e) => setTeam(e.target.checked)} className="mt-0.5 size-4" />
+            <span>
+              <span className="font-medium">Team mission</span>
+              <span className="block text-xs text-muted-foreground">Entries can name up to five teammates from the crew, who share the win points.</span>
+            </span>
+          </label>
+        </div>
+
+        <FieldSet>
+          <FieldLegend variant="label">Cover and colour</FieldLegend>
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_16rem]">
+            <LookPicker seed={seed} cover={cover} accent={accent} onCover={setCover} onAccent={setAccent} error={errors.cover} />
+            <div aria-hidden className="overflow-hidden rounded-xl border border-border">
+              <SpaceCover seed={seed} cover={cover} accent={accent} className="h-28">
+                <span className="absolute bottom-2 left-2 rounded-full bg-black/50 px-2 py-0.5 text-[11px] text-white">{MISSION_KINDS[kind].label}</span>
+              </SpaceCover>
+              <p className="line-clamp-2 p-3 text-sm font-medium">{title || "Your mission's title"}</p>
+            </div>
+          </div>
+        </FieldSet>
 
         {errors.form && <FieldError>{errors.form}</FieldError>}
         <div className="flex flex-wrap items-center gap-3">

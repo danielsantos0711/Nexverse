@@ -41,7 +41,7 @@ export function LaunchOfTheDay({ className }: { className?: string }) {
 
   if (!pick) {
     return (
-      <section className={cn("glass flex flex-col items-start gap-2 rounded-2xl p-4", className)}>
+      <section className={cn("border border-border bg-card flex flex-col items-start gap-2 rounded-2xl p-4", className)}>
         <p className="flex items-center gap-1.5 text-xs font-medium text-gold">
           <CrownIcon aria-hidden className="size-3.5" /> <Copy k="launchpad.launch-of-the-day.launch-of-the-day">Launch of the day</Copy>
         </p>
@@ -58,7 +58,7 @@ export function LaunchOfTheDay({ className }: { className?: string }) {
   const isOwner = l.local || Boolean(user && l.owner.memberId === user.id)
 
   return (
-    <section aria-labelledby="lotd-h" className={cn("glass group relative flex flex-col gap-3 overflow-hidden rounded-2xl p-4", className)}>
+    <section aria-labelledby="lotd-h" className={cn("border border-border bg-card group relative flex flex-col gap-3 overflow-hidden rounded-2xl p-4", className)}>
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-xs font-medium text-gold">
           <CrownIcon aria-hidden className="size-3.5" />

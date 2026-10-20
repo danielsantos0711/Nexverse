@@ -1,5 +1,7 @@
 "use client"
 
+import { MemberHoverCard } from "@/components/social/member-hover-card"
+import { toast } from "@/components/site/toaster"
 import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useRouter } from "next/navigation"
@@ -195,9 +197,9 @@ function HostLine({ host }: { host: Who }) {
     </>
   )
   return host.handle ? (
-    <Link href={`/people/${host.handle}`} className="flex w-fit items-center gap-2 rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+    <MemberHoverCard handle={host.handle} name={host.name} className="flex w-fit items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
       {inner}
-    </Link>
+    </MemberHoverCard>
   ) : (
     <p className="flex items-center gap-2 text-sm text-muted-foreground">{inner}</p>
   )
@@ -240,7 +242,9 @@ function RsvpPanel({ event: e, past, ready, signedIn, me }: { event: CommunityEv
     setError("")
     try {
       await setRsvp(e.id, target)
-      setStatus(target === "going" ? "You’re going." : target === "interested" ? "Marked as interested." : "RSVP withdrawn.")
+      const said = target === "going" ? "You’re going." : target === "interested" ? "Marked as interested." : "RSVP withdrawn."
+      setStatus(said)
+      toast(target === "going" ? `${said} It is in Your RSVPs.` : said)
     } catch (err) {
       setAtt(before)
       setError((err as Error).message)

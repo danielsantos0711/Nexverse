@@ -8,6 +8,7 @@ import { motion, useReducedMotion } from "motion/react"
 import { useCallback, useEffect, useState } from "react"
 import { ArrowRightIcon, LockIcon, PlusIcon, XIcon } from "lucide-react"
 import { GlassKeys } from "@/components/glass/glass-keys"
+import { PixelGlint } from "@/components/hub/pixel-glint"
 import { iconFor } from "@/components/site/icons"
 import { useShortcut } from "@/components/site/shortcuts"
 import { isCap, useCaps } from "@/lib/caps"
@@ -37,6 +38,8 @@ const TINT: Record<string, string> = {
   tool: "text-tool bg-tool/10 ring-tool/25",
   repo: "text-repo bg-repo/10 ring-repo/25",
 }
+
+const PIXELS: Record<string, "model" | "dataset" | "tool" | "repo" | "collection" | "news"> = { model: "model", dataset: "dataset", tool: "tool", repo: "repo", gold: "news", ion: "collection" }
 
 export function CreateSheet() {
   const [open, setOpen] = useState(false)
@@ -119,15 +122,17 @@ export function CreateSheet() {
                     <Link
                       href={hrefFor(l) as Route}
                       onClick={() => setOpen(false)}
-                      className="group nx-lift relative flex h-full flex-col gap-2 rounded-2xl border border-border bg-card/70 p-3.5 outline-none focus-visible:outline-2 focus-visible:outline-ring"
+                      className="group nx-lift relative flex h-full flex-col gap-2 overflow-hidden rounded-2xl border border-border bg-card/70 p-3.5 outline-none focus-visible:outline-2 focus-visible:outline-ring"
                     >
-                      <span className="flex items-center justify-between">
+                      {/* HorizonX Pixel Card: the tile lights up in its kind's colours on hover */}
+                      <PixelGlint kind={PIXELS[l.accent] ?? "collection"} />
+                      <span className="relative flex items-center justify-between">
                         <span className={cn("grid size-9 place-items-center rounded-xl ring-1 transition-transform duration-(--dur-base) ease-(--ease-out) group-hover:scale-110 group-hover:-rotate-6", TINT[l.accent] ?? TINT.ion)}>
                           <Icon aria-hidden className="size-4.5" />
                         </span>
                         {i < 9 && <span aria-hidden className="hidden font-mono text-[11px] text-muted-foreground/70 sm:inline">{i + 1}</span>}
                       </span>
-                      <span className="flex flex-col gap-0.5">
+                      <span className="relative flex flex-col gap-0.5">
                         <span className="inline-flex items-center gap-1.5 text-sm font-medium">
                           {l.label}
                           {(lock || signedOut) && <LockIcon aria-label={signedOut ? "Sign in first" : "Needs more reputation"} className="size-3 text-muted-foreground" />}

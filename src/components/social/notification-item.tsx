@@ -75,7 +75,7 @@ export function NotificationItem({
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className={cn("text-sm leading-snug", unread ? "text-foreground" : "text-muted-foreground")}>
           {href ? (
-            <Link href={href} onClick={() => onOpen?.(n)} className="font-medium after:absolute after:inset-0 focus-visible:outline-none">
+            <Link data-nav-item href={href} onClick={() => onOpen?.(n)} className="font-medium after:absolute after:inset-0 focus-visible:outline-none">
               {title}
             </Link>
           ) : (

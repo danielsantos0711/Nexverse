@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useEffect, useId, useRef, useState } from "react"
 import type { User } from "@supabase/supabase-js"
-import { BellIcon, CheckCircle2Icon, ImageUpIcon, LogOutIcon, ShieldCheckIcon, SparklesIcon, Trash2Icon, UserIcon, type LucideIcon } from "lucide-react"
+import { BellIcon, CheckCircle2Icon, ImageUpIcon, LogOutIcon, PaletteIcon, ShieldCheckIcon, SparklesIcon, Trash2Icon, UserIcon, type LucideIcon } from "lucide-react"
+import { GlassKeys } from "@/components/glass/glass-keys"
+import { ACCENTS, saveUiPrefs, useUiPrefs, type UiAccent, type UiMotion } from "@/components/settings/ui-prefs"
+import { GO_KEYS } from "@/components/site/shortcuts"
+import { toast } from "@/components/site/toaster"
 import { InterestPicker } from "@/components/settings/interest-picker"
 import { ProfileAvatar } from "@/components/settings/profile-avatar"
 import { SecuritySection } from "@/components/settings/security-section"
@@ -43,6 +47,7 @@ const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "profile", label: "Profile", icon: UserIcon },
   { id: "interests", label: "Interests", icon: SparklesIcon },
   { id: "notifications", label: "Notifications", icon: BellIcon },
+  { id: "experience", label: "Your experience", icon: PaletteIcon },
   { id: "security", label: "Security", icon: ShieldCheckIcon },
   { id: "account", label: "Account", icon: LogOutIcon },
 ]
@@ -98,6 +103,7 @@ function Settings({ profile, user }: { profile: Profile; user: User | null }) {
           <ProfileSection profile={profile} />
           <InterestsSection profile={profile} />
           <NotificationsSection profile={profile} />
+          <ExperienceSection userId={profile.local ? null : (user?.id ?? null)} />
           {user && !profile.local && (
             <Section id="security" title="Security" lead="How you sign in, and the devices that are signed in.">
               <SecuritySection user={user} name={profile.name} />
@@ -482,6 +488,92 @@ function NotificationsSection({ profile }: { profile: Profile }) {
         ))}
       </ul>
       <Saved text={note} />
+    </Section>
+  )
+}
+
+// ─── Your experience ────────────────────────────────────────────────────────────────────────────────────────
+
+const MOTION: { id: UiMotion; label: string; hint: string }[] = [
+  { id: "site", label: "Site default", hint: "The motion the site is set to" },
+  { id: "calm", label: "Calm", hint: "No movement, changes happen at once" },
+  { id: "full", label: "Full", hint: "Every animation, even on slower devices" },
+]
+
+/** The member's own motion, accent and shortcuts: applied at once, saved to their account. */
+function ExperienceSection({ userId }: { userId: string | null }) {
+  const p = useUiPrefs()
+  const reduce = useReducedMotion()
+  async function save(patch: Parameters<typeof saveUiPrefs>[0]) {
+    try {
+      await saveUiPrefs(patch, userId)
+      toast(userId ? "Saved to your account." : "Saved in this browser.")
+    } catch (e) {
+      toast((e as Error).message, { tone: "error" })
+    }
+  }
+  const accents: { id: UiAccent; label: string; color?: string }[] = [{ id: "site", label: "Site colour" }, ...Object.entries(ACCENTS).map(([id, a]) => ({ id: id as UiAccent, label: a.label, color: a.color }))]
+  return (
+    <Section id="experience" title="Your experience" lead="How Nexverse looks and moves for you. Changes apply at once and follow you to other devices.">
+      <div className="flex flex-col gap-2">
+        <span id="ux-motion" className="text-sm font-medium">Motion</span>
+        <div role="radiogroup" aria-labelledby="ux-motion" className="grid gap-2 sm:grid-cols-3">
+          {MOTION.map((m) => {
+            const on = p.motion === m.id
+            return (
+              <button
+                key={m.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => void save({ motion: m.id })}
+                className={cn("nx-lift relative flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left", on ? "border-ion/50" : "border-border bg-card/60")}
+              >
+                {on && <motion.span layoutId="ux-motion-on" aria-hidden transition={reduce ? { duration: 0 } : { type: "spring", duration: 0.35, bounce: 0.15 }} className="absolute inset-0 rounded-xl bg-ion/[0.07]" />}
+                <span className="relative text-sm font-medium">{m.label}</span>
+                <span className="relative text-xs text-muted-foreground">{m.hint}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <span id="ux-accent" className="text-sm font-medium">Accent colour</span>
+        <div role="radiogroup" aria-labelledby="ux-accent" className="flex flex-wrap gap-2">
+          {accents.map((a) => {
+            const on = p.accent === a.id
+            return (
+              <button
+                key={a.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => void save({ accent: a.id })}
+                className={cn("pressable inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-sm transition-colors", on ? "border-ion/60 bg-ion/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground")}
+              >
+                <span aria-hidden className="size-3.5 rounded-full ring-1 ring-white/20" style={{ background: a.color ?? "conic-gradient(var(--ion), var(--gold), var(--ion))" }} />
+                {a.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-col">
+          <span id="ux-keys" className="text-sm font-medium">Keyboard shortcuts</span>
+          <span id="ux-keys-hint" className="text-sm text-muted-foreground">Single keys anywhere: / search, C create, J and K move through lists, G then a letter to jump.</span>
+        </div>
+        <Switch on={p.shortcuts} onClick={() => void save({ shortcuts: !p.shortcuts })} labelledBy="ux-keys" describedBy="ux-keys-hint" />
+      </div>
+      {p.shortcuts && (
+        <ul className="nx-fade grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {GO_KEYS.map((k) => (
+            <li key={k.key} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-2 text-xs text-muted-foreground">
+              <GlassKeys keys={["G", k.key.toUpperCase()]} live={false} /> {k.label}
+            </li>
+          ))}
+        </ul>
+      )}
     </Section>
   )
 }

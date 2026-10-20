@@ -9,6 +9,7 @@ import { relatedStories } from "@/lib/newsroom/public"
 import { ArticleBody, storyHeadings } from "./article-body"
 import { AiNote, CategoryTag, CoverCreditLine, StoryCover, storyDate, storyDateTime, UnconfirmedBadge } from "./bits"
 import { ShareStory } from "./share-story"
+import { NewsTldr } from "@/components/ai/inline-ai"
 import { StoryCard } from "./story-card"
 import { ReadingProgress, StoryToc, StoryTocMobile } from "./toc"
 
@@ -177,6 +178,7 @@ export async function StoryView({ story, names }: { story: Story; names: Categor
                 </div>
               )}
               <StoryTocMobile headings={headings} />
+              <NewsTldr id={String(story.id)} title={story.title} body={story.body} />
               <KeyFacts story={story} />
             </div>
 

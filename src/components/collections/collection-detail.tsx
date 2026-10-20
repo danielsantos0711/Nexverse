@@ -1,5 +1,6 @@
 "use client"
 
+import { MemberHoverCard } from "@/components/social/member-hover-card"
 import Link from "next/link"
 import { AnimatePresence, motion, Reorder, useDragControls, useReducedMotion } from "motion/react"
 import { useRouter } from "next/navigation"
@@ -155,9 +156,9 @@ function CollectionPage({ initial }: { initial: Collection }) {
         {c.description && <p className="max-w-[68ch] text-[15px] text-muted-foreground">{c.description}</p>}
         <div className="flex flex-wrap items-center gap-3">
           {c.owner.handle ? (
-            <Link href={`/people/${c.owner.handle}`} className="flex items-center gap-2 rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+            <MemberHoverCard handle={c.owner.handle} name={c.owner.name} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
               <PosterAvatar poster={c.owner} size={24} /> Curated by <span className="font-medium text-foreground">{c.owner.name}</span>
-            </Link>
+            </MemberHoverCard>
           ) : (
             <span className="flex items-center gap-2 text-sm text-muted-foreground">
               <PosterAvatar poster={c.owner} size={24} /> Curated by <span className="font-medium text-foreground">{c.owner.name}</span>

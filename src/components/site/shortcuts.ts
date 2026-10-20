@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect } from "react"
+import { shortcutsOn } from "@/components/settings/ui-prefs"
 
 /*
  * Single-key shortcuts that work anywhere on the site, except while typing in a field or with a modifier held:
  *   /  search (the command menu)     C  create something     G then a letter  go to a place (see GO_KEYS)
+ *   J / K  next and previous item in the page's list (elements marked data-nav-item), Enter opens it
  * Pages add their own with useShortcut (J/K to move through a list, L to like, and so on).
  */
 
@@ -19,7 +21,7 @@ export function useShortcut(key: string, fn: (e: KeyboardEvent) => void, enabled
   useEffect(() => {
     if (!enabled) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || e.repeat || isTyping(e)) return
+      if (e.metaKey || e.ctrlKey || e.altKey || e.repeat || isTyping(e) || !shortcutsOn()) return
       if (e.key.toLowerCase() !== key.toLowerCase()) return
       fn(e)
     }

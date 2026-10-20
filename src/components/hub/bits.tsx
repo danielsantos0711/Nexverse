@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { BoxIcon, DatabaseIcon, FolderGit2Icon, WrenchIcon, type LucideIcon } from "lucide-react"
+import { AppWindowIcon, BoxIcon, DatabaseIcon, FileTextIcon, FolderGit2Icon, WrenchIcon, type LucideIcon } from "lucide-react"
 import { compact, KINDS, LANGUAGES, type LanguageCode, type ResourceKind } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
@@ -10,6 +10,16 @@ export const KIND_ICONS: Record<ResourceKind, LucideIcon> = {
   dataset: DatabaseIcon,
   tool: WrenchIcon,
   repo: FolderGit2Icon,
+}
+
+/** Icons for the six project types (round 10). */
+export const TYPE_ICONS: Record<"model" | "dataset" | "tool" | "app" | "paper" | "other", LucideIcon> = {
+  model: BoxIcon,
+  dataset: DatabaseIcon,
+  tool: WrenchIcon,
+  app: AppWindowIcon,
+  paper: FileTextIcon,
+  other: FolderGit2Icon,
 }
 
 const KIND_TEXT: Record<ResourceKind, string> = {

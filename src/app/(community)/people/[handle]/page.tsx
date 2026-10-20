@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
-import { MemberProfile } from "@/components/social/member-profile"
+import { MemberSpacePage } from "@/components/profile/member-space"
 import { isMemberRef } from "@/lib/refs"
 
 // Members are addressed by handle or id, both unknown at build time. One placeholder id lets the route be checked
@@ -24,5 +24,5 @@ export default function Page({ params }: PageProps<"/people/[handle]">) {
 async function Profile({ params }: { params: PageProps<"/people/[handle]">["params"] }) {
   const { handle } = await params
   if (!isMemberRef(handle)) notFound()
-  return <MemberProfile memberRef={handle} />
+  return <MemberSpacePage memberRef={handle} />
 }

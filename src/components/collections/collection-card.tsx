@@ -20,7 +20,7 @@ export function CollectionCard({ c, className }: { c: Collection; className?: st
       <div className="relative flex h-full flex-col gap-3 p-4">
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-sans text-base leading-snug font-semibold tracking-normal">
-          <Link href={`/collections/${c.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring group-hover:text-ion">
+          <Link data-nav-item href={`/collections/${c.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring group-hover:text-ion">
             {c.title}
           </Link>
         </h3>
