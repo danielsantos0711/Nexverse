@@ -61,7 +61,7 @@ export function AccountButton() {
   return (
     <Link
       href={/^\/(sign-in|join|reset-password|auth|welcome)(\/|$)/.test(pathname) ? "/sign-in" : `/sign-in?next=${encodeURIComponent(pathname)}`}
-      className="rounded-full px-3 py-2 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground"
+      className="whitespace-nowrap rounded-full px-3 py-2 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground"
     >
       Sign in
     </Link>

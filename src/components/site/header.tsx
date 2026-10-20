@@ -128,10 +128,13 @@ export function SiteHeader() {
             </Link>
           )}
           <AccountButton />
-          <Link href="/share" className="halo-btn max-sm:hidden">
-            <PlusIcon aria-hidden className="size-4" />
-            {shareLabel}
-          </Link>
+          {/* the halo button sets its own display, so the phone rule sits on a wrapper (the tab bar has Share) */}
+          <span className="contents max-sm:hidden">
+            <Link href="/share" className="halo-btn">
+              <PlusIcon aria-hidden className="size-4" />
+              {shareLabel}
+            </Link>
+          </span>
           <MobileMenu pathname={pathname} menus={mobile} direct={direct} isStaff={isStaff} name={name} />
         </div>
       </div>

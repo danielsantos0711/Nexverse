@@ -12,12 +12,14 @@ import { BlackHole } from "@/components/fx"
 export function LostInSpace({ kind = "missing", onRetry }: { kind?: "missing" | "error"; onRetry?: () => void }) {
   const error = kind === "error"
   return (
-    <div className="relative isolate flex min-h-[72vh] w-full flex-col items-center justify-center gap-6 overflow-hidden px-gutter py-24 text-center">
-      <div aria-hidden className="absolute inset-x-0 top-1/2 -z-10 mx-auto aspect-video w-[min(1100px,160vw)] -translate-y-1/2 opacity-90">
-        <BlackHole className="size-full" />
+    <div className="relative isolate flex min-h-[72vh] w-full flex-col items-center justify-center gap-5 overflow-hidden px-gutter pt-10 pb-24 text-center">
+      {/* the black hole on its own above the words, so nothing is read across its disk; the N floats at its heart */}
+      <div className="relative -mb-6 grid aspect-video w-[min(880px,130vw)] place-items-center">
+        <div aria-hidden className="absolute inset-0">
+          <BlackHole className="size-full" />
+        </div>
+        <NMark material="titanium" sizes="160px" small className="relative size-16 rounded-2xl shadow-[0_0_60px_-10px_rgb(216_197_158/0.45)] md:size-20" />
       </div>
-      <div aria-hidden className="absolute inset-0 -z-10 bg-radial from-transparent from-30% to-background" />
-      <NMark material="titanium" sizes="160px" small className="size-24 rounded-3xl shadow-[0_0_60px_-10px_rgb(216_197_158/0.45)]" />
       {error ? (
         <>
           <h1 className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl"><Copy k="error.page.title">Pulled into a black hole</Copy></h1>

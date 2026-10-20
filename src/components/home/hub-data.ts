@@ -34,7 +34,7 @@ export async function loadCounts(): Promise<HubCounts | null> {
     visible<null>((h) => (h ? c.from("questions").select("id", head).is("hidden_at", null) : c.from("questions").select("id", head))),
     visible<null>((h) => (h ? c.from("answers").select("id", head).is("hidden_at", null) : c.from("answers").select("id", head))),
     visible<null>((h) => {
-      const q = c.from("projects").select("id", head).eq("status", "published")
+      const q = c.from("projects").select("id", head).eq("status", "published").eq("visibility", "public")
       return h ? q.is("hidden_at", null) : q
     }),
     visible<null>((h) => (h ? c.from("submissions").select("id", head).is("hidden_at", null) : c.from("submissions").select("id", head))),
@@ -64,7 +64,7 @@ export async function loadHubItems(limit = 40): Promise<HubItem[]> {
   if (!c) return []
   const [projects, links] = await Promise.all([
     visible<ProjectRow[]>((h) => {
-      const q = c.from("projects").select("id, kind, name, summary, published_at, created_at, owner:profiles(name)").eq("status", "published").order("published_at", { ascending: false }).limit(limit)
+      const q = c.from("projects").select("id, kind, name, summary, published_at, created_at, owner:profiles(name)").eq("status", "published").eq("visibility", "public").lte("published_at", new Date().toISOString()).order("published_at", { ascending: false }).limit(limit)
       return h ? q.is("hidden_at", null) : q
     }),
     visible<SubmissionRow[]>((h) => {

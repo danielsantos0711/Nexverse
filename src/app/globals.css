@@ -588,7 +588,6 @@ html[data-fx="off"] .sky-twinkle {
     transform: none;
   }
 }
-}
 
 /* Glass keys (adapted from HorizonX "Glass Keys", its azure tone): keycaps of frosted glass lit from behind.
    Used for every keyboard shortcut on the site; the light follows the pointer through --kx. */
