@@ -128,7 +128,8 @@ export function SiteGuard({ children }: { children: React.ReactNode }) {
       if (!session.user) return <MemberWall path={path} />
       if (visibility === "staff" || visibility === "hidden") {
         if (!me.ready) return <Held>{children}</Held>
-        if (!me.isStaff) return <TeamOnly hidden={visibility === "hidden"} />
+        // "staff" opens to moderators and admins; "hidden" means nobody but admins
+        if (visibility === "hidden" ? !me.isAdmin : !me.isStaff) return <TeamOnly hidden={visibility === "hidden"} />
         if (visibility === "hidden") {
           return (
             <>
