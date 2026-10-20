@@ -196,6 +196,8 @@ function mount(root, canvas, config) {
     ctx.clearRect(0, 0, width, height);
     ctx.globalCompositeOperation = 'lighter';
     // bloom: halve three times, add the smallest back into the quarter, climb back up an octave at a time
+    // (skipped on the "low" tier: the lines alone, at a third of the cost)
+    if (quality !== 'low') {
     for (let i = 1; i < layers.length; i++) { lctx[i].globalCompositeOperation = 'copy'; lctx[i].drawImage(layers[i - 1], 0, 0, layers[i].width, layers[i].height); }
     const quarter = lctx[2];
     quarter.globalCompositeOperation = 'lighter';
@@ -204,6 +206,7 @@ function mount(root, canvas, config) {
     lctx[1].globalCompositeOperation = 'copy';
     lctx[1].drawImage(layers[2], 0, 0, layers[1].width, layers[1].height);
     for (let amount = config.glow * 0.9; amount > 0.001; amount -= 1) { ctx.globalAlpha = Math.min(amount, 1); ctx.drawImage(layers[1], 0, 0, width, height); }
+    }
     ctx.globalAlpha = 1;
     ctx.drawImage(lines, 0, 0);
     // soft edges, multiplied into the alpha: in from the left on wide boxes, at the top and bottom always

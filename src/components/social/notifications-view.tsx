@@ -11,6 +11,7 @@ import { deleteNotification, loadMoreNotifications, markAllRead, markRead, useNo
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 
@@ -38,14 +39,14 @@ function byDay(items: Notification[]) {
 export function NotificationsView() {
   const { ready, user } = useSession()
   if (!live) {
-    return <Quiet title="No accounts in this copy" body="This copy of Nexverse has no database, so there is nobody to notify you. Everything you write stays in this browser." />
+    return <Quiet title={<Copy k="notifications.notifications-view.no-accounts-in-this-copy">No accounts in this copy</Copy>} body={<Copy k="notifications.notifications-view.this-copy-of-nexverse-has" multiline>This copy of Nexverse has no database, so there is nobody to notify you. Everything you write stays in this browser.</Copy>} />
   }
   if (!ready) return <PageSkeleton />
   if (!user) {
     return (
-      <Quiet title="Sign in to see your notifications" body="Replies to your threads, upvotes and new followers arrive here the moment they happen.">
+      <Quiet title={<Copy k="notifications.notifications-view.sign-in-to-see-your">Sign in to see your notifications</Copy>} body={<Copy k="notifications.notifications-view.replies-to-your-threads-upvotes">Replies to your threads, upvotes and new followers arrive here the moment they happen.</Copy>}>
         <Link href="/sign-in?next=/notifications" className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground">
-          Sign in
+          <Copy k="notifications.notifications-view.sign-in">Sign in</Copy>
         </Link>
       </Quiet>
     )
@@ -117,7 +118,7 @@ function Inbox() {
           })}
         </div>
         <Button variant="secondary" onClick={() => run(markAllRead())} disabled={unread === 0}>
-          <CheckCheckIcon aria-hidden /> Mark all read
+          <CheckCheckIcon aria-hidden /> <Copy k="notifications.notifications-view.mark-all-read">Mark all read</Copy>
         </Button>
       </div>
 
@@ -135,11 +136,11 @@ function Inbox() {
         </div>
       ) : visible.length === 0 ? (
         filter === "unread" && items.length > 0 ? (
-          <Quiet title="You are all caught up" body="No unread notifications. Nice." />
+          <Quiet title={<Copy k="notifications.notifications-view.you-are-all-caught-up">You are all caught up</Copy>} body={<Copy k="notifications.notifications-view.no-unread-notifications-nice">No unread notifications. Nice.</Copy>} />
         ) : (
-          <Quiet title="All quiet in your orbit" body="Start a thread or share something. Replies, upvotes and new followers will show up here.">
+          <Quiet title={<Copy k="notifications.notifications-view.all-quiet-in-your-orbit">All quiet in your orbit</Copy>} body={<Copy k="notifications.notifications-view.start-a-thread-or-share">Start a thread or share something. Replies, upvotes and new followers will show up here.</Copy>}>
             <Link href="/forum/new" className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground">
-              Start a thread
+              <Copy k="notifications.notifications-view.start-a-thread">Start a thread</Copy>
             </Link>
           </Quiet>
         )
@@ -184,7 +185,7 @@ function Inbox() {
           ))}
           {filter === "all" && items.length >= 60 && more !== "done" && (
             <Button variant="ghost" className="self-center" onClick={loadMore} disabled={more === "loading"}>
-              {more === "loading" ? "Loading…" : "Show older"}
+              {more === "loading" ? "Loading…" : <Copy k="notifications.notifications-view.show-older">Show older</Copy>}
             </Button>
           )}
         </div>
@@ -207,7 +208,7 @@ function IconAction({ label, onClick, icon: Icon }: { label: string; onClick: ()
   )
 }
 
-function Quiet({ title, body, children }: { title: string; body: string; children?: React.ReactNode }) {
+function Quiet({ title, body, children }: { title: React.ReactNode; body: React.ReactNode; children?: React.ReactNode }) {
   return (
     <div className="glass flex flex-col items-center gap-4 rounded-2xl px-6 py-16 text-center">
       <span className="grid size-14 place-items-center rounded-full bg-ion/10 text-ion shadow-[0_0_40px_-6px_rgb(143_180_255/0.6)]">

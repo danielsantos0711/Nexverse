@@ -14,6 +14,7 @@ import { getAttendeesMany, listEvents } from "@/lib/events"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 type View = "upcoming" | "past" | "mine"
 const VIEWS: { value: View; label: string }[] = [
@@ -96,7 +97,7 @@ export function EventsView() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="event-kind" className="sr-only">
-            Kind of event
+            <Copy k="events.events-view.kind-of-event">Kind of event</Copy>
           </label>
           <select
             id="event-kind"
@@ -114,7 +115,7 @@ export function EventsView() {
             ))}
           </select>
           <Link href="/events/new" className={primaryButton}>
-            <CalendarPlusIcon aria-hidden className="size-4" /> Create an event
+            <CalendarPlusIcon aria-hidden className="size-4" /> <Copy k="events.events-view.create-an-event">Create an event</Copy>
           </Link>
         </div>
       </div>
@@ -123,7 +124,7 @@ export function EventsView() {
         <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           Events could not be loaded ({error}).{" "}
           <button type="button" onClick={() => setAttempt((n) => n + 1)} className="underline underline-offset-2">
-            Try again
+            <Copy k="events.events-view.try-again">Try again</Copy>
           </button>
         </p>
       )}
@@ -153,14 +154,14 @@ export function EventsView() {
             <p className="text-sm text-muted-foreground">
               {events.length === 0
                 ? live
-                  ? "No events yet. Host the first one: a paper club, a meetup, office hours or an AMA, online or in person."
-                  : "Events you create in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can see them yet."
+                  ? <Copy k="events.events-view.no-events-yet-host-the" multiline>No events yet. Host the first one: a paper club, a meetup, office hours or an AMA, online or in person.</Copy>
+                  : <Copy k="events.events-view.events-you-create-in-this" multiline>Events you create in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can see them yet.</Copy>
                 : view === "mine"
-                  ? "You have not RSVP’d to anything yet. Pick an event and say you’re going or interested."
+                  ? <Copy k="events.events-view.you-have-not-rsvpd-to">You have not RSVP’d to anything yet. Pick an event and say you’re going or interested.</Copy>
                   : view === "past"
-                    ? "No past events yet."
+                    ? <Copy k="events.events-view.no-past-events-yet">No past events yet.</Copy>
                     : kind === "all"
-                      ? "Nothing on the calendar right now. Host the next one."
+                      ? <Copy k="events.events-view.nothing-on-the-calendar-right">Nothing on the calendar right now. Host the next one.</Copy>
                       : `No upcoming ${EVENT_KINDS[kind].plural.toLowerCase()}. Host one.`}
             </p>
             {(view !== "mine" || events.length === 0) && (
@@ -184,9 +185,9 @@ function EventRow({ e, attendees, past, live: happening }: { e: CommunityEvent; 
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex flex-wrap items-center gap-2">
           <KindBadge kind={e.kind} />
-          {happening && <span className="rounded-full bg-ok/15 px-2 py-0.5 text-xs font-medium text-ok">Happening now</span>}
-          {attendees?.mine && <span className="rounded-full bg-ion/10 px-2 py-0.5 text-xs text-ion">{attendees.mine === "going" ? "You’re going" : "You’re interested"}</span>}
-          {e.local && <span className="text-xs text-muted-foreground">Saved in this browser</span>}
+          {happening && <span className="rounded-full bg-ok/15 px-2 py-0.5 text-xs font-medium text-ok"><Copy k="events.events-view.happening-now">Happening now</Copy></span>}
+          {attendees?.mine && <span className="rounded-full bg-ion/10 px-2 py-0.5 text-xs text-ion">{attendees.mine === "going" ? <Copy k="events.events-view.youre-going">You’re going</Copy> : <Copy k="events.events-view.youre-interested">You’re interested</Copy>}</span>}
+          {e.local && <span className="text-xs text-muted-foreground"><Copy k="events.events-view.saved-in-this-browser">Saved in this browser</Copy></span>}
         </div>
         <h2 className="font-sans text-base leading-snug font-semibold tracking-normal">
           <Link

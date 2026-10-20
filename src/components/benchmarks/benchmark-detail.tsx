@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getBenchmark, listResults, reproSummary, type BenchmarkResult } from "@/lib/benchmarks"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
+import { Copy } from "@/components/content/copy"
 
 /** One benchmark: the dot plot of results by model, then the sortable table with reproductions. */
 export function BenchmarkDetail({ slug }: { slug: string }) {
@@ -52,7 +53,7 @@ export function BenchmarkDetail({ slug }: { slug: string }) {
         <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           Results could not be loaded ({error}).{" "}
           <button type="button" onClick={() => setAttempt((n) => n + 1)} className="underline underline-offset-2">
-            Try again
+            <Copy k="benchmark.benchmark-detail.try-again">Try again</Copy>
           </button>
         </p>
       )}
@@ -63,7 +64,7 @@ export function BenchmarkDetail({ slug }: { slug: string }) {
             <DotChart bench={bench} results={results} />
           </section>
           <section aria-label="All results" className="flex flex-col gap-3">
-            <h2 className="text-base font-semibold">All results</h2>
+            <h2 className="text-base font-semibold"><Copy k="benchmark.benchmark-detail.all-results">All results</Copy></h2>
             <ResultsTable
               bench={bench}
               results={results}

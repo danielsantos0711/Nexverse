@@ -33,7 +33,7 @@ async function Rising({ topic }: { topic: string }) {
           <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground tabular">
             <StarIcon aria-hidden className="size-3" />
             {compact(r.stars)}
-            <span className="sr-only"> stars</span>
+            <span className="sr-only"> <Copy k="gh-topics.page.stars">stars</Copy></span>
           </span>
         </li>
       ))}
@@ -71,7 +71,7 @@ export default function TopicsPage() {
                 <p className="text-sm text-muted-foreground">{t.blurb}</p>
               </div>
               <div className="mt-auto flex flex-col gap-1.5 border-t border-border pt-3">
-                <span className="text-xs font-medium text-muted-foreground">Rising this month</span>
+                <span className="text-xs font-medium text-muted-foreground"><Copy k="gh-topics.page.rising-this-month">Rising this month</Copy></span>
                 <Suspense fallback={<RisingSkeleton />}>
                   <Rising topic={t.id} />
                 </Suspense>
@@ -83,7 +83,7 @@ export default function TopicsPage() {
 
       <section aria-labelledby="more-topics" className="mt-14">
         <SectionHead id="more-topics" title="More topics">
-          <p className="text-sm text-muted-foreground">Other corners of open-source AI worth a look.</p>
+          <p className="text-sm text-muted-foreground"><Copy k="gh-topics.page.other-corners-of-open-source">Other corners of open-source AI worth a look.</Copy></p>
         </SectionHead>
         <ul className="flex flex-wrap gap-2">
           {MORE_GH_TOPICS.map((t) => (

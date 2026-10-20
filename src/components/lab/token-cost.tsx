@@ -5,6 +5,7 @@ import { EraserIcon, LanguagesIcon } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { estimateTokens, SCRIPTS } from "./tokens"
 import { ActionButton, AnimatedNumber, fmtCompact, fmtInt, NumberInput, Panel, readStored, Segmented, ToolSkeleton, useHydrated, writeStored } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 const SAMPLE = `Nexverse is a home for people who build with AI, in every language.
 Nexverse é uma casa para quem constrói com IA, em qualquer língua.
@@ -78,7 +79,7 @@ function TokenCostInner() {
           }
         >
           <label htmlFor="tc-text" className="sr-only">
-            Text to estimate
+            <Copy k="lab-tool.token-cost.text-to-estimate">Text to estimate</Copy>
           </label>
           <Textarea
             id="tc-text"
@@ -92,7 +93,7 @@ function TokenCostInner() {
             <Stat label="Characters" value={est.chars} />
             <Stat label="Words (approx.)" value={est.words} />
             <div className="flex flex-col gap-0.5 rounded-xl bg-ion/[0.07] p-3 ring-1 ring-ion/20">
-              <dt className="text-xs text-ion/90">Estimated tokens</dt>
+              <dt className="text-xs text-ion/90"><Copy k="lab-tool.token-cost.estimated-tokens">Estimated tokens</Copy></dt>
               <dd className="text-xl font-semibold text-foreground">
                 ≈<AnimatedNumber value={est.tokens} />
               </dd>
@@ -105,7 +106,7 @@ function TokenCostInner() {
 
         <Panel title="By writing system" description="Scripts with less training data tend to need more tokens per character, and vary more between tokenisers.">
           {est.scripts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Paste some text to see the breakdown.</p>
+            <p className="text-sm text-muted-foreground"><Copy k="lab-tool.token-cost.paste-some-text-to-see">Paste some text to see the breakdown.</Copy></p>
           ) : (
             <>
               <div className="flex h-3 w-full overflow-hidden rounded-full bg-white/[0.05]" role="img" aria-label="Share of estimated tokens by writing system">
@@ -121,10 +122,10 @@ function TokenCostInner() {
                 <caption className="sr-only">Estimated tokens per writing system</caption>
                 <thead>
                   <tr className="text-left text-xs text-muted-foreground">
-                    <th scope="col" className="pb-2 font-normal">Script</th>
-                    <th scope="col" className="pb-2 text-right font-normal">Chars</th>
-                    <th scope="col" className="pb-2 text-right font-normal">≈ Tokens</th>
-                    <th scope="col" className="hidden pb-2 text-right font-normal sm:table-cell">Chars / token</th>
+                    <th scope="col" className="pb-2 font-normal"><Copy k="lab-tool.token-cost.script">Script</Copy></th>
+                    <th scope="col" className="pb-2 text-right font-normal"><Copy k="lab-tool.token-cost.chars">Chars</Copy></th>
+                    <th scope="col" className="pb-2 text-right font-normal"><Copy k="lab-tool.token-cost.tokens">≈ Tokens</Copy></th>
+                    <th scope="col" className="hidden pb-2 text-right font-normal sm:table-cell"><Copy k="lab-tool.token-cost.chars-token">Chars / token</Copy></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -154,7 +155,7 @@ function TokenCostInner() {
         <Panel title="Monthly cost" description="Enter your provider’s prices. The starting values are placeholders, not real prices.">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-foreground/90">Currency</span>
+              <span className="text-sm font-medium text-foreground/90"><Copy k="lab-tool.token-cost.currency">Currency</Copy></span>
               <Segmented label="Currency" value={s.currency} onChange={(v) => set("currency", v)} options={CURRENCIES.map((c) => ({ value: c, label: c }))} />
             </div>
             <div className="grid grid-cols-2 gap-3">

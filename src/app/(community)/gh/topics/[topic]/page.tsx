@@ -11,6 +11,7 @@ import { GitHubRepoCard } from "@/components/live/github-repo-card"
 import { CardsSkeleton } from "@/components/live/skeletons"
 import { GH_TOPICS, ghTopicHref, githubTopicRepos, MORE_GH_TOPICS, topicInfo } from "@/lib/live"
 import { discussItemHref, isGhTopic, segment } from "@/lib/live/ids"
+import { Copy } from "@/components/content/copy"
 
 /** One sample, so the shell is prerendered; every other topic renders on request. */
 export function generateStaticParams() {
@@ -113,7 +114,7 @@ async function Topic({ params }: { params: Params }) {
       <div className="shell flex flex-col gap-14 pt-10">
         <section aria-labelledby="active-title">
           <SectionHead id="active-title" title="Most starred, active this week">
-            <p className="text-sm text-muted-foreground">Established projects with a push in the last seven days.</p>
+            <p className="text-sm text-muted-foreground"><Copy k="gh-topic.page.established-projects-with-a-push">Established projects with a push in the last seven days.</Copy></p>
           </SectionHead>
           <Suspense fallback={<CardsSkeleton cards={6} />}>
             <RepoSection topic={topic} mode="active" />
@@ -121,7 +122,7 @@ async function Topic({ params }: { params: Params }) {
         </section>
         <section aria-labelledby="new-title" className="border-t border-border pt-10">
           <SectionHead id="new-title" title="New and rising this month">
-            <p className="text-sm text-muted-foreground">Created in the last 30 days, most starred first.</p>
+            <p className="text-sm text-muted-foreground"><Copy k="gh-topic.page.created-in-the-last-30">Created in the last 30 days, most starred first.</Copy></p>
           </SectionHead>
           <Suspense fallback={<CardsSkeleton cards={6} />}>
             <RepoSection topic={topic} mode="new" />

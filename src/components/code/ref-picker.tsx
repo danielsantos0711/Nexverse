@@ -13,6 +13,7 @@ import { downloadZip } from "@/lib/code/download"
 import { cn } from "@/lib/utils"
 import { useRepo } from "./repo-context"
 import { href, inputCls } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /**
  * Switch branch or tag. Typing a name that does not exist offers to create a branch from the current ref (for
@@ -76,11 +77,11 @@ export function RefPicker({ current, commit, to }: { current: string; commit: st
               <Link href={href(to(r.name))} className="flex items-center gap-2 rounded-md px-2 py-1.5 font-mono text-[13px] hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none">
                 <CheckIcon aria-hidden className={cn("size-3.5 shrink-0", r.name === current ? "text-ion" : "invisible")} />
                 <span className="truncate">{r.name}</span>
-                {r.kind === "branch" && r.name === repo.defaultBranch && <span className="ml-auto rounded-full border border-border px-1.5 font-sans text-[10px] text-muted-foreground">default</span>}
+                {r.kind === "branch" && r.name === repo.defaultBranch && <span className="ml-auto rounded-full border border-border px-1.5 font-sans text-[10px] text-muted-foreground"><Copy k="code-repo.ref-picker.default">default</Copy></span>}
               </Link>
             </li>
           ))}
-          {!list.length && !canCreate && <li className="px-2 py-3 text-center text-xs text-muted-foreground">Nothing found.</li>}
+          {!list.length && !canCreate && <li className="px-2 py-3 text-center text-xs text-muted-foreground"><Copy k="code-repo.ref-picker.nothing-found">Nothing found.</Copy></li>}
           {canCreate && (
             <li>
               <button onClick={create} disabled={busy} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-secondary">
@@ -130,9 +131,9 @@ export function CodeMenu({ refName, tree, at }: { refName: string; tree: Tree; a
           <div className="flex gap-2 rounded-lg bg-secondary/50 p-3 text-xs text-muted-foreground">
             <InfoIcon aria-hidden className="mt-0.5 size-3.5 shrink-0" />
             <p>
-              <span className="font-mono">git clone</span> and <span className="font-mono">git push</span> are not supported yet: Nexverse stores repositories without a git server. Work here in the browser, download a zip, or{" "}
+              <span className="font-mono"><Copy k="code-repo.ref-picker.git-clone">git clone</Copy></span> and <span className="font-mono"><Copy k="code-repo.ref-picker.git-push">git push</Copy></span> are not supported yet: Nexverse stores repositories without a git server. Work here in the browser, download a zip, or{" "}
               <Link href="/code/import" className="text-ion hover:underline">
-                import from GitHub
+                <Copy k="code-repo.ref-picker.import-from-github">import from GitHub</Copy>
               </Link>
               .
             </p>

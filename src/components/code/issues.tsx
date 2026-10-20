@@ -16,6 +16,7 @@ import { addIssueComment, createIssue, createLabel, deleteComment, getIssue, lis
 import { cn } from "@/lib/utils"
 import { useRepo } from "./repo-context"
 import { Avatar, EmptyState, ErrorNote, FormError, href, inputCls, LabelChip, Panel, PanelHead, PersonName, plural, StaffHide, StateBadge, StateIcon, useLoad } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /* Issues: the list with filters, a new issue, and one issue with its conversation. */
 
@@ -31,14 +32,14 @@ export function IssuesPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <label className="relative min-w-0 flex-1 sm:max-w-sm">
-          <span className="sr-only">Search issues</span>
+          <span className="sr-only"><Copy k="code-repo.issues.search-issues">Search issues</Copy></span>
           <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search issue titles" className={cn(inputCls, "rounded-full pl-9")} />
         </label>
         <LabelFilter labels={labels.data ?? []} value={label} onChange={setLabel} />
         {!repo.archivedAt && (
           <Button className="ml-auto" nativeButton={false} render={<Link href={href(`${base}/issues/new`)} />}>
-            <PlusIcon aria-hidden /> New issue
+            <PlusIcon aria-hidden /> <Copy k="code-repo.issues.new-issue">New issue</Copy>
           </Button>
         )}
       </div>
@@ -53,7 +54,7 @@ export function IssuesPage() {
           ))}
           {label && (
             <button onClick={() => setLabel(null)} className="ml-auto text-xs text-ion hover:underline">
-              Clear label
+              <Copy k="code-repo.issues.clear-label">Clear label</Copy>
             </button>
           )}
         </PanelHead>
@@ -143,7 +144,7 @@ function NewIssueForm() {
   const [picked, setPicked] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  if (repo.archivedAt) return <Panel><EmptyState icon={CircleDotIcon} title="This repository is archived, so it takes no new issues" /></Panel>
+  if (repo.archivedAt) return <Panel><EmptyState icon={CircleDotIcon} title={<Copy k="code-repo.issues.this-repository-is-archived-so">This repository is archived, so it takes no new issues</Copy>} /></Panel>
   return (
     <form
       onSubmit={async (e) => {
@@ -162,12 +163,12 @@ function NewIssueForm() {
       }}
       className="flex max-w-3xl flex-col gap-4"
     >
-      <h2 className="text-lg font-semibold">New issue</h2>
+      <h2 className="text-lg font-semibold"><Copy k="code-repo.issues.new-issue">New issue</Copy></h2>
       <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="Title" aria-label="Title" className={inputCls} autoFocus />
       <MarkdownComposer id="issue-body" value={body} onChange={setBody} label="Description" placeholder="What happened, what you expected, and how to reproduce it." rows={8} maxLength={30000} />
       {writable && (labels.data?.length ?? 0) > 0 && (
         <fieldset className="flex flex-wrap items-center gap-2">
-          <legend className="mb-1 text-sm font-medium">Labels</legend>
+          <legend className="mb-1 text-sm font-medium"><Copy k="code-repo.issues.labels">Labels</Copy></legend>
           {labels.data!.map((l) => (
             <button key={l.name} type="button" aria-pressed={picked.includes(l.name)} onClick={() => setPicked(picked.includes(l.name) ? picked.filter((x) => x !== l.name) : [...picked, l.name])} className={cn("rounded-full transition-opacity", !picked.includes(l.name) && "opacity-50 hover:opacity-80")}>
               <LabelChip label={l} />
@@ -250,7 +251,7 @@ export function IssuePage({ number }: { number: number }) {
               <span className="ml-auto flex items-center gap-1">
                 {(mine || writable) && (
                   <Button size="sm" variant="ghost" className="h-7 rounded-full" onClick={() => setEditing(true)}>
-                    <PencilIcon aria-hidden /> Edit
+                    <PencilIcon aria-hidden /> <Copy k="code-repo.issues.edit">Edit</Copy>
                   </Button>
                 )}
                 <ReportButton targetKind="code_issue" targetId={issue.id} targetUrl={`${base}/issues/${issue.number}`} iconOnly />
@@ -259,7 +260,7 @@ export function IssuePage({ number }: { number: number }) {
             </div>
           </header>
         )}
-        {issue.hiddenAt && <p className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm">Moderators hid this issue. Only its author and staff can see it.</p>}
+        {issue.hiddenAt && <p className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm"><Copy k="code-repo.issues.moderators-hid-this-issue-only">Moderators hid this issue. Only its author and staff can see it.</Copy></p>}
         <CommentCard author={issue.author} createdAt={issue.createdAt} body={issue.body || "_No description._"} highlight />
         {comments.data?.map((c) => (
           <CommentCard
@@ -336,7 +337,7 @@ export function CommentCard({ author, createdAt, body, highlight, hidden, onDele
             )}
           </span>
         </div>
-        <div className="px-4 py-3">{hidden ? <p className="text-sm text-muted-foreground italic">Hidden by moderators.</p> : <PostBody source={body} />}</div>
+        <div className="px-4 py-3">{hidden ? <p className="text-sm text-muted-foreground italic"><Copy k="code-repo.issues.hidden-by-moderators">Hidden by moderators.</Copy></p> : <PostBody source={body} />}</div>
         {error && <p className="px-4 pb-2 text-xs text-destructive">{error}</p>}
       </div>
     </article>
@@ -353,7 +354,7 @@ export function EditTitle({ initial, onSave, onCancel }: { initial: { title: str
       <MarkdownComposer id="edit-body" value={body} onChange={setBody} label="Description" rows={6} maxLength={30000} />
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={onCancel}>
-          Cancel
+          <Copy k="code-repo.issues.cancel">Cancel</Copy>
         </Button>
         <Button
           disabled={busy || !title.trim()}
@@ -362,7 +363,7 @@ export function EditTitle({ initial, onSave, onCancel }: { initial: { title: str
             await onSave(title.trim(), body).finally(() => setBusy(false))
           }}
         >
-          Save
+          <Copy k="code-repo.issues.save">Save</Copy>
         </Button>
       </div>
     </div>
@@ -375,7 +376,7 @@ function LabelsBox({ labels, value, byName, editable, onChange, onCreated }: { l
   const [error, setError] = useState<string | null>(null)
   return (
     <section className="flex flex-col gap-2 border-b border-border pb-4">
-      <h3 className="font-medium">Labels</h3>
+      <h3 className="font-medium"><Copy k="code-repo.issues.labels">Labels</Copy></h3>
       {value.length ? (
         <div className="flex flex-wrap gap-1.5">
           {value.map((l) => (
@@ -383,7 +384,7 @@ function LabelsBox({ labels, value, byName, editable, onChange, onCreated }: { l
           ))}
         </div>
       ) : (
-        <p className="text-muted-foreground">None yet</p>
+        <p className="text-muted-foreground"><Copy k="code-repo.issues.none-yet">None yet</Copy></p>
       )}
       {editable && (
         <DropdownMenu>
@@ -413,7 +414,7 @@ function LabelsBox({ labels, value, byName, editable, onChange, onCreated }: { l
             >
               <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.stopPropagation()} maxLength={40} placeholder="New label" aria-label="New label name" className={cn(inputCls, "h-7 text-xs")} />
               <Button size="sm" type="submit" className="h-7" disabled={!name.trim()}>
-                Add
+                <Copy k="code-repo.issues.add">Add</Copy>
               </Button>
             </form>
             {error && <p className="px-2 pb-1 text-xs text-destructive">{error}</p>}
@@ -431,7 +432,7 @@ function AssigneesBox({ value, editable, onChange }: { value: string[]; editable
   const assigned = people.filter((p) => value.includes(p.id))
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="font-medium">Assignees</h3>
+      <h3 className="font-medium"><Copy k="code-repo.issues.assignees">Assignees</Copy></h3>
       {assigned.length ? (
         <ul className="flex flex-col gap-1.5">
           {assigned.map((p) => (
@@ -441,7 +442,7 @@ function AssigneesBox({ value, editable, onChange }: { value: string[]; editable
           ))}
         </ul>
       ) : (
-        <p className="text-muted-foreground">No one</p>
+        <p className="text-muted-foreground"><Copy k="code-repo.issues.no-one">No one</Copy></p>
       )}
       {editable && (
         <DropdownMenu>

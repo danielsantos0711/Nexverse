@@ -11,6 +11,7 @@ import { slugify, VALID_SLUG } from "@/lib/code/tree"
 import { useSession } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import { FormError, href, inputCls, textareaCls } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /** Topics typed as "llm, agents rag" → ["llm", "agents", "rag"]. */
 export function parseTopics(raw: string): string[] {
@@ -105,13 +106,13 @@ function NewRepoForm() {
 
       <div className="grid gap-2">
         <label htmlFor={`${id}-desc`} className="text-sm font-medium">
-          Description <span className="font-normal text-muted-foreground">(optional)</span>
+          Description <span className="font-normal text-muted-foreground"><Copy k="code-new.new-repo.optional">(optional)</Copy></span>
         </label>
         <textarea id={`${id}-desc`} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={350} rows={2} className={textareaCls} placeholder="What it does, in one or two sentences." />
       </div>
 
       <fieldset className="grid gap-2">
-        <legend className="mb-2 text-sm font-medium">Who can see it</legend>
+        <legend className="mb-2 text-sm font-medium"><Copy k="code-new.new-repo.who-can-see-it">Who can see it</Copy></legend>
         <div className="grid gap-2 sm:grid-cols-2">
           {(
             [
@@ -138,12 +139,12 @@ function NewRepoForm() {
       </fieldset>
 
       <fieldset className="grid gap-4 rounded-xl border border-border bg-card/40 p-4">
-        <legend className="px-1 text-sm font-medium">Start with</legend>
+        <legend className="px-1 text-sm font-medium"><Copy k="code-new.new-repo.start-with">Start with</Copy></legend>
         <label className="flex items-start gap-3 text-sm">
           <input type="checkbox" checked={readme} onChange={(e) => setReadme(e.target.checked)} className="mt-0.5 size-4 accent-[var(--ion)]" />
           <span>
             A README
-            <span className="block text-xs text-muted-foreground">The page people see first. You can edit it right after.</span>
+            <span className="block text-xs text-muted-foreground"><Copy k="code-new.new-repo.the-page-people-see-first">The page people see first. You can edit it right after.</Copy></span>
           </span>
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -173,14 +174,14 @@ function NewRepoForm() {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-muted-foreground">Files your tools generate and you should not upload.</p>
+            <p className="text-xs text-muted-foreground"><Copy k="code-new.new-repo.files-your-tools-generate-and">Files your tools generate and you should not upload.</Copy></p>
           </div>
         </div>
       </fieldset>
 
       <div className="grid gap-2">
         <label htmlFor={`${id}-topics`} className="text-sm font-medium">
-          Topics <span className="font-normal text-muted-foreground">(optional)</span>
+          Topics <span className="font-normal text-muted-foreground"><Copy k="code-new.new-repo.optional">(optional)</Copy></span>
         </label>
         <input id={`${id}-topics`} value={topics} onChange={(e) => setTopics(e.target.value)} placeholder="llm, agents, tokenizer" className={inputCls} />
         {parseTopics(topics).length > 0 && (
@@ -200,7 +201,7 @@ function NewRepoForm() {
           {busy && <LoaderCircleIcon aria-hidden className="animate-spin" />}
           {busy ?? "Create repository"}
         </Button>
-        <p className="text-xs text-muted-foreground">Up to 100 MB per repository and 25 MB per file.</p>
+        <p className="text-xs text-muted-foreground"><Copy k="code-new.new-repo.up-to-100-mb-per">Up to 100 MB per repository and 25 MB per file.</Copy></p>
       </div>
     </form>
   )

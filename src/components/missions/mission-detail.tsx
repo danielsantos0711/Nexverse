@@ -66,6 +66,7 @@ import { listMyProjects, type Project } from "@/lib/projects"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 
@@ -143,7 +144,7 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
             <div className="flex flex-wrap items-center gap-2">
               {state ? <StatusBadge status={state} /> : <Skeleton className="h-5 w-20 rounded-full" />}
               <DifficultyBadge difficulty={m.difficulty} />
-              {m.local && <span className="text-xs text-muted-foreground">Saved in this browser only</span>}
+              {m.local && <span className="text-xs text-muted-foreground"><Copy k="mission.mission-detail.saved-in-this-browser-only">Saved in this browser only</Copy></span>}
             </div>
             <h1 className="text-xl leading-snug font-semibold tracking-[-0.015em] md:text-2xl">{m.title}</h1>
             <WhoLine who={m.poster} prefix="Posted by" date={m.createdAt} />
@@ -151,7 +152,7 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
 
           <dl className="glass grid grid-cols-2 gap-4 rounded-xl p-4 sm:grid-cols-4 md:p-5">
             <div className="flex flex-col gap-1">
-              <dt className="text-xs text-muted-foreground">Reward</dt>
+              <dt className="text-xs text-muted-foreground"><Copy k="mission.mission-detail.reward">Reward</Copy></dt>
               <dd>
                 <Reward points={m.reward} size="lg" />
               </dd>
@@ -176,11 +177,11 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
               </dd>
             </div>
             <div className="flex flex-col gap-1">
-              <dt className="text-xs text-muted-foreground">Crew</dt>
+              <dt className="text-xs text-muted-foreground"><Copy k="mission.mission-detail.crew">Crew</Copy></dt>
               <dd className="text-lg font-semibold tabular">{m.crewCount}</dd>
             </div>
             <div className="flex flex-col gap-1">
-              <dt className="text-xs text-muted-foreground">Entries</dt>
+              <dt className="text-xs text-muted-foreground"><Copy k="mission.mission-detail.entries">Entries</Copy></dt>
               <dd className="text-lg font-semibold tabular">{m.entryCount}</dd>
             </div>
           </dl>
@@ -190,7 +191,7 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
               href="#crew"
               className="pressable inline-flex h-10 w-fit items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:hidden"
             >
-              <RocketIcon aria-hidden className="size-4" /> Accept or submit an entry
+              <RocketIcon aria-hidden className="size-4" /> <Copy k="mission.mission-detail.accept-or-submit-an-entry">Accept or submit an entry</Copy>
             </a>
           )}
 
@@ -198,9 +199,9 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
 
           <section aria-labelledby="brief-h" className="flex flex-col gap-2">
             <h2 id="brief-h" className="font-sans text-base font-semibold tracking-normal">
-              Brief
+              <Copy k="mission.mission-detail.brief">Brief</Copy>
             </h2>
-            {m.brief ? <PostBody source={m.brief} /> : <p className="text-sm text-muted-foreground">No brief beyond the title and criteria.</p>}
+            {m.brief ? <PostBody source={m.brief} /> : <p className="text-sm text-muted-foreground"><Copy k="mission.mission-detail.no-brief-beyond-the-title">No brief beyond the title and criteria.</Copy></p>}
             {m.tags.length > 0 && (
               <ul className="mt-1 flex flex-wrap gap-1.5" aria-label="Tags">
                 {m.tags.map((t) => (
@@ -216,7 +217,7 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
 
           <section aria-labelledby="criteria-h" className="flex flex-col gap-3">
             <h2 id="criteria-h" className="font-sans text-base font-semibold tracking-normal">
-              Acceptance criteria
+              <Copy k="mission.mission-detail.acceptance-criteria">Acceptance criteria</Copy>
             </h2>
             <ul className="flex flex-col gap-2">
               {m.criteria.map((c, i) => (
@@ -234,7 +235,7 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
 
           <section aria-labelledby="timeline-h" className="flex flex-col gap-3">
             <h2 id="timeline-h" className="font-sans text-base font-semibold tracking-normal">
-              Timeline
+              <Copy k="mission.mission-detail.timeline">Timeline</Copy>
             </h2>
             {crew && now !== null ? <Timeline events={missionTimeline(m, crew, now)} now={now} /> : <Skeleton className="h-32 w-full rounded-xl" />}
           </section>
@@ -242,7 +243,7 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
           {isPoster && m.status !== "completed" && m.entryCount === 0 && (
             <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
               <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)}>
-                <Trash2Icon aria-hidden /> Call off this mission
+                <Trash2Icon aria-hidden /> <Copy k="mission.mission-detail.call-off-this-mission">Call off this mission</Copy>
               </Button>
               {error && (
                 <p role="alert" className="text-sm text-destructive">
@@ -274,10 +275,10 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-              Keep it
+              <Copy k="mission.mission-detail.keep-it">Keep it</Copy>
             </Button>
             <Button variant="destructive" onClick={remove}>
-              Call it off
+              <Copy k="mission.mission-detail.call-it-off">Call it off</Copy>
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -343,7 +344,7 @@ function WinnerBanner({ m, entry }: { m: Mission; entry: MissionEntry | null }) 
             ))}
         </motion.span>
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="text-xs font-medium tracking-wide text-ok uppercase">Mission accomplished</p>
+          <p className="text-xs font-medium tracking-wide text-ok uppercase"><Copy k="mission.mission-detail.mission-accomplished">Mission accomplished</Copy></p>
           <p className="text-base">
             <span className="font-semibold">{m.winner?.name}</span> won
             {m.reward > 0 ? ` ${m.reward.toLocaleString("en")} reputation points` : ""} and the{" "}
@@ -381,7 +382,7 @@ function EntryLink({ entry, className }: { entry: Pick<MissionEntry, "kind" | "u
       <Icon aria-hidden className="size-4 shrink-0" />
       <span className="truncate">{label}</span>
       <ExternalLinkIcon aria-hidden className="size-3 shrink-0" />
-      <span className="sr-only">(opens in a new tab)</span>
+      <span className="sr-only"><Copy k="mission.mission-detail.opens-in-a-new-tab">(opens in a new tab)</Copy></span>
     </a>
   )
 }
@@ -438,10 +439,10 @@ function EntriesSection({ m, crew, isPoster, now, reload }: { m: Mission; crew: 
                     </span>
                     {won && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-medium text-ok">
-                        <TrophyIcon aria-hidden className="size-3" /> Winner
+                        <TrophyIcon aria-hidden className="size-3" /> <Copy k="mission.mission-detail.winner">Winner</Copy>
                       </span>
                     )}
-                    {e.mine && !won && <span className="rounded-full bg-ion/10 px-2 py-0.5 text-xs text-ion">Your entry</span>}
+                    {e.mine && !won && <span className="rounded-full bg-ion/10 px-2 py-0.5 text-xs text-ion"><Copy k="mission.mission-detail.your-entry">Your entry</Copy></span>}
                   </span>
                   <span className="text-xs text-muted-foreground">{ENTRY_KINDS[e.kind].label}</span>
                 </div>
@@ -450,7 +451,7 @@ function EntriesSection({ m, crew, isPoster, now, reload }: { m: Mission; crew: 
                 {canPick && (
                   <div>
                     <Button size="sm" variant="secondary" onClick={() => setPicking(e)}>
-                      <TrophyIcon aria-hidden /> Pick as winner
+                      <TrophyIcon aria-hidden /> <Copy k="mission.mission-detail.pick-as-winner">Pick as winner</Copy>
                     </Button>
                   </div>
                 )}
@@ -475,7 +476,7 @@ function EntriesSection({ m, crew, isPoster, now, reload }: { m: Mission; crew: 
           )}
           <DialogFooter>
             <Button variant="ghost" onClick={() => setPicking(null)}>
-              Not yet
+              <Copy k="mission.mission-detail.not-yet">Not yet</Copy>
             </Button>
             <Button onClick={confirmPick} disabled={busy}>
               {busy ? "Picking…" : "Pick the winner"}
@@ -525,7 +526,7 @@ function CrewPanel({ m, crew, isPoster, now, reload }: { m: Mission; crew: Missi
     <section aria-labelledby="crew-h" className="glass flex flex-col gap-4 rounded-xl p-4">
       <div className="flex items-center justify-between gap-2">
         <h2 id="crew-h" className="flex items-center gap-2 font-sans text-sm font-semibold tracking-normal">
-          <UsersIcon aria-hidden className="size-4 text-ion" /> Crew
+          <UsersIcon aria-hidden className="size-4 text-ion" /> <Copy k="mission.mission-detail.crew">Crew</Copy>
         </h2>
         {crew && (
           <span className="text-xs text-muted-foreground tabular">
@@ -551,7 +552,7 @@ function CrewPanel({ m, crew, isPoster, now, reload }: { m: Mission; crew: Missi
             >
               <PosterAvatar poster={c.who} size={24} />
               <span className="min-w-0 flex-1 truncate">{c.mine ? "You" : c.who.name}</span>
-              {crew.entries.some((e) => (c.mine ? e.mine : sameWho(e.author, c.who))) && <span className="text-[11px] text-ok">Entered</span>}
+              {crew.entries.some((e) => (c.mine ? e.mine : sameWho(e.author, c.who))) && <span className="text-[11px] text-ok"><Copy k="mission.mission-detail.entered">Entered</Copy></span>}
               <span className="text-[11px] text-muted-foreground">
                 <TimeAgo date={c.joinedAt} />
               </span>
@@ -568,7 +569,7 @@ function CrewPanel({ m, crew, isPoster, now, reload }: { m: Mission; crew: Missi
       )}
 
       {isPoster ? (
-        <p className="text-xs text-muted-foreground">You posted this mission. Pilots’ entries appear on this page for you to review.</p>
+        <p className="text-xs text-muted-foreground"><Copy k="mission.mission-detail.you-posted-this-mission-pilots">You posted this mission. Pilots’ entries appear on this page for you to review.</Copy></p>
       ) : open && crew ? (
         <Button onClick={toggle} disabled={busy || Boolean(crew.joined && crew.myEntry)} variant={crew.joined ? "secondary" : "default"} className="h-10 w-full rounded-full">
           {crew.joined ? (
@@ -582,8 +583,8 @@ function CrewPanel({ m, crew, isPoster, now, reload }: { m: Mission; crew: Missi
           )}
         </Button>
       ) : null}
-      {crew?.joined && crew.myEntry && open && <p className="text-xs text-muted-foreground">Withdraw your entry first if you want to leave the crew.</p>}
-      {!signedIn && open && <p className="text-xs text-muted-foreground">Sign in to accept. It takes an email address and nothing else.</p>}
+      {crew?.joined && crew.myEntry && open && <p className="text-xs text-muted-foreground"><Copy k="mission.mission-detail.withdraw-your-entry-first-if">Withdraw your entry first if you want to leave the crew.</Copy></p>}
+      {!signedIn && open && <p className="text-xs text-muted-foreground"><Copy k="mission.mission-detail.sign-in-to-accept-it">Sign in to accept. It takes an email address and nothing else.</Copy></p>}
       <p role="status" className={cn("text-sm", error ? "text-destructive" : "sr-only")}>
         {error || status}
       </p>
@@ -663,17 +664,17 @@ function EntryForm({ m, crew, now, reload }: { m: Mission; crew: MissionCrew; no
     return (
       <section aria-labelledby="entry-h" className="flex flex-col gap-3 rounded-xl border border-ok/30 bg-ok/[0.04] p-4">
         <h2 id="entry-h" className="flex items-center gap-2 font-sans text-sm font-semibold tracking-normal">
-          <CircleCheckBigIcon aria-hidden className="size-4 text-ok" /> Your entry is in
+          <CircleCheckBigIcon aria-hidden className="size-4 text-ok" /> <Copy k="mission.mission-detail.your-entry-is-in">Your entry is in</Copy>
         </h2>
         <EntryLink entry={mine} />
         {mine.notes && <p className="line-clamp-4 text-sm text-muted-foreground">{mine.notes}</p>}
         {open && (
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
-              Edit entry
+              <Copy k="mission.mission-detail.edit-entry">Edit entry</Copy>
             </Button>
             <Button size="sm" variant="ghost" onClick={withdraw} disabled={busy}>
-              Withdraw
+              <Copy k="mission.mission-detail.withdraw">Withdraw</Copy>
             </Button>
           </div>
         )}
@@ -746,7 +747,7 @@ function EntryForm({ m, crew, now, reload }: { m: Mission; crew: MissionCrew; no
             <p id="entry-url" tabIndex={-1} className="text-sm text-muted-foreground">
               You have no published projects yet.{" "}
               <Link href="/studio" className="text-ion hover:underline">
-                Publish one in the studio
+                <Copy k="mission.mission-detail.publish-one-in-the-studio">Publish one in the studio</Copy>
               </Link>{" "}
               or submit a repo or paper.
             </p>
@@ -767,7 +768,7 @@ function EntryForm({ m, crew, now, reload }: { m: Mission; crew: MissionCrew; no
         {errors.url ? <FieldError id="entry-url-error">{errors.url}</FieldError> : <FieldDescription>{ENTRY_KINDS[kind].hint}</FieldDescription>}
       </Field>
       <Field data-invalid={errors.notes ? true : undefined}>
-        <FieldLabel htmlFor="entry-notes">Notes for the reviewer</FieldLabel>
+        <FieldLabel htmlFor="entry-notes"><Copy k="mission.mission-detail.notes-for-the-reviewer">Notes for the reviewer</Copy></FieldLabel>
         <Textarea
           id="entry-notes"
           value={notes}
@@ -791,7 +792,7 @@ function EntryForm({ m, crew, now, reload }: { m: Mission; crew: MissionCrew; no
         </Button>
         {mine && (
           <Button type="button" variant="ghost" onClick={() => setEditing(false)}>
-            Cancel
+            <Copy k="mission.mission-detail.cancel">Cancel</Copy>
           </Button>
         )}
       </div>
@@ -873,7 +874,7 @@ function Missing({ title, detail }: { title: string; detail: string }) {
       </EmptyHeader>
       <EmptyContent>
         <Link href="/missions" className="text-ion hover:underline">
-          Back to missions
+          <Copy k="mission.mission-detail.back-to-missions">Back to missions</Copy>
         </Link>
       </EmptyContent>
     </Empty>

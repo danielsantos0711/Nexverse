@@ -220,7 +220,7 @@ export function Constellations() {
     <section aria-labelledby="const-h" className="relative isolate overflow-hidden">
       {/* a crisp night sky drawn as vectors (sharp on any screen), and HorizonX Gravity Well on the right: the
           pull that gathers separate pieces into one constellation. The pointer dimples it; a click sends a ripple. */}
-      <SkyField className="absolute inset-0 -z-20" />
+      <SkyField className="absolute inset-0 -z-20 [mask-image:linear-gradient(180deg,transparent,#000_18%,#000_82%,transparent)]" />
       <div aria-hidden className="absolute inset-y-0 right-0 -z-10 w-[min(60rem,72%)] max-md:inset-x-0 max-md:top-0 max-md:bottom-auto max-md:h-80 max-md:w-full">
         {/* its edges fade inside the canvas itself (no CSS mask over a moving canvas, no opaque overlay) */}
         <GravityWell className="size-full opacity-80" />

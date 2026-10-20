@@ -52,7 +52,7 @@ export function EmojiPicker({ onPick, onClose }: { onPick: (e: Emoji) => void; o
       <label className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background/60 px-2.5 focus-within:ring-2 focus-within:ring-ring/50">
         <SearchIcon aria-hidden className="size-4 text-muted-foreground" />
         <span className="sr-only">Search emoji</span>
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search: rocket, thanks, bug…" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && e.preventDefault()} placeholder="Search: rocket, thanks, bug…" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
       </label>
       <div className="max-h-64 overflow-y-auto pr-1">
         {found ? (

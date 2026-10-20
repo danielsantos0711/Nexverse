@@ -12,6 +12,7 @@ import { getPoll, POLL_MAX, POLL_MIN, votePoll, type NewPoll, type Poll } from "
 import { useSession, type Question } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 
@@ -139,7 +140,7 @@ export function PollCard({ question }: { question: Question }) {
                   <span className="flex min-w-0 items-center gap-1.5">
                     {mine && <CheckIcon aria-hidden className="size-3.5 shrink-0 text-ion" />}
                     <span className="break-words">{o}</span>
-                    {mine && <span className="sr-only">(your vote)</span>}
+                    {mine && <span className="sr-only"><Copy k="forum.poll.your-vote">(your vote)</Copy></span>}
                   </span>
                   <span className="shrink-0 text-muted-foreground tabular">
                     {pct}%<span className="sr-only">, {n} {n === 1 ? "vote" : "votes"}</span>
@@ -181,7 +182,7 @@ export function PollCard({ question }: { question: Question }) {
             </Button>
             {changing && (
               <Button type="button" variant="ghost" size="sm" onClick={() => (setChanging(false), setPicked(poll.mine))}>
-                Cancel
+                <Copy k="forum.poll.cancel">Cancel</Copy>
               </Button>
             )}
           </div>
@@ -191,10 +192,10 @@ export function PollCard({ question }: { question: Question }) {
       {showResults && !closed && !signedOut && (
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" onClick={() => setChanging(true)} disabled={busy}>
-            Change vote
+            <Copy k="forum.poll.change-vote">Change vote</Copy>
           </Button>
           <Button variant="ghost" size="sm" onClick={retract} disabled={busy}>
-            Take back my vote
+            <Copy k="forum.poll.take-back-my-vote">Take back my vote</Copy>
           </Button>
         </div>
       )}
@@ -234,7 +235,7 @@ export function PollBuilder({ value, onChange, error }: { value: NewPoll; onChan
         />
       </div>
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1.5 text-sm font-medium">Options</legend>
+        <legend className="mb-1.5 text-sm font-medium"><Copy k="forum.poll.options">Options</Copy></legend>
         {value.options.map((o, i) => (
           <div key={i} className="flex items-center gap-2">
             <label htmlFor={`${uid}-o${i}`} className="sr-only">
@@ -261,13 +262,13 @@ export function PollBuilder({ value, onChange, error }: { value: NewPoll; onChan
         ))}
         {value.options.length < POLL_MAX && (
           <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => set({ options: [...value.options, ""] })}>
-            <PlusIcon aria-hidden /> Add option
+            <PlusIcon aria-hidden /> <Copy k="forum.poll.add-option">Add option</Copy>
           </Button>
         )}
       </fieldset>
       <label className="flex cursor-pointer items-center gap-2 text-sm">
         <input type="checkbox" checked={value.multi} onChange={(e) => set({ multi: e.target.checked })} className="size-4 accent-[var(--color-ion)]" />
-        Let people pick more than one option
+        <Copy k="forum.poll.let-people-pick-more-than">Let people pick more than one option</Copy>
       </label>
       {error && (
         <p role="alert" className="text-sm text-destructive">

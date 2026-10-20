@@ -11,7 +11,8 @@ import { KIND_ICONS } from "@/components/hub/bits"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { MarkdownComposer } from "@/components/forum/markdown-composer"
+import { clearDraft } from "@/lib/editor/drafts"
 import { KINDS, type ResourceKind } from "@/lib/data"
 import { sharePath } from "@/lib/hub"
 import { createSubmission, useSession, type Submission, type SubmissionKind } from "@/lib/store"
@@ -61,6 +62,7 @@ export function ShareForm() {
           .filter(Boolean)
           .slice(0, 8),
       })
+      void clearDraft("share:new:summary")
       setDone(s)
     } catch (err) {
       setError((err as Error).message)
@@ -154,7 +156,16 @@ export function ShareForm() {
                 <FieldLabel htmlFor="s-summary">In one or two sentences</FieldLabel>
                 <AiAssistButton value={summary} onAccept={(t) => setSummary(t.slice(0, 500))} />
               </div>
-              <Textarea id="s-summary" value={summary} onChange={(e) => setSummary(e.target.value)} maxLength={500} rows={3} placeholder={kind === "news" ? "What happened, and why it matters." : "What it does and who it is for."} className="bg-background/60" />
+              <MarkdownComposer
+                id="s-summary"
+                value={summary}
+                onChange={setSummary}
+                maxLength={500}
+                rows={3}
+                draftKey="share:new:summary"
+                images={false}
+                placeholder={kind === "news" ? "What happened, and why it matters. Markdown and links work." : "What it does and who it is for. Markdown and links work."}
+              />
             </Field>
             <Field>
               <FieldLabel htmlFor="s-tags">Tags</FieldLabel>

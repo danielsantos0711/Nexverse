@@ -64,6 +64,8 @@ function Body({ mode, initialText, onClose, onInsert }: { mode: InsertMode; init
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
+    // The dialog sits in a portal, but React events still bubble to a form around the editor.
+    e.stopPropagation()
     if (mode === "link") {
       if (!httpsOk(url)) return setError("Use a full address that starts with https://")
       onInsert({ mode, text: text.trim(), url: url.trim() })

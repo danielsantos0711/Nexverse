@@ -1,4 +1,5 @@
 import type { LabToolSlug } from "./tools"
+import { Copy } from "@/components/content/copy"
 
 /*
  * A small hint of what each tool shows, drawn with CSS only. Each one moves a little when its card is
@@ -125,7 +126,7 @@ export function ToolPreview({ slug, tint }: { slug: LabToolSlug; tint: string })
           <span className={`rounded-full bg-ok/10 px-2 py-0.5 text-ok ${move} group-hover:-translate-y-0.5`}>Can</span>
           <span className={`rounded-full bg-gold/10 px-2 py-0.5 text-gold ${move} delay-75 group-hover:-translate-y-0.5`}>Must</span>
           <span className={`rounded-full bg-destructive/10 px-2 py-0.5 text-destructive ${move} delay-150 group-hover:-translate-y-0.5`}>Can&rsquo;t</span>
-          {slug === "licence-compare" && <span className="ml-auto text-muted-foreground">A · B · C</span>}
+          {slug === "licence-compare" && <span className="ml-auto text-muted-foreground"><Copy k="lab-tool.previews.a-b-c">A · B · C</Copy></span>}
         </div>
       )
     case "model-card":

@@ -5,6 +5,7 @@ import { CheckIcon, CircleHelpIcon, ExternalLinkIcon, MinusIcon, PlusIcon, Scale
 import { cn } from "@/lib/utils"
 import { FACTS, getLicence, LICENCES, USES, VERDICT, type LicenceId, type Verdict } from "./licences"
 import { ActionButton, CopyAction, NativeSelect, Panel, SwitchRow } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 const ICON: Record<Verdict, typeof CheckIcon> = { yes: CheckIcon, conditions: TriangleAlertIcon, no: XIcon, unclear: CircleHelpIcon }
 
@@ -105,7 +106,7 @@ export function LicenceCompare() {
           <thead>
             <tr>
               <th scope="col" className="w-48 border-b border-border p-3 text-left text-xs font-medium text-muted-foreground">
-                <span className="sr-only">Fact</span>
+                <span className="sr-only"><Copy k="lab-tool.licence-compare.fact">Fact</Copy></span>
               </th>
               {ids.map((id, k) => {
                 const l = getLicence(id)
@@ -131,7 +132,7 @@ export function LicenceCompare() {
                     <span className="flex items-center gap-1.5">
                       {differs && <span aria-hidden className="size-1.5 rounded-full bg-gold" />}
                       {r.label}
-                      {differs && <span className="sr-only">(differs)</span>}
+                      {differs && <span className="sr-only"><Copy k="lab-tool.licence-compare.differs">(differs)</Copy></span>}
                     </span>
                   </th>
                   {ids.map((id, k) => (
@@ -169,7 +170,7 @@ export function LicenceCompare() {
       <p className="flex gap-2 rounded-xl border border-border bg-white/[0.02] px-4 py-3 text-sm text-muted-foreground">
         <ScaleIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
         <span>
-          <span className="font-medium text-foreground/90">Not legal advice.</span> Facts are read from the official licence texts linked above; the use rows are plain-language summaries. Model licences often add their own terms, so read the licence attached to the exact model.
+          <span className="font-medium text-foreground/90"><Copy k="lab-tool.licence-compare.not-legal-advice">Not legal advice.</Copy></span> Facts are read from the official licence texts linked above; the use rows are plain-language summaries. Model licences often add their own terms, so read the licence attached to the exact model.
         </span>
       </p>
     </div>

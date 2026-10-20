@@ -29,6 +29,7 @@ import { Gate } from "@/components/moderation/gate"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /** Start a crew. Guests are asked to sign in and paused accounts are told why (with a database). */
 export function NewCrew() {
@@ -107,15 +108,15 @@ export function CrewForm({ crew, onSaved, onCancel }: { crew?: Crew; onSaved?: (
         </div>
 
         <Field data-invalid={errors.name ? true : undefined}>
-          <FieldLabel htmlFor="crew-name">Name</FieldLabel>
+          <FieldLabel htmlFor="crew-name"><Copy k="crews-new.crew-form.name">Name</Copy></FieldLabel>
           <Input id="crew-name" value={name} maxLength={CREW_LIMITS.name} onChange={(e) => setName(e.target.value)} placeholder="Lisbon NLP Lab" className="h-11 bg-background/60" {...err("name")} />
           {errors.name && <FieldError id="crew-name-error">{errors.name}</FieldError>}
         </Field>
 
         <Field data-invalid={errors.slug ? true : undefined}>
-          <FieldLabel htmlFor="crew-slug">Address</FieldLabel>
+          <FieldLabel htmlFor="crew-slug"><Copy k="crews-new.crew-form.address">Address</Copy></FieldLabel>
           <div className="flex items-center rounded-lg border border-input bg-background/60 focus-within:ring-2 focus-within:ring-ring">
-            <span className="pl-3 text-sm text-muted-foreground select-none">/crews/</span>
+            <span className="pl-3 text-sm text-muted-foreground select-none"><Copy k="crews-new.crew-form.crews">/crews/</Copy></span>
             <input
               id="crew-slug"
               value={effectiveSlug}
@@ -134,7 +135,7 @@ export function CrewForm({ crew, onSaved, onCancel }: { crew?: Crew; onSaved?: (
         </Field>
 
         <Field data-invalid={errors.blurb ? true : undefined}>
-          <FieldLabel htmlFor="crew-blurb">What is it about?</FieldLabel>
+          <FieldLabel htmlFor="crew-blurb"><Copy k="crews-new.crew-form.what-is-it-about">What is it about?</Copy></FieldLabel>
           <Textarea
             id="crew-blurb"
             value={blurb}
@@ -217,9 +218,9 @@ export function CrewForm({ crew, onSaved, onCancel }: { crew?: Crew; onSaved?: (
         </FieldSet>
 
         <Field data-invalid={errors.tags ? true : undefined}>
-          <FieldLabel htmlFor="crew-tags">Topics</FieldLabel>
+          <FieldLabel htmlFor="crew-tags"><Copy k="crews-new.crew-form.topics">Topics</Copy></FieldLabel>
           <TagInput id="crew-tags" value={tags} onChange={setTags} invalid={Boolean(errors.tags)} describedBy="crew-tags-hint" />
-          <FieldDescription id="crew-tags-hint">Up to 8, like “agents” or “speech”. Press Enter or a comma after each one.</FieldDescription>
+          <FieldDescription id="crew-tags-hint"><Copy k="crews-new.crew-form.up-to-8-like-agents">Up to 8, like “agents” or “speech”. Press Enter or a comma after each one.</Copy></FieldDescription>
           {errors.tags && <FieldError id="crew-tags-error">{errors.tags}</FieldError>}
         </Field>
 
@@ -234,10 +235,10 @@ export function CrewForm({ crew, onSaved, onCancel }: { crew?: Crew; onSaved?: (
           </Button>
           {onCancel && (
             <Button type="button" variant="ghost" onClick={onCancel}>
-              Cancel
+              <Copy k="crews-new.crew-form.cancel">Cancel</Copy>
             </Button>
           )}
-          {!live && !crew && <span className="text-xs text-muted-foreground">This copy has no database, so the crew stays in this browser.</span>}
+          {!live && !crew && <span className="text-xs text-muted-foreground"><Copy k="crews-new.crew-form.this-copy-has-no-database">This copy has no database, so the crew stays in this browser.</Copy></span>}
         </div>
       </FieldGroup>
     </form>

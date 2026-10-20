@@ -22,7 +22,7 @@ export default function FilamentFlow({ className = '', settings = {}, still = fa
   const api = useRef(null);
   // perf: medium/low draw a share of the strands (spread across the sheet) at a lower pixel ratio; "off",
   // `still` or another effect's turn holds one frame
-  const { quality, run } = useFx(__root);
+  const { quality, run } = useFx(__root, { minimum: 'medium' });
   const live = run && !still;
   useEffect(() => {
     api.current?.set(quality, live);

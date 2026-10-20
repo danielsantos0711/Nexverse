@@ -3,6 +3,7 @@ import { UsersIcon } from "lucide-react"
 import { CrewBadges, CrewEmblem } from "@/components/crews/emblem"
 import { ROLE_LABEL, type Crew, type Standing } from "@/lib/crews"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /** A crew in a grid: emblem, name, what it is about, its topics and how many people are in it. */
 export function CrewCard({ crew, standing, className }: { crew: Crew; standing?: Standing; className?: string }) {
@@ -46,7 +47,7 @@ export function CrewCard({ crew, standing, className }: { crew: Crew; standing?:
         {standing?.role ? (
           <span className="rounded-full bg-ion/10 px-2 py-0.5 text-ion">{standing.role === "member" ? "You’re in" : ROLE_LABEL[standing.role]}</span>
         ) : standing?.requested ? (
-          <span className="rounded-full bg-gold/10 px-2 py-0.5 text-gold">Request sent</span>
+          <span className="rounded-full bg-gold/10 px-2 py-0.5 text-gold"><Copy k="crews.crew-card.request-sent">Request sent</Copy></span>
         ) : null}
       </div>
     </article>

@@ -3,6 +3,7 @@ import Link from "next/link"
 import { NMark } from "@/components/brand"
 import { CommandMenu } from "@/components/site/command-menu"
 import { SiteHeader } from "@/components/site/header"
+import { Copy } from "@/components/content/copy"
 
 export default function NotFound() {
   return (
@@ -12,14 +13,14 @@ export default function NotFound() {
         <Image src="/space/eagle.webp" alt="" fill sizes="100vw" className="-z-10 object-cover opacity-30" />
         <div className="absolute inset-0 -z-10 bg-radial from-transparent to-background" />
         <NMark material="titanium" sizes="160px" small className="size-28 rounded-3xl" />
-        <h1 className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl">Lost in space</h1>
-        <p className="max-w-[44ch] text-muted-foreground">This page drifted out of orbit, or it was never here. Everything else is one search away.</p>
+        <h1 className="text-3xl font-semibold tracking-[-0.03em] md:text-4xl"><Copy k="not-found.not-found.lost-in-space">Lost in space</Copy></h1>
+        <p className="max-w-[44ch] text-muted-foreground"><Copy k="not-found.not-found.this-page-drifted-out-of">This page drifted out of orbit, or it was never here. Everything else is one search away.</Copy></p>
         <div className="flex flex-wrap justify-center gap-3">
           <Link href="/" className="pressable inline-flex h-11 items-center rounded-full bg-primary px-6 font-medium text-primary-foreground">
-            Back home
+            <Copy k="not-found.not-found.back-home">Back home</Copy>
           </Link>
           <Link href="/explore" className="pressable inline-flex h-11 items-center rounded-full bg-secondary px-6 font-medium">
-            Explore
+            <Copy k="not-found.not-found.explore">Explore</Copy>
           </Link>
         </div>
       </main>

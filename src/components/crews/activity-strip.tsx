@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getActivity, type ActivityDay, type Crew } from "@/lib/crews"
+import { Copy } from "@/components/content/copy"
 
 const WEEKDAY = new Intl.DateTimeFormat("en", { weekday: "short", timeZone: "UTC" })
 const LONG = new Intl.DateTimeFormat("en", { weekday: "long", month: "short", day: "numeric", timeZone: "UTC" })
@@ -29,7 +30,7 @@ export function ActivityStrip({ crew, refreshKey = 0 }: { crew: Crew; refreshKey
     }
   }, [crew, refreshKey])
 
-  if (error) return <p className="text-sm text-muted-foreground">Activity could not be loaded.</p>
+  if (error) return <p className="text-sm text-muted-foreground"><Copy k="crew.activity-strip.activity-could-not-be-loaded">Activity could not be loaded.</Copy></p>
   if (!days) return <Skeleton className="h-24 w-full rounded-xl" />
 
   // Messages outnumber posts, so each kind is weighted to keep posts and joins visible next to them.
@@ -74,10 +75,10 @@ export function ActivityStrip({ crew, refreshKey = 0 }: { crew: Crew; refreshKey
         <caption>Activity on each of the last seven days</caption>
         <thead>
           <tr>
-            <th>Day</th>
-            <th>Posts</th>
-            <th>Messages</th>
-            <th>Joined</th>
+            <th><Copy k="crew.activity-strip.day">Day</Copy></th>
+            <th><Copy k="crew.activity-strip.posts">Posts</Copy></th>
+            <th><Copy k="crew.activity-strip.messages">Messages</Copy></th>
+            <th><Copy k="crew.activity-strip.joined">Joined</Copy></th>
           </tr>
         </thead>
         <tbody>

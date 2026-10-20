@@ -18,7 +18,7 @@ export default function ParticleVeil({ className = '' }) {
   const api = useRef(null);
   // perf (src/lib/perf.ts): pixel ratio and frame rate follow the quality tier; "off" or another heavy
   // effect's turn on screen holds one still frame
-  const { quality, run } = useFx(root);
+  const { quality, run } = useFx(root, { minimum: 'medium' });
   const live = run;
   useEffect(() => {
     api.current?.set(quality, live);

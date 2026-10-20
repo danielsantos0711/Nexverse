@@ -38,6 +38,7 @@ import { PullPage, PullsPage } from "./pulls"
 import { BranchesPage, NewReleasePage, ReleasesPage, TagsPage } from "./refs"
 import { SettingsPage } from "./settings"
 import { EmptyState, ErrorNote, FormError, href, inputCls, useLoad, VisibilityBadge } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /*
  * Every page inside one repository. The repository, your role and its refs load once and are shared through
@@ -105,7 +106,7 @@ export function RepoApp({ owner, slug, rest }: { owner: string; slug: string; re
             action={
               <div className="flex flex-wrap justify-center gap-2">
                 <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/code" />}>
-                  Explore repositories
+                  <Copy k="code-repo.repo-app.explore-repositories">Explore repositories</Copy>
                 </Button>
                 {!session.user && (
                   <Button size="sm" nativeButton={false} render={<Link href={href(`/sign-in?next=${encodeURIComponent(`/code/${owner}/${slug}`)}`)} />}>
@@ -180,7 +181,7 @@ function Page({ view }: { view: RepoView }) {
     default:
       return (
         <div className="rounded-xl border border-dashed border-border">
-          <EmptyState icon={FolderGit2Icon} title="There is no such page in this repository">
+          <EmptyState icon={FolderGit2Icon} title={<Copy k="code-repo.repo-app.there-is-no-such-page">There is no such page in this repository</Copy>}>
             Check the address, or start from the Code tab.
           </EmptyState>
         </div>
@@ -227,7 +228,7 @@ function RepoHeader({ parent, view }: { parent: Repo | null; view: RepoView }) {
             <VisibilityBadge visibility={repo.visibility} />
             {repo.archivedAt && (
               <span className="inline-flex h-5 items-center gap-1 rounded-full border border-gold/30 bg-gold/10 px-2 text-[11px] font-medium text-gold">
-                <ArchiveIcon aria-hidden className="size-3" /> Archived
+                <ArchiveIcon aria-hidden className="size-3" /> <Copy k="code-repo.repo-app.archived">Archived</Copy>
               </span>
             )}
           </h1>
@@ -239,7 +240,7 @@ function RepoHeader({ parent, view }: { parent: Repo | null; view: RepoView }) {
               </Link>
             </p>
           )}
-          {repo.forkedFrom && !parent && <p className="text-xs text-muted-foreground">Forked from a repository that is private or gone.</p>}
+          {repo.forkedFrom && !parent && <p className="text-xs text-muted-foreground"><Copy k="code-repo.repo-app.forked-from-a-repository-that">Forked from a repository that is private or gone.</Copy></p>}
         </div>
         <RepoActions />
       </div>
@@ -250,7 +251,7 @@ function RepoHeader({ parent, view }: { parent: Repo | null; view: RepoView }) {
           Moderators hid this repository{repo.hiddenReason ? `: ${repo.hiddenReason}` : ""}. Only you, its collaborators and staff can see it, and it is read-only.
         </p>
       )}
-      {repo.archivedAt && !repo.hiddenAt && <p className="rounded-xl border border-gold/25 bg-gold/5 p-3 text-sm text-foreground/90">This repository is archived. It is read-only: no new commits, issues or pull requests.</p>}
+      {repo.archivedAt && !repo.hiddenAt && <p className="rounded-xl border border-gold/25 bg-gold/5 p-3 text-sm text-foreground/90"><Copy k="code-repo.repo-app.this-repository-is-archived-it">This repository is archived. It is read-only: no new commits, issues or pull requests.</Copy></p>}
 
       <nav aria-label="Repository" className="-mx-[var(--gutter)] overflow-x-auto border-b border-border px-[var(--gutter)]">
         <ul className="flex min-w-max gap-1">
@@ -396,7 +397,7 @@ function ForkButton({ className }: { className: string }) {
             <FormError message={error} />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-                Cancel
+                <Copy k="code-repo.repo-app.cancel">Cancel</Copy>
               </Button>
               <Button type="submit" disabled={busy}>
                 {busy && <LoaderCircleIcon aria-hidden className="animate-spin" />}

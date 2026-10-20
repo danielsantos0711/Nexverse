@@ -6,6 +6,7 @@ import { CategoryIcon } from "@/components/forum/category-icon"
 import { KIND_ICONS } from "@/components/hub/bits"
 import { categories, categoryGroups, KINDS, type ResourceKind } from "@/lib/data"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /** Toggle chips for interests: the four kinds of thing on the hub, then forum categories by group. */
 export function InterestPicker({ value, onChange, max = 30 }: { value: string[]; onChange: (next: string[]) => void; max?: number }) {
@@ -15,7 +16,7 @@ export function InterestPicker({ value, onChange, max = 30 }: { value: string[];
   return (
     <div className="flex flex-col gap-5">
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 text-xs font-medium text-muted-foreground">What you build or use</legend>
+        <legend className="mb-2 text-xs font-medium text-muted-foreground"><Copy k="settings.interest-picker.what-you-build-or-use">What you build or use</Copy></legend>
         <div className="flex flex-wrap gap-2">
           {(Object.keys(KINDS) as ResourceKind[]).map((k) => {
             const Icon = KIND_ICONS[k]

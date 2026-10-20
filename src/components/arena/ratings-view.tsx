@@ -12,6 +12,7 @@ import { LANGUAGES, type LanguageCode } from "@/lib/data"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 type State = { rows: Rating[]; source: RatingSource; anyMemberVotes: boolean; key: string }
 
@@ -61,13 +62,13 @@ export function RatingsView() {
                 task === t ? "border-ion/50 bg-ion/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
               )}
             >
-              {t ? DUEL_TASKS[t].label : "All tasks"}
+              {t ? DUEL_TASKS[t].label : <Copy k="arena-ratings.ratings-view.all-tasks">All tasks</Copy>}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-2">
           <label htmlFor="rating-lang" className="text-sm text-muted-foreground">
-            Language
+            <Copy k="arena-ratings.ratings-view.language">Language</Copy>
           </label>
           <select
             id="rating-lang"
@@ -113,19 +114,19 @@ export function RatingsView() {
                     #
                   </th>
                   <th scope="col" className="py-2.5 pr-3 font-medium">
-                    Model
+                    <Copy k="arena-ratings.ratings-view.model">Model</Copy>
                   </th>
                   <th scope="col" className="py-2.5 pr-3 text-right font-medium">
-                    Rating
+                    <Copy k="arena-ratings.ratings-view.rating">Rating</Copy>
                   </th>
                   <th scope="col" className="hidden py-2.5 pr-3 pl-5 font-medium sm:table-cell">
-                    Confidence
+                    <Copy k="arena-ratings.ratings-view.confidence">Confidence</Copy>
                   </th>
                   <th scope="col" className="hidden py-2.5 pr-3 font-medium md:table-cell">
-                    Won · lost · tied
+                    <Copy k="arena-ratings.ratings-view.won-lost-tied">Won · lost · tied</Copy>
                   </th>
                   <th scope="col" className="py-2.5 pr-4 font-medium">
-                    <span className="sr-only sm:not-sr-only">Trend</span>
+                    <span className="sr-only sm:not-sr-only"><Copy k="arena-ratings.ratings-view.trend">Trend</Copy></span>
                   </th>
                 </tr>
               </thead>
@@ -189,11 +190,11 @@ export function RatingsView() {
             </span>
             <p className="max-w-md text-sm text-muted-foreground">
               {filtered && state?.anyMemberVotes
-                ? "No votes on duels like these yet. Try another task or language, or post a duel for it."
-                : "No votes yet. Ratings appear here as soon as members vote on duels: every model starts at 1000."}
+                ? <Copy k="arena-ratings.ratings-view.no-votes-on-duels-like">No votes on duels like these yet. Try another task or language, or post a duel for it.</Copy>
+                : <Copy k="arena-ratings.ratings-view.no-votes-yet-ratings-appear" multiline>No votes yet. Ratings appear here as soon as members vote on duels: every model starts at 1000.</Copy>}
             </p>
             <Link href="/arena/new" className={primaryButton}>
-              Post a duel
+              <Copy k="arena-ratings.ratings-view.post-a-duel">Post a duel</Copy>
             </Link>
           </div>
         )}
@@ -202,7 +203,7 @@ export function RatingsView() {
       <details className="group rounded-xl border border-border bg-card/30 px-4 py-3 text-sm">
         <summary className="cursor-pointer list-none font-medium marker:hidden focus-visible:outline-none [&::-webkit-details-marker]:hidden">
           <span className="inline-flex items-center gap-2 rounded-sm group-focus-within:text-foreground">
-            <InfoIcon aria-hidden className="size-4 text-muted-foreground" /> How ratings work
+            <InfoIcon aria-hidden className="size-4 text-muted-foreground" /> <Copy k="arena-ratings.ratings-view.how-ratings-work">How ratings work</Copy>
           </span>
         </summary>
         <div className="mt-2 flex max-w-[70ch] flex-col gap-2 text-muted-foreground">
@@ -214,7 +215,7 @@ export function RatingsView() {
             Models are matched by name, so “Orbit 8B” in two duels is one model. Confidence is low under 20 votes and high from 60. The trend line shows the rating after each of a
             model’s last {ELO.history} games.
           </p>
-          <p>Ballots are secret: nobody, including the duel’s author, can see who voted for what.</p>
+          <p><Copy k="arena-ratings.ratings-view.ballots-are-secret-nobody-including">Ballots are secret: nobody, including the duel’s author, can see who voted for what.</Copy></p>
         </div>
       </details>
     </div>

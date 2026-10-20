@@ -6,6 +6,7 @@ import { ghHref } from "@/lib/live/ids"
 import { categoryInfo, storyHref, type Story } from "@/lib/newsroom"
 import { latestStories } from "@/lib/newsroom/public"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 type Icon = React.ComponentType<{ className?: string }>
 type Chip = { key: string; href: string; label: string; icon: Icon; tone: string; metric?: string; metricIcon?: Icon }
@@ -51,7 +52,7 @@ export function TrendingNow({ repos = [], stories = [], className }: { repos?: G
     <section aria-label="Trending now" className={cn("flex items-center gap-3", className)}>
       <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-gold">
         <FlameIcon aria-hidden className="size-3.5" />
-        <span className="hidden sm:inline">Trending now</span>
+        <span className="hidden sm:inline"><Copy k="trending.trending-now.trending-now">Trending now</Copy></span>
       </span>
       <div className="min-w-0 flex-1 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_4%,black_96%,transparent)] motion-reduce:overflow-x-auto">
         <div className="marquee gap-2 pr-2 [animation-duration:90s]">

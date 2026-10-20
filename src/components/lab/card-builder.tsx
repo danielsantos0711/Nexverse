@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { DATASET_CARD, MODEL_CARD, splitFrontMatter, splitList, type CardConfig, type CardField, type CardKind, type CardValues } from "./cards"
 import { ActionButton, AnimatedNumber, CopyAction, DownloadAction, Meter, NativeSelect, Panel, readStored, Segmented, ToolSkeleton, useHydrated, writeStored } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /** Longest /new link we hand over; beyond this the card is too big for a URL and goes by download instead. */
 const MAX_URL = 12000
@@ -60,7 +61,7 @@ function Builder({ config }: { config: CardConfig }) {
         <Panel className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm">
-              <span className="font-medium">Completeness</span>{" "}
+              <span className="font-medium"><Copy k="lab-tool.card-builder.completeness">Completeness</Copy></span>{" "}
               <span className="text-muted-foreground tabular">
                 <AnimatedNumber value={recommended.length ? (done / recommended.length) * 100 : 0} />%
               </span>
@@ -138,7 +139,7 @@ function Builder({ config }: { config: CardConfig }) {
 
         <Panel className="flex flex-col gap-3">
           <div className="flex flex-col gap-0.5">
-            <h2 className="text-[15px] font-medium tracking-normal">Publish on Nexverse</h2>
+            <h2 className="text-[15px] font-medium tracking-normal"><Copy k="lab-tool.card-builder.publish-on-nexverse">Publish on Nexverse</Copy></h2>
             <p className="text-sm text-muted-foreground">
               {publish.full ? "Opens the new-listing form with this card filled in." : "This card is too long to pass along in a link. The form opens with the name and summary; upload the downloaded README.md there."}
             </p>
@@ -153,8 +154,8 @@ function Builder({ config }: { config: CardConfig }) {
             <SendIcon aria-hidden />
             Publish {config.kind === "model" ? "model" : "dataset"}
           </Link>
-          {!name && <p className="text-xs text-muted-foreground">Give it a name first.</p>}
-          {name && splitList(values.languages).length === 0 && <p className="text-xs text-muted-foreground">Tip: listing languages helps people find it.</p>}
+          {!name && <p className="text-xs text-muted-foreground"><Copy k="lab-tool.card-builder.give-it-a-name-first">Give it a name first.</Copy></p>}
+          {name && splitList(values.languages).length === 0 && <p className="text-xs text-muted-foreground"><Copy k="lab-tool.card-builder.tip-listing-languages-helps-people">Tip: listing languages helps people find it.</Copy></p>}
         </Panel>
       </div>
     </div>
@@ -169,7 +170,7 @@ function FormField({ field: f, value, onChange, prefix }: { field: CardField; va
     <Field className={cn(wide && "sm:col-span-2")}>
       <FieldLabel htmlFor={id} className="text-foreground/90">
         {f.label}
-        {f.recommended && <span className="text-[11px] font-normal text-ion/80">recommended</span>}
+        {f.recommended && <span className="text-[11px] font-normal text-ion/80"><Copy k="lab-tool.card-builder.recommended">recommended</Copy></span>}
       </FieldLabel>
       {f.kind === "select" ? (
         <NativeSelect id={id} value={value} onChange={onChange}>

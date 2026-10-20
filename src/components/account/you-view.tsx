@@ -26,6 +26,7 @@ import { deleteSubmission, listQuestions, listSubmissions, renameMember, signOut
 import { useBookmarks } from "@/lib/social"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 export function YouView() {
   const { ready, user, member } = useSession()
@@ -37,13 +38,13 @@ export function YouView() {
         <PageTitle title="You" lead="Your own corner of Nexverse: your threads, the links you shared, what you saved and who you follow." />
         <Empty className="glass max-w-2xl rounded-2xl py-14">
           <EmptyHeader>
-            <EmptyTitle>Sign in to see your page</EmptyTitle>
-            <EmptyDescription>An account takes an email address. Once you are in, everything you write, share, like and save is kept here and follows you to any device.</EmptyDescription>
+            <EmptyTitle><Copy k="you.you-view.sign-in-to-see-your">Sign in to see your page</Copy></EmptyTitle>
+            <EmptyDescription><Copy k="you.you-view.an-account-takes-an-email" multiline>An account takes an email address. Once you are in, everything you write, share, like and save is kept here and follows you to any device.</Copy></EmptyDescription>
           </EmptyHeader>
           <EmptyContent className="flex-row flex-wrap justify-center gap-2">
-            <Button nativeButton={false} render={<Link href="/sign-in?next=/you" />}>Sign in</Button>
+            <Button nativeButton={false} render={<Link href="/sign-in?next=/you" />}><Copy k="you.you-view.sign-in">Sign in</Copy></Button>
             <Button nativeButton={false} variant="secondary" render={<Link href="/saved" />}>
-              Saved in this browser
+              <Copy k="you.you-view.saved-in-this-browser">Saved in this browser</Copy>
             </Button>
           </EmptyContent>
         </Empty>
@@ -200,11 +201,11 @@ function Mine({
         {tab === "threads" && (
           <section aria-labelledby="mine-h" className="flex flex-col gap-2">
             <h2 id="mine-h" className="text-lg font-semibold">
-              Your threads
+              <Copy k="you.you-view.your-threads">Your threads</Copy>
             </h2>
             {threads?.length === 0 && (
               <p className="text-muted-foreground">
-                Nothing yet. <Link href="/forum/new" className="text-ion hover:underline">Start a thread</Link>
+                Nothing yet. <Link href="/forum/new" className="text-ion hover:underline"><Copy k="you.you-view.start-a-thread">Start a thread</Copy></Link>
               </p>
             )}
             <ul className="flex flex-col gap-1">
@@ -226,11 +227,11 @@ function Mine({
         {tab === "shares" && (
           <section aria-labelledby="shared-h" className="flex flex-col gap-2">
             <h2 id="shared-h" className="text-lg font-semibold">
-              What you shared
+              <Copy k="you.you-view.what-you-shared">What you shared</Copy>
             </h2>
             {shared?.length === 0 && (
               <p className="text-muted-foreground">
-                Nothing yet. <Link href="/share" className="text-ion hover:underline">Share something</Link>
+                Nothing yet. <Link href="/share" className="text-ion hover:underline"><Copy k="you.you-view.share-something">Share something</Copy></Link>
               </p>
             )}
             <ul className="flex flex-col gap-1">
@@ -252,7 +253,7 @@ function Mine({
                     </span>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => unshare(s.id)}>
-                    Remove
+                    <Copy k="you.you-view.remove">Remove</Copy>
                   </Button>
                 </li>
               ))}
@@ -263,10 +264,10 @@ function Mine({
           <section aria-labelledby="saved-h" className="flex flex-col gap-4">
             <div className="flex items-baseline justify-between gap-3">
               <h2 id="saved-h" className="text-lg font-semibold">
-                Saved
+                <Copy k="you.you-view.saved">Saved</Copy>
               </h2>
               <Link href="/saved" className="text-sm text-ion hover:underline">
-                Open full page
+                <Copy k="you.you-view.open-full-page">Open full page</Copy>
               </Link>
             </div>
             <SavedView />
@@ -275,7 +276,7 @@ function Mine({
         {tab === "following" && (
           <section aria-labelledby="following-h" className="flex flex-col gap-4">
             <h2 id="following-h" className="text-lg font-semibold">
-              Following
+              <Copy k="you.you-view.following">Following</Copy>
             </h2>
             <FollowingList userId={userId} onCount={countFollowing} />
           </section>
@@ -316,10 +317,10 @@ function Signed({ id, name, email }: { id: string; name: string; email: string }
             <FieldGroup>
               <div className="flex items-center gap-3">
                 <MemberAvatar name={draft || name} size={44} />
-                <span className="text-sm text-muted-foreground">How others see you</span>
+                <span className="text-sm text-muted-foreground"><Copy k="you.you-view.how-others-see-you">How others see you</Copy></span>
               </div>
               <Field data-invalid={error ? true : undefined}>
-                <FieldLabel htmlFor="name">Your name</FieldLabel>
+                <FieldLabel htmlFor="name"><Copy k="you.you-view.your-name">Your name</Copy></FieldLabel>
                 <Input
                   id="name"
                   value={draft}
@@ -333,12 +334,12 @@ function Signed({ id, name, email }: { id: string; name: string; email: string }
                 {error ? <FieldError>{error}</FieldError> : <FieldDescription role="status">{status || "Shown next to what you write."}</FieldDescription>}
               </Field>
               <Button type="submit" className="self-start" disabled={draft.trim() === name}>
-                Save name
+                <Copy k="you.you-view.save-name">Save name</Copy>
               </Button>
             </FieldGroup>
           </form>
           <Button variant="secondary" onClick={() => signOut()}>
-            Sign out
+            <Copy k="you.you-view.sign-out">Sign out</Copy>
           </Button>
         </div>
       }

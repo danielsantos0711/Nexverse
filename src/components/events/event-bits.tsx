@@ -2,6 +2,7 @@ import { BookOpenIcon, MapPinIcon, MessageCircleQuestionIcon, MonitorIcon, Users
 import { PosterAvatar } from "@/components/forum/forum-ui"
 import { EVENT_KINDS, type EventKind, type EventMode, type Who } from "@/lib/community"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 export const KIND_ICON: Record<EventKind, LucideIcon> = {
   "paper-club": BookOpenIcon,
@@ -52,7 +53,7 @@ export function AvatarStack({ people, max = 6, size = 26, label, className }: { 
       {people.length > shown.length && (
         <li className="grid place-items-center rounded-full bg-secondary text-[11px] text-muted-foreground tabular ring-2 ring-background" style={{ width: size, height: size }}>
           +{people.length - shown.length}
-          <span className="sr-only"> more</span>
+          <span className="sr-only"> <Copy k="events.event-bits.more">more</Copy></span>
         </li>
       )}
     </ul>

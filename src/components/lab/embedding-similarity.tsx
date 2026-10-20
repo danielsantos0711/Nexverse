@@ -5,6 +5,7 @@ import { EraserIcon, TriangleAlertIcon } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { matrix, norm, parseVectors, type Metric } from "@/lib/lab/vectors"
 import { ActionButton, CopyAction, Panel, Segmented } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /* A tiny worked example (not real embeddings): three directions in four dimensions, so the maths is easy to check. */
 const EXAMPLE = `north: 1, 0, 0, 0
@@ -55,7 +56,7 @@ export function EmbeddingSimilarity() {
         }
       >
         <label htmlFor="emb-text" className="sr-only">
-          Vectors
+          <Copy k="lab-tool.embedding-similarity.vectors">Vectors</Copy>
         </label>
         <Textarea id="emb-text" value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} className="max-h-[50vh] min-h-56 resize-y font-mono text-[12px] md:text-[12px]" />
         <div aria-live="polite" className="mt-2 flex flex-col gap-1 text-xs">
@@ -92,7 +93,7 @@ export function EmbeddingSimilarity() {
             className="mb-4"
           />
           {m.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Paste at least two vectors of the same length.</p>
+            <p className="text-sm text-muted-foreground"><Copy k="lab-tool.embedding-similarity.paste-at-least-two-vectors">Paste at least two vectors of the same length.</Copy></p>
           ) : (
             <div className="overflow-x-auto">
               <table className="border-separate border-spacing-0.5 text-[11px] tabular">
@@ -124,7 +125,7 @@ export function EmbeddingSimilarity() {
             </div>
           )}
           <p className="mt-3 text-xs text-muted-foreground">
-            Cosine = a·b ÷ (|a| |b|), from −1 to 1. Dot product = Σ aᵢbᵢ. Distance = √Σ (aᵢ − bᵢ)². Brighter cells are closer.
+            <Copy k="lab-tool.embedding-similarity.cosine-a-b-a-b" multiline>Cosine = a·b ÷ (|a| |b|), from −1 to 1. Dot product = Σ aᵢbᵢ. Distance = √Σ (aᵢ − bᵢ)². Brighter cells are closer.</Copy>
           </p>
         </Panel>
         {pairs.length > 0 && (

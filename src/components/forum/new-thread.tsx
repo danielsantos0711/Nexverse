@@ -7,6 +7,7 @@ import { BarChart3Icon, LockIcon, XIcon } from "lucide-react"
 import { CategoryIcon } from "@/components/forum/category-icon"
 import { AiAssistButton } from "@/components/ai/ai-assist-button"
 import { MarkdownComposer } from "@/components/forum/markdown-composer"
+import { clearDraft } from "@/lib/editor/drafts"
 import { Gate } from "@/components/moderation/gate"
 import { PollBuilder } from "@/components/forum/poll"
 import { TagInput } from "@/components/forum/tags"
@@ -90,6 +91,7 @@ function NewThreadForm() {
     setBusy(true)
     try {
       const q = await createThread({ title: title.trim(), body: body.trim(), orbit: cat, lang, tags, mentions: mentionedMemberIds(body, picked) }, poll)
+      void clearDraft("forum:new:body")
       router.push(`/forum/${q.id}`)
     } catch (err) {
       const threadId = (err as { threadId?: string }).threadId
@@ -179,6 +181,7 @@ function NewThreadForm() {
           </div>
           <MarkdownComposer
             id="body"
+            draftKey="forum:new:body"
             value={body}
             onChange={setBody}
             rows={8}

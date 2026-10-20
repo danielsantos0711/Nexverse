@@ -13,6 +13,7 @@ import { DUEL_TASKS, isMine, listDuels, myVotes, type Choice, type Duel, type Du
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 type Mode = "play" | "browse"
 const MODES: { value: Mode; label: string }[] = [
@@ -94,7 +95,7 @@ function DuelList() {
               task === t ? "border-ion/50 bg-ion/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
             )}
           >
-            {t === "all" ? "All tasks" : DUEL_TASKS[t].label}
+            {t === "all" ? <Copy k="arena.arena-view.all-tasks">All tasks</Copy> : DUEL_TASKS[t].label}
           </button>
         ))}
       </div>
@@ -128,7 +129,7 @@ function DuelList() {
           </span>
           <p className="text-sm text-muted-foreground">{task === "all" ? "No duels yet. Post the first one." : `No ${DUEL_TASKS[task].label.toLowerCase()} duels yet. Post one.`}</p>
           <Link href="/arena/new" className={primaryButton}>
-            Post a duel
+            <Copy k="arena.arena-view.post-a-duel">Post a duel</Copy>
           </Link>
         </div>
       )}
@@ -144,10 +145,10 @@ function DuelRow({ d, voted, mine }: { d: Duel; voted: boolean; mine: boolean })
         <LangList langs={d.langs} />
         {voted && (
           <span className="inline-flex items-center gap-1 rounded-full bg-ok/10 px-2 py-0.5 text-xs text-ok">
-            <CheckIcon aria-hidden className="size-3" /> Voted
+            <CheckIcon aria-hidden className="size-3" /> <Copy k="arena.arena-view.voted">Voted</Copy>
           </span>
         )}
-        {mine && <span className="rounded-full bg-ion/10 px-2 py-0.5 text-xs text-ion">Your duel</span>}
+        {mine && <span className="rounded-full bg-ion/10 px-2 py-0.5 text-xs text-ion"><Copy k="arena.arena-view.your-duel">Your duel</Copy></span>}
       </div>
       <h2 className="line-clamp-2 font-sans text-[15px] leading-snug font-medium tracking-normal">
         <Link

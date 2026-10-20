@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { CodeUnavailable, moderate, type Label, type Person } from "@/lib/code/api"
 import { useRole } from "@/lib/roles"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /* Small pieces shared by every Nexverse Code page. */
 
@@ -53,7 +54,7 @@ export function Avatar({ person, size = 20, className }: { person: Pick<Person, 
 export const personHref = (p: Pick<Person, "id" | "handle">) => href(`/people/${p.handle ?? p.id}`)
 
 export function PersonName({ person, className, avatar = 18 }: { person: Person | null; className?: string; avatar?: number | false }) {
-  if (!person) return <span className={cn("text-muted-foreground", className)}>A former member</span>
+  if (!person) return <span className={cn("text-muted-foreground", className)}><Copy k="code-repo.ui.a-former-member">A former member</Copy></span>
   return (
     <Link href={personHref(person)} className={cn("inline-flex min-w-0 items-center gap-1.5 font-medium text-foreground/90 hover:text-foreground hover:underline", className)}>
       {avatar !== false && <Avatar person={person} size={avatar} />}
@@ -71,7 +72,7 @@ export function ErrorNote({ error, onRetry, className }: { error: Error; onRetry
       <p className="min-w-0 flex-1 text-foreground/90">{error.message}</p>
       {onRetry && !off && (
         <Button size="sm" variant="outline" onClick={onRetry}>
-          Try again
+          <Copy k="code-repo.ui.try-again">Try again</Copy>
         </Button>
       )}
     </div>
@@ -145,7 +146,7 @@ export function StateIcon({ state, kind, className }: { state: "open" | "closed"
 }
 
 /** A quiet empty state inside a panel: what this is and the first thing to do. */
-export function EmptyState({ icon: Icon, title, children, action }: { icon: typeof CircleDotIcon; title: string; children?: React.ReactNode; action?: React.ReactNode }) {
+export function EmptyState({ icon: Icon, title, children, action }: { icon: typeof CircleDotIcon; title: React.ReactNode; children?: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="relative isolate flex flex-col items-center gap-3 overflow-hidden px-6 py-14 text-center">
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40%_60%_at_50%_0%,rgb(143_180_255/0.10),transparent_70%)]" />

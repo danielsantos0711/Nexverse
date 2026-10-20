@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { useAiStatus } from "@/lib/ai-client"
 import { explainFile, summariseRepo, type ExplainFile, type RepoSummary } from "@/lib/code/ai"
 import { useSession } from "@/lib/store"
+import { Copy } from "@/components/content/copy"
 
 /*
  * Free AI on code pages (job "code"). Nothing renders when AI is off for this site or for the code job, so there
@@ -41,7 +42,7 @@ export function RepoSummaryCard({ repo, description, readme, files }: { repo: st
   return (
     <section className="relative overflow-hidden rounded-xl border border-ion/20 bg-gradient-to-b from-ion/[0.07] to-transparent p-4">
       <h2 className="flex items-center gap-2 text-sm font-medium">
-        <SparklesIcon aria-hidden className="size-4 text-ion" /> AI summary
+        <SparklesIcon aria-hidden className="size-4 text-ion" /> <Copy k="code-repo.ai.ai-summary">AI summary</Copy>
       </h2>
       {result ? (
         <div className="mt-2 flex flex-col gap-2 text-sm motion-safe:animate-in motion-safe:fade-in">
@@ -67,7 +68,7 @@ export function RepoSummaryCard({ repo, description, readme, files }: { repo: st
         </div>
       ) : (
         <>
-          <p className="mt-1 text-sm text-muted-foreground">What this repository does and who it is for, from its README and files.</p>
+          <p className="mt-1 text-sm text-muted-foreground"><Copy k="code-repo.ai.what-this-repository-does-and">What this repository does and who it is for, from its README and files.</Copy></p>
           {error && (
             <p role="alert" className="mt-2 text-sm text-destructive">
               {error}
@@ -126,7 +127,7 @@ export function useExplain(repo: string, path: string, text: string | null) {
           <XIcon aria-hidden className="size-4" />
         </button>
         <h2 className="mb-2 flex items-center gap-2 font-medium">
-          <SparklesIcon aria-hidden className="size-4 text-ion" /> What this file does
+          <SparklesIcon aria-hidden className="size-4 text-ion" /> <Copy k="code-repo.ai.what-this-file-does">What this file does</Copy>
         </h2>
         {error ? (
           <p role="alert" className="text-destructive">

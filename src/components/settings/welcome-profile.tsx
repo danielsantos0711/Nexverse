@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { AVATAR_MAX_BYTES, AVATAR_TYPES, canUploadAvatar, HANDLE, handleAvailable, PROFILE_LIMITS, uploadAvatar, type Profile } from "@/lib/profile"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 export type ProfileDraft = { name: string; handle: string; bio: string }
 export type HandleState = "idle" | "checking" | "free" | "taken" | "invalid" | "error"
@@ -69,11 +70,11 @@ export function WelcomeProfile({ profile, draft, onChange, handleState }: { prof
       <FieldGroup className="gap-5">
         <div className="grid gap-5 md:grid-cols-2">
           <Field>
-            <FieldLabel htmlFor="wl-name">Display name</FieldLabel>
+            <FieldLabel htmlFor="wl-name"><Copy k="welcome.welcome-profile.display-name">Display name</Copy></FieldLabel>
             <Input id="wl-name" autoComplete="name" value={draft.name} maxLength={PROFILE_LIMITS.name} onChange={(e) => onChange({ ...draft, name: e.target.value })} className="h-11 bg-background/60" />
           </Field>
           <Field data-invalid={bad || undefined}>
-            <FieldLabel htmlFor="wl-handle">Handle</FieldLabel>
+            <FieldLabel htmlFor="wl-handle"><Copy k="welcome.welcome-profile.handle">Handle</Copy></FieldLabel>
             <div className="flex h-11 items-center rounded-lg border border-input bg-background/60 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-3 has-aria-invalid:ring-destructive/20 dark:bg-input/30">
               <span aria-hidden className="pl-3 text-muted-foreground">
                 @
@@ -106,7 +107,7 @@ export function WelcomeProfile({ profile, draft, onChange, handleState }: { prof
         </div>
         <Field>
           <div className="flex items-baseline justify-between gap-3">
-            <FieldLabel htmlFor="wl-bio">Short bio</FieldLabel>
+            <FieldLabel htmlFor="wl-bio"><Copy k="welcome.welcome-profile.short-bio">Short bio</Copy></FieldLabel>
             <span className={cn("text-xs tabular", draft.bio.length > PROFILE_LIMITS.bio ? "text-destructive" : "text-muted-foreground")}>
               {draft.bio.length}/{PROFILE_LIMITS.bio}
             </span>
@@ -156,10 +157,10 @@ function AvatarPicker({ profile, name }: { profile: Profile; name: string }) {
             <Button type="button" variant="secondary" size="sm" onClick={() => input.current?.click()} disabled={busy}>
               <ImageUpIcon aria-hidden /> {busy ? "Uploading…" : url ? "Change picture" : "Add a picture"}
             </Button>
-            <p className="text-xs text-muted-foreground">PNG, JPEG, WebP or GIF, up to 2 MB. Without one, your initials stand in.</p>
+            <p className="text-xs text-muted-foreground"><Copy k="welcome.welcome-profile.png-jpeg-webp-or-gif">PNG, JPEG, WebP or GIF, up to 2 MB. Without one, your initials stand in.</Copy></p>
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">Your initials stand in for a picture. Uploading one needs a database connected to this copy of Nexverse.</p>
+          <p className="text-sm text-muted-foreground"><Copy k="welcome.welcome-profile.your-initials-stand-in-for" multiline>Your initials stand in for a picture. Uploading one needs a database connected to this copy of Nexverse.</Copy></p>
         )}
         {note && (
           <p role="status" className="text-xs text-muted-foreground">

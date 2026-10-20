@@ -21,6 +21,7 @@ import { CATEGORIES, getLabTool, LAB_TOOLS, labPath, type LabToolSlug } from "@/
 import { VramCalculator } from "@/components/lab/vram-calculator"
 import { DiscussButton } from "@/components/social/discuss-button"
 import { SaveButton } from "@/components/social/save-button"
+import { Copy } from "@/components/content/copy"
 
 const TOOLS: Record<LabToolSlug, () => React.ReactNode> = {
   vram: () => <VramCalculator />,
@@ -75,7 +76,7 @@ async function Tool({ params }: { params: Promise<{ tool: string }> }) {
         />
         <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
           <Link href="/lab" className="hover:text-foreground">
-            Lab
+            <Copy k="lab-tool.page.lab">Lab</Copy>
           </Link>
           <span aria-hidden className="px-1.5 opacity-50">
             /
@@ -110,7 +111,7 @@ async function Tool({ params }: { params: Promise<{ tool: string }> }) {
       {TOOLS[t.slug]()}
 
       <nav aria-label="More Lab tools" className="mt-14 border-t border-border pt-6">
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">More in the Lab</h2>
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground"><Copy k="lab-tool.page.more-in-the-lab">More in the Lab</Copy></h2>
         <ul className="flex flex-wrap gap-2">
           {others.map((o) => {
             const OIcon = o.icon

@@ -39,7 +39,7 @@ const SETTINGS = {
 export default function CometStreaks({ className = '', settings = {}, masks = MASKS }) {
   const __root = useRef(null);
   const api = useRef(null);
-  const { quality, run } = useFx(__root);
+  const { quality, run } = useFx(__root, { minimum: 'medium' });
 
   useEffect(() => {
     api.current?.set({ quality, run });

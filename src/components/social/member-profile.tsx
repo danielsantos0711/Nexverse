@@ -24,6 +24,7 @@ import { fromProject, fromShare } from "@/lib/hub"
 import { getMember, getMemberActivity, type MemberActivity, type PublicMember } from "@/lib/people"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
+import { Copy } from "@/components/content/copy"
 
 type State = { status: "loading" } | { status: "missing" } | { status: "error"; message: string } | { status: "ready"; m: PublicMember }
 
@@ -54,14 +55,14 @@ export function MemberProfile({ memberRef }: { memberRef: string }) {
     return (
       <Empty className="mx-auto max-w-xl py-24">
         <EmptyHeader>
-          <EmptyTitle>{state.status === "error" ? "This profile could not be loaded" : "No member here"}</EmptyTitle>
+          <EmptyTitle>{state.status === "error" ? <Copy k="profile.member-profile.this-profile-could-not-be">This profile could not be loaded</Copy> : <Copy k="profile.member-profile.no-member-here">No member here</Copy>}</EmptyTitle>
           <EmptyDescription>
-            {state.status === "error" ? state.message : live ? "Nobody on Nexverse goes by that name. They may have changed their handle." : "This copy of Nexverse has no accounts, so there are no profiles to show."}
+            {state.status === "error" ? state.message : live ? <Copy k="profile.member-profile.nobody-on-nexverse-goes-by">Nobody on Nexverse goes by that name. They may have changed their handle.</Copy> : <Copy k="profile.member-profile.this-copy-of-nexverse-has">This copy of Nexverse has no accounts, so there are no profiles to show.</Copy>}
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <Button nativeButton={false} variant="secondary" render={<Link href="/people" />}>
-            See everyone
+            <Copy k="profile.member-profile.see-everyone">See everyone</Copy>
           </Button>
         </EmptyContent>
       </Empty>
@@ -128,7 +129,7 @@ function Profile({ m }: { m: PublicMember }) {
         <div className="flex flex-wrap items-center gap-2">
           {you ? (
             <Button nativeButton={false} variant="secondary" size="sm" render={<Link href="/settings" />}>
-              Edit profile
+              <Copy k="profile.member-profile.edit-profile">Edit profile</Copy>
             </Button>
           ) : (
             <FollowButton followee={`member:${m.id}`} name={m.name} />
@@ -174,7 +175,7 @@ function Profile({ m }: { m: PublicMember }) {
             {days ? `${total.toLocaleString("en")} ${total === 1 ? "contribution" : "contributions"} in the last year` : "Activity"}
           </h2>
           {days ? <Heatmap days={days} label={`${m.name}'s contributions over the last 52 weeks`} /> : <div className="h-[91px] animate-pulse rounded-lg bg-white/[0.03]" aria-busy="true" aria-label="Loading activity" />}
-          <p className="mt-2 text-xs text-muted-foreground">Projects published, links shared, threads started, replies and collections, by day.</p>
+          <p className="mt-2 text-xs text-muted-foreground"><Copy k="profile.member-profile.projects-published-links-shared-threads">Projects published, links shared, threads started, replies and collections, by day.</Copy></p>
         </section>
         {!activity ? (
           <div className="h-64 animate-pulse rounded-2xl bg-white/[0.03]" aria-busy="true" aria-label="Loading" />
@@ -241,7 +242,7 @@ function Profile({ m }: { m: PublicMember }) {
                   </ul>
                 ) : (
                   <p className="flex items-center gap-2 text-muted-foreground">
-                    <LayersIcon aria-hidden className="size-4" /> No public collections yet.
+                    <LayersIcon aria-hidden className="size-4" /> <Copy k="profile.member-profile.no-public-collections-yet">No public collections yet.</Copy>
                   </p>
                 ),
               },

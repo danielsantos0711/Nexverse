@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { parseTopics } from "./new-repo"
 import { useRepo } from "./repo-context"
 import { EmptyState, ErrorNote, FormError, href, inputCls, LabelChip, Panel, PersonName, StaffHide, textareaCls, useLoad } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /* Repository settings, for its owner and admins: details, links, people, labels and the danger zone. */
 
@@ -20,7 +21,7 @@ export function SettingsPage() {
   if (!admin)
     return (
       <Panel>
-        <EmptyState icon={ShieldIcon} title="Only the owner and admins can change settings">
+        <EmptyState icon={ShieldIcon} title={<Copy k="code-repo.settings.only-the-owner-and-admins">Only the owner and admins can change settings</Copy>}>
           <div className="mt-2 flex justify-center">
             <StaffHide kind="repo" id={repo.id} hidden={Boolean(repo.hiddenAt)} onDone={(h) => setRepo({ ...repo, hiddenAt: h ? new Date().toISOString() : null })} />
           </div>
@@ -30,7 +31,7 @@ export function SettingsPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <h2 className="flex items-center gap-2 text-lg font-semibold">
-        <SettingsIcon aria-hidden className="size-5 text-ion" /> Settings
+        <SettingsIcon aria-hidden className="size-5 text-ion" /> <Copy k="code-repo.settings.settings">Settings</Copy>
       </h2>
       {repo.hiddenAt && (
         <p className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm">
@@ -112,26 +113,26 @@ function General() {
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">Name</span>
+            <span className="font-medium"><Copy k="code-repo.settings.name">Name</Copy></span>
             <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} className={inputCls} />
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">URL name</span>
+            <span className="font-medium"><Copy k="code-repo.settings.url-name">URL name</Copy></span>
             <input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9._-]+/g, "-"))} maxLength={100} className={cn(inputCls, "font-mono")} />
             {slug !== repo.slug && <span className="text-xs text-gold">Old links to /code/{ownerKey(repo.owner)}/{repo.slug} will stop working.</span>}
           </label>
         </div>
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium">Description</span>
+          <span className="font-medium"><Copy k="code-repo.settings.description">Description</Copy></span>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={350} rows={2} className={textareaCls} />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">Website</span>
+            <span className="font-medium"><Copy k="code-repo.settings.website">Website</Copy></span>
             <input value={homepage} onChange={(e) => setHomepage(e.target.value)} type="url" placeholder="https://" maxLength={300} className={inputCls} />
           </label>
           <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">Default branch</span>
+            <span className="font-medium"><Copy k="code-repo.settings.default-branch">Default branch</Copy></span>
             <select value={branch} onChange={(e) => setBranch(e.target.value)} className={cn(inputCls, "font-mono")} disabled={!branches.length}>
               {!branches.some((b) => b.name === branch) && <option>{branch}</option>}
               {branches.map((b) => (
@@ -141,9 +142,9 @@ function General() {
           </label>
         </div>
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium">Topics</span>
+          <span className="font-medium"><Copy k="code-repo.settings.topics">Topics</Copy></span>
           <input value={topics} onChange={(e) => setTopics(e.target.value)} placeholder="machine-learning rust cli" className={inputCls} />
-          <span className="text-xs text-muted-foreground">Up to 20, separated by spaces or commas. People find repositories by topic on /code.</span>
+          <span className="text-xs text-muted-foreground"><Copy k="code-repo.settings.up-to-20-separated-by">Up to 20, separated by spaces or commas. People find repositories by topic on /code.</Copy></span>
         </label>
         <FormError message={local ?? error} />
         <div className="flex items-center gap-3">
@@ -151,7 +152,7 @@ function General() {
             {busy && <LoaderCircleIcon aria-hidden className="animate-spin" />}
             Save changes
           </Button>
-          {saved && !busy && <span className="text-sm text-ok motion-safe:animate-in motion-safe:fade-in">Saved</span>}
+          {saved && !busy && <span className="text-sm text-ok motion-safe:animate-in motion-safe:fade-in"><Copy k="code-repo.settings.saved">Saved</Copy></span>}
         </div>
       </form>
     </Section>
@@ -224,7 +225,7 @@ function Links() {
       >
         <input value={raw} onChange={(e) => setRaw(e.target.value)} placeholder="https://…/p/… or /forum/…" aria-label="Nexverse address to link" className={inputCls} />
         <Button type="submit" variant="outline" disabled={busy || !raw.trim()}>
-          <PlusIcon aria-hidden /> Link
+          <PlusIcon aria-hidden /> <Copy k="code-repo.settings.link">Link</Copy>
         </Button>
       </form>
       <FormError message={local ?? error} />
@@ -256,7 +257,7 @@ function People() {
       <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
         <li className="flex items-center gap-3 px-3 py-2 text-sm">
           <PersonName person={repo.owner} />
-          <span className="ml-auto text-xs text-muted-foreground">Owner</span>
+          <span className="ml-auto text-xs text-muted-foreground"><Copy k="code-repo.settings.owner">Owner</Copy></span>
         </li>
         {list.error ? (
           <li className="p-3">
@@ -307,7 +308,7 @@ function People() {
           {role === "owner" && <option value="admin">Admin</option>}
         </select>
         <Button type="submit" variant="outline" disabled={busy || !handle.trim()}>
-          <PlusIcon aria-hidden /> Add
+          <PlusIcon aria-hidden /> <Copy k="code-repo.settings.add">Add</Copy>
         </Button>
       </form>
       <FormError message={error} />
@@ -379,7 +380,7 @@ function Labels() {
           ))}
         </div>
         <Button type="submit" variant="outline" disabled={!name.trim()}>
-          <PlusIcon aria-hidden /> Add
+          <PlusIcon aria-hidden /> <Copy k="code-repo.settings.add">Add</Copy>
         </Button>
       </form>
       <FormError message={error} />
@@ -413,8 +414,8 @@ function Danger() {
       <FormError message={error} />
       {role === "owner" && (
         <div className="flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/[0.05] p-3">
-          <p className="text-sm font-medium">Delete this repository</p>
-          <p className="text-xs text-muted-foreground">Its code, issues, pull requests and releases go away for everyone, and the name becomes free. Forks keep their own copy.</p>
+          <p className="text-sm font-medium"><Copy k="code-repo.settings.delete-this-repository">Delete this repository</Copy></p>
+          <p className="text-xs text-muted-foreground"><Copy k="code-repo.settings.its-code-issues-pull-requests" multiline>Its code, issues, pull requests and releases go away for everyone, and the name becomes free. Forks keep their own copy.</Copy></p>
           <label className="flex flex-col gap-1.5 text-sm">
             <span>
               Type <code className="rounded bg-secondary px-1 font-mono text-xs">{name}</code> to confirm

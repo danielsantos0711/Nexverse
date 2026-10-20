@@ -5,6 +5,7 @@ import { BrainIcon, Code2Icon, LanguagesIcon, MessageSquareIcon, PenLineIcon, ty
 import { LANGUAGES, type LanguageCode } from "@/lib/data"
 import { DUEL_TASKS, type DuelTask } from "@/lib/arena"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /*
  * Small pieces shared by the arena pages. Chart colours follow the dataviz method: A and B are a blue and an
@@ -95,7 +96,7 @@ export function Sparkline({ values, width = 96, height = 28, className }: { valu
   if (values.length < 2) {
     return (
       <span className={cn("inline-block text-xs text-muted-foreground", className)} style={{ width }}>
-        Too few votes
+        <Copy k="arena.arena-bits.too-few-votes">Too few votes</Copy>
       </span>
     )
   }

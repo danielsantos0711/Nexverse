@@ -7,6 +7,8 @@ import { ArrowUpRightIcon, ExternalLinkIcon, NewspaperIcon, Trash2Icon } from "l
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { AddToCollection } from "@/components/collections/add-to-collection"
 import { ThreadDiscussion } from "@/components/forum/discussion"
+import { PostBody } from "@/components/forum/post-body"
+import { DownloadsPanel } from "@/components/downloads/downloads-panel"
 import { Chip, Cover, KIND_ICONS, KindTag, PersonAvatar } from "@/components/hub/bits"
 import { LikeButton } from "@/components/hub/like-button"
 import { ModMenu, ReportButton } from "@/components/moderation"
@@ -171,8 +173,9 @@ function ShareView({ s, mine }: { s: Share; mine: boolean }) {
             <h2 id="why-h" className="text-base font-semibold">
               {isNews ? "Why it matters" : "What it is"}
             </h2>
-            {s.summary ? <p className="max-w-[68ch] text-[15px] leading-relaxed text-foreground/90">{s.summary}</p> : <p className="text-muted-foreground">The member who shared this did not add a note.</p>}
+            {s.summary ? <PostBody source={s.summary} className="max-w-[68ch] text-[15px]" /> : <p className="text-muted-foreground">The member who shared this did not add a note.</p>}
           </section>
+          {!s.local && <DownloadsPanel kind="share" targetId={s.id} canEdit={mine} zipName={s.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "files"} />}
           <ThreadDiscussion threadId={`share-${s.id}`} heading="Comments" />
         </div>
         <aside className="flex flex-col gap-4">

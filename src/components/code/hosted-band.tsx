@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { CodeUnavailable, listRepos } from "@/lib/code/api"
 import { RepoCard } from "./repo-card"
 import { useLoad } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /** On /repos: code hosted on Nexverse itself, above the repositories members shared from elsewhere. */
 export function HostedBand() {
@@ -17,16 +18,16 @@ export function HostedBand() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-0 flex-1">
             <p className="inline-flex items-center gap-1.5 text-xs font-medium tracking-wide text-ion uppercase">
-              <CodeXmlIcon aria-hidden className="size-3.5" /> Nexverse Code
+              <CodeXmlIcon aria-hidden className="size-3.5" /> <Copy k="code.hosted-band.nexverse-code">Nexverse Code</Copy>
             </p>
             <h2 id="hosted-title" className="mt-1 text-lg font-semibold">
-              Hosted on Nexverse
+              <Copy k="code.hosted-band.hosted-on-nexverse">Hosted on Nexverse</Copy>
             </h2>
-            <p className="text-sm text-muted-foreground">Browse, fork, open issues and send pull requests without leaving Nexverse. Shared links from GitHub and elsewhere are below.</p>
+            <p className="text-sm text-muted-foreground"><Copy k="code.hosted-band.browse-fork-open-issues-and" multiline>Browse, fork, open issues and send pull requests without leaving Nexverse. Shared links from GitHub and elsewhere are below.</Copy></p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/code/new" className="pressable inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground">
-              <PlusIcon aria-hidden className="size-4" /> New repository
+              <PlusIcon aria-hidden className="size-4" /> <Copy k="code.hosted-band.new-repository">New repository</Copy>
             </Link>
             <Link href="/code" className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border px-4 text-sm hover:border-ion/40">
               Explore code <ArrowRightIcon aria-hidden className="size-4" />
@@ -48,7 +49,7 @@ export function HostedBand() {
             ))}
           </ul>
         ) : (
-          <p className="mt-4 text-sm text-muted-foreground">No public repositories yet. Yours could be the first.</p>
+          <p className="mt-4 text-sm text-muted-foreground"><Copy k="code.hosted-band.no-public-repositories-yet-yours">No public repositories yet. Yours could be the first.</Copy></p>
         )}
       </div>
     </section>

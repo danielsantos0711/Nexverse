@@ -28,6 +28,7 @@ import {
   type VramInput,
 } from "./vram"
 import { AnimatedNumber, CopyAction, EASE, fmtGB, NativeSelect, NumberInput, Panel, RangeSlider, Segmented, SwitchRow, ToolSkeleton, useHydrated } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 const SIZE_CHIPS = [1, 3, 8, 14, 32, 70, 405]
 
@@ -131,7 +132,7 @@ function Calculator() {
               {input.mode === "inference" ? (
                 <Reveal key="inf">
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-sm font-medium text-foreground/90">KV cache precision</span>
+                    <span className="text-sm font-medium text-foreground/90"><Copy k="lab-tool.vram-calculator.kv-cache-precision">KV cache precision</Copy></span>
                     <Segmented<KvPrecisionId> label="KV cache precision" value={input.kv} onChange={(v) => set("kv", v)} options={KV_PRECISIONS.map((k) => ({ value: k.id, label: k.label }))} />
                   </div>
                 </Reveal>
@@ -139,7 +140,7 @@ function Calculator() {
                 <Reveal key="train">
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1.5">
-                      <span className="text-sm font-medium text-foreground/90">Method</span>
+                      <span className="text-sm font-medium text-foreground/90"><Copy k="lab-tool.vram-calculator.method">Method</Copy></span>
                       <Segmented<Method>
                         label="Fine-tuning method"
                         value={input.method}
@@ -152,13 +153,13 @@ function Calculator() {
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                      <span className="text-sm font-medium text-foreground/90">Optimizer</span>
+                      <span className="text-sm font-medium text-foreground/90"><Copy k="lab-tool.vram-calculator.optimizer">Optimizer</Copy></span>
                       <Segmented<Optimizer> label="Optimizer" value={input.optimizer} onChange={(v) => set("optimizer", v)} options={OPTIMIZERS.map((o) => ({ value: o.id, label: o.label, hint: o.hint }))} />
                     </div>
                     {input.method !== "full" && (
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="flex flex-col gap-1.5">
-                          <span className="text-sm font-medium text-foreground/90">LoRA rank</span>
+                          <span className="text-sm font-medium text-foreground/90"><Copy k="lab-tool.vram-calculator.lora-rank">LoRA rank</Copy></span>
                           <Segmented
                             label="LoRA rank"
                             value={String(input.rank)}
@@ -168,7 +169,7 @@ function Calculator() {
                           />
                         </div>
                         <div className="flex flex-col gap-1.5">
-                          <span className="text-sm font-medium text-foreground/90">Adapters on</span>
+                          <span className="text-sm font-medium text-foreground/90"><Copy k="lab-tool.vram-calculator.adapters-on">Adapters on</Copy></span>
                           <Segmented<LoraTargets>
                             label="Adapter targets"
                             value={input.targets}
@@ -193,7 +194,7 @@ function Calculator() {
           <details className="group">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:px-5 [&::-webkit-details-marker]:hidden">
               <span className="flex flex-col">
-                <span className="font-medium">Model shape</span>
+                <span className="font-medium"><Copy k="lab-tool.vram-calculator.model-shape">Model shape</Copy></span>
                 <span className="text-xs text-muted-foreground tabular">
                   {input.archId === "custom" ? "Custom" : input.archId === "auto" ? "Matched to size" : ARCH_PRESETS.find((p) => p.id === input.archId)?.label} · {arch.layers} layers · {arch.heads} heads ({arch.kvHeads} KV) · head dim {arch.headDim}
                 </span>
@@ -203,7 +204,7 @@ function Calculator() {
               </span>
             </summary>
             <div className="flex flex-col gap-4 px-4 pb-5 sm:px-5">
-              <p className="text-sm text-muted-foreground">The KV cache and activations depend on the model&rsquo;s shape. By default the shape is a typical one for the size you chose; pick another or set your own.</p>
+              <p className="text-sm text-muted-foreground"><Copy k="lab-tool.vram-calculator.the-kv-cache-and-activations" multiline>The KV cache and activations depend on the model&rsquo;s shape. By default the shape is a typical one for the size you chose; pick another or set your own.</Copy></p>
               <NativeSelect aria-label="Model shape preset" value={input.archId} onChange={(v) => setInput((s) => ({ ...s, archId: v, arch: v === "custom" ? resolveArch(s) : s.arch }))}>
                 <option value="auto">Match to parameter count</option>
                 {ARCH_PRESETS.map((p) => (

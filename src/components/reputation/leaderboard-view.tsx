@@ -55,6 +55,7 @@ export function LeaderboardView() {
           }}
           label="Period"
           controls="leaderboard-panel"
+          className="w-fit max-w-full"
         />
 
         <div id="leaderboard-panel" role="tabpanel" aria-label={PERIODS.find((p) => p.value === period)?.label} aria-busy={!rows && !error}>

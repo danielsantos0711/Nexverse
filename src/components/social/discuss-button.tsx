@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { MessageSquarePlusIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /**
  * "Discuss this" on anything: opens a new forum topic already titled and linked to the thing,
@@ -33,7 +34,7 @@ export function DiscussButton({
       )}
     >
       <MessageSquarePlusIcon aria-hidden className="size-3.5" />
-      Discuss this
+      <Copy k="common.discuss-button.discuss-this">Discuss this</Copy>
     </Link>
   )
 }

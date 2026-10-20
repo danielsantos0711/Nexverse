@@ -253,7 +253,7 @@ const hexToRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)
 
 function createRenderer(cv) {
   const gl = cv.getContext('webgl2', { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: 'high-performance' });
-  if (!gl) return null;
+  if (!gl || gl.isContextLost()) return null;
   let res = null, lost = false;
   function init() {
     const half = !!gl.getExtension('EXT_color_buffer_float');
@@ -380,7 +380,13 @@ function createRenderer(cv) {
     dispose() {
       cv.removeEventListener('webglcontextlost', onLost);
       cv.removeEventListener('webglcontextrestored', onRestored);
-      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      // the context stays with the canvas (losing it by hand would break a remount on the same canvas); free
+      // what this mount made instead
+      if (res) {
+        if (res.targets) for (const t of [res.targets.scene, ...res.targets.mips]) { gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fb); }
+        gl.deleteTexture(res.noise);
+        for (const k in res.P) gl.deleteProgram(res.P[k].p);
+      }
       res = null;
     },
   };
@@ -439,6 +445,7 @@ function mount(root, canvas) {
       document.removeEventListener('visibilitychange', wake);
       resize.disconnect(); seen.disconnect();
       renderer.dispose();
+      delete root.dataset.ready;
     },
   };
 }
@@ -447,7 +454,7 @@ function mount(root, canvas) {
 export default function PlasmaOrb({ className = '' }) {
   const root = useRef(null);
   const scene = useRef(null);
-  const { quality, run } = useFx(root);
+  const { quality, run } = useFx(root, { minimum: 'medium' });
 
   useLayoutEffect(() => {
     const el = root.current;
@@ -462,7 +469,7 @@ export default function PlasmaOrb({ className = '' }) {
   }, [quality, run]);
 
   return (
-    <div ref={root} aria-hidden="true" className={className} style={{ position: 'relative' }}>
+    <div ref={root} aria-hidden="true" className={className || 'relative'}>
       <canvas style={{ display: 'block', width: '100%', height: '100%' }} />
     </div>
   );

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { example, field, fromSchema, toSchema, validate, type Field, type FieldType, type JsonSchema } from "@/lib/lab/schema"
 import { cn } from "@/lib/utils"
 import { ActionButton, CopyAction, downloadText, NativeSelect, Panel, readStored, SwitchRow, ToolSkeleton, useHydrated, writeStored } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 const KEY = "nexverse:lab:json-schema"
 
@@ -81,7 +82,7 @@ function FieldEditor({ f, onChange, onRemove, onMove, depth, isItem }: { f: Fiel
         {!isItem && (
           <label className="flex h-8 items-center gap-1.5 text-xs text-muted-foreground">
             <input type="checkbox" checked={f.required} onChange={(e) => set({ required: e.target.checked })} className="size-4 accent-[var(--ion)]" />
-            Required
+            <Copy k="lab-tool.json-schema-builder.required">Required</Copy>
           </label>
         )}
         <div className="ml-auto flex items-center gap-0.5">
@@ -238,7 +239,7 @@ function Inner() {
           {showImport && (
             <div className="flex flex-col gap-2 rounded-xl border border-ion/30 bg-ion/5 p-3">
               <label htmlFor="js-import" className="text-sm font-medium">
-                Paste a JSON Schema
+                <Copy k="lab-tool.json-schema-builder.paste-a-json-schema">Paste a JSON Schema</Copy>
               </label>
               <Textarea id="js-import" value={importText} onChange={(e) => setImportText(e.target.value)} className="min-h-28 font-mono text-[12px] md:text-[12px]" placeholder='{"type": "object", "properties": { … }}' />
               {importError && (
@@ -288,7 +289,7 @@ function Inner() {
         </Panel>
         <Panel title="Validate a reply" description="Paste what the model returned. Code fences are fine.">
           <label htmlFor="js-check" className="sr-only">
-            JSON to validate
+            <Copy k="lab-tool.json-schema-builder.json-to-validate">JSON to validate</Copy>
           </label>
           <Textarea id="js-check" value={pasted} onChange={(e) => setPasted(e.target.value)} className="min-h-32 font-mono text-[12px] md:text-[12px]" placeholder='{"label": "billing", …}' />
           <div aria-live="polite" className="mt-3">
@@ -301,7 +302,7 @@ function Inner() {
             {check?.ok && check.issues.length === 0 && (
               <p className="flex items-center gap-2 text-sm text-ok">
                 <CheckIcon aria-hidden className="size-4" />
-                Valid against the schema.
+                <Copy k="lab-tool.json-schema-builder.valid-against-the-schema">Valid against the schema.</Copy>
               </p>
             )}
             {check?.ok && check.issues.length > 0 && (

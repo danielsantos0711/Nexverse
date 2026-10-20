@@ -420,7 +420,7 @@ function mount(root, canvas, state) {
 export default function BlackHole({ className = '', settings = {} }) {
   const root = useRef(null);
   const scene = useRef(null);
-  const { quality, run } = useFx(root);
+  const { quality, run } = useFx(root, { minimum: 'medium' });
 
   useLayoutEffect(() => {
     const el = root.current;
@@ -436,7 +436,7 @@ export default function BlackHole({ className = '', settings = {} }) {
   }, [quality, run]);
 
   return (
-    <div ref={root} aria-hidden="true" className={`bh-root ${className}`} style={{ position: 'relative', display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
+    <div ref={root} aria-hidden="true" className={`bh-root ${className || 'relative'}`} style={{ display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
       <canvas style={{ display: 'block' }} />
     </div>
   );

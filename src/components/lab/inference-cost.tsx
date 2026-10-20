@@ -5,6 +5,7 @@ import { ExternalLinkIcon, PlusIcon, RotateCcwIcon, Trash2Icon } from "lucide-re
 import { computeRow, DEFAULT_WORKLOAD, fmtMoney, fmtSeconds, PRICE_PRESETS, type PriceRow, type Workload } from "@/lib/lab/cost"
 import { cn } from "@/lib/utils"
 import { ActionButton, AnimatedNumber, CopyAction, downloadText, fmtCompact, NativeSelect, NumberInput, Panel, RangeSlider, readStored, ToolSkeleton, useHydrated, writeStored } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 const KEY = "nexverse:lab:inference-cost"
 const uid = () => Math.random().toString(36).slice(2, 10)
@@ -68,15 +69,15 @@ function Inner() {
           </div>
           <div className="mt-4 flex flex-col gap-1">
             <div className="flex items-baseline justify-between text-sm">
-              <span className="font-medium text-foreground/90">Cached input share</span>
+              <span className="font-medium text-foreground/90"><Copy k="lab-tool.inference-cost.cached-input-share">Cached input share</Copy></span>
               <span className="text-xs text-muted-foreground tabular">{Math.round(w.cachedShare * 100)}%</span>
             </div>
             <RangeSlider label="Cached input share" value={w.cachedShare} onChange={(v) => setW("cachedShare", v)} min={0} max={1} step={0.05} valueText={(v) => `${Math.round(v * 100)}%`} />
-            <p className="text-xs text-muted-foreground">Applies only to rows with a cached price.</p>
+            <p className="text-xs text-muted-foreground"><Copy k="lab-tool.inference-cost.applies-only-to-rows-with">Applies only to rows with a cached price.</Copy></p>
           </div>
           <div className="mt-3 flex flex-col gap-1">
             <div className="flex items-baseline justify-between text-sm">
-              <span className="font-medium text-foreground/90">Peak hour vs average</span>
+              <span className="font-medium text-foreground/90"><Copy k="lab-tool.inference-cost.peak-hour-vs-average">Peak hour vs average</Copy></span>
               <span className="text-xs text-muted-foreground tabular">×{w.peak}</span>
             </div>
             <RangeSlider label="Peak hour multiple" value={w.peak} onChange={(v) => setW("peak", v)} min={1} max={10} step={0.5} valueText={(v) => `${v} times`} />
@@ -144,14 +145,14 @@ function Inner() {
           <table className="w-full min-w-[760px] border-separate border-spacing-y-1.5 text-sm">
             <thead>
               <tr className="text-left text-xs text-muted-foreground">
-                <th className="font-medium">Model</th>
-                <th className="w-24 text-right font-medium">Input $/M</th>
-                <th className="w-24 text-right font-medium">Output $/M</th>
-                <th className="w-24 text-right font-medium">Cached $/M</th>
-                <th className="w-24 text-right font-medium">Tokens/s</th>
-                <th className="w-20 text-right font-medium">TTFT s</th>
+                <th className="font-medium"><Copy k="lab-tool.inference-cost.model">Model</Copy></th>
+                <th className="w-24 text-right font-medium"><Copy k="lab-tool.inference-cost.input-m">Input $/M</Copy></th>
+                <th className="w-24 text-right font-medium"><Copy k="lab-tool.inference-cost.output-m">Output $/M</Copy></th>
+                <th className="w-24 text-right font-medium"><Copy k="lab-tool.inference-cost.cached-m">Cached $/M</Copy></th>
+                <th className="w-24 text-right font-medium"><Copy k="lab-tool.inference-cost.tokens-s">Tokens/s</Copy></th>
+                <th className="w-20 text-right font-medium"><Copy k="lab-tool.inference-cost.ttft-s">TTFT s</Copy></th>
                 <th className="w-10">
-                  <span className="sr-only">Remove</span>
+                  <span className="sr-only"><Copy k="lab-tool.inference-cost.remove">Remove</Copy></span>
                 </th>
               </tr>
             </thead>
@@ -198,7 +199,7 @@ function Inner() {
           </table>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Listed prices are standard, non-batch API rates read from each vendor&rsquo;s pricing page on the date shown; editing a price removes its source note. Concurrency uses Little&rsquo;s law: requests per second × seconds per request.
+          <Copy k="lab-tool.inference-cost.listed-prices-are-standard-non" multiline>Listed prices are standard, non-batch API rates read from each vendor&rsquo;s pricing page on the date shown; editing a price removes its source note. Concurrency uses Little&rsquo;s law: requests per second × seconds per request.</Copy>
         </p>
       </Panel>
     </div>

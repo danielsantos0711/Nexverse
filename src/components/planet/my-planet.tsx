@@ -6,6 +6,7 @@ import { getMemberReputation, type RepStats } from "@/lib/community"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { MemberPlanet, PlanetLegend } from "./member-planet"
+import { Copy } from "@/components/content/copy"
 
 /**
  * The signed-in member's planet (or, without a database, the one this browser has built), from the same
@@ -40,7 +41,7 @@ export function MyPlanet({ seed, projects, size = 200 }: { seed: string; project
         label={`Your planet: ${s.points.toLocaleString("en")} reputation, ${s.threads} threads, ${s.answers} replies, ${s.accepted} solutions.`}
         stats={{ points: s.points, threads: s.threads, replies: s.answers, accepted: s.accepted, projects, collections: s.collections, events: s.eventsHosted }}
       />
-      {s.points === 0 && <p className="text-sm text-muted-foreground">Your planet grows as you post, reply and share.</p>}
+      {s.points === 0 && <p className="text-sm text-muted-foreground"><Copy k="you.my-planet.your-planet-grows-as-you">Your planet grows as you post, reply and share.</Copy></p>}
       <PlanetLegend className="justify-center" />
     </div>
   )

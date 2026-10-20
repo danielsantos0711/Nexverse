@@ -4,7 +4,10 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowLeftIcon, CheckCircle2Icon, ExternalLinkIcon, EyeOffIcon, RocketIcon, SaveIcon, Trash2Icon } from "lucide-react"
+import { ArrowLeftIcon, CalendarClockIcon, CheckCircle2Icon, ExternalLinkIcon, EyeOffIcon, HistoryIcon, RocketIcon, SaveIcon, StarIcon, Trash2Icon } from "lucide-react"
+import { DownloadsPanel } from "@/components/downloads/downloads-panel"
+import { AudiencePicker, CoauthorsInput, CoverPicker, GalleryEditor, LicensePicker, LinksEditor, ScheduleField, Switch } from "@/components/editor/publish-fields"
+import { RevisionsDialog } from "@/components/editor/revisions"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { Cover, KIND_ICONS, KindTag } from "@/components/hub/bits"
 import { MarkdownEditor } from "@/components/studio/markdown-editor"
@@ -19,11 +22,13 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { KINDS, LANGUAGES, type LanguageCode, type ResourceKind } from "@/lib/data"
 import {
+  canEditProject,
   createProject,
   deleteProject,
   emptyProject,
+  featureProject,
   getProject,
-  LICENSES,
+  isScheduled,
   LIMITS,
   projectPath,
   slugify,
@@ -31,7 +36,6 @@ import {
   toInput,
   updateProject,
   validateProject,
-  type LicenseId,
   type Project,
   type ProjectErrors,
   type ProjectInput,
@@ -73,7 +77,12 @@ const FIELD_IDS: [keyof ProjectErrors, string][] = [
   ["repo", "p-repo"],
   ["paper", "p-paper"],
   ["demo", "p-demo"],
+  ["license", "p-license"],
+  ["cover", "p-cover"],
+  ["gallery", "p-gallery"],
+  ["extraLinks", "p-links"],
   ["versions", "p-versions"],
+  ["publishAt", "p-publish-at"],
 ]
 
 const KIND_LIST = Object.keys(KINDS) as ResourceKind[]
@@ -111,8 +120,7 @@ export function ProjectEditor({ id }: { id?: string }) {
     if (loaded.error) return <Problem title="This project could not be loaded" detail={loaded.error} />
     const p = loaded.project
     if (!p) return <Problem title="This project is not here" detail="It may have been deleted, or the address is wrong." />
-    const mine = p.local || (user && p.ownerId === user.id)
-    if (!mine) return <Problem title="You can only edit your own projects" detail="This project belongs to someone else." href={projectPath(p.id)} action="View the project" />
+    if (!canEditProject(p, user?.id)) return <Problem title="You can only edit your own projects" detail="This project belongs to someone else." href={projectPath(p.id)} action="View the project" />
     return <Editor key={p.id} project={p} initialNotice={params.get("saved") === "draft" ? "Draft saved. Only you can see it." : ""} />
   }
   const k = params.get("kind")
@@ -168,6 +176,10 @@ function Editor({
   const [busy, setBusy] = useState<ProjectStatus | null>(null)
   const [notice, setNotice] = useState(initialNotice)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [history, setHistory] = useState(false)
+  const [featured, setFeatured] = useState<{ at: string | null; busy: boolean; error: string }>({ at: project?.featuredAt ?? null, busy: false, error: "" })
+  const { user } = useSession()
+  const { isStaff } = useRole()
   const summaryRef = useRef<HTMLDivElement>(null)
 
   const current = saved.project
@@ -233,7 +245,21 @@ function Editor({
         const nextForm: Form = { ...toInput(next), versions: toRows(next.versions) }
         setForm(nextForm)
         setSaved({ form: nextForm, project: next })
-        setNotice(status === "published" ? (current.status === "published" ? "Changes are live." : "Published. Everyone can see it now.") : current.status === "published" ? "Unpublished. Only you can see it now." : "Draft saved.")
+        setNotice(
+          status === "published" && isScheduled(next)
+            ? `Scheduled. It goes live on ${new Date(next.publishAt!).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.`
+            : status === "published"
+              ? current.status === "published"
+                ? "Changes are live."
+                : next.visibility === "public"
+                  ? "Published. Everyone can see it now."
+                  : next.visibility === "members"
+                    ? "Published for signed-in members."
+                    : "Published. Anyone with the link can open it."
+              : current.status === "published"
+                ? "Unpublished. Only you and co-authors can see it now."
+                : "Draft saved."
+        )
       } else {
         const next = await createProject(input)
         const nextForm: Form = { ...toInput(next), versions: toRows(next.versions) }
@@ -429,6 +455,21 @@ function Editor({
             </FieldGroup>
           </Section>
 
+          <Section title="Cover and gallery">
+            <FieldGroup>
+              <Field data-invalid={errors.cover ? true : undefined}>
+                <FieldLabel htmlFor="p-cover">Cover</FieldLabel>
+                <CoverPicker id="p-cover" value={form.coverUrl} onChange={(v) => set("coverUrl", v)} fallback={<Cover seed={`${coverSeed}banner`} kind={form.kind} />} />
+                {errors.cover && <FieldError>{errors.cover}</FieldError>}
+              </Field>
+              <div id="p-gallery" tabIndex={-1} className="flex flex-col gap-2 outline-none">
+                <p className="text-sm font-medium">Gallery</p>
+                <GalleryEditor value={form.gallery} onChange={(v) => set("gallery", v)} max={LIMITS.gallery} />
+                {errors.gallery && <FieldError>{errors.gallery}</FieldError>}
+              </div>
+            </FieldGroup>
+          </Section>
+
           <Section
             title="README"
             action={
@@ -445,6 +486,8 @@ function Editor({
               </FieldLabel>
               <MarkdownEditor
                 id="p-readme"
+                draftKey={`project:${current?.id ?? `new-${form.kind}`}:readme`}
+                title={form.name || "README"}
                 value={form.readme}
                 onChange={(v) => set("readme", v)}
                 maxLength={LIMITS.readme}
@@ -473,21 +516,14 @@ function Editor({
                 {errors.tags ? <FieldError>{errors.tags}</FieldError> : <FieldDescription id="p-tags-hint">Press Enter or type a comma after each one.</FieldDescription>}
               </Field>
 
-              <Field>
+              <Field data-invalid={errors.license ? true : undefined}>
                 <FieldLabel htmlFor="p-license">Licence</FieldLabel>
-                <select
-                  id="p-license"
-                  value={form.license}
-                  onChange={(e) => set("license", e.target.value as LicenseId)}
-                  className="h-11 rounded-lg border border-input bg-background/60 px-2.5 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
-                >
-                  {LICENSES.map((l) => (
-                    <option key={l.id} value={l.id} className="bg-popover">
-                      {l.label}
-                    </option>
-                  ))}
-                </select>
-                <FieldDescription>What others may do with it. Not sure? Apache 2.0 and MIT are common for code and weights, CC-BY for data.</FieldDescription>
+                <LicensePicker id="p-license" value={form.license} onChange={(v) => set("license", v)} invalid={Boolean(errors.license)} describedBy="p-license-hint" />
+                {errors.license ? (
+                  <FieldError id="p-license-hint">{errors.license}</FieldError>
+                ) : (
+                  <FieldDescription id="p-license-hint">What others may do with it, by SPDX id. Not sure? Apache 2.0 and MIT are common for code and weights, CC-BY for data.</FieldDescription>
+                )}
               </Field>
 
               <FieldSet>
@@ -524,6 +560,13 @@ function Editor({
                 <LinkField id="p-paper" label="Paper or write-up" placeholder="https://… your paper, report or blog post" value={form.links.paper} error={errors.paper} onChange={(v) => setLink("paper", v)} />
                 <LinkField id="p-demo" label="Demo" placeholder="https://" value={form.links.demo} error={errors.demo} onChange={(v) => setLink("demo", v)} />
               </div>
+              <div id="p-links" tabIndex={-1} className="flex flex-col gap-2 outline-none">
+                <p className="text-sm font-medium">
+                  More links <span className="font-normal text-muted-foreground">(optional)</span>
+                </p>
+                <LinksEditor value={form.extraLinks} onChange={(v) => set("extraLinks", v)} max={LIMITS.links} invalid={Boolean(errors.extraLinks)} />
+                {errors.extraLinks ? <FieldError>{errors.extraLinks}</FieldError> : <FieldDescription>Docs, a model card, a weights mirror, a write-up. Shown on the page with their names.</FieldDescription>}
+              </div>
             </FieldGroup>
           </Section>
 
@@ -538,7 +581,28 @@ function Editor({
             </div>
           </Section>
 
-          {current && (
+          <Section title="Co-authors">
+            <Field>
+              <FieldLabel htmlFor="p-coauthors" className="sr-only">
+                Co-authors
+              </FieldLabel>
+              <CoauthorsInput
+                id="p-coauthors"
+                value={form.coauthors}
+                onChange={(v) => set("coauthors", v)}
+                ownerId={current?.ownerId ?? user?.id}
+                disabled={Boolean(current && !current.local && current.ownerId !== user?.id)}
+                max={LIMITS.coauthors}
+              />
+              <FieldDescription>
+                {current && !current.local && current.ownerId !== user?.id
+                  ? "Only the owner changes who the co-authors are."
+                  : "Co-authors are credited on the page and can edit it, its changelog and its files with you. They get a notification."}
+              </FieldDescription>
+            </Field>
+          </Section>
+
+          {current && (!current.ownerId || current.ownerId === user?.id || current.local) && (
             <Section title="Danger zone">
               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-muted-foreground">Deleting removes the page, its changelog and its discussion for everyone. It cannot be undone.</p>
@@ -553,7 +617,12 @@ function Editor({
         <aside aria-label="Preview and publishing" className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
           <div className="overflow-hidden rounded-2xl border border-border bg-card">
             <div className="relative aspect-[16/9]">
-              <Cover seed={coverSeed} kind={form.kind} />
+              {form.coverUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- member picture
+                <img src={form.coverUrl} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
+              ) : (
+                <Cover seed={coverSeed} kind={form.kind} />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-card via-card/10 to-transparent" />
               <KindTag kind={form.kind} className="absolute top-3 left-3 rounded-full bg-black/50 px-2 py-1 backdrop-blur" />
             </div>
@@ -566,9 +635,31 @@ function Editor({
             </div>
           </div>
 
+          <div className="glass flex flex-col gap-4 rounded-2xl p-4">
+            <AudiencePicker
+              name="p-visibility"
+              withDraft={false}
+              legend="Who can see it once published"
+              value={form.visibility}
+              onChange={(v) => v !== "draft" && set("visibility", v)}
+            />
+            <div id="p-publish-at" tabIndex={-1} className="outline-none">
+              <ScheduleField id="p-publish-at-input" value={form.publishAt} onChange={(v) => set("publishAt", v)} error={errors.publishAt} />
+            </div>
+            <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
+              <span className="flex flex-col">
+                <span className="font-medium">Discussion</span>
+                <span className="text-xs text-muted-foreground">{form.commentsEnabled ? "Members can comment on the page." : "Comments are closed. Earlier ones stay."}</span>
+              </span>
+              <Switch checked={form.commentsEnabled} onChange={(v) => set("commentsEnabled", v)} label="Allow comments" />
+            </label>
+          </div>
+
           <div className="glass flex flex-col gap-3 rounded-2xl p-4">
             <p className="text-sm text-muted-foreground">
-              {published
+              {current && isScheduled(current)
+                ? `Scheduled for ${new Date(current.publishAt!).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}. Saving keeps the schedule.`
+                : published
                 ? "This project is public. Saving updates the live page."
                 : live
                   ? "Drafts are only visible to you. Publish when it is ready for everyone."
@@ -586,7 +677,8 @@ function Editor({
             ) : (
               <>
                 <Button type="button" size="lg" onClick={() => save("published")} disabled={busy !== null}>
-                  <RocketIcon aria-hidden /> {busy === "published" ? "Publishing…" : "Publish"}
+                  {form.publishAt ? <CalendarClockIcon aria-hidden /> : <RocketIcon aria-hidden />}
+                  {busy === "published" ? (form.publishAt ? "Scheduling…" : "Publishing…") : form.publishAt ? "Schedule" : "Publish"}
                 </Button>
                 <Button type="button" variant="secondary" onClick={() => save("draft")} disabled={busy !== null || (Boolean(current) && !dirty)}>
                   <SaveIcon aria-hidden /> {busy === "draft" ? "Saving…" : "Save draft"}
@@ -602,9 +694,66 @@ function Editor({
                 <span className="text-muted-foreground">Unsaved changes</span>
               ) : null}
             </p>
+            {current && !current.local && (
+              <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => setHistory(true)}>
+                <HistoryIcon aria-hidden /> Version history
+              </Button>
+            )}
           </div>
+
+          {isStaff && current && !current.local && (
+            <div className="glass flex flex-col gap-2 rounded-2xl p-4">
+              <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
+                <span className="flex flex-col">
+                  <span className="inline-flex items-center gap-1.5 font-medium">
+                    <StarIcon aria-hidden className="size-4 text-gold" /> Featured
+                  </span>
+                  <span className="text-xs text-muted-foreground">Staff only. Shows it in featured lists; written to the moderation log.</span>
+                </span>
+                <Switch
+                  checked={Boolean(featured.at)}
+                  disabled={featured.busy || !published}
+                  label="Feature this project"
+                  onChange={async (on) => {
+                    setFeatured((f) => ({ ...f, busy: true, error: "" }))
+                    try {
+                      const at = await featureProject(current.id, on)
+                      setFeatured({ at, busy: false, error: "" })
+                    } catch (e) {
+                      setFeatured((f) => ({ ...f, busy: false, error: (e as Error).message }))
+                    }
+                  }}
+                />
+              </label>
+              {!published && <p className="text-xs text-muted-foreground">Publish it first.</p>}
+              {featured.error && (
+                <p role="alert" className="text-xs text-destructive">
+                  {featured.error}
+                </p>
+              )}
+            </div>
+          )}
         </aside>
       </form>
+
+      {/* Outside the form: the uploader has its own fields and buttons. */}
+      {current && !current.local && (
+        <div className="mt-8 lg:mr-[22rem]">
+          <DownloadsPanel kind="project" targetId={current.id} canEdit zipName={`${current.slug}${current.versions[0] ? `-${current.versions[0].version}` : ""}`} versions={current.versions.map((v) => v.version)} />
+        </div>
+      )}
+
+      {current && !current.local && (
+        <RevisionsDialog
+          projectId={current.id}
+          open={history}
+          onOpenChange={setHistory}
+          onRestore={(r) => {
+            setForm((f) => ({ ...f, name: r.name, summary: r.summary, readme: r.readme }))
+            setNotice("Earlier version restored in the editor. Save to keep it.")
+          }}
+        />
+      )}
 
       {current && (
         <ConfirmDialog

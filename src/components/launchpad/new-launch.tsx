@@ -16,6 +16,7 @@ import { canUploadGallery, createLaunch, LIMITS, uploadGalleryImage, validateLau
 import { listMyProjects, type Project } from "@/lib/projects"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
+import { Copy } from "@/components/content/copy"
 
 /** Schedule a launch. Renders in the browser only, because the default time depends on your clock. */
 export function NewLaunchForm() {
@@ -142,7 +143,7 @@ function Form() {
     <form onSubmit={submit} noValidate className="glass rounded-2xl p-5 md:p-7">
       <FieldGroup>
         <Field data-invalid={errors.subject ? true : undefined}>
-          <FieldLabel htmlFor="ln-subject">Project to launch</FieldLabel>
+          <FieldLabel htmlFor="ln-subject"><Copy k="launchpad-new.new-launch.project-to-launch">Project to launch</Copy></FieldLabel>
           {projects === null ? (
             <Skeleton className="h-10 w-full" />
           ) : projects.length ? (
@@ -158,21 +159,21 @@ function Form() {
             </select>
           ) : (
             <div id="ln-subject" tabIndex={-1} className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-border px-3 py-3 text-sm text-muted-foreground">
-              <p>You have no published projects yet. A launch is for a model, dataset, tool or repo you published on Nexverse.</p>
+              <p><Copy k="launchpad-new.new-launch.you-have-no-published-projects" multiline>You have no published projects yet. A launch is for a model, dataset, tool or repo you published on Nexverse.</Copy></p>
               <Link href="/new/project" className="text-ion hover:underline">
-                Create a project
+                <Copy k="launchpad-new.new-launch.create-a-project">Create a project</Copy>
               </Link>
             </div>
           )}
           {errors.subject ? (
             <FieldError id="ln-subject-error">{errors.subject}</FieldError>
           ) : (
-            <FieldDescription>One scheduled or live launch per project at a time, up to 3 new launches a day.</FieldDescription>
+            <FieldDescription><Copy k="launchpad-new.new-launch.one-scheduled-or-live-launch">One scheduled or live launch per project at a time, up to 3 new launches a day.</Copy></FieldDescription>
           )}
         </Field>
 
         <Field data-invalid={errors.tagline ? true : undefined}>
-          <FieldLabel htmlFor="ln-tagline">Tagline</FieldLabel>
+          <FieldLabel htmlFor="ln-tagline"><Copy k="launchpad-new.new-launch.tagline">Tagline</Copy></FieldLabel>
           <Input
             id="ln-tagline"
             value={tagline}
@@ -195,11 +196,11 @@ function Form() {
           <FieldLegend variant="label">Launch time</FieldLegend>
           <div className="grid grid-cols-2 gap-3 sm:max-w-md">
             <Field data-invalid={errors.launchAt ? true : undefined}>
-              <FieldLabel htmlFor="ln-launchAt">Date</FieldLabel>
+              <FieldLabel htmlFor="ln-launchAt"><Copy k="launchpad-new.new-launch.date">Date</Copy></FieldLabel>
               <Input id="ln-launchAt" type="date" value={date} min={bounds.min} max={bounds.max} onChange={(e) => setDate(e.target.value)} className="h-10 bg-background/60" {...err("launchAt")} />
             </Field>
             <Field>
-              <FieldLabel htmlFor="ln-time">Time (yours)</FieldLabel>
+              <FieldLabel htmlFor="ln-time"><Copy k="launchpad-new.new-launch.time-yours">Time (yours)</Copy></FieldLabel>
               <Input id="ln-time" type="time" value={time} step={300} onChange={(e) => setTime(e.target.value)} className="h-10 bg-background/60" />
             </Field>
           </div>
@@ -229,7 +230,7 @@ function Form() {
         </FieldSet>
 
         <Field data-invalid={errors.description ? true : undefined}>
-          <FieldLabel htmlFor="ln-description">What’s new (optional)</FieldLabel>
+          <FieldLabel htmlFor="ln-description"><Copy k="launchpad-new.new-launch.whats-new-optional">What’s new (optional)</Copy></FieldLabel>
           <MarkdownComposer
             id="ln-description"
             value={description}
@@ -292,7 +293,7 @@ function Form() {
           <Button type="submit" size="lg" disabled={busy || uploading}>
             <RocketIcon aria-hidden className="-rotate-45" /> {busy ? "Scheduling…" : "Schedule launch"}
           </Button>
-          {!live && <span className="text-sm text-muted-foreground">This copy has no database, so the launch stays in this browser.</span>}
+          {!live && <span className="text-sm text-muted-foreground"><Copy k="launchpad-new.new-launch.this-copy-has-no-database">This copy has no database, so the launch stays in this browser.</Copy></span>}
         </div>
       </FieldGroup>
     </form>

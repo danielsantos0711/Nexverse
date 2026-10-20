@@ -55,7 +55,7 @@ function RepoGrid({ feed, limit = 9, more }: { feed: Feed<GhRepo>; limit?: numbe
           ))}
         </Stagger>
       ) : feed.ok ? (
-        <p className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">Nothing new here this month yet.</p>
+        <p className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground"><Copy k="trending.page.nothing-new-here-this-month">Nothing new here this month yet.</Copy></p>
       ) : (
         <FeedUnavailable source="github" />
       )}
@@ -103,9 +103,9 @@ async function Newsroom() {
     return (
       <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
         <NewspaperIcon aria-hidden className="size-5 text-gold" />
-        <p>The newsroom has not published its first story yet. It writes short, sourced stories from official blogs and releases, checked by an editor.</p>
+        <p><Copy k="trending.page.the-newsroom-has-not-published" multiline>The newsroom has not published its first story yet. It writes short, sourced stories from official blogs and releases, checked by an editor.</Copy></p>
         <Link href="/news#tip" className="text-ion hover:underline">
-          Send the editors a tip →
+          <Copy k="trending.page.send-the-editors-a-tip">Send the editors a tip →</Copy>
         </Link>
       </div>
     )

@@ -15,6 +15,7 @@ import { createEvent, EVENT_KINDS, isTimeZone, validateEvent, zonedToUtc, type E
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const DURATIONS = [
   { minutes: 30, label: "30 minutes" },
@@ -143,7 +144,7 @@ function Form() {
         </FieldSet>
 
         <Field data-invalid={errors.title ? true : undefined}>
-          <FieldLabel htmlFor="ev-title">Title</FieldLabel>
+          <FieldLabel htmlFor="ev-title"><Copy k="events-new.new-event.title">Title</Copy></FieldLabel>
           <Input id="ev-title" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} placeholder="Paper club: Mixture of depths" className="h-11 bg-background/60" {...err("title")} />
           {errors.title && <FieldError id="ev-title-error">{errors.title}</FieldError>}
         </Field>
@@ -152,15 +153,15 @@ function Form() {
           <FieldLegend variant="label">When</FieldLegend>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Field data-invalid={errors.startsAt ? true : undefined}>
-              <FieldLabel htmlFor="ev-startsAt">Date</FieldLabel>
+              <FieldLabel htmlFor="ev-startsAt"><Copy k="events-new.new-event.date">Date</Copy></FieldLabel>
               <Input id="ev-startsAt" type="date" value={date} min={today} onChange={(e) => setDate(e.target.value)} className="h-10 bg-background/60" {...err("startsAt")} />
             </Field>
             <Field>
-              <FieldLabel htmlFor="ev-time">Starts at</FieldLabel>
+              <FieldLabel htmlFor="ev-time"><Copy k="events-new.new-event.starts-at">Starts at</Copy></FieldLabel>
               <Input id="ev-time" type="time" value={time} step={300} onChange={(e) => setTime(e.target.value)} className="h-10 bg-background/60" />
             </Field>
             <Field data-invalid={errors.endsAt ? true : undefined}>
-              <FieldLabel htmlFor="ev-endsAt">Length</FieldLabel>
+              <FieldLabel htmlFor="ev-endsAt"><Copy k="events-new.new-event.length">Length</Copy></FieldLabel>
               <select id="ev-endsAt" value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="h-10 rounded-lg border border-input bg-background/60 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" {...err("endsAt")}>
                 {DURATIONS.map((d) => (
                   <option key={d.minutes} value={d.minutes} className="bg-popover">
@@ -170,7 +171,7 @@ function Form() {
               </select>
             </Field>
             <Field>
-              <FieldLabel htmlFor="ev-zone">Time zone</FieldLabel>
+              <FieldLabel htmlFor="ev-zone"><Copy k="events-new.new-event.time-zone">Time zone</Copy></FieldLabel>
               <select id="ev-zone" value={timezone} onChange={(e) => setTimezone(e.target.value)} className="h-10 rounded-lg border border-input bg-background/60 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 {zones.map((z) => (
                   <option key={z} value={z} className="bg-popover">
@@ -227,15 +228,15 @@ function Form() {
           </Field>
           {mode === "in-person" && (
             <Field data-invalid={errors.capacity ? true : undefined}>
-              <FieldLabel htmlFor="ev-capacity">Places (optional)</FieldLabel>
+              <FieldLabel htmlFor="ev-capacity"><Copy k="events-new.new-event.places-optional">Places (optional)</Copy></FieldLabel>
               <Input id="ev-capacity" type="number" inputMode="numeric" min={1} max={10000} value={capacity} onChange={(e) => setCapacity(e.target.value)} className="h-10 bg-background/60 sm:max-w-40" {...err("capacity")} />
-              {errors.capacity ? <FieldError id="ev-capacity-error">{errors.capacity}</FieldError> : <FieldDescription>When it is full, people can still mark themselves as interested.</FieldDescription>}
+              {errors.capacity ? <FieldError id="ev-capacity-error">{errors.capacity}</FieldError> : <FieldDescription><Copy k="events-new.new-event.when-it-is-full-people">When it is full, people can still mark themselves as interested.</Copy></FieldDescription>}
             </Field>
           )}
         </FieldSet>
 
         <Field data-invalid={errors.description ? true : undefined}>
-          <FieldLabel htmlFor="ev-description">Description</FieldLabel>
+          <FieldLabel htmlFor="ev-description"><Copy k="events-new.new-event.description">Description</Copy></FieldLabel>
           <MarkdownComposer id="ev-description" value={description} onChange={setDescription} maxLength={4000} rows={6} mentions={false} placeholder="What will happen, what to read or bring, who it is for." invalid={Boolean(errors.description)} />
           {errors.description && <FieldError id="ev-description-error">{errors.description}</FieldError>}
         </Field>
@@ -245,7 +246,7 @@ function Form() {
           <Button type="submit" size="lg" disabled={busy}>
             {busy ? "Creating…" : "Create event"}
           </Button>
-          {!live && <span className="text-sm text-muted-foreground">This copy has no database, so the event stays in this browser.</span>}
+          {!live && <span className="text-sm text-muted-foreground"><Copy k="events-new.new-event.this-copy-has-no-database">This copy has no database, so the event stays in this browser.</Copy></span>}
         </div>
       </FieldGroup>
     </form>

@@ -239,7 +239,7 @@ export default function DustVortex({ onReady }) {
   const canvas = useRef(null);
   const ready = useRef(onReady);
   // perf (src/lib/perf.ts): fewer pixels on lower tiers; "off" or another heavy effect's turn holds one frame
-  const { quality, run } = useFx(canvas);
+  const { quality, run } = useFx(canvas, { minimum: 'medium' });
   const perf = useRef({ quality, run, refresh: null });
   useLayoutEffect(() => {
     ready.current = onReady;

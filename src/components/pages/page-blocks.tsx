@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { loadList, type Block, type ListItem, type Tone } from "@/lib/pages"
 import { isSafeHref } from "@/lib/site-settings"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /*
  * A custom page's blocks, rendered. Text goes through the site's safe Markdown renderer (no raw HTML is ever
@@ -181,7 +182,7 @@ function ButtonLink({ href, primary, children }: { href: string; primary: boolea
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>
       {children}
-      <span className="sr-only"> (opens in a new tab)</span>
+      <span className="sr-only"> <Copy k="custom-page.page-blocks.opens-in-a-new-tab">(opens in a new tab)</Copy></span>
     </a>
   )
 }

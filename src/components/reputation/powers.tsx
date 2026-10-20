@@ -10,6 +10,7 @@ import { useRole } from "@/lib/roles"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 // The member-facing powers; the ones that run the site are listed only for those who hold them.
 const RUN_SITE = new Set<Cap>(["news.write", "news.publish", "pages.edit", "menus.edit", "forum.manage", "chat.manage", "moderate", "members.manage", "roles.manage", "settings.manage"])
@@ -37,8 +38,8 @@ export function Powers({ className }: { className?: string }) {
   if (live && me.role === "guest") {
     return (
       <section className={cn("glass flex flex-col gap-2 rounded-2xl p-5", className)}>
-        <h2 className="font-sans text-sm font-semibold tracking-normal">Your powers</h2>
-        <p className="text-sm text-muted-foreground">Anyone can read Nexverse. Sign in to post, reply, chat and build a reputation that unlocks more.</p>
+        <h2 className="font-sans text-sm font-semibold tracking-normal"><Copy k="common.powers.your-powers">Your powers</Copy></h2>
+        <p className="text-sm text-muted-foreground"><Copy k="common.powers.anyone-can-read-nexverse-sign" multiline>Anyone can read Nexverse. Sign in to post, reply, chat and build a reputation that unlocks more.</Copy></p>
       </section>
     )
   }
@@ -54,7 +55,7 @@ export function Powers({ className }: { className?: string }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <h2 id="powers-h" className="font-sans text-sm font-semibold tracking-normal">
-            Your powers
+            <Copy k="common.powers.your-powers">Your powers</Copy>
           </h2>
           <p className="text-sm text-muted-foreground">
             {me.suspended
@@ -98,7 +99,7 @@ export function Powers({ className }: { className?: string }) {
                 ? `Makes you ${caps.roles.find((r) => r.key === next.grantsRole)?.label ?? "a contributor"}.`
                 : "A new level on your profile."}{" "}
             <Link href={REPUTATION_HELP} className="text-ion hover:underline">
-              How reputation works
+              <Copy k="common.powers.how-reputation-works">How reputation works</Copy>
             </Link>
           </p>
         </div>

@@ -6,6 +6,7 @@ import { PageSkeleton } from "@/components/app/page-skeleton"
 import { BenchmarkDetail } from "@/components/benchmarks/benchmark-detail"
 import { ForumHeader } from "@/components/forum/forum-header"
 import { BENCHMARKS, getBenchmark } from "@/lib/benchmarks"
+import { Copy } from "@/components/content/copy"
 
 export function generateStaticParams() {
   return BENCHMARKS.map((b) => ({ slug: b.slug }))
@@ -48,7 +49,7 @@ async function Benchmark({ params }: { params: PageProps<"/benchmarks/[slug]">["
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 transition-colors hover:border-ion/40 hover:text-foreground"
           >
-            <FileTextIcon aria-hidden className="size-3" /> The paper on arXiv
+            <FileTextIcon aria-hidden className="size-3" /> <Copy k="benchmark.page.the-paper-on-arxiv">The paper on arXiv</Copy>
           </a>
         </li>
       </ul>

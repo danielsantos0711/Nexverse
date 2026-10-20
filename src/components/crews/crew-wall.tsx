@@ -32,6 +32,7 @@ import {
   type CrewRole,
 } from "@/lib/crews"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 
@@ -142,7 +143,7 @@ export function CrewWall({ crew, role, meId, members, onActivity }: { crew: Crew
         />
         </Gate>
       ) : (
-        <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">Join the crew to write on its wall.</p>
+        <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground"><Copy k="crew.crew-wall.join-the-crew-to-write">Join the crew to write on its wall.</Copy></p>
       )}
 
       {error && (
@@ -372,7 +373,7 @@ function PostCard({
               {busy ? "Saving…" : "Save"}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-              Cancel
+              <Copy k="crew.crew-wall.cancel">Cancel</Copy>
             </Button>
           </div>
         </div>

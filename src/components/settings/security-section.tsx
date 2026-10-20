@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { oauthProviderId, SOCIAL_PROVIDERS, useAuthSettings, type SocialId } from "@/lib/auth-providers"
 import { formatDate } from "@/lib/data"
 import { linkProvider, listIdentities, signOut, unlinkIdentity, updateEmail } from "@/lib/store"
+import { Copy } from "@/components/content/copy"
 
 /** Supabase's identity names, mapped to the provider buttons ("twitter" and "x" are both X). */
 function socialOf(provider: string): SocialId | null {
@@ -94,7 +95,7 @@ function EmailBlock({ user }: { user: User }) {
       {open ? (
         <form onSubmit={submit} noValidate className="flex flex-col gap-3">
           <Field data-invalid={invalid ? true : undefined}>
-            <FieldLabel htmlFor="sec-email">New email</FieldLabel>
+            <FieldLabel htmlFor="sec-email"><Copy k="settings.security-section.new-email">New email</Copy></FieldLabel>
             <Input
               id="sec-email"
               type="email"
@@ -116,13 +117,13 @@ function EmailBlock({ user }: { user: User }) {
               {busy ? "Sending…" : "Send confirmation"}
             </Button>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-              Cancel
+              <Copy k="settings.security-section.cancel">Cancel</Copy>
             </Button>
           </div>
         </form>
       ) : (
         <Button variant="secondary" className="self-start" onClick={() => setOpen(true)}>
-          Change email
+          <Copy k="settings.security-section.change-email">Change email</Copy>
         </Button>
       )}
       <Note {...note} />
@@ -152,7 +153,7 @@ function PasswordBlock({ user, name }: { user: User; name: string }) {
             }}
           />
           <Button variant="ghost" className="mt-2" onClick={() => setOpen(false)}>
-            Cancel
+            <Copy k="settings.security-section.cancel">Cancel</Copy>
           </Button>
         </div>
       ) : (
@@ -164,7 +165,7 @@ function PasswordBlock({ user, name }: { user: User; name: string }) {
             setNote("")
           }}
         >
-          Set a new password
+          <Copy k="settings.security-section.set-a-new-password">Set a new password</Copy>
         </Button>
       )}
       <Note text={note} />
@@ -239,7 +240,7 @@ function IdentitiesBlock() {
                 </div>
                 {list.length > 1 && (
                   <Button variant="ghost" size="sm" onClick={() => setConfirm(i)} disabled={busy !== null} aria-label={`Remove ${label} sign-in`}>
-                    <UnlinkIcon aria-hidden /> Remove
+                    <UnlinkIcon aria-hidden /> <Copy k="settings.security-section.remove">Remove</Copy>
                   </Button>
                 )}
               </li>
@@ -257,7 +258,7 @@ function IdentitiesBlock() {
         </div>
       ) : (
         auth.ready &&
-        auth.social.length === 0 && <p className="text-sm text-muted-foreground">Signing in with Google, GitHub, Discord, Apple, Microsoft or X is not switched on for this site yet.</p>
+        auth.social.length === 0 && <p className="text-sm text-muted-foreground"><Copy k="settings.security-section.signing-in-with-google-github" multiline>Signing in with Google, GitHub, Discord, Apple, Microsoft or X is not switched on for this site yet.</Copy></p>
       )}
       {error && (
         <FormAlert>

@@ -281,6 +281,7 @@ function Editor({ def }: { def: ListDef }) {
         </div>
       </header>
 
+      <StatusLine status={dirty ? null : status} />
       <AvailabilityNotice availability={availability} />
       <Notice title="Where it shows">
         {def.where}
@@ -292,7 +293,7 @@ function Editor({ def }: { def: ListDef }) {
         )}
       </Notice>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {rows.length > 10 && (
@@ -417,8 +418,8 @@ function Editor({ def }: { def: ListDef }) {
           )}
         </div>
 
-        <aside aria-label="Preview" className="xl:sticky xl:top-20 xl:self-start">
-          <div className="liquid-glass flex flex-col gap-3 rounded-2xl p-4">
+        <aside aria-label="Preview" className="min-w-0 xl:sticky xl:top-20 xl:self-start">
+          <div className="liquid-glass flex flex-col gap-3 rounded-2xl p-4 xl:max-h-[calc(100dvh-11rem)] xl:overflow-y-auto">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-medium">Preview</h3>
               <span className="text-xs text-muted-foreground">{dirty ? "Your draft" : "Live now"}</span>
@@ -428,7 +429,15 @@ function Editor({ def }: { def: ListDef }) {
         </aside>
       </div>
 
-      <div className="sticky bottom-3 z-20">
+      {/* The save bar appears while there is something to save. */}
+      <motion.div
+        initial={false}
+        animate={dirty ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+        transition={{ duration: reduce ? 0 : 0.2, ease: [0.23, 1, 0.32, 1] }}
+        className={cn("sticky bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.5rem)] z-20 lg:bottom-3", !dirty && "pointer-events-none")}
+        aria-hidden={!dirty || undefined}
+        inert={!dirty || undefined}
+      >
         <div className="liquid-glass-strong flex flex-wrap items-center gap-3 rounded-2xl px-4 py-2.5">
           <p className="text-sm" aria-live="polite">
             {dirty ? (
@@ -439,7 +448,7 @@ function Editor({ def }: { def: ListDef }) {
               <span className="text-muted-foreground">No unsaved changes</span>
             )}
           </p>
-          <StatusLine status={status} className="min-w-0" />
+          {dirty && <StatusLine status={status} className="min-w-0" />}
           <div className="ml-auto flex items-center gap-2">
             <Button
               size="sm"
@@ -459,7 +468,7 @@ function Editor({ def }: { def: ListDef }) {
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </section>
   )
 }

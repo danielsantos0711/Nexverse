@@ -3,6 +3,7 @@ import { CheckCircle2Icon, ChevronRightIcon, EyeOffIcon, LockIcon, PinIcon } fro
 import { PersonAvatar } from "@/components/hub/bits"
 import type { Poster } from "@/components/forum/topics"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /** A member's initials on a soft gradient. Members have no handle, so their name is all there is. */
 export function MemberAvatar({ name, size = 28, className }: { name?: string; size?: number; className?: string }) {
@@ -62,7 +63,7 @@ export function Breadcrumbs({ items, className }: { items: Crumb[]; className?: 
 export function SolvedBadge({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full bg-ok/10 px-2 py-0.5 text-xs font-medium text-ok", className)}>
-      <CheckCircle2Icon aria-hidden className="size-3" /> Solved
+      <CheckCircle2Icon aria-hidden className="size-3" /> <Copy k="forum.forum-ui.solved">Solved</Copy>
     </span>
   )
 }
@@ -70,7 +71,7 @@ export function SolvedBadge({ className }: { className?: string }) {
 export function PinnedBadge({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full bg-gold/10 px-2 py-0.5 text-xs font-medium text-gold", className)}>
-      <PinIcon aria-hidden className="size-3" /> Pinned
+      <PinIcon aria-hidden className="size-3" /> <Copy k="forum.forum-ui.pinned">Pinned</Copy>
     </span>
   )
 }
@@ -78,7 +79,7 @@ export function PinnedBadge({ className }: { className?: string }) {
 export function LockedBadge({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5 text-xs font-medium text-muted-foreground", className)}>
-      <LockIcon aria-hidden className="size-3" /> Locked
+      <LockIcon aria-hidden className="size-3" /> <Copy k="forum.forum-ui.locked">Locked</Copy>
     </span>
   )
 }
@@ -90,7 +91,7 @@ export function HiddenBadge({ className }: { className?: string }) {
       title="Only you and the moderators can see this"
       className={cn("inline-flex shrink-0 items-center gap-1 rounded-full border border-gold/25 bg-gold/10 px-2 py-0.5 text-xs font-medium text-gold", className)}
     >
-      <EyeOffIcon aria-hidden className="size-3" /> Hidden by moderators
+      <EyeOffIcon aria-hidden className="size-3" /> <Copy k="forum.forum-ui.hidden-by-moderators">Hidden by moderators</Copy>
     </span>
   )
 }

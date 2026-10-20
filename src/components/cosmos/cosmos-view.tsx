@@ -18,6 +18,7 @@ import { useBookmarks } from "@/lib/social"
 import { useSession } from "@/lib/store"
 import { db, live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const ALL_KINDS = new Set<StarKind>(FILTER_KINDS)
 
@@ -431,7 +432,7 @@ export function CosmosView({ github = [] }: { github?: GhRepo[] }) {
               </li>
             ))
           ) : (
-            <li className="px-3 py-2 text-sm text-muted-foreground">No star by that name.</li>
+            <li className="px-3 py-2 text-sm text-muted-foreground"><Copy k="cosmos.cosmos-view.no-star-by-that-name">No star by that name.</Copy></li>
           )}
         </ul>
       )}
@@ -449,7 +450,7 @@ export function CosmosView({ github = [] }: { github?: GhRepo[] }) {
           allOn ? "border-white/20 bg-[#1a1f2c]/85 text-foreground" : "border-white/10 bg-[#0b0e16]/60 text-muted-foreground hover:text-foreground"
         )}
       >
-        All
+        <Copy k="cosmos.cosmos-view.all">All</Copy>
       </button>
       {FILTER_KINDS.map((k) => {
         const on = kinds.has(k)
@@ -486,7 +487,7 @@ export function CosmosView({ github = [] }: { github?: GhRepo[] }) {
         )}
       >
         <LocateFixedIcon aria-hidden className="size-4" />
-        <span className={cn(compact && "max-sm:sr-only")}>Where am I</span>
+        <span className={cn(compact && "max-sm:sr-only")}><Copy k="cosmos.cosmos-view.where-am-i">Where am I</Copy></span>
       </button>
       <button
         type="button"
@@ -532,8 +533,8 @@ export function CosmosView({ github = [] }: { github?: GhRepo[] }) {
               <span className="grid size-7 shrink-0 place-items-center rounded-full border border-ion/25 bg-ion/10 text-ion">
                 <OrbitIcon aria-hidden className="size-3.5" />
               </span>
-              <h1 className="text-sm font-semibold tracking-[-0.01em]">Cosmos</h1>
-              <p className="hidden text-xs text-muted-foreground md:block">· The whole hub as a star map</p>
+              <h1 className="text-sm font-semibold tracking-[-0.01em]"><Copy k="cosmos.cosmos-view.cosmos">Cosmos</Copy></h1>
+              <p className="hidden text-xs text-muted-foreground md:block"><Copy k="cosmos.cosmos-view.the-whole-hub-as-a">· The whole hub as a star map</Copy></p>
             </div>
             <div className="pointer-events-auto order-3 basis-full sm:order-2 sm:w-[320px] sm:basis-auto">{search}</div>
             <div className="pointer-events-auto order-2 ml-auto sm:order-3">{toggles(true)}</div>
@@ -568,7 +569,7 @@ export function CosmosView({ github = [] }: { github?: GhRepo[] }) {
           className="absolute inset-0 size-full cursor-grab touch-none outline-none focus-visible:shadow-[inset_0_0_0_2px_rgb(143_180_255/0.6)]"
         />
         <p id={helpId} className="sr-only">
-          Use arrow keys or Tab to move between stars, Enter to open a star&apos;s page, Space to fly to it, plus and minus to zoom and 0 to see the whole map. The list view shows every star as a list.
+          <Copy k="cosmos.cosmos-view.use-arrow-keys-or-tab" multiline>Use arrow keys or Tab to move between stars, Enter to open a star&apos;s page, Space to fly to it, plus and minus to zoom and 0 to see the whole map. The list view shows every star as a list.</Copy>
         </p>
 
         {/* Hover, focus or pick: the card follows its star on wide screens and docks to the bottom on phones. */}
@@ -603,7 +604,7 @@ export function CosmosView({ github = [] }: { github?: GhRepo[] }) {
 
         {/* Bottom: how to move (wide screens), zoom buttons and the minimap. */}
         <p className="pointer-events-none absolute bottom-5 left-20 z-10 hidden text-xs text-muted-foreground/80 lg:block">
-          Drag to move · Scroll or pinch to zoom · Click a star to fly there · Arrow keys and Tab hop between stars
+          <Copy k="cosmos.cosmos-view.drag-to-move-scroll-or" multiline>Drag to move · Scroll or pinch to zoom · Click a star to fly there · Arrow keys and Tab hop between stars</Copy>
         </p>
         <div className={cn("absolute right-3 bottom-3 z-20 flex items-end gap-2 sm:right-4 sm:bottom-4", cardDocked && "max-sm:hidden")}>
           <div className="glass flex flex-col rounded-full bg-[#0b0e16]/55 p-1">
@@ -631,8 +632,8 @@ export function CosmosView({ github = [] }: { github?: GhRepo[] }) {
                 <OrbitIcon aria-hidden className="size-5" />
               </span>
               <div>
-                <h1 className="text-2xl font-semibold tracking-[-0.02em]">Cosmos</h1>
-                <p className="text-sm text-muted-foreground">Every star on the map, grouped by galaxy.</p>
+                <h1 className="text-2xl font-semibold tracking-[-0.02em]"><Copy k="cosmos.cosmos-view.cosmos">Cosmos</Copy></h1>
+                <p className="text-sm text-muted-foreground"><Copy k="cosmos.cosmos-view.every-star-on-the-map">Every star on the map, grouped by galaxy.</Copy></p>
               </div>
             </div>
             {toggles(false)}

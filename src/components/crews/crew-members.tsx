@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { removeMember, ROLE_LABEL, setMemberRole, type Crew, type CrewMember, type CrewRole } from "@/lib/crews"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const joined = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
 
@@ -67,7 +68,7 @@ export function CrewMembers({ crew, members, role, meId, onChanged }: { crew: Cr
                   ) : (
                     <span className="truncate text-sm font-medium">{m.name}</span>
                   )}
-                  {you && <span className="text-xs text-muted-foreground">(you)</span>}
+                  {you && <span className="text-xs text-muted-foreground"><Copy k="crew.crew-members.you">(you)</Copy></span>}
                 </span>
                 <span className="text-xs text-muted-foreground">Joined {joined.format(new Date(m.joinedAt))}</span>
               </div>

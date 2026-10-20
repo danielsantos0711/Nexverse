@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { answerRequest, createInvite, deleteCrew, inviteHref, listInvites, listRequests, revokeInvite, type Crew, type CrewInvite, type CrewRequest, type CrewRole } from "@/lib/crews"
 import { live } from "@/lib/supabase"
+import { Copy } from "@/components/content/copy"
 
 const when = new Intl.DateTimeFormat("en", { month: "short", day: "numeric" })
 
@@ -20,7 +21,7 @@ export function CrewSettings({ crew, role, onSaved, onMembersChanged }: { crew: 
       <Invites crew={crew} />
       <section aria-labelledby="crew-edit-h" className="flex flex-col gap-3">
         <h2 id="crew-edit-h" className="font-sans text-base font-semibold tracking-normal">
-          Crew details
+          <Copy k="crew.crew-settings.crew-details">Crew details</Copy>
         </h2>
         <CrewForm crew={crew} onSaved={onSaved} />
       </section>
@@ -72,7 +73,7 @@ function Requests({ crew, onAnswered }: { crew: Crew; onAnswered: () => void }) 
       {list === null ? (
         <Skeleton className="h-14 rounded-xl" />
       ) : list.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No one is waiting. Requests show up here and in your notifications.</p>
+        <p className="text-sm text-muted-foreground"><Copy k="crew.crew-settings.no-one-is-waiting-requests">No one is waiting. Requests show up here and in your notifications.</Copy></p>
       ) : (
         <ul className="flex flex-col divide-y divide-border rounded-xl border border-border bg-card/40">
           {list.map((r) => (
@@ -85,10 +86,10 @@ function Requests({ crew, onAnswered }: { crew: Crew; onAnswered: () => void }) 
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => answer(r, true)}>
-                  <UserCheckIcon aria-hidden /> Let in
+                  <UserCheckIcon aria-hidden /> <Copy k="crew.crew-settings.let-in">Let in</Copy>
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => answer(r, false)} aria-label={`Turn down ${r.name}`}>
-                  <XIcon aria-hidden /> Decline
+                  <XIcon aria-hidden /> <Copy k="crew.crew-settings.decline">Decline</Copy>
                 </Button>
               </div>
             </li>
@@ -157,11 +158,11 @@ function Invites({ crew }: { crew: Crew }) {
     <section aria-labelledby="crew-invites-h" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="crew-invites-h" className="font-sans text-base font-semibold tracking-normal">
-          Invite links
+          <Copy k="crew.crew-settings.invite-links">Invite links</Copy>
         </h2>
         <div className="flex items-center gap-2">
           <label htmlFor="invite-days" className="sr-only">
-            Link lasts
+            <Copy k="crew.crew-settings.link-lasts">Link lasts</Copy>
           </label>
           <select
             id="invite-days"
@@ -184,7 +185,7 @@ function Invites({ crew }: { crew: Crew }) {
           </Button>
         </div>
       </div>
-      <p className="text-sm text-muted-foreground">Anyone with a link can join, up to 25 people per link, until it runs out. New links are copied for you.</p>
+      <p className="text-sm text-muted-foreground"><Copy k="crew.crew-settings.anyone-with-a-link-can" multiline>Anyone with a link can join, up to 25 people per link, until it runs out. New links are copied for you.</Copy></p>
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}
@@ -238,9 +239,9 @@ function DangerZone({ crew }: { crew: Crew }) {
   return (
     <section aria-labelledby="crew-danger-h" className="flex flex-col gap-3 rounded-xl border border-destructive/30 p-4">
       <h2 id="crew-danger-h" className="font-sans text-base font-semibold tracking-normal text-destructive">
-        Delete this crew
+        <Copy k="crew.crew-settings.delete-this-crew">Delete this crew</Copy>
       </h2>
-      <p className="text-sm text-muted-foreground">The wall, the chat room, members and invite links go with it. Shared collections stay with their owners. This cannot be undone.</p>
+      <p className="text-sm text-muted-foreground"><Copy k="crew.crew-settings.the-wall-the-chat-room" multiline>The wall, the chat room, members and invite links go with it. Shared collections stay with their owners. This cannot be undone.</Copy></p>
       <label className="flex flex-col gap-1.5 text-sm">
         <span>
           Type <span className="font-mono text-foreground">{crew.slug}</span> to confirm

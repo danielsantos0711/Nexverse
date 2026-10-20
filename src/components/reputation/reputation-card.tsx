@@ -10,6 +10,7 @@ import { compact } from "@/lib/data"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const BADGE_ICONS: Record<string, LucideIcon> = {
   "first-light": SunriseIcon,
@@ -75,7 +76,7 @@ export function ReputationCard({ memberId, className }: { memberId?: string; cla
 
   const stats = loaded?.key === key ? loaded.stats : null
 
-  if (error) return <p className="text-sm text-muted-foreground">Reputation could not be loaded.</p>
+  if (error) return <p className="text-sm text-muted-foreground"><Copy k="common.reputation-card.reputation-could-not-be-loaded">Reputation could not be loaded.</Copy></p>
   if (!stats) {
     return (
       <div className={cn("glass flex flex-col gap-3 rounded-2xl p-5", className)} aria-busy="true" aria-label="Loading reputation">
@@ -105,7 +106,7 @@ export function ReputationCard({ memberId, className }: { memberId?: string; cla
           Reputation
         </h2>
         <Link href="/leaderboard" className="text-xs text-ion hover:underline">
-          Leaderboard
+          <Copy k="common.reputation-card.leaderboard">Leaderboard</Copy>
         </Link>
       </div>
       <LevelRing points={stats.points} size={84} />

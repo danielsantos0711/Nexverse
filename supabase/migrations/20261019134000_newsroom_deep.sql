@@ -82,3 +82,8 @@ revoke all on public.news_pages from anon;
 -- Runs
 
 alter table public.news_runs add column if not exists deep integer not null default 0;
+
+-- Word counts for the stories written before this migration, for the reading time on cards.
+update public.news_stories
+set word_count = least(10000, coalesce(array_length(regexp_split_to_array(btrim(body), '\s+'), 1), 0))
+where word_count is null and body <> '';

@@ -36,7 +36,9 @@ export function Orb({ state, open, className }: { state: OrbState; open: boolean
   const canvas = useRef<HTMLCanvasElement>(null)
   const host = useRef<HTMLSpanElement>(null)
   const live = useRef({ state, open })
-  live.current = { state, open }
+  useEffect(() => {
+    live.current = { state, open }
+  }, [state, open])
   const gl = quality === "high" || quality === "medium"
 
   useEffect(() => {

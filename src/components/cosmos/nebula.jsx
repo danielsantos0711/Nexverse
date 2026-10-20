@@ -156,7 +156,7 @@ export default function Nebula({ paused = false, className = '' }) {
   const root = useRef(null);
   const scene = useRef(null);
   // perf (src/lib/perf.ts): "off" or another heavy effect's turn on screen holds the field still
-  const { quality, run } = useFx(root);
+  const { quality, run } = useFx(root, { minimum: 'medium' });
   const halt = paused || !run;
   const pausedRef = useRef(halt);
   const qualityRef = useRef(quality);

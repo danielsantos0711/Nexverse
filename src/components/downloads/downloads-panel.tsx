@@ -471,6 +471,7 @@ function EditBody({ file, versions, onClose, onSaved }: { file: HostedFile; vers
       className="flex flex-col gap-4"
       onSubmit={async (e) => {
         e.preventDefault()
+        e.stopPropagation()
         setBusy(true)
         setError("")
         try {

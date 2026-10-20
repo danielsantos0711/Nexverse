@@ -21,6 +21,7 @@ import { useSession } from "@/lib/store"
 import { ModMenu, ReportButton } from "@/components/moderation"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 
@@ -82,9 +83,9 @@ function EventPage({ event: e }: { event: CommunityEvent }) {
                 {e.mode === "online" ? <MonitorIcon aria-hidden className="size-3" /> : <MapPinIcon aria-hidden className="size-3" />}
                 {e.mode === "online" ? "Online" : "In person"}
               </span>
-              {happening && <span className="rounded-full bg-ok/15 px-2 py-0.5 text-xs font-medium text-ok">Happening now</span>}
-              {past && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs text-muted-foreground">This event has ended</span>}
-              {e.local && <span className="text-xs text-muted-foreground">Saved in this browser only</span>}
+              {happening && <span className="rounded-full bg-ok/15 px-2 py-0.5 text-xs font-medium text-ok"><Copy k="event.event-detail.happening-now">Happening now</Copy></span>}
+              {past && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs text-muted-foreground"><Copy k="event.event-detail.this-event-has-ended">This event has ended</Copy></span>}
+              {e.local && <span className="text-xs text-muted-foreground"><Copy k="event.event-detail.saved-in-this-browser-only">Saved in this browser only</Copy></span>}
             </div>
             <h1 className="text-xl leading-snug font-semibold tracking-[-0.015em] md:text-2xl">{e.title}</h1>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -102,7 +103,7 @@ function EventPage({ event: e }: { event: CommunityEvent }) {
             <div className="flex gap-3">
               <CalendarCheckIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-ion" />
               <div className="min-w-0">
-                <dt className="text-xs text-muted-foreground">When</dt>
+                <dt className="text-xs text-muted-foreground"><Copy k="event.event-detail.when">When</Copy></dt>
                 <dd className="text-sm">
                   <EventWhen event={e} showHostZone />
                 </dd>
@@ -111,12 +112,12 @@ function EventPage({ event: e }: { event: CommunityEvent }) {
             <div className="flex gap-3">
               {e.mode === "online" ? <MonitorIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-ion" /> : <MapPinIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-ion" />}
               <div className="min-w-0">
-                <dt className="text-xs text-muted-foreground">Where</dt>
+                <dt className="text-xs text-muted-foreground"><Copy k="event.event-detail.where">Where</Copy></dt>
                 <dd className="text-sm break-words">
                   {e.mode === "online" ? (
                     <a href={e.location} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1 text-ion hover:underline">
                       Join online <ExternalLinkIcon aria-hidden className="size-3.5" />
-                      <span className="sr-only">(opens in a new tab)</span>
+                      <span className="sr-only"><Copy k="event.event-detail.opens-in-a-new-tab">(opens in a new tab)</Copy></span>
                     </a>
                   ) : (
                     <>
@@ -128,7 +129,7 @@ function EventPage({ event: e }: { event: CommunityEvent }) {
                         className="inline-flex items-center gap-1 text-xs text-ion hover:underline"
                       >
                         Open in a map <ExternalLinkIcon aria-hidden className="size-3" />
-                        <span className="sr-only">(opens in a new tab)</span>
+                        <span className="sr-only"><Copy k="event.event-detail.opens-in-a-new-tab">(opens in a new tab)</Copy></span>
                       </a>
                     </>
                   )}
@@ -139,15 +140,15 @@ function EventPage({ event: e }: { event: CommunityEvent }) {
 
           <section aria-labelledby="about-h" className="flex flex-col gap-2">
             <h2 id="about-h" className="font-sans text-base font-semibold tracking-normal">
-              About this event
+              <Copy k="event.event-detail.about-this-event">About this event</Copy>
             </h2>
-            {e.description ? <PostBody source={e.description} /> : <p className="text-sm text-muted-foreground">The host has not added a description.</p>}
+            {e.description ? <PostBody source={e.description} /> : <p className="text-sm text-muted-foreground"><Copy k="event.event-detail.the-host-has-not-added">The host has not added a description.</Copy></p>}
           </section>
 
           {isHost && (
             <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
               <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)}>
-                <Trash2Icon aria-hidden /> Cancel this event
+                <Trash2Icon aria-hidden /> <Copy k="event.event-detail.cancel-this-event">Cancel this event</Copy>
               </Button>
               {error && (
                 <p role="alert" className="text-sm text-destructive">
@@ -172,10 +173,10 @@ function EventPage({ event: e }: { event: CommunityEvent }) {
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-              Keep it
+              <Copy k="event.event-detail.keep-it">Keep it</Copy>
             </Button>
             <Button variant="destructive" onClick={remove}>
-              Cancel event
+              <Copy k="event.event-detail.cancel-event">Cancel event</Copy>
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -323,7 +324,7 @@ function RsvpPanel({ event: e, past, ready, signedIn, me }: { event: CommunityEv
         )}
         {att.interested.length > 0 && <AvatarStack people={att.interested} max={8} size={22} label={`${att.interested.length} interested`} className="opacity-80" />}
       </div>
-      {!signedIn && !past && <p className="text-xs text-muted-foreground">Sign in to RSVP. It takes an email address and nothing else.</p>}
+      {!signedIn && !past && <p className="text-xs text-muted-foreground"><Copy k="event.event-detail.sign-in-to-rsvp-it">Sign in to RSVP. It takes an email address and nothing else.</Copy></p>}
       <p role="status" className={cn("text-sm", error ? "text-destructive" : "sr-only")}>
         {error || status}
       </p>
@@ -353,11 +354,11 @@ function CalendarButtons({ event: e, disabled }: { event: CommunityEvent; disabl
   return (
     <section aria-labelledby="cal-h" className="flex flex-col gap-2 rounded-xl border border-border p-4">
       <h2 id="cal-h" className="font-sans text-sm font-semibold tracking-normal">
-        Add to your calendar
+        <Copy k="event.event-detail.add-to-your-calendar">Add to your calendar</Copy>
       </h2>
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" size="sm" onClick={download} disabled={!mounted}>
-          <CalendarPlusIcon aria-hidden /> Download .ics
+          <CalendarPlusIcon aria-hidden /> <Copy k="event.event-detail.download-ics">Download .ics</Copy>
         </Button>
         {mounted && (
           <a
@@ -367,7 +368,7 @@ function CalendarButtons({ event: e, disabled }: { event: CommunityEvent; disabl
             className="inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[0.8rem] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             Google Calendar <ExternalLinkIcon aria-hidden className="size-3" />
-            <span className="sr-only">(opens in a new tab)</span>
+            <span className="sr-only"><Copy k="event.event-detail.opens-in-a-new-tab">(opens in a new tab)</Copy></span>
           </a>
         )}
       </div>
@@ -387,7 +388,7 @@ function Missing({ title, detail }: { title: string; detail: string }) {
       </EmptyHeader>
       <EmptyContent>
         <Link href="/events" className="text-ion hover:underline">
-          Back to events
+          <Copy k="event.event-detail.back-to-events">Back to events</Copy>
         </Link>
       </EmptyContent>
     </Empty>

@@ -19,7 +19,7 @@ export default function HalftoneOrbit({ className = '', settings = {}, still = f
   const api = useRef(null);
   // perf (src/lib/perf.ts): pixel ratio and frame rate follow the quality tier; "off" or another heavy
   // effect's turn on screen holds one still frame
-  const { quality, run } = useFx(__root);
+  const { quality, run } = useFx(__root, { minimum: 'medium' });
   const live = run && !still;
   useEffect(() => {
     api.current?.set(quality, live);

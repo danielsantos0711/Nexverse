@@ -5,6 +5,7 @@ import { ArrowUpIcon, AtSignIcon, MessageSquareIcon, SparklesIcon, UserPlusIcon,
 import { MemberAvatar } from "@/components/forum/discussion"
 import { describeTarget, type Notification, type NotificationKind } from "@/lib/social"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const KIND: Record<NotificationKind, { icon: LucideIcon; tint: string; verb: string }> = {
   reply: { icon: MessageSquareIcon, tint: "text-ion", verb: "replied to your thread" },
@@ -80,7 +81,7 @@ export function NotificationItem({
           ) : (
             <span className="font-medium">{title}</span>
           )}
-          {unread && <span className="sr-only"> (unread)</span>}
+          {unread && <span className="sr-only"> <Copy k="notifications.notification-item.unread">(unread)</Copy></span>}
         </p>
         {excerpt && <p className={cn("text-sm text-muted-foreground", dense ? "line-clamp-1" : "line-clamp-2")}>{excerpt}</p>}
         <time dateTime={n.createdAt} className="text-xs text-muted-foreground" suppressHydrationWarning>

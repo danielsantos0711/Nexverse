@@ -20,7 +20,7 @@ import { useSiteSettings } from "@/lib/site-settings"
  * What the tiers mean for an effect (helpers below):
  *   high    full particle count, pixel ratio up to 1.5, every frame
  *   medium  ~60% of the work, pixel ratio up to 1.25
- *   low     ~35% of the work, pixel ratio 1, 30 frames a second
+ *   low     ~35% of the work, pixel ratio 1, 30 frames a second; full-screen shaders hold a still frame
  *   off     one still frame (or the effect's still fallback), no animation loop at all
  *
  * One heavy effect at a time: `useFxTurn(ref)` lets only the effect with the most visible area on screen
@@ -276,10 +276,15 @@ export function useFxTurn(ref: RefObject<Element | null>): boolean {
 
 /**
  * Everything a heavy effect needs: its quality tier, and whether it should be animating right now
- * (`run`: not "off", and its turn among the effects on screen). When `run` is false, draw one frame and stop.
+ * (`run`: at or above `minimum`, and its turn among the effects on screen). When `run` is false, draw one
+ * frame and stop.
+ *
+ * `minimum` is the lowest tier the effect animates at. Full-screen fragment shaders (ray marching, many noise
+ * calls per pixel) pass "medium": on a "low" machine (2 cores, 2 GB, a software GPU, Data Saver, or a measured
+ * slow frame rate) they hold one still frame, which still looks designed and costs nothing after it is drawn.
  */
-export function useFx(ref: RefObject<Element | null>): { quality: Quality; run: boolean } {
+export function useFx(ref: RefObject<Element | null>, { minimum = "low" }: { minimum?: Exclude<Quality, "off"> } = {}): { quality: Quality; run: boolean } {
   const quality = useQuality()
   const turn = useFxTurn(ref)
-  return { quality, run: quality !== "off" && turn }
+  return { quality, run: rank(quality) >= rank(minimum) && turn }
 }

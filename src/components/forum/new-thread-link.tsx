@@ -4,6 +4,7 @@ import Link from "next/link"
 import { SquarePenIcon } from "lucide-react"
 import { primaryButton } from "@/components/forum/forum-ui"
 import { findCategory, postBlockText, useForumMap, usePostBlock } from "@/lib/forum-categories"
+import { Copy } from "@/components/content/copy"
 
 /**
  * "New thread" for a category page. When the category's rules keep you from starting one (archived, team only,
@@ -18,7 +19,7 @@ export function NewThreadLink({ category }: { category: string }) {
   }
   return (
     <Link href={`/forum/new?c=${category}`} className={primaryButton}>
-      <SquarePenIcon aria-hidden className="size-4" /> New thread
+      <SquarePenIcon aria-hidden className="size-4" /> <Copy k="forum.new-thread-link.new-thread">New thread</Copy>
     </Link>
   )
 }

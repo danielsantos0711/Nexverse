@@ -95,7 +95,7 @@ export function SiteHeader() {
         <Link
           href="/"
           aria-label={`${name} home`}
-          className="pressable -mx-1.5 flex shrink-0 items-center rounded-lg px-1.5 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="pressable relative -mx-1.5 flex shrink-0 items-center rounded-lg px-1.5 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <Lockup size="sm" priority alt="" className="sm:hidden" />
           <Lockup size="md" priority alt="" className="hidden sm:block" />
@@ -103,7 +103,7 @@ export function SiteHeader() {
 
         <MainNav pathname={pathname} menus={menus} direct={direct} />
 
-        <div className="ml-auto flex items-center gap-1.5 sm:gap-2 lg:ml-0">
+        <div className="relative ml-auto flex items-center gap-1.5 sm:gap-2 lg:ml-0">
           <button
             type="button"
             onClick={openSearch}

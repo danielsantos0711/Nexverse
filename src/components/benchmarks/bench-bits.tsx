@@ -1,6 +1,7 @@
 import { BadgeCheckIcon, CircleAlertIcon, CircleDashedIcon } from "lucide-react"
 import { reproSummary, type BenchmarkResult } from "@/lib/benchmarks"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /** Verified (reproduced by members), disputed (more could not than could), or not checked yet. Icon and label, never colour alone. */
 export function ReproBadge({ result, className, compact }: { result: Pick<BenchmarkResult, "repros">; className?: string; compact?: boolean }) {
@@ -21,7 +22,7 @@ export function ReproBadge({ result, className, compact }: { result: Pick<Benchm
         className={cn("inline-flex shrink-0 items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive", className)}
         title={`${s.failed} could not reproduce`}
       >
-        <CircleAlertIcon aria-hidden className="size-3.5" /> Disputed
+        <CircleAlertIcon aria-hidden className="size-3.5" /> <Copy k="benchmarks.bench-bits.disputed">Disputed</Copy>
       </span>
     )
   return (

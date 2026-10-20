@@ -239,8 +239,11 @@ export function toStory(r: StoryRow): Story {
 
 /** Words in a Markdown body, for the reading time and the length checks. */
 export const countWords = (md: string) => md.replace(/[#>*_`[\]()-]/g, " ").split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length
-/** Minutes to read at 230 words a minute, never less than one. */
-export const readingMinutes = (s: Pick<Story, "body" | "wordCount">) => Math.max(1, Math.round((s.wordCount ?? countWords(s.body)) / 230))
+/** Minutes to read at 230 words a minute, never less than one; null when the length is not known (list reads). */
+export const readingMinutes = (s: Pick<Story, "body" | "wordCount">) => {
+  const words = s.wordCount ?? (s.body ? countWords(s.body) : 0)
+  return words ? Math.max(1, Math.round(words / 230)) : null
+}
 
 export const storyHref = (s: Pick<Story, "slug">) => `/news/${s.slug}` as const
 
@@ -491,6 +494,7 @@ export type Run = {
   drafts: number
   published: number
   rejected: number
+  deep: number
   errors: { where: string; error: string }[]
   note: string
   startedAt: string
@@ -581,6 +585,20 @@ export function checkDraft(d: StoryDraft): DraftErrors {
   return e
 }
 
+/** A credit as typed: trimmed, links only when https, nothing at all when every field is empty. */
+function cleanCredit(c: CoverCredit | null): CoverCredit | null {
+  if (!c) return null
+  const out: CoverCredit = {
+    creator: c.creator.trim().slice(0, 160),
+    creatorUrl: HTTPS.test(c.creatorUrl.trim()) ? c.creatorUrl.trim() : "",
+    license: c.license.trim().slice(0, 60),
+    licenseUrl: HTTPS.test(c.licenseUrl.trim()) ? c.licenseUrl.trim() : "",
+    landing: HTTPS.test(c.landing.trim()) ? c.landing.trim() : "",
+    provider: c.provider.trim().slice(0, 60),
+  }
+  return out.creator || out.license || out.landing ? out : null
+}
+
 /** The pre-migration columns, and the long-form ones on top. */
 function draftRow(d: StoryDraft, legacy = false) {
   const cover = d.cover.trim()
@@ -602,7 +620,7 @@ function draftRow(d: StoryDraft, legacy = false) {
   return {
     ...base,
     cover_kind: cover ? (d.coverKind && d.coverKind !== "generated" ? d.coverKind : "editor") : d.coverKind === "generated" ? "generated" : null,
-    cover_credit: cover ? d.coverCredit : null,
+    cover_credit: cover ? cleanCredit(d.coverCredit) : null,
     cover_alt: d.coverAlt.trim().slice(0, 300) || null,
     key_facts: d.keyFacts.filter((f) => f.text.trim()).map((f) => ({ text: f.text.trim().slice(0, 400), source: f.source })),
     pull_quote: d.pullQuote && d.pullQuote.text.trim() ? { text: d.pullQuote.text.trim().slice(0, 400), source: d.pullQuote.source } : null,
@@ -640,22 +658,6 @@ export async function updateStory(id: string, d: StoryDraft): Promise<Story> {
   const s = toStory(data as unknown as StoryRow)
   await log("news_edit", "news_story", id, s.title)
   return s
-}
-
-/** Swap a story's cover for one of its candidates (or the generated one), with its credit and description. */
-export async function setStoryCover(story: Pick<Story, "id" | "title">, c: { url: string; kind: CoverKind; credit: CoverCredit | null; alt: string }) {
-  const { error } = await client()
-    .from("news_stories")
-    .update({ cover: c.kind === "generated" ? null : c.url, cover_kind: c.kind, cover_credit: c.kind === "generated" ? null : c.credit, cover_alt: c.alt.slice(0, 300) || null })
-    .eq("id", story.id)
-  if (error) throw new Error(isMissingColumn(error) ? "Cover choices need the newsroom update (migration 20261019134000) to be applied." : newsError(error))
-  await log("news_cover", "news_story", story.id, `${c.kind}: ${c.url || "generated"}`.slice(0, 300))
-}
-
-/** Keep the covers a search found with the story, so the gallery shows them next time. */
-export async function saveCoverCandidates(id: string, candidates: CoverCandidate[]) {
-  const { error } = await client().from("news_stories").update({ cover_candidates: candidates.slice(0, 24) }).eq("id", id)
-  if (error && !isMissingColumn(error)) throw new Error(newsError(error))
 }
 
 export type FactCheck = {
@@ -826,6 +828,7 @@ type RunRow = {
   drafts: number
   published: number
   rejected: number
+  deep?: number
   errors: unknown
   note: string
   started_at: string
@@ -836,11 +839,10 @@ type RunRow = {
 export async function listRuns(limit = 12): Promise<{ runs: Run[]; error: string | null }> {
   const c = db()
   if (!c) return { runs: [], error: null }
-  const { data, error } = await c
-    .from("news_runs")
-    .select("id, trigger, status, sources_checked, signals_new, drafts, published, rejected, errors, note, started_at, finished_at, actor:profiles!news_runs_actor_id_fkey(id, name, handle)")
-    .order("started_at", { ascending: false })
-    .limit(limit)
+  const cols = "id, trigger, status, sources_checked, signals_new, drafts, published, rejected, errors, note, started_at, finished_at, actor:profiles!news_runs_actor_id_fkey(id, name, handle)"
+  const read = (withDeep: boolean) => c.from("news_runs").select(withDeep ? cols.replace("rejected, ", "rejected, deep, ") : cols).order("started_at", { ascending: false }).limit(limit)
+  let { data, error } = await read(true)
+  if (error && isMissingColumn(error)) ({ data, error } = await read(false))
   if (error) return { runs: [], error: newsError(error) }
   return {
     runs: (data as unknown as RunRow[]).map((r) => ({
@@ -852,6 +854,7 @@ export async function listRuns(limit = 12): Promise<{ runs: Run[]; error: string
       drafts: r.drafts,
       published: r.published,
       rejected: r.rejected,
+      deep: typeof r.deep === "number" ? r.deep : 0,
       errors: Array.isArray(r.errors) ? (r.errors as Run["errors"]).slice(0, 30) : [],
       note: r.note,
       startedAt: r.started_at,

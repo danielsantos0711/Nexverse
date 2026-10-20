@@ -125,7 +125,7 @@ const rgb = (hex: string): [number, number, number] => {
 
 type Opts = { amber: string; gold: string; energy: number; count: number }
 
-function mount(canvas: HTMLCanvasElement, opts: Opts) {
+function mount(canvas: HTMLCanvasElement, opts: Opts, onLost: () => void) {
   const gl = canvas.getContext("webgl", { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" })
   if (!gl) return null
   const shader = (type: number, src: string) => {
@@ -227,6 +227,14 @@ function mount(canvas: HTMLCanvasElement, opts: Opts) {
     refresh()
   })
   io.observe(canvas)
+  // a lost context (GPU reset, too many contexts on the page) hands over to the still sphere
+  const lost = (e: Event) => {
+    e.preventDefault()
+    dead = true
+    cancelAnimationFrame(raf)
+    onLost()
+  }
+  canvas.addEventListener("webglcontextlost", lost)
   const ro = new ResizeObserver(refresh)
   ro.observe(canvas)
   document.addEventListener("visibilitychange", refresh)
@@ -235,6 +243,7 @@ function mount(canvas: HTMLCanvasElement, opts: Opts) {
   return () => {
     dead = true
     cancelAnimationFrame(raf)
+    canvas.removeEventListener("webglcontextlost", lost)
     io.disconnect()
     ro.disconnect()
     document.removeEventListener("visibilitychange", refresh)
@@ -249,21 +258,25 @@ export function AmberSphere({ amber, gold, energy = 0.5, size = 112, className }
   const quality = useQuality()
   const canvas = useRef<HTMLCanvasElement>(null)
   const [gl, setGl] = useState(false)
+  const [failed, setFailed] = useState(false)
   const allowed = quality === "high" || quality === "medium"
 
   useEffect(() => {
     const cv = canvas.current
-    if (!allowed || !cv || matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    if (!allowed || failed || !cv || matchMedia("(prefers-reduced-motion: reduce)").matches) return
     // grains by area: about 22,000 for a 320px sphere at high quality
     const count = Math.round(Math.min(22000, Math.max(5000, size * size * 0.22)) * (quality === "high" ? 1 : 0.6))
-    const dispose = mount(cv, { amber, gold, energy, count })
+    const dispose = mount(cv, { amber, gold, energy, count }, () => {
+      setGl(false)
+      setFailed(true)
+    })
     if (!dispose) return
     setGl(true)
     return () => {
       dispose()
       setGl(false)
     }
-  }, [allowed, quality, amber, gold, energy, size])
+  }, [allowed, failed, quality, amber, gold, energy, size])
 
   return (
     <span aria-hidden className={cn("relative block shrink-0", className)} style={{ width: size, height: size }}>
@@ -275,7 +288,7 @@ export function AmberSphere({ amber, gold, energy = 0.5, size = 112, className }
           style={{ background: `radial-gradient(circle at 38% 32%, ${gold}cc, ${amber}66 45%, transparent 72%)`, boxShadow: `inset 0 0 0 1px ${gold}33` }}
         />
       )}
-      {allowed && <canvas ref={canvas} className="absolute inset-0 size-full" />}
+      {allowed && !failed && <canvas ref={canvas} className={cn("absolute inset-0 size-full", !gl && "invisible")} />}
     </span>
   )
 }

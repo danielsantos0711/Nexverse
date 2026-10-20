@@ -18,6 +18,7 @@ import { listFollowing, toggleFollow } from "@/lib/social"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const STEPS = ["Profile", "Interests", "Follow", "Done"] as const
 const LAST = STEPS.length - 1
@@ -259,7 +260,7 @@ function Flow({ profile, userId }: { profile: Profile; userId: string | null }) 
                   <Summary label="Categories" value={followCategories} />
                   <Summary label="People" value={followPeople} />
                 </dl>
-                {!live && <p className="text-sm text-muted-foreground">This copy of Nexverse has no database, so your choices are kept in this browser.</p>}
+                {!live && <p className="text-sm text-muted-foreground"><Copy k="welcome.welcome-flow.this-copy-of-nexverse-has">This copy of Nexverse has no database, so your choices are kept in this browser.</Copy></p>}
               </>
             )}
           </motion.div>
@@ -269,14 +270,14 @@ function Flow({ profile, userId }: { profile: Profile; userId: string | null }) 
           <div>
             {step > 0 && (
               <Button variant="ghost" onClick={() => go(step - 1)} disabled={busy}>
-                <ArrowLeftIcon aria-hidden /> Back
+                <ArrowLeftIcon aria-hidden /> <Copy k="welcome.welcome-flow.back">Back</Copy>
               </Button>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {step < LAST && (
               <Button variant="ghost" onClick={() => go(step + 1)} disabled={busy}>
-                Skip
+                <Copy k="welcome.welcome-flow.skip">Skip</Copy>
               </Button>
             )}
             {step === 0 ? (
@@ -300,7 +301,7 @@ function Flow({ profile, userId }: { profile: Profile; userId: string | null }) 
           <p>{error}</p>
           {step === LAST && (
             <Button variant="secondary" size="sm" onClick={() => router.push("/for-you")}>
-              Continue anyway
+              <Copy k="welcome.welcome-flow.continue-anyway">Continue anyway</Copy>
             </Button>
           )}
         </div>

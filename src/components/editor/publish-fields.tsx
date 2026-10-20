@@ -102,7 +102,7 @@ export function LicensePicker({ id, value, onChange, invalid, describedBy }: { i
           <label className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background/60 px-2.5">
             <SearchIcon aria-hidden className="size-4 text-muted-foreground" />
             <span className="sr-only">Search licences</span>
-            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search, or type an SPDX id" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (custom) pick(custom); else if (list[0]) pick(list[0].id) } }} placeholder="Search, or type an SPDX id" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
           </label>
           <ul role="listbox" aria-label="Licences" className="max-h-72 overflow-y-auto">
             {custom && (
@@ -435,6 +435,7 @@ export function CoauthorsInput({ id, value, onChange, ownerId, disabled, max = 1
               aria-controls={open ? listId : undefined}
               aria-activedescendant={open ? `${listId}-${Math.min(active, options.length - 1)}` : undefined}
               onKeyDown={(e) => {
+                if (e.key === "Enter") e.preventDefault()
                 if (!open) return
                 if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                   e.preventDefault()
@@ -485,12 +486,12 @@ const AUDIENCES: { id: Audience; label: string; detail: string; icon: typeof Glo
 ]
 
 /** Who sees it: one choice that covers draft, public, members-only and unlisted. */
-export function AudiencePicker({ value, onChange, name }: { value: Audience; onChange: (v: Audience) => void; name: string }) {
-  const legend = useCopy("project.audience.legend", "Who can see it")
+export function AudiencePicker({ value, onChange, name, withDraft = true, legend: legendText }: { value: Audience; onChange: (v: Audience) => void; name: string; withDraft?: boolean; legend?: string }) {
+  const legend = useCopy("project.audience.legend", legendText ?? "Who can see it")
   return (
     <fieldset className="flex flex-col gap-1.5">
       <legend className="mb-1.5 text-sm font-medium">{legend}</legend>
-      {AUDIENCES.map((a) => {
+      {AUDIENCES.filter((a) => withDraft || a.id !== "draft").map((a) => {
         const on = value === a.id
         return (
           <label
@@ -524,8 +525,6 @@ const toLocalInput = (iso: string | null) => {
 /** Publish now, or at a time you pick (in your own time zone). */
 export function ScheduleField({ id, value, onChange, error }: { id: string; value: string | null; onChange: (v: string | null) => void; error?: string }) {
   const on = value !== null
-  // Fixed on mount: the earliest time offered, five minutes from when the field appeared.
-  const [min] = useState(() => toLocalInput(new Date(Date.now() + 5 * 60_000).toISOString()))
   return (
     <div className="flex flex-col gap-2">
       <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
@@ -542,7 +541,8 @@ export function ScheduleField({ id, value, onChange, error }: { id: string; valu
           <Input
             id={id}
             type="datetime-local"
-            min={min}
+            // The earliest time offered, five minutes from now, set when the field is used (not during render).
+            onFocus={(e) => (e.currentTarget.min = toLocalInput(new Date(Date.now() + 5 * 60_000).toISOString()))}
             value={toLocalInput(value)}
             onChange={(e) => onChange(e.target.value ? new Date(e.target.value).toISOString() : null)}
             aria-invalid={error ? true : undefined}

@@ -14,6 +14,7 @@ import { accentChip, findCategory, READ_ROLES, useForumMap } from "@/lib/forum-c
 import { useRole } from "@/lib/roles"
 import { useSession } from "@/lib/store"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const RANK = { guest: 0, member: 1, moderator: 2, admin: 3 } as const
 
@@ -31,11 +32,11 @@ export function CategoryView({ slug }: { slug: string }) {
       <Empty className="mt-10 rounded-2xl border border-border bg-card/40 py-14">
         <EmptyHeader>
           <EmptyTitle>There is no category called “{slug}”</EmptyTitle>
-          <EmptyDescription>It may have been renamed or removed. Every category is listed on the forum page.</EmptyDescription>
+          <EmptyDescription><Copy k="forum.category-view.it-may-have-been-renamed">It may have been renamed or removed. Every category is listed on the forum page.</Copy></EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <Link href="/forum" className="text-sm text-ion hover:underline">
-            Back to the forum
+            <Copy k="forum.category-view.back-to-the-forum">Back to the forum</Copy>
           </Link>
         </EmptyContent>
       </Empty>

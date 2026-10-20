@@ -11,6 +11,7 @@ import { BENCHMARKS, better, formatScore, getBenchmark, listResults, type Benchm
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 type Arena = {
   rating: Rating | null
@@ -82,7 +83,7 @@ export function ModelScores({ slug, className }: { slug: string; className?: str
               <>
                 <div className="flex flex-col">
                   <span className="text-xs text-muted-foreground">
-                    Arena rating
+                    <Copy k="benchmark.model-scores.arena-rating">Arena rating</Copy>
                   </span>
                   <span className="text-xl font-semibold">{r.rating}</span>
                 </div>
@@ -96,14 +97,14 @@ export function ModelScores({ slug, className }: { slug: string; className?: str
                 </div>
                 <Sparkline values={r.history} width={96} height={28} />
                 <Link href="/arena/ratings" className="ml-auto text-sm text-ion underline-offset-4 hover:underline">
-                  All ratings
+                  <Copy k="benchmark.model-scores.all-ratings">All ratings</Copy>
                 </Link>
               </>
             ) : (
               <>
-                <p className="flex-1 text-sm text-muted-foreground">Not in the arena yet. Put it in a blind duel against another model.</p>
+                <p className="flex-1 text-sm text-muted-foreground"><Copy k="benchmark.model-scores.not-in-the-arena-yet">Not in the arena yet. Put it in a blind duel against another model.</Copy></p>
                 <Link href="/arena/new" className="text-sm text-ion underline-offset-4 hover:underline">
-                  Post a duel
+                  <Copy k="benchmark.model-scores.post-a-duel">Post a duel</Copy>
                 </Link>
               </>
             )}
@@ -139,9 +140,9 @@ export function ModelScores({ slug, className }: { slug: string; className?: str
           ) : (
             <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card/40 p-3.5 text-sm">
               <GaugeIcon aria-hidden className="size-4 text-muted-foreground" />
-              <span className="flex-1 text-muted-foreground">No benchmark results for this model yet.</span>
+              <span className="flex-1 text-muted-foreground"><Copy k="benchmark.model-scores.no-benchmark-results-for-this">No benchmark results for this model yet.</Copy></span>
               <Link href="/benchmarks" className="text-ion underline-offset-4 hover:underline">
-                Submit one
+                <Copy k="benchmark.model-scores.submit-one">Submit one</Copy>
               </Link>
             </div>
           )}

@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import type { FailReason } from "@/lib/live/http"
 import { cn } from "@/lib/utils"
 import { ExternalLink } from "./bits"
+import { Copy } from "@/components/content/copy"
 
 /** Shared frame for the in-site pages of external items: banner, details panel, error and loading states. */
 
@@ -76,7 +77,7 @@ export function DiscussButton({ href, className }: { href: string; className?: s
       className={cn("pressable inline-flex h-9 items-center gap-2 rounded-full border border-ion/40 bg-ion/10 px-3.5 text-sm text-ion transition-colors hover:bg-ion/15", className)}
     >
       <MessagesSquareIcon aria-hidden className="size-4" />
-      Discuss in forum
+      <Copy k="gh-repo.detail.discuss-in-forum">Discuss in forum</Copy>
     </Link>
   )
 }

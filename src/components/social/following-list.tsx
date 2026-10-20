@@ -9,6 +9,7 @@ import { MemberAvatar } from "@/components/forum/discussion"
 import { FollowButton } from "@/components/social/follow-button"
 import { categories, categoryPath, getCategory } from "@/lib/data"
 import { describeTarget, getMemberNames, listFollowing, type Follow } from "@/lib/social"
+import { Copy } from "@/components/content/copy"
 
 const SECTIONS = [
   { type: "member", label: "Members" },
@@ -41,16 +42,16 @@ export function FollowingList({ userId, onCount }: { userId?: string | null; onC
   }, [userId, onCount])
 
   if (error) return <p className="text-sm text-destructive">{error}</p>
-  if (!follows) return <p className="text-muted-foreground">Loading…</p>
+  if (!follows) return <p className="text-muted-foreground"><Copy k="profile.following-list.loading">Loading…</Copy></p>
 
   if (follows.length === 0) {
     return (
       <div className="flex flex-col gap-4">
         <p className="text-muted-foreground">
-          You are not following anything yet. Follow <Link href="/people" className="text-ion hover:underline">people</Link>, forum categories or{" "}
-          <Link href="/chat" className="text-ion hover:underline">chat rooms</Link> to hear when something happens.
+          You are not following anything yet. Follow <Link href="/people" className="text-ion hover:underline"><Copy k="profile.following-list.people">people</Copy></Link>, forum categories or{" "}
+          <Link href="/chat" className="text-ion hover:underline"><Copy k="profile.following-list.chat-rooms">chat rooms</Copy></Link> to hear when something happens.
         </p>
-        <h3 className="text-sm font-medium text-muted-foreground">Start with a category</h3>
+        <h3 className="text-sm font-medium text-muted-foreground"><Copy k="profile.following-list.start-with-a-category">Start with a category</Copy></h3>
         <ul className="grid gap-2 sm:grid-cols-2">
           {categories.map((c) => {
             const Icon = categoryIcon(c.icon)
@@ -78,7 +79,7 @@ export function FollowingList({ userId, onCount }: { userId?: string | null; onC
     <div className="flex flex-col gap-8">
       {stale.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium text-muted-foreground">No longer on Nexverse</h3>
+          <h3 className="text-sm font-medium text-muted-foreground"><Copy k="profile.following-list.no-longer-on-nexverse">No longer on Nexverse</Copy></h3>
           <ul className="flex flex-col gap-2">
             {stale.map((f) => (
               <li key={f.followee} className="flex items-center gap-3 rounded-xl border border-dashed border-border p-3 text-sm text-muted-foreground">

@@ -13,6 +13,7 @@ import { dailyWinners, dayKey, LAUNCH_DAY_MS, launchOfTheDay, launchPhase, type 
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const dayLabel = (
   day: string,
@@ -92,7 +93,7 @@ export function LaunchpadView() {
           {boostError || `Launches could not be loaded (${error}).`}{" "}
           {error && (
             <button type="button" onClick={() => void reload()} className="underline underline-offset-2">
-              Try again
+              <Copy k="launchpad.launchpad-view.try-again">Try again</Copy>
             </button>
           )}
         </p>
@@ -104,14 +105,14 @@ export function LaunchpadView() {
             <span className="grid size-11 place-items-center rounded-full bg-ion/10 text-ion">
               <RocketIcon aria-hidden className="size-5 -rotate-45" />
             </span>
-            <h2 className="font-sans text-base font-semibold tracking-normal">Nothing on the pad yet</h2>
+            <h2 className="font-sans text-base font-semibold tracking-normal"><Copy k="launchpad.launchpad-view.nothing-on-the-pad-yet">Nothing on the pad yet</Copy></h2>
             <p className="max-w-md text-sm text-muted-foreground">
               {live
-                ? "Schedule the first launch: pick one of your published projects and a time, and members boost it on the day."
-                : "Launches you schedule in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can see or boost them."}
+                ? <Copy k="launchpad.launchpad-view.schedule-the-first-launch-pick" multiline>Schedule the first launch: pick one of your published projects and a time, and members boost it on the day.</Copy>
+                : <Copy k="launchpad.launchpad-view.launches-you-schedule-in-this" multiline>Launches you schedule in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can see or boost them.</Copy>}
             </p>
             <Link href="/launchpad/new" className={primaryButton}>
-              <PlusIcon aria-hidden className="size-4" /> Schedule the first launch
+              <PlusIcon aria-hidden className="size-4" /> <Copy k="launchpad.launchpad-view.schedule-the-first-launch">Schedule the first launch</Copy>
             </Link>
           </div>
           <ol className="mx-auto grid w-full max-w-3xl gap-3 sm:grid-cols-3">
@@ -141,7 +142,7 @@ export function LaunchpadView() {
           <section aria-labelledby="board-h" className="glass flex flex-col gap-3 rounded-2xl p-4 md:p-5">
             <div className="flex items-center justify-between gap-2">
               <h2 id="board-h" className="flex items-center gap-2 font-sans text-base font-semibold tracking-normal">
-                <RocketIcon aria-hidden className="size-4 -rotate-45 text-ion" /> Today’s board
+                <RocketIcon aria-hidden className="size-4 -rotate-45 text-ion" /> <Copy k="launchpad.launchpad-view.todays-board">Today’s board</Copy>
               </h2>
               <span className="text-xs text-muted-foreground">{dayLabel(view.today, { day: "numeric", month: "short" })} · UTC</span>
             </div>
@@ -180,10 +181,10 @@ export function LaunchpadView() {
                 })}
               </ol>
             ) : (
-              <p className="py-8 text-center text-sm text-muted-foreground">No launches today. {view.next ? "The next one is on the calendar below." : ""}</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">No launches today. {view.next ? <Copy k="launchpad.launchpad-view.the-next-one-is-on">The next one is on the calendar below.</Copy> : ""}</p>
             )}
             <Link href="/launchpad/new" className={cn(primaryButton, "mt-auto w-fit")}>
-              <PlusIcon aria-hidden className="size-4" /> Schedule a launch
+              <PlusIcon aria-hidden className="size-4" /> <Copy k="launchpad.launchpad-view.schedule-a-launch">Schedule a launch</Copy>
             </Link>
           </section>
         </div>
@@ -192,7 +193,7 @@ export function LaunchpadView() {
       {!empty && (
         <section aria-labelledby="upcoming-h" className="flex flex-col gap-4">
           <h2 id="upcoming-h" className="flex items-center gap-2 font-sans text-base font-semibold tracking-normal">
-            <CalendarClockIcon aria-hidden className="size-4 text-ion" /> Coming up
+            <CalendarClockIcon aria-hidden className="size-4 text-ion" /> <Copy k="launchpad.launchpad-view.coming-up">Coming up</Copy>
           </h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[18rem_minmax(0,1fr)]">
             <div className="glass rounded-2xl p-4">
@@ -203,7 +204,7 @@ export function LaunchpadView() {
                 <div className="flex items-center justify-between gap-2 text-sm">
                   <span className="font-medium">{dayLabel(day)}</span>
                   <button type="button" onClick={() => setDay(null)} className="text-xs text-ion hover:underline">
-                    Show all upcoming
+                    <Copy k="launchpad.launchpad-view.show-all-upcoming">Show all upcoming</Copy>
                   </button>
                 </div>
               )}
@@ -216,7 +217,7 @@ export function LaunchpadView() {
                   ))}
                 </ol>
               ) : (
-                <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">No launches scheduled after today yet.</p>
+                <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground"><Copy k="launchpad.launchpad-view.no-launches-scheduled-after-today">No launches scheduled after today yet.</Copy></p>
               )}
             </div>
           </div>
@@ -226,7 +227,7 @@ export function LaunchpadView() {
       {view.archive.length > 0 && (
         <section aria-labelledby="archive-h" className="flex flex-col gap-4">
           <h2 id="archive-h" className="flex items-center gap-2 font-sans text-base font-semibold tracking-normal">
-            <HistoryIcon aria-hidden className="size-4 text-ion" /> Past launches
+            <HistoryIcon aria-hidden className="size-4 text-ion" /> <Copy k="launchpad.launchpad-view.past-launches">Past launches</Copy>
           </h2>
           <ol className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {view.archive.slice(0, 14).map(({ day: d, winner, others }) => (
@@ -236,7 +237,7 @@ export function LaunchpadView() {
                   <LaunchCover launch={winner} className="size-12 shrink-0" rounded="rounded-lg" />
                   <span className="flex min-w-0 flex-col">
                     <span className="flex items-center gap-1.5 text-xs font-medium text-gold">
-                      <CrownIcon aria-hidden className="size-3.5" /> Launch of the day
+                      <CrownIcon aria-hidden className="size-3.5" /> <Copy k="launchpad.launchpad-view.launch-of-the-day">Launch of the day</Copy>
                     </span>
                     <span className="truncate font-medium group-hover:text-ion">{winner.name}</span>
                     <span className="text-xs text-muted-foreground tabular">
@@ -284,9 +285,9 @@ function Spotlight({
   if (!l) {
     return (
       <section className="glass flex flex-col items-start justify-center gap-3 rounded-2xl p-6">
-        <p className="text-sm text-muted-foreground">No launch today and nothing scheduled.</p>
+        <p className="text-sm text-muted-foreground"><Copy k="launchpad.launchpad-view.no-launch-today-and-nothing">No launch today and nothing scheduled.</Copy></p>
         <Link href="/launchpad/new" className={primaryButton}>
-          Schedule a launch
+          <Copy k="launchpad.launchpad-view.schedule-a-launch">Schedule a launch</Copy>
         </Link>
       </section>
     )
@@ -300,10 +301,10 @@ function Spotlight({
         <div className="flex flex-wrap items-center gap-2">
           {winner ? (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">
-              <CrownIcon aria-hidden className="size-3.5" /> Launch of the day
+              <CrownIcon aria-hidden className="size-3.5" /> <Copy k="launchpad.launchpad-view.launch-of-the-day">Launch of the day</Copy>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-ion/30 bg-ion/10 px-2 py-0.5 text-xs font-medium text-ion">Next launch</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-ion/30 bg-ion/10 px-2 py-0.5 text-xs font-medium text-ion"><Copy k="launchpad.launchpad-view.next-launch">Next launch</Copy></span>
           )}
           <PhaseBadge phase={phase} />
         </div>

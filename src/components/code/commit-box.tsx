@@ -8,6 +8,7 @@ import { VALID_REF, type Tree } from "@/lib/code/tree"
 import { cn } from "@/lib/utils"
 import { useRepo } from "./repo-context"
 import { FormError, inputCls, textareaCls } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 export type CommitTarget = { message: string; branch: string; isNew: boolean }
 
@@ -70,7 +71,7 @@ export function CommitBox({
   return (
     <form onSubmit={submit} className="flex flex-col gap-3 rounded-xl border border-border bg-card/50 p-4">
       <h2 className="flex items-center gap-2 text-sm font-medium">
-        <GitCommitHorizontalIcon aria-hidden className="size-4 text-ion" /> Commit
+        <GitCommitHorizontalIcon aria-hidden className="size-4 text-ion" /> <Copy k="code-repo.commit-box.commit">Commit</Copy>
       </h2>
       <label htmlFor={`${id}-s`} className="sr-only">
         Commit message
@@ -81,7 +82,7 @@ export function CommitBox({
       </label>
       <textarea id={`${id}-d`} value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Add an optional extended description" rows={2} className={textareaCls} />
       <fieldset className="flex flex-col gap-2 text-sm">
-        <legend className="sr-only">Where to commit</legend>
+        <legend className="sr-only"><Copy k="code-repo.commit-box.where-to-commit">Where to commit</Copy></legend>
         {branch && (
           <label className="flex items-center gap-2">
             <input type="radio" name={`${id}-m`} checked={mode === "direct"} onChange={() => setMode("direct")} className="accent-[var(--ion)]" />
@@ -91,14 +92,14 @@ export function CommitBox({
         <label className="flex flex-wrap items-center gap-2">
           <input type="radio" name={`${id}-m`} checked={mode === "new"} onChange={() => setMode("new")} className="accent-[var(--ion)]" />
           <GitBranchPlusIcon aria-hidden className="size-4 text-muted-foreground" />
-          Create a new branch for this commit
+          <Copy k="code-repo.commit-box.create-a-new-branch-for">Create a new branch for this commit</Copy>
         </label>
         {mode === "new" && (
           <input value={newBranch} onChange={(e) => setNewBranch(e.target.value)} aria-label="New branch name" className={cn(inputCls, "ml-6 max-w-xs font-mono")} />
         )}
       </fieldset>
       <FormError message={error} />
-      {stale && <p className="text-xs text-muted-foreground">Copy your changes somewhere safe, reload the page, and apply them to the latest version. Or commit them to a new branch instead.</p>}
+      {stale && <p className="text-xs text-muted-foreground"><Copy k="code-repo.commit-box.copy-your-changes-somewhere-safe" multiline>Copy your changes somewhere safe, reload the page, and apply them to the latest version. Or commit them to a new branch instead.</Copy></p>}
       <div>
         <Button type="submit" disabled={busy || disabled}>
           {busy && <LoaderCircleIcon aria-hidden className="animate-spin" />}

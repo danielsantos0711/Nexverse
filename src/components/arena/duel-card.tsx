@@ -14,6 +14,7 @@ import { useRole } from "@/lib/roles"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 type Shown = "left" | "right" | "tie" | "bad"
 
@@ -125,14 +126,14 @@ export function DuelCard({
         <div className="flex flex-wrap items-center gap-2">
           <TaskBadge task={duel.task} />
           <LangList langs={duel.langs} />
-          {duel.local && <span className="text-xs text-muted-foreground">Saved in this browser</span>}
+          {duel.local && <span className="text-xs text-muted-foreground"><Copy k="arena.duel-card.saved-in-this-browser">Saved in this browser</Copy></span>}
           <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground">
             <PosterAvatar poster={duel.author} size={18} />
             {duel.author.name} · <TimeAgo date={duel.createdAt} />
           </span>
         </div>
         <div className="rounded-xl border border-border bg-black/20 px-3.5 py-3">
-          <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">Prompt</p>
+          <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase"><Copy k="arena.duel-card.prompt">Prompt</Copy></p>
           <OutputText text={duel.prompt} />
         </div>
       </header>
@@ -163,10 +164,10 @@ export function DuelCard({
                 </span>
                 <ModelName model={revealed ? model : null} delay={justVoted ? 0.12 + i * 0.18 : 0} reduce={Boolean(reduce)} />
                 <span className="ml-auto flex shrink-0 items-center gap-1.5">
-                  {picked && <span className="rounded-full bg-white/[0.07] px-2 py-0.5 text-xs text-foreground/85">Your pick</span>}
+                  {picked && <span className="rounded-full bg-white/[0.07] px-2 py-0.5 text-xs text-foreground/85"><Copy k="arena.duel-card.your-pick">Your pick</Copy></span>}
                   {won && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-ion/12 px-2 py-0.5 text-xs font-medium text-ion">
-                      <CrownIcon aria-hidden className="size-3" /> Preferred
+                      <CrownIcon aria-hidden className="size-3" /> <Copy k="arena.duel-card.preferred">Preferred</Copy>
                     </span>
                   )}
                 </span>
@@ -210,12 +211,12 @@ export function DuelCard({
           </motion.div>
         ) : needsSignIn ? (
           <motion.div key="signin" exit={{ opacity: 0 }} className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card/40 px-4 py-3 text-sm">
-            <span className="text-muted-foreground">Sign in to vote. The model names are revealed after you vote.</span>
+            <span className="text-muted-foreground"><Copy k="arena.duel-card.sign-in-to-vote-the">Sign in to vote. The model names are revealed after you vote.</Copy></span>
             <Link
               href={`/sign-in?next=${encodeURIComponent(`/arena/${duel.id}`)}`}
               className="pressable ml-auto inline-flex h-9 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground"
             >
-              Sign in
+              <Copy k="arena.duel-card.sign-in">Sign in</Copy>
             </Link>
           </motion.div>
         ) : (
@@ -255,7 +256,7 @@ export function DuelCard({
               ))}
             </div>
             <p className="text-xs text-muted-foreground max-md:hidden">
-              Judge the answers, not the style you expect from a model. Names appear after you vote.
+              <Copy k="arena.duel-card.judge-the-answers-not-the">Judge the answers, not the style you expect from a model. Names appear after you vote.</Copy>
             </p>
           </motion.div>
         )}
@@ -315,7 +316,7 @@ function TallyBar({ reveal, left, right }: { reveal: Reveal; left: "a" | "b"; ri
   if (!reveal.total) return null
   return (
     <figure className="flex flex-col gap-2">
-      <figcaption className="sr-only">How everyone voted</figcaption>
+      <figcaption className="sr-only"><Copy k="arena.duel-card.how-everyone-voted">How everyone voted</Copy></figcaption>
       <div className="flex h-2.5 w-full gap-[2px] overflow-hidden rounded-full" aria-hidden>
         {segs
           .filter((s) => s.n > 0)

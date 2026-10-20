@@ -6,6 +6,7 @@ import { TimeAgo } from "@/components/live/time"
 import { fullName, repoPath, type Repo } from "@/lib/code/api"
 import { cn } from "@/lib/utils"
 import { Avatar, href, VisibilityBadge } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /** One repository in a list: name, description, topics and the numbers that matter. */
 export function RepoCard({ repo, className, style }: { repo: Repo; className?: string; style?: React.CSSProperties }) {
@@ -25,7 +26,7 @@ export function RepoCard({ repo, className, style }: { repo: Repo; className?: s
         </Link>
         <VisibilityBadge visibility={repo.visibility} className="ml-auto shrink-0" />
       </div>
-      {repo.description ? <p className="line-clamp-2 text-sm text-muted-foreground">{repo.description}</p> : <p className="text-sm text-muted-foreground/60 italic">No description yet.</p>}
+      {repo.description ? <p className="line-clamp-2 text-sm text-muted-foreground">{repo.description}</p> : <p className="text-sm text-muted-foreground/60 italic"><Copy k="code.repo-card.no-description-yet">No description yet.</Copy></p>}
       {repo.topics.length > 0 && (
         <ul className="relative z-10 flex flex-wrap gap-1.5" aria-label="Topics">
           {repo.topics.slice(0, 5).map((t) => (
@@ -40,27 +41,27 @@ export function RepoCard({ repo, className, style }: { repo: Repo; className?: s
       <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground tabular">
         <span className="inline-flex items-center gap-1" title="Stars">
           <StarIcon aria-hidden className="size-3.5" /> {repo.stars.toLocaleString("en")}
-          <span className="sr-only">stars</span>
+          <span className="sr-only"><Copy k="code.repo-card.stars">stars</Copy></span>
         </span>
         <span className="inline-flex items-center gap-1" title="Forks">
           <GitForkIcon aria-hidden className="size-3.5" /> {repo.forks.toLocaleString("en")}
-          <span className="sr-only">forks</span>
+          <span className="sr-only"><Copy k="code.repo-card.forks">forks</Copy></span>
         </span>
         {repo.openIssues > 0 && (
           <span className="inline-flex items-center gap-1" title="Open issues">
             <CircleDotIcon aria-hidden className="size-3.5" /> {repo.openIssues}
-            <span className="sr-only">open issues</span>
+            <span className="sr-only"><Copy k="code.repo-card.open-issues">open issues</Copy></span>
           </span>
         )}
         {repo.openPulls > 0 && (
           <span className="inline-flex items-center gap-1" title="Open pull requests">
             <GitPullRequestIcon aria-hidden className="size-3.5" /> {repo.openPulls}
-            <span className="sr-only">open pull requests</span>
+            <span className="sr-only"><Copy k="code.repo-card.open-pull-requests">open pull requests</Copy></span>
           </span>
         )}
         {repo.archivedAt && (
           <span className="inline-flex items-center gap-1 text-gold">
-            <ArchiveIcon aria-hidden className="size-3.5" /> Archived
+            <ArchiveIcon aria-hidden className="size-3.5" /> <Copy k="code.repo-card.archived">Archived</Copy>
           </span>
         )}
         {repo.license && <span>{repo.license}</span>}

@@ -3,6 +3,7 @@ import type { Route } from "next"
 import { BookmarkIcon, HeartIcon, LocateFixedIcon } from "lucide-react"
 import { fold, STAR_KINDS, type Cosmos, type Star, type StarKind } from "@/components/cosmos/model"
 import { rise, riseDelay } from "@/components/forum/forum-ui"
+import { Copy } from "@/components/content/copy"
 
 /**
  * The map as a plain list, grouped by galaxy: for screen readers, keyboard users who prefer reading to flying, and
@@ -39,7 +40,7 @@ export function CosmosList({
       {you && keep(you) && (
         <section aria-labelledby="cosmos-list-you" className="flex flex-col gap-3">
           <h2 id="cosmos-list-you" className="text-sm font-semibold text-ion">
-            Where you are
+            <Copy k="cosmos.cosmos-list.where-you-are">Where you are</Copy>
           </h2>
           <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <Row star={you} liked={false} saved={false} onShow={onShow} i={0} />
@@ -86,12 +87,12 @@ function Row({ star, liked, saved, onShow, i }: { star: Star; liked: boolean; sa
           <span className="mt-1 flex gap-2 text-xs text-gold">
             {liked && (
               <span className="inline-flex items-center gap-1">
-                <HeartIcon aria-hidden className="size-3" /> Liked
+                <HeartIcon aria-hidden className="size-3" /> <Copy k="cosmos.cosmos-list.liked">Liked</Copy>
               </span>
             )}
             {saved && (
               <span className="inline-flex items-center gap-1">
-                <BookmarkIcon aria-hidden className="size-3" /> Saved
+                <BookmarkIcon aria-hidden className="size-3" /> <Copy k="cosmos.cosmos-list.saved">Saved</Copy>
               </span>
             )}
           </span>

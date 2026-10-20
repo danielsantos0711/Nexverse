@@ -4,6 +4,7 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { CopyAction, fmtGB, NumberInput, Panel } from "./ui"
 import { PRECISIONS } from "./vram"
+import { Copy } from "@/components/content/copy"
 
 /*
  * Weight size at each precision: parameters × bits per weight ÷ 8. The GGUF bit widths include the per-block
@@ -54,7 +55,7 @@ export function Quantization() {
           })}
         </ul>
         <p className="mt-4 text-xs text-muted-foreground">
-          Size = parameters × bits per weight ÷ 8. GGUF widths are the average including block scales, as llama.cpp reports them. &ldquo;Fits&rdquo; leaves 15% of the budget for everything else.
+          <Copy k="lab-tool.quantization.size-parameters-bits-per-weight" multiline>Size = parameters × bits per weight ÷ 8. GGUF widths are the average including block scales, as llama.cpp reports them. &ldquo;Fits&rdquo; leaves 15% of the budget for everything else.</Copy>
         </p>
       </Panel>
     </div>

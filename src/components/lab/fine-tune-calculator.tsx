@@ -6,6 +6,7 @@ import { computeFineTune, DEFAULT_FT, fmtDuration, GPUS, SOURCES, type FineTuneI
 import { cn } from "@/lib/utils"
 import { ActionButton, AnimatedNumber, CopyAction, fmtCompact, fmtGB, NativeSelect, NumberInput, Panel, RangeSlider, readStored, Segmented, SwitchRow, ToolSkeleton, useHydrated, writeStored } from "./ui"
 import { fmtParams, OPTIMIZERS, type Method, type Optimizer } from "./vram"
+import { Copy } from "@/components/content/copy"
 
 const KEY = "nexverse:lab:fine-tuning"
 
@@ -68,7 +69,7 @@ function Inner() {
             )}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="ft-opt" className="text-sm font-medium text-foreground/90">
-                Optimizer
+                <Copy k="lab-tool.fine-tune-calculator.optimizer">Optimizer</Copy>
               </label>
               <NativeSelect id="ft-opt" value={i.optimizer} onChange={(v) => set("optimizer", v as Optimizer)}>
                 {OPTIMIZERS.map((o) => (
@@ -95,7 +96,7 @@ function Inner() {
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="ft-gpu" className="text-sm font-medium text-foreground/90">
-                GPU
+                <Copy k="lab-tool.fine-tune-calculator.gpu">GPU</Copy>
               </label>
               <NativeSelect
                 id="ft-gpu"
@@ -126,7 +127,7 @@ function Inner() {
             </div>
             <div className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between text-sm">
-                <span className="font-medium text-foreground/90">Utilisation (MFU)</span>
+                <span className="font-medium text-foreground/90"><Copy k="lab-tool.fine-tune-calculator.utilisation-mfu">Utilisation (MFU)</Copy></span>
                 <span className="text-xs text-muted-foreground tabular">{Math.round(i.mfu * 100)}%</span>
               </div>
               <RangeSlider label="Model FLOPs utilisation" value={i.mfu} onChange={(v) => set("mfu", v)} min={0.05} max={0.7} step={0.01} valueText={(v) => `${Math.round(v * 100)} percent`} />
@@ -171,23 +172,23 @@ function Inner() {
               ))}
             </ul>
           )}
-          {i.gpus > 1 && <p className="mt-2 text-xs text-muted-foreground">Assumes plain data parallelism: each GPU holds a full copy. Sharding (ZeRO-3 / FSDP) divides weights, gradients and optimizer states across GPUs.</p>}
+          {i.gpus > 1 && <p className="mt-2 text-xs text-muted-foreground"><Copy k="lab-tool.fine-tune-calculator.assumes-plain-data-parallelism-each" multiline>Assumes plain data parallelism: each GPU holds a full copy. Sharding (ZeRO-3 / FSDP) divides weights, gradients and optimizer states across GPUs.</Copy></p>}
         </Panel>
 
         <Panel title="Training time">
           <div className="text-3xl font-semibold tracking-tight">{fmtDuration(r.seconds)}</div>
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <dt className="text-muted-foreground">Training tokens</dt>
+            <dt className="text-muted-foreground"><Copy k="lab-tool.fine-tune-calculator.training-tokens">Training tokens</Copy></dt>
             <dd className="text-right tabular">{fmtCompact(r.tokens)}</dd>
-            <dt className="text-muted-foreground">Optimizer steps</dt>
+            <dt className="text-muted-foreground"><Copy k="lab-tool.fine-tune-calculator.optimizer-steps">Optimizer steps</Copy></dt>
             <dd className="text-right tabular">{r.steps.toLocaleString("en")}</dd>
-            <dt className="text-muted-foreground">FLOPs per token</dt>
+            <dt className="text-muted-foreground"><Copy k="lab-tool.fine-tune-calculator.flops-per-token">FLOPs per token</Copy></dt>
             <dd className="text-right tabular">
               {r.factor}·N = {r.flopsPerToken.toExponential(2)}
             </dd>
-            <dt className="text-muted-foreground">Total compute</dt>
+            <dt className="text-muted-foreground"><Copy k="lab-tool.fine-tune-calculator.total-compute">Total compute</Copy></dt>
             <dd className="text-right tabular">{r.totalFlops.toExponential(2)} FLOPs</dd>
-            <dt className="text-muted-foreground">GPU-hours</dt>
+            <dt className="text-muted-foreground"><Copy k="lab-tool.fine-tune-calculator.gpu-hours">GPU-hours</Copy></dt>
             <dd className="text-right tabular">{gpuHours.toFixed(1)}</dd>
           </dl>
         </Panel>
@@ -195,13 +196,13 @@ function Inner() {
         <Panel title="How it is calculated">
           <ul className="flex flex-col gap-2 text-sm text-muted-foreground">
             <li>
-              <span className="text-foreground/90">Memory:</span> weights + gradients + optimizer states + an FP32 master copy of what is trained, plus activations (34·s·b·h bytes per layer, or about 2·s·b·h with checkpointing) and logits.
+              <span className="text-foreground/90"><Copy k="lab-tool.fine-tune-calculator.memory">Memory:</Copy></span> weights + gradients + optimizer states + an FP32 master copy of what is trained, plus activations (34·s·b·h bytes per layer, or about 2·s·b·h with checkpointing) and logits.
             </li>
             <li>
-              <span className="text-foreground/90">Compute:</span> 6·N FLOPs per token for full training (2·N forward, 4·N backward). LoRA and QLoRA skip the frozen weights&rsquo; gradients: about 4·N. Checkpointing recomputes the forward pass: +2·N.
+              <span className="text-foreground/90"><Copy k="lab-tool.fine-tune-calculator.compute">Compute:</Copy></span> 6·N FLOPs per token for full training (2·N forward, 4·N backward). LoRA and QLoRA skip the frozen weights&rsquo; gradients: about 4·N. Checkpointing recomputes the forward pass: +2·N.
             </li>
             <li>
-              <span className="text-foreground/90">Time:</span> total FLOPs ÷ (GPUs × peak TFLOPS × utilisation).
+              <span className="text-foreground/90"><Copy k="lab-tool.fine-tune-calculator.time">Time:</Copy></span> total FLOPs ÷ (GPUs × peak TFLOPS × utilisation).
             </li>
           </ul>
           <ul className="mt-3 flex flex-col gap-1 text-xs">

@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { DownloadCloudIcon, FolderGit2Icon, PlusIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Copy } from "@/components/content/copy"
 
 /** The top of /code: what Nexverse Code is, and the two ways to start. */
 export function CodeHero() {
@@ -20,19 +21,18 @@ export function CodeHero() {
           <FolderGit2Icon aria-hidden className="size-5" />
         </span>
         <div className="flex min-w-0 flex-col gap-1.5">
-          <h1 className="text-2xl font-semibold tracking-[-0.02em] md:text-3xl">Nexverse Code</h1>
+          <h1 className="text-2xl font-semibold tracking-[-0.02em] md:text-3xl"><Copy k="code.hero.nexverse-code">Nexverse Code</Copy></h1>
           <p className="max-w-[68ch] text-sm text-muted-foreground md:text-[15px]">
-            Repositories with real history: commits, branches, tags, releases, issues and pull requests with reviews. Each one can link to the models and datasets it trains or serves, a forum
-            discussion and its launch, and AI explains any file for free.
+            <Copy k="code.hero.repositories-with-real-history-commits" multiline>Repositories with real history: commits, branches, tags, releases, issues and pull requests with reviews. Each one can link to the models and datasets it trains or serves, a forum discussion and its launch, and AI explains any file for free.</Copy>
           </p>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
         <Button nativeButton={false} render={<Link href="/code/new" />}>
-          <PlusIcon aria-hidden /> New repository
+          <PlusIcon aria-hidden /> <Copy k="code.hero.new-repository">New repository</Copy>
         </Button>
         <Button variant="outline" nativeButton={false} render={<Link href="/code/import" />}>
-          <DownloadCloudIcon aria-hidden /> Import from GitHub
+          <DownloadCloudIcon aria-hidden /> <Copy k="code.hero.import-from-github">Import from GitHub</Copy>
         </Button>
       </div>
     </header>
