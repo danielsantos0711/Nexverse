@@ -12,6 +12,7 @@ import { ActivityList } from "./activity"
 import { RepoCard } from "./repo-card"
 import { EmptyState, ErrorNote, href, inputCls, useLoad } from "./ui"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Copy } from "@/components/content/copy"
 
 /*
  * /code: trending, recently updated, new and most-starred public repositories, your stars, a search and topics.
@@ -92,7 +93,7 @@ export function CodeExplore() {
             ))}
           </div>
           <label className="relative sm:ml-auto sm:w-64">
-            <span className="sr-only">Search repositories</span>
+            <span className="sr-only"><Copy k="code.explore.search-repositories">Search repositories</Copy></span>
             <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <input type="search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Search repositories" className={cn(inputCls, "rounded-full pl-9")} />
           </label>
@@ -105,7 +106,7 @@ export function CodeExplore() {
             {topic && (
               <button onClick={() => go({ topic: "" })} className="inline-flex items-center gap-1 rounded-full bg-repo/15 px-2.5 py-0.5 text-xs text-repo hover:bg-repo/25">
                 {topic} <XIcon aria-hidden className="size-3" />
-                <span className="sr-only">Remove topic filter</span>
+                <span className="sr-only"><Copy k="code.explore.remove-topic-filter">Remove topic filter</Copy></span>
               </button>
             )}
             <button
@@ -115,7 +116,7 @@ export function CodeExplore() {
               }}
               className="text-ion hover:underline"
             >
-              Clear
+              <Copy k="code.explore.clear">Clear</Copy>
             </button>
           </div>
         )}
@@ -143,20 +144,20 @@ export function CodeExplore() {
                 !q && !topic && tab !== "starred" ? (
                   <div className="flex flex-wrap justify-center gap-2">
                     <Button size="sm" nativeButton={false} render={<Link href="/code/new" />}>
-                      Create the first one
+                      <Copy k="code.explore.create-the-first-one">Create the first one</Copy>
                     </Button>
                     <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/code/import" />}>
-                      Import from GitHub
+                      <Copy k="code.explore.import-from-github">Import from GitHub</Copy>
                     </Button>
                   </div>
                 ) : undefined
               }
             >
               {q || topic
-                ? "Try fewer words, or another topic."
+                ? <Copy k="code.explore.try-fewer-words-or-another">Try fewer words, or another topic.</Copy>
                 : tab === "starred"
-                  ? "Star repositories you want to come back to. They collect here."
-                  : "Repositories that members make public show up here, with the most starred this week first."}
+                  ? <Copy k="code.explore.star-repositories-you-want-to">Star repositories you want to come back to. They collect here.</Copy>
+                  : <Copy k="code.explore.repositories-that-members-make-public">Repositories that members make public show up here, with the most starred this week first.</Copy>}
             </EmptyState>
           </div>
         )}
@@ -165,7 +166,7 @@ export function CodeExplore() {
       <aside className="flex min-w-0 flex-col gap-6" aria-label="Topics and activity">
         {topics.length > 0 && (
           <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium">Topics</h2>
+            <h2 className="text-sm font-medium"><Copy k="code.explore.topics">Topics</Copy></h2>
             <ul className="flex flex-wrap gap-1.5">
               {topics.map((t) => (
                 <li key={t}>
@@ -182,25 +183,25 @@ export function CodeExplore() {
           </section>
         )}
         <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium">Happening now</h2>
+          <h2 className="text-sm font-medium"><Copy k="code.explore.happening-now">Happening now</Copy></h2>
           {activity.error ? (
             <p className="text-sm text-muted-foreground">{activity.error.message}</p>
           ) : activity.data ? (
             activity.data.length ? (
               <ActivityList items={activity.data} compact />
             ) : (
-              <p className="text-sm text-muted-foreground">Commits, releases and merged pull requests in public repositories appear here as they happen.</p>
+              <p className="text-sm text-muted-foreground"><Copy k="code.explore.commits-releases-and-merged-pull" multiline>Commits, releases and merged pull requests in public repositories appear here as they happen.</Copy></p>
             )
           ) : (
             <Skeleton className="h-40 rounded-xl" />
           )}
         </section>
         <section className="rounded-xl border border-border bg-card/40 p-4 text-sm text-muted-foreground">
-          <h2 className="mb-1 font-medium text-foreground">About git</h2>
+          <h2 className="mb-1 font-medium text-foreground"><Copy k="code.explore.about-git">About git</Copy></h2>
           <p>
             <code className="font-mono text-[13px]">git clone</code> and <code className="font-mono text-[13px]">git push</code> over the git protocol are not supported yet. Work in the browser, download any branch as a zip, or{" "}
             <Link href="/code/import" className="text-ion hover:underline">
-              import from GitHub
+              <Copy k="code.explore.import-from-github">import from GitHub</Copy>
             </Link>
             .
           </p>

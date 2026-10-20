@@ -4,9 +4,11 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
 import { TriangleAlertIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { createRegexRunner, LIBRARY, type RegexOutcome } from "@/lib/lab/regex"
+import { createRegexRunner, type RegexOutcome } from "@/lib/lab/regex"
+import { useRegexLibrary } from "@/lib/lists/hooks"
 import { cn } from "@/lib/utils"
 import { ActionButton, CopyAction, fmtInt, Panel, useHydrated } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 const FLAGS: { f: string; label: string }[] = [
   { f: "g", label: "global" },
@@ -21,6 +23,7 @@ const EMPTY: RegexOutcome = { result: { ok: true, matches: [], groupNames: [], g
 const HUES = ["143 180 255", "127 224 176", "216 197 158", "211 180 255"]
 
 export function RegexTester() {
+  const LIBRARY = useRegexLibrary()
   const first = LIBRARY[0]
   const [pattern, setPattern] = useState(first.pattern)
   const [flags, setFlags] = useState(first.flags)
@@ -88,7 +91,7 @@ export function RegexTester() {
               /
             </span>
             <label htmlFor="rx-pattern" className="sr-only">
-              Regular expression
+              <Copy k="lab-tool.regex-tester.regular-expression">Regular expression</Copy>
             </label>
             <input id="rx-pattern" value={pattern} onChange={(e) => setPattern(e.target.value)} spellCheck={false} autoComplete="off" className="h-full min-w-0 flex-1 bg-transparent px-1 text-base outline-none md:text-[14px]" />
             <span aria-hidden className="text-muted-foreground">
@@ -102,7 +105,7 @@ export function RegexTester() {
             </p>
           )}
           <fieldset className="flex flex-wrap gap-1.5">
-            <legend className="sr-only">Flags</legend>
+            <legend className="sr-only"><Copy k="lab-tool.regex-tester.flags">Flags</Copy></legend>
             {FLAGS.map((x) => (
               <label key={x.f} className={cn("inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50", flags.includes(x.f) ? "border-ion/40 bg-ion/10 text-ion" : "border-border text-muted-foreground hover:text-foreground")}>
                 <input type="checkbox" className="sr-only" checked={flags.includes(x.f)} onChange={() => toggle(x.f)} />
@@ -111,7 +114,7 @@ export function RegexTester() {
             ))}
           </fieldset>
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-foreground/90">Library</span>
+            <span className="text-sm font-medium text-foreground/90"><Copy k="lab-tool.regex-tester.library">Library</Copy></span>
             <div className="flex flex-wrap gap-1.5">
               {LIBRARY.map((l) => (
                 <button
@@ -133,7 +136,7 @@ export function RegexTester() {
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <Panel title="Test text" description={result.ok ? `${fmtInt(result.matches.length)} match${result.matches.length === 1 ? "" : "es"}${result.capped ? " (stopped early)" : ""}${hydrated ? ` · ${result.ms.toFixed(1)} ms` : ""}` : "Fix the pattern to see matches."}>
           <label htmlFor="rx-text" className="sr-only">
-            Test text
+            <Copy k="lab-tool.regex-tester.test-text">Test text</Copy>
           </label>
           <Textarea id="rx-text" value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} className="min-h-36 resize-y font-mono text-[13px] md:text-[13px]" />
           <div className="mt-3 max-h-[40vh] overflow-auto rounded-xl border border-border bg-black/30 p-3 font-mono text-[13px] leading-[1.8] break-words whitespace-pre-wrap" tabIndex={0} role="region" aria-label="Text with matches highlighted">
@@ -154,27 +157,27 @@ export function RegexTester() {
 
         <Panel title="Replace" description="Use $1, $2 or $<name> for groups, $& for the whole match." actions={replaced != null && <CopyAction text={replaced} label="Copy result" />}>
           <label htmlFor="rx-replace" className="sr-only">
-            Replacement
+            <Copy k="lab-tool.regex-tester.replacement">Replacement</Copy>
           </label>
           <Input id="rx-replace" value={replacement} onChange={(e) => setReplacement(e.target.value)} placeholder="Replacement (empty removes matches)" className="h-9 font-mono" spellCheck={false} />
           <pre className="mt-3 max-h-[40vh] min-h-24 overflow-auto rounded-xl border border-border bg-black/30 p-3 font-mono text-[13px] leading-relaxed break-words whitespace-pre-wrap text-foreground/90" tabIndex={0} aria-label="Text after replacement">
             {replaced ?? "The replaced text appears here."}
           </pre>
-          {!flags.includes("g") && <p className="mt-2 text-xs text-muted-foreground">Without the g flag only the first match is replaced.</p>}
+          {!flags.includes("g") && <p className="mt-2 text-xs text-muted-foreground"><Copy k="lab-tool.regex-tester.without-the-g-flag-only">Without the g flag only the first match is replaced.</Copy></p>}
         </Panel>
       </div>
 
       <Panel title="Matches and groups" actions={result.ok && result.matches.length > 0 && <CopyAction text={tsv} label="Copy as TSV" />}>
         {!result.ok || result.matches.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No matches yet.</p>
+          <p className="text-sm text-muted-foreground"><Copy k="lab-tool.regex-tester.no-matches-yet">No matches yet.</Copy></p>
         ) : (
           <div className="-mx-1 max-h-[50vh] overflow-auto px-1">
             <table className="w-full min-w-[480px] text-left text-sm">
               <thead className="sticky top-0 bg-card text-xs text-muted-foreground">
                 <tr>
                   <th className="py-1.5 pr-3 font-medium">#</th>
-                  <th className="py-1.5 pr-3 font-medium">At</th>
-                  <th className="py-1.5 pr-3 font-medium">Match</th>
+                  <th className="py-1.5 pr-3 font-medium"><Copy k="lab-tool.regex-tester.at">At</Copy></th>
+                  <th className="py-1.5 pr-3 font-medium"><Copy k="lab-tool.regex-tester.match">Match</Copy></th>
                   {groupHeaders.map((g) => (
                     <th key={g} className="py-1.5 pr-3 font-medium">
                       {g}

@@ -1,20 +1,21 @@
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono, Sora } from "next/font/google"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { rootMetadata } from "@/lib/content-server"
 import "./globals.css"
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin", "latin-ext"] })
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
 const sora = Sora({ variable: "--font-sora", subsets: ["latin", "latin-ext"] })
 
-export const metadata: Metadata = {
-  title: {
-    default: "Nexverse: the open universe for AI builders",
-    template: "%s · Nexverse",
-  },
-  description:
-    "Models, datasets, tools, repos, news and a forum in every language. Find what people are building with AI, share yours, and connect it into constellations.",
-  icons: { icon: "/favicon.ico", apple: "/apple-icon.png" },
+const DEFAULT_TITLE = "Nexverse: the open universe for AI builders"
+const DEFAULT_DESCRIPTION =
+  "Models, datasets, tools, repos, news and a forum in every language. Find what people are building with AI, share yours, and connect it into constellations."
+
+// The admins' SEO for the home page (site editor, "seo./") and the brand name from site settings, cached.
+export async function generateMetadata(): Promise<Metadata> {
+  const meta = await rootMetadata({ title: DEFAULT_TITLE, description: DEFAULT_DESCRIPTION })
+  return { ...meta, icons: { icon: "/favicon.ico", apple: "/apple-icon.png" } }
 }
 
 export const viewport: Viewport = { themeColor: "#05060a" }

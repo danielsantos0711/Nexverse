@@ -5,6 +5,7 @@ import { LayersIcon, LockIcon } from "lucide-react"
 import { useItemInfo } from "@/components/collections/describe-item"
 import { PosterAvatar } from "@/components/forum/forum-ui"
 import { KIND_ICONS } from "@/components/hub/bits"
+import { PixelGlint } from "@/components/hub/pixel-glint"
 import type { Collection } from "@/lib/community"
 import { cn } from "@/lib/utils"
 
@@ -14,10 +15,12 @@ export function CollectionCard({ c, className }: { c: Collection; className?: st
   const { get } = useItemInfo(first)
   const peek = first.map((target) => ({ target, ...get(target) })).filter((p) => p.found)
   return (
-    <article className={cn("group relative flex h-full flex-col gap-3 rounded-xl border border-border bg-card/40 p-4 transition-[background-color,transform] duration-200 hover:-translate-y-0.5 hover:bg-white/[0.03] motion-reduce:transform-none", className)}>
+    <article className={cn("liquid-glass-flat group relative h-full overflow-hidden rounded-2xl transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:transform-none", className)}>
+      <PixelGlint kind="collection" />
+      <div className="relative flex h-full flex-col gap-3 p-4">
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-sans text-base leading-snug font-semibold tracking-normal">
-          <Link href={`/collections/${c.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring group-hover:text-ion">
+          <Link href={`/collections/${c.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring group-hover:text-ion">
             {c.title}
           </Link>
         </h3>
@@ -46,9 +49,10 @@ export function CollectionCard({ c, className }: { c: Collection; className?: st
         <span className="truncate">{c.owner.name}</span>
         <span aria-hidden>·</span>
         <span className="shrink-0 tabular">
-          {c.items.length} {c.items.length === 1 ? "item" : "items"}
+          {c.items.length} {c.items.length === 1 ? "star" : "stars"}
         </span>
         {c.local && <span className="shrink-0">· in this browser</span>}
+      </div>
       </div>
     </article>
   )

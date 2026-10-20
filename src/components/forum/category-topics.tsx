@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { categoryPath, compact, plural } from "@/lib/data"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const PAGE = 20
 const COLS = "md:grid-cols-[minmax(0,1fr)_4.5rem_9rem]"
@@ -96,16 +97,16 @@ export function CategoryTopics({ slug, name }: { slug: string; name: string }) {
             scroll={false}
             className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs hover:bg-white/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
-            <XIcon aria-hidden className="size-3" /> Clear
+            <XIcon aria-hidden className="size-3" /> <Copy k="forum.category-topics.clear">Clear</Copy>
           </Link>
         </p>
       )}
 
       <div className="overflow-hidden rounded-xl border border-border bg-card/40">
         <div aria-hidden className={cn("hidden gap-4 border-b border-border px-4 py-2 text-xs text-muted-foreground md:grid", COLS)}>
-          <span>Thread</span>
-          <span className="text-right">Replies</span>
-          <span className="text-right">Last post</span>
+          <span><Copy k="forum.category-topics.thread">Thread</Copy></span>
+          <span className="text-right"><Copy k="forum.category-topics.replies">Replies</Copy></span>
+          <span className="text-right"><Copy k="forum.category-topics.last-post">Last post</Copy></span>
         </div>
         {status === "loading" ? (
           <ul aria-busy="true" aria-label="Loading threads" className="divide-y divide-border">
@@ -123,7 +124,7 @@ export function CategoryTopics({ slug, name }: { slug: string; name: string }) {
           <div role="alert" className="flex flex-col items-center gap-3 px-6 py-12 text-center text-sm">
             <p className="text-muted-foreground">The threads could not be loaded. {error}</p>
             <Button size="sm" variant="secondary" onClick={retry}>
-              <RotateCwIcon aria-hidden /> Try again
+              <RotateCwIcon aria-hidden /> <Copy k="forum.category-topics.try-again">Try again</Copy>
             </Button>
           </div>
         ) : shown.length > 0 ? (
@@ -161,12 +162,12 @@ export function CategoryTopics({ slug, name }: { slug: string; name: string }) {
 function EmptyList({ slug, name, sort, tag, hasThreads }: { slug: string; name: string; sort: TopicSort; tag: string | null; hasThreads: boolean }) {
   const team = slug === "announcements"
   const text = !hasThreads && team
-    ? "No announcements yet. The Nexverse team posts releases and forum news here."
+    ? <Copy k="forum.category-topics.no-announcements-yet-the-nexverse">No announcements yet. The Nexverse team posts releases and forum news here.</Copy>
     : !hasThreads
     ? `Nobody has started a thread in ${name} yet. The first one sets the tone.`
     : tag
       ? `No threads tagged #${tag} here${sort === "unanswered" ? " are waiting for a reply" : " yet"}.`
-      : "Every thread here has at least one reply. Nice."
+      : <Copy k="forum.category-topics.every-thread-here-has-at">Every thread here has at least one reply. Nice.</Copy>
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
       <span className="grid size-11 place-items-center rounded-full bg-ion/10 text-ion ring-1 ring-ion/20">
@@ -207,7 +208,7 @@ function TopicRow({ t }: { t: Topic }) {
               {t.author.name} · <TimeAgo date={t.created} />
             </span>
             <LangTag lang={t.lang} />
-            {t.local && <span>Saved in this browser</span>}
+            {t.local && <span><Copy k="forum.category-topics.saved-in-this-browser">Saved in this browser</Copy></span>}
             {/* Phones get the numbers inline, since the columns are hidden. */}
             <span className="tabular md:hidden">{plural(t.replies, "reply", "replies")}</span>
             {t.replies > 0 && (
@@ -225,7 +226,7 @@ function TopicRow({ t }: { t: Topic }) {
       <div className="hidden min-w-0 items-center justify-end gap-2 text-right md:flex">
         <span className="flex min-w-0 flex-col">
           <span className="truncate text-xs text-foreground/80">
-            <span className="sr-only">Last post by </span>
+            <span className="sr-only"><Copy k="forum.category-topics.last-post-by">Last post by</Copy> </span>
             {t.lastPoster.name}
           </span>
           <TimeAgo date={t.activity} className="text-xs text-muted-foreground" />

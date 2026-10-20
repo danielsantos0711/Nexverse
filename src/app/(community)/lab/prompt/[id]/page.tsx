@@ -4,6 +4,7 @@ import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { SharedPrompt } from "@/components/lab/shared-prompt"
+import { Copy } from "@/components/content/copy"
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -22,18 +23,18 @@ export default function Page({ params }: PageProps<"/lab/prompt/[id]">) {
     <div className="shell pb-16">
       <nav aria-label="Breadcrumb" className="pt-8 text-sm text-muted-foreground md:pt-10">
         <Link href="/lab" className="hover:text-foreground">
-          Lab
+          <Copy k="lab-prompt.page.lab">Lab</Copy>
         </Link>
         <span aria-hidden className="px-1.5 opacity-50">
           /
         </span>
         <Link href="/lab/prompts" className="hover:text-foreground">
-          Prompt playground
+          <Copy k="lab-prompt.page.prompt-playground">Prompt playground</Copy>
         </Link>
         <span aria-hidden className="px-1.5 opacity-50">
           /
         </span>
-        <span className="text-foreground/80">Shared prompt</span>
+        <span className="text-foreground/80"><Copy k="lab-prompt.page.shared-prompt">Shared prompt</Copy></span>
       </nav>
       <Suspense fallback={<PageSkeleton />}>
         <Prompt params={params} />

@@ -21,6 +21,7 @@ import { useRole } from "@/lib/roles"
 import { deleteAnswer, useSession, type Member, type Question, type ThreadRef } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 // Kept here so existing imports keep working; it lives with the forum's other bits now.
 export { MemberAvatar }
@@ -243,7 +244,7 @@ export function ThreadDiscussion({
                 <PostReactions target={`answer:${a.id}`} />
                 {!locked && (
                   <Button variant="ghost" size="sm" onClick={() => addQuote(replyName(a), selectionIn(postKey) ?? a.body, a.author)}>
-                    <QuoteIcon aria-hidden /> Quote
+                    <QuoteIcon aria-hidden /> <Copy k="thread.discussion.quote">Quote</Copy>
                   </Button>
                 )}
                 {isAuthor && question && (
@@ -254,12 +255,12 @@ export function ThreadDiscussion({
                 )}
                 {mine && (
                   <Button variant="ghost" size="sm" onClick={() => setEditing({ id: a.id, body: a.body, picked: [], error: "", busy: false })}>
-                    <PencilIcon aria-hidden /> Edit
+                    <PencilIcon aria-hidden /> <Copy k="thread.discussion.edit">Edit</Copy>
                   </Button>
                 )}
                 {mine && (
                   <Button variant="ghost" size="sm" onClick={() => setDeleting(a)}>
-                    <Trash2Icon aria-hidden /> Delete
+                    <Trash2Icon aria-hidden /> <Copy k="thread.discussion.delete">Delete</Copy>
                   </Button>
                 )}
                 {!a.local && (
@@ -301,7 +302,7 @@ export function ThreadDiscussion({
                     {editing.busy ? "Saving…" : "Save"}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
-                    Cancel
+                    <Copy k="thread.discussion.cancel">Cancel</Copy>
                   </Button>
                   <AiAssistButton value={editing.body} onAccept={(body) => setEditing((x) => x && { ...x, body })} />
                 </div>
@@ -311,7 +312,7 @@ export function ThreadDiscussion({
             )
             const meta = (
               <>
-                {a.local && <span className="text-xs text-muted-foreground">· saved on this device only</span>}
+                {a.local && <span className="text-xs text-muted-foreground"><Copy k="thread.discussion.saved-on-this-device-only">· saved on this device only</Copy></span>}
                 <EditedMarker at={a.editedAt} />
                 {a.hidden && <HiddenBadge />}
               </>
@@ -344,7 +345,7 @@ export function ThreadDiscussion({
                       {meta}
                       {isAccepted && (
                         <span className="ml-auto inline-flex items-center gap-1 text-xs text-ok">
-                          <CheckCircle2Icon aria-hidden className="size-3.5" /> Solution
+                          <CheckCircle2Icon aria-hidden className="size-3.5" /> <Copy k="thread.discussion.solution">Solution</Copy>
                         </span>
                       )}
                     </div>
@@ -367,9 +368,9 @@ export function ThreadDiscussion({
         <Gate cap="reply.create" action="reply">
           <form onSubmit={post} className="glass flex flex-col gap-3 rounded-xl p-4">
             <label htmlFor={composerId} className="text-sm font-medium">
-              Your reply
+              <Copy k="thread.discussion.your-reply">Your reply</Copy>
             </label>
-            {locked && <p className="text-xs text-gold">This thread is locked. As a moderator you can still reply.</p>}
+            {locked && <p className="text-xs text-gold"><Copy k="thread.discussion.this-thread-is-locked-as">This thread is locked. As a moderator you can still reply.</Copy></p>}
             <MarkdownComposer
               id={composerId}
               value={draft}
@@ -408,10 +409,10 @@ export function ThreadDiscussion({
           {deleting && <p className="line-clamp-3 rounded-lg border border-border bg-white/[0.03] px-3 py-2 text-sm text-muted-foreground">{deleting.body}</p>}
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDeleting(null)}>
-              Cancel
+              <Copy k="thread.discussion.cancel">Cancel</Copy>
             </Button>
             <Button variant="destructive" onClick={confirmDelete}>
-              Delete
+              <Copy k="thread.discussion.delete">Delete</Copy>
             </Button>
           </DialogFooter>
         </DialogContent>

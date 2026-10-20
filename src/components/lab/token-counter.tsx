@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { countTokens, FAMILIES, SCRIPT_LABEL, type FamilyId } from "@/lib/lab/tokenizers"
 import { cn } from "@/lib/utils"
 import { ActionButton, AnimatedNumber, CopyAction, fmtInt, Panel } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 const SAMPLE = `Tokenizers cut text into pieces before a model reads it. Common English words are usually one token each; rarer words, numbers like 2026 or 3.14159, and code such as const total = items.reduce((a, b) => a + b, 0); split into more.
 Outras línguas custam mais tokens pela mesma ideia.
@@ -44,7 +45,7 @@ export function TokenCounter() {
           }
         >
           <label htmlFor="tk-text" className="sr-only">
-            Text to count
+            <Copy k="lab-tool.token-counter.text-to-count">Text to count</Copy>
           </label>
           <Textarea id="tk-text" value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste a prompt, a document or code…" className="max-h-[50vh] min-h-56 resize-y text-[14px] leading-relaxed" />
           <p className="mt-2 text-xs text-muted-foreground tabular">
@@ -103,7 +104,7 @@ export function TokenCounter() {
       >
         <div className="max-h-[50vh] overflow-auto rounded-xl border border-border bg-black/30 p-3 font-mono text-[13px] leading-[1.9] break-words whitespace-pre-wrap" tabIndex={0} role="region" aria-label="Estimated token pieces">
           {detail.pieces.length === 0 ? (
-            <span className="text-muted-foreground">Pieces appear here.</span>
+            <span className="text-muted-foreground"><Copy k="lab-tool.token-counter.pieces-appear-here">Pieces appear here.</Copy></span>
           ) : (
             detail.pieces.map((p, i) => (
               <span key={i} className="rounded-[3px]" style={{ background: `rgb(${PALETTE[i % PALETTE.length]} / 0.16)`, boxShadow: `inset 0 -1px 0 rgb(${PALETTE[i % PALETTE.length]} / 0.45)` }}>
@@ -111,7 +112,7 @@ export function TokenCounter() {
               </span>
             ))
           )}
-          {detail.truncated && <span className="block pt-2 font-sans text-xs text-muted-foreground">Showing the first 3,000 pieces.</span>}
+          {detail.truncated && <span className="block pt-2 font-sans text-xs text-muted-foreground"><Copy k="lab-tool.token-counter.showing-the-first-3-000">Showing the first 3,000 pieces.</Copy></span>}
         </div>
         {detail.byScript.length > 1 && (
           <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
@@ -124,7 +125,7 @@ export function TokenCounter() {
           </dl>
         )}
         <p className="mt-3 text-xs text-muted-foreground">
-          Method: the text is split with the tiktoken-style pre-tokenizer pattern (words with their leading space, digit groups, punctuation, whitespace); each piece is costed with this family&rsquo;s calibrated rates and divided evenly for display. Real token boundaries inside a word can differ.
+          <Copy k="lab-tool.token-counter.method-the-text-is-split" multiline>Method: the text is split with the tiktoken-style pre-tokenizer pattern (words with their leading space, digit groups, punctuation, whitespace); each piece is costed with this family&rsquo;s calibrated rates and divided evenly for display. Real token boundaries inside a word can differ.</Copy>
         </p>
       </Panel>
     </div>

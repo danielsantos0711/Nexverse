@@ -52,7 +52,7 @@ export default function Home() {
           ),
           trending: (
             <section aria-labelledby="trend-h" className={`shell ${gap}`}>
-              <Head id="trend-h" title="New in the hub" lead="Projects members published and links they shared, newest first." href="/explore" action="Explore all" />
+              <Head id="trend-h" k="home.trending" title="New in the hub" lead="Projects members published and links they shared, newest first." href="/explore" action="Explore all" />
               <TrendingBoard />
             </section>
           ),

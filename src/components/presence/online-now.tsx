@@ -7,7 +7,9 @@ import { EyeOffIcon, RadioIcon } from "lucide-react"
 import { ChatAvatar } from "@/components/chat/glyphs"
 import { pageLabel, setPresenceOptOut, usePresence, type Visitor } from "@/lib/presence"
 import { live } from "@/lib/supabase"
+import { useSession } from "@/lib/store"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 /** Where the first few faces sit on the ring, in degrees (12 o'clock is -90). */
@@ -23,6 +25,9 @@ export function OnlineNow({ className }: { className?: string }) {
   const count = online.length
   const faces = online.slice(0, SEATS.length)
   const label = !ready ? "Who is online" : count === 1 ? "1 member online now" : `${count} members online now`
+  const session = useSession()
+  // Guests do not join presence, so a count would be a false zero
+  if (live && session.ready && !session.user) return null
 
   return (
     <Popover.Root>
@@ -60,7 +65,7 @@ export function OnlineNow({ className }: { className?: string }) {
         </span>
         <span className="tabular">
           {ready ? count : "–"}
-          <span className="hidden sm:inline"> online</span>
+          <span className="hidden sm:inline"> <Copy k="common.online-now.online">online</Copy></span>
         </span>
       </Popover.Trigger>
       <Popover.Portal>
@@ -74,12 +79,12 @@ export function OnlineNow({ className }: { className?: string }) {
             </div>
             <PeopleList online={online} meId={me?.id ?? null} />
             <div className="flex flex-col gap-2 border-t border-border px-3 py-2.5 text-xs text-muted-foreground">
-              {!live && <p>Local preview: only you are shown. With accounts switched on, everyone online appears here.</p>}
-              {live && !me && <p>Sign in to appear here. Only your name and the page you are on are shared.</p>}
+              {!live && <p><Copy k="common.online-now.local-preview-only-you-are" multiline>Local preview: only you are shown. With accounts switched on, everyone online appears here.</Copy></p>}
+              {live && !me && <p><Copy k="common.online-now.sign-in-to-appear-here">Sign in to appear here. Only your name and the page you are on are shared.</Copy></p>}
               {me && (
                 <label className="flex cursor-pointer items-center justify-between gap-3">
                   <span className="flex items-center gap-1.5">
-                    <EyeOffIcon aria-hidden className="size-3.5" /> Hide me from this list
+                    <EyeOffIcon aria-hidden className="size-3.5" /> <Copy k="common.online-now.hide-me-from-this-list">Hide me from this list</Copy>
                   </span>
                   <input type="checkbox" checked={optedOut} onChange={(e) => setPresenceOptOut(e.target.checked)} className="size-4 accent-[var(--ion)]" />
                 </label>
@@ -94,7 +99,7 @@ export function OnlineNow({ className }: { className?: string }) {
 
 function PeopleList({ online, meId }: { online: Visitor[]; meId: string | null }) {
   if (!online.length) {
-    return <p className="px-3 py-6 text-center text-sm text-muted-foreground">Nobody else is around right now.</p>
+    return <p className="px-3 py-6 text-center text-sm text-muted-foreground"><Copy k="common.online-now.nobody-else-is-around-right">Nobody else is around right now.</Copy></p>
   }
   return (
     <ul className="max-h-80 overflow-y-auto p-1" aria-label="Members online">
@@ -115,7 +120,7 @@ function PeopleList({ online, meId }: { online: Visitor[]; meId: string | null }
             <span className="flex min-w-0 flex-col">
               <span className="truncate font-medium">
                 {v.member.name}
-                {v.member.id === meId && <span className="font-normal text-muted-foreground"> (you)</span>}
+                {v.member.id === meId && <span className="font-normal text-muted-foreground"> <Copy k="common.online-now.you">(you)</Copy></span>}
               </span>
               <span className="truncate text-xs text-muted-foreground">on {pageLabel(v.path)}</span>
             </span>

@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { dailyWinners, dayKey, launchOfTheDay, launchPhase, type Launch } from "@/lib/launchpad"
 import { useSession } from "@/lib/store"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /**
  * A compact card for the home page: today's Launch of the day with its live boost count and button. With no
@@ -42,11 +43,11 @@ export function LaunchOfTheDay({ className }: { className?: string }) {
     return (
       <section className={cn("glass flex flex-col items-start gap-2 rounded-2xl p-4", className)}>
         <p className="flex items-center gap-1.5 text-xs font-medium text-gold">
-          <CrownIcon aria-hidden className="size-3.5" /> Launch of the day
+          <CrownIcon aria-hidden className="size-3.5" /> <Copy k="launchpad.launch-of-the-day.launch-of-the-day">Launch of the day</Copy>
         </p>
-        <p className="text-sm text-muted-foreground">Nothing on the pad yet.</p>
+        <p className="text-sm text-muted-foreground"><Copy k="launchpad.launch-of-the-day.nothing-on-the-pad-yet">Nothing on the pad yet.</Copy></p>
         <Link href="/launchpad/new" className="text-sm text-ion hover:underline">
-          Schedule the first launch
+          <Copy k="launchpad.launch-of-the-day.schedule-the-first-launch">Schedule the first launch</Copy>
         </Link>
       </section>
     )

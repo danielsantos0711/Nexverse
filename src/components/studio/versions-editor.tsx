@@ -5,7 +5,7 @@ import { useRef } from "react"
 import { PlusIcon, Trash2Icon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { MarkdownComposer } from "@/components/forum/markdown-composer"
 import { LIMITS, type ProjectVersion } from "@/lib/projects"
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -73,17 +73,22 @@ export function VersionsEditor({ value, onChange, describedBy }: { value: Row[];
                     <Trash2Icon aria-hidden />
                   </Button>
                 </div>
-                <label className="flex flex-col gap-1.5 text-sm">
-                  <span className="font-medium">What changed</span>
-                  <Textarea
+                <div className="flex flex-col gap-1.5 text-sm">
+                  <label htmlFor={`notes-${r.key}`} className="font-medium">
+                    What changed
+                  </label>
+                  <MarkdownComposer
+                    id={`notes-${r.key}`}
                     value={r.notes}
-                    onChange={(e) => edit(r.key, { notes: e.target.value })}
+                    onChange={(v) => edit(r.key, { notes: v })}
                     maxLength={LIMITS.notes}
-                    rows={2}
+                    rows={3}
+                    mentions={false}
+                    images={false}
+                    draftKey={null}
                     placeholder="New features, fixes, breaking changes. Markdown works."
-                    className="bg-background/60"
                   />
-                </label>
+                </div>
               </fieldset>
             </motion.li>
           ))}

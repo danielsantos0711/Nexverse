@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useReducedMotion } from "motion/react"
+import { useQuality } from "@/lib/perf"
 import { cn } from "@/lib/utils"
 
 /** The brand loops in public/media, rendered from the hero's own scene (the official N, untouched, in its galaxy). */
@@ -33,13 +34,28 @@ function posterOnly(alpha: boolean) {
  * reduced motion (the visitor's or the site's `still`), or with Data Saver on, it stays a still poster.
  *
  */
-export function LoopVideo({ name, still = false, className, position = "50% 50%" }: { name: LoopName; still?: boolean; className?: string; position?: string }) {
+export function LoopVideo({
+  name,
+  still = false,
+  eager = false,
+  className,
+  position = "50% 50%",
+}: {
+  name: LoopName
+  still?: boolean
+  /** Above the fold (the hero): fetch the poster at once and load the film without waiting to scroll near. */
+  eager?: boolean
+  className?: string
+  position?: string
+}) {
   const loop = LOOPS[name]
   const ref = useRef<HTMLVideoElement>(null)
   const reduce = useReducedMotion()
-  const [near, setNear] = useState(false)
+  const quality = useQuality()
+  const [near, setNear] = useState(eager)
   const held = useSyncExternalStore(noop, () => posterOnly(loop.alpha), () => false)
-  const moving = !still && !reduce && !held
+  // a film is decoded by the video hardware, so it plays on every tier but "off" (reduced motion, motion off)
+  const moving = !still && !reduce && !held && quality !== "off"
 
   const visible = useRef(false)
   const sync = () => {
@@ -84,7 +100,7 @@ export function LoopVideo({ name, still = false, className, position = "50% 50%"
 
   if (!moving) {
     // eslint-disable-next-line @next/next/no-img-element -- a fixed, already compressed poster; next/image would only re-encode it
-    return <img src={loop.poster} alt="" aria-hidden width={loop.width} height={loop.height} loading="lazy" decoding="async" className={cls} style={style} />
+    return <img src={loop.poster} alt="" aria-hidden width={loop.width} height={loop.height} loading={eager ? "eager" : "lazy"} fetchPriority={eager ? "high" : "auto"} decoding="async" className={cls} style={style} />
   }
 
   return (

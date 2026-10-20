@@ -8,12 +8,15 @@ import { SubmitResult } from "@/components/benchmarks/submit-result"
 import { rise, riseDelay } from "@/components/forum/forum-ui"
 import { TimeAgo } from "@/components/live/time"
 import { Skeleton } from "@/components/ui/skeleton"
-import { BENCHMARKS, better, formatScore, getBenchmark, listResults, reproSummary, type BenchmarkResult } from "@/lib/benchmarks"
+import { better, formatScore, getBenchmark, listResults, reproSummary, type BenchmarkResult } from "@/lib/benchmarks"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
+import { Copy } from "@/components/content/copy"
+import { useBenchmarks } from "@/lib/lists/hooks"
 
 /** Every curated benchmark with its leader and how many results it has, then the latest submissions. */
 export function BenchmarksIndex() {
+  const BENCHMARKS = useBenchmarks()
   const { ready, user } = useSession()
   const [results, setResults] = useState<BenchmarkResult[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -48,7 +51,7 @@ export function BenchmarksIndex() {
       if (!s.best || better(b, r.score, s.best.score)) s.best = r
     }
     return out
-  }, [results])
+  }, [results, BENCHMARKS])
 
   const recent = useMemo(() => [...results].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 6), [results])
 
@@ -58,7 +61,7 @@ export function BenchmarksIndex() {
         <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           Results could not be loaded ({error}).{" "}
           <button type="button" onClick={() => setAttempt((n) => n + 1)} className="underline underline-offset-2">
-            Try again
+            <Copy k="benchmarks.benchmarks-index.try-again">Try again</Copy>
           </button>
         </p>
       )}
@@ -66,7 +69,7 @@ export function BenchmarksIndex() {
       <section aria-labelledby="bench-list" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="bench-list" className="text-base font-semibold">
-            Benchmarks
+            <Copy k="benchmarks.benchmarks-index.benchmarks">Benchmarks</Copy>
           </h2>
           <SubmitResult onSubmitted={(r) => setResults((list) => [r, ...list])} />
         </div>
@@ -96,7 +99,7 @@ export function BenchmarksIndex() {
                   <div className="mt-auto flex items-end justify-between gap-2 border-t border-border pt-2.5">
                     {s.best ? (
                       <span className="min-w-0 text-xs">
-                        <span className="block text-muted-foreground">Best so far</span>
+                        <span className="block text-muted-foreground"><Copy k="benchmarks.benchmarks-index.best-so-far">Best so far</Copy></span>
                         <span className="block truncate">
                           {s.best.model} <span className="font-semibold tabular">{formatScore(b, s.best.score)}</span>
                         </span>
@@ -104,7 +107,7 @@ export function BenchmarksIndex() {
                     ) : !loaded ? (
                       <Skeleton className="h-8 w-24" />
                     ) : (
-                      <span className="text-xs text-muted-foreground">No results yet</span>
+                      <span className="text-xs text-muted-foreground"><Copy k="benchmarks.benchmarks-index.no-results-yet">No results yet</Copy></span>
                     )}
                     <span className="shrink-0 text-xs text-muted-foreground tabular">
                       {s.n} {s.n === 1 ? "result" : "results"}
@@ -120,7 +123,7 @@ export function BenchmarksIndex() {
 
       <section aria-labelledby="bench-recent" className="flex flex-col gap-3">
         <h2 id="bench-recent" className="text-base font-semibold">
-          Latest results
+          <Copy k="benchmarks.benchmarks-index.latest-results">Latest results</Copy>
         </h2>
         {!loaded ? (
           <Skeleton className="h-40 w-full rounded-xl" />
@@ -131,8 +134,8 @@ export function BenchmarksIndex() {
             </span>
             <p className="max-w-md text-sm text-muted-foreground">
               {live
-                ? "No results submitted yet. Run one of these benchmarks on a model you use, then submit the score with your settings and a link to the logs."
-                : "Results you submit in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can see or reproduce them."}
+                ? <Copy k="benchmarks.benchmarks-index.no-results-submitted-yet-run" multiline>No results submitted yet. Run one of these benchmarks on a model you use, then submit the score with your settings and a link to the logs.</Copy>
+                : <Copy k="benchmarks.benchmarks-index.results-you-submit-in-this" multiline>Results you submit in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can see or reproduce them.</Copy>}
             </p>
             <SubmitResult onSubmitted={(r) => setResults((list) => [r, ...list])} />
           </div>

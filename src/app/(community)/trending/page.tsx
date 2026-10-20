@@ -13,11 +13,16 @@ import { ReleaseList } from "@/components/live/release-list"
 import { CardsSkeleton, RowsSkeleton, StripSkeleton } from "@/components/live/skeletons"
 import { latestStories } from "@/lib/newsroom/public"
 import { TrendingNowLive } from "@/components/live/trending-now"
-import { GH_TOPICS, ghTopicHref, githubReleases, githubTopicRepos, githubTrendingAi, type Feed, type GhRepo } from "@/lib/live"
+import { ghTopicHref, githubReleases, githubTopicRepos, githubTrendingAi, type Feed, type GhRepo } from "@/lib/live"
+import { seoMetadata } from "@/lib/content-server"
+import { Copy } from "@/components/content/copy"
+import { getGhTopics } from "@/lib/lists/server"
 
-export const metadata: Metadata = {
-  title: "Trending",
-  description: "Live: the open-source AI repositories rising on GitHub, fresh releases, the newest Nexverse newsroom stories and what the community is into right now.",
+export async function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("/trending", {
+    title: "Trending",
+    description: "Live: the open-source AI repositories rising on GitHub, fresh releases, the newest Nexverse newsroom stories and what the community is into right now.",
+  })
 }
 
 const SECTIONS = [
@@ -51,7 +56,7 @@ function RepoGrid({ feed, limit = 9, more }: { feed: Feed<GhRepo>; limit?: numbe
           ))}
         </Stagger>
       ) : feed.ok ? (
-        <p className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">Nothing new here this month yet.</p>
+        <p className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground"><Copy k="trending.page.nothing-new-here-this-month">Nothing new here this month yet.</Copy></p>
       ) : (
         <FeedUnavailable source="github" />
       )}
@@ -65,6 +70,7 @@ function RepoGrid({ feed, limit = 9, more }: { feed: Feed<GhRepo>; limit?: numbe
 }
 
 async function Repos() {
+  const GH_TOPICS = await getGhTopics()
   const [all, ...byTopic] = await Promise.all([githubTrendingAi(9), ...GH_TOPICS.map((t) => githubTopicRepos(t.id, "new", 12))])
   return (
     <PillTabs
@@ -99,9 +105,9 @@ async function Newsroom() {
     return (
       <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
         <NewspaperIcon aria-hidden className="size-5 text-gold" />
-        <p>The newsroom has not published its first story yet. It writes short, sourced stories from official blogs and releases, checked by an editor.</p>
+        <p><Copy k="trending.page.the-newsroom-has-not-published" multiline>The newsroom has not published its first story yet. It writes short, sourced stories from official blogs and releases, checked by an editor.</Copy></p>
         <Link href="/news#tip" className="text-ion hover:underline">
-          Send the editors a tip →
+          <Copy k="trending.page.send-the-editors-a-tip">Send the editors a tip →</Copy>
         </Link>
       </div>
     )
@@ -120,8 +126,8 @@ async function Newsroom() {
 export default function TrendingPage() {
   return (
     <div className="shell pb-16">
-      <PageTitle
-        eyebrow="Live from GitHub, the newsroom and the hub itself"
+      <PageTitle k="trending.header"
+        eyebrow={<Copy k="trending.header.eyebrow">Live from GitHub, the newsroom and the hub itself</Copy>}
         title="Trending"
         lead="The open-source AI projects gathering stars, the releases that just shipped, the newsroom’s latest stories and what people here are talking about. Repositories open on Nexverse with their READMEs and files, refreshed through the day."
       >

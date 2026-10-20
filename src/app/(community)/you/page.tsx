@@ -1,7 +1,10 @@
 import type { Metadata } from "next"
 import { YouView } from "@/components/account/you-view"
+import { seoMetadata } from "@/lib/content-server"
 
-export const metadata: Metadata = { title: "You", robots: { index: false } }
+export async function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("/you", { title: "You", robots: { index: false } })
+}
 
 export default function YouPage() {
   return (

@@ -219,10 +219,13 @@ export function authErrorMessage(error: unknown): string {
       return "Our email service cannot send to that address yet. Try a social sign-in, or ask the team."
     case "otp_expired":
       return "That link has expired or was already used. Ask for a new one."
+    case "otp_disabled":
+      return "Email links are switched off for now. Sign in with your password instead."
     case "flow_state_not_found":
     case "flow_state_expired":
     case "bad_code_verifier":
-      return "Open the link in the same browser you asked for it from, or ask for a new one."
+    case "pkce_code_verifier_not_found":
+      return "This link was opened in a different browser from the one you asked in, or it is too old. Ask for a new one."
     case "user_banned":
       return "This account is suspended."
     case "identity_already_exists":
@@ -246,6 +249,7 @@ export function authErrorMessage(error: unknown): string {
     case "validation_failed":
       return /email/i.test(message) ? "That does not look like an email address." : message || "Something in the form is not valid."
   }
+  if (e.code === "bad_jwt" || /jwt/i.test(message)) return "That link is incomplete or was changed on the way. Ask for a new one."
   if (e.status === 429) return "Too many attempts. Wait a minute and try again."
   if (/fetch|network/i.test(message)) return "We could not reach the sign-in service. Check your connection and try again."
   return message || "Something went wrong. Try again."

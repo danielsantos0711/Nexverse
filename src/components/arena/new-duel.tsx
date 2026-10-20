@@ -10,10 +10,12 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { Gate } from "@/components/moderation/gate"
-import { createDuel, DUEL_LIMITS, DUEL_TASKS, validateDuel, type DuelModel, type DuelTask, type NewDuel } from "@/lib/arena"
-import { LANGUAGES, type LanguageCode } from "@/lib/data"
+import { createDuel, DUEL_LIMITS, validateDuel, type DuelModel, type DuelTask, type NewDuel } from "@/lib/arena"
+import { type LanguageCode } from "@/lib/data"
+import { useDuelTasks, useLanguages } from "@/lib/lists/hooks"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 type Errors = ReturnType<typeof validateDuel> & { form?: string }
 
@@ -39,6 +41,9 @@ export function NewDuelForm() {
 const field = "bg-background/60"
 
 function Form() {
+  // The admins' tasks (only those open for new duels) and languages, from /admin/lists.
+  const DUEL_TASKS = useDuelTasks()
+  const LANGUAGES = useLanguages()
   const router = useRouter()
   const [prompt, setPrompt] = useState("")
   const [outputA, setOutputA] = useState("")
@@ -82,7 +87,7 @@ function Form() {
     <form onSubmit={submit} noValidate className="glass rounded-2xl p-5 md:p-7">
       <FieldGroup>
         <Field data-invalid={errors.prompt ? true : undefined}>
-          <FieldLabel htmlFor="duel-prompt">Prompt</FieldLabel>
+          <FieldLabel htmlFor="duel-prompt"><Copy k="arena-new.new-duel.prompt">Prompt</Copy></FieldLabel>
           <Textarea
             id="duel-prompt"
             value={prompt}
@@ -93,19 +98,19 @@ function Form() {
             className={cn("min-h-24", field)}
             {...err("prompt")}
           />
-          {errors.prompt ? <FieldError id="duel-prompt-error">{errors.prompt}</FieldError> : <FieldDescription>Use the same prompt and settings for both models, so the duel is fair.</FieldDescription>}
+          {errors.prompt ? <FieldError id="duel-prompt-error">{errors.prompt}</FieldError> : <FieldDescription><Copy k="arena-new.new-duel.use-the-same-prompt-and">Use the same prompt and settings for both models, so the duel is fair.</Copy></FieldDescription>}
         </Field>
 
         <div className="grid gap-5 md:grid-cols-2">
           <ModelOutput side="A" color={SIDE_COLOR.a} model={modelA} setModel={setModelA} output={outputA} setOutput={setOutputA} errors={errors} err={err} keys={["modelA", "outputA"]} />
           <ModelOutput side="B" color={SIDE_COLOR.b} model={modelB} setModel={setModelB} output={outputB} setOutput={setOutputB} errors={errors} err={err} keys={["modelB", "outputB"]} />
         </div>
-        <p className="-mt-2 text-xs text-muted-foreground">Voters see the two outputs in random order, without the model names. The names appear after they vote.</p>
+        <p className="-mt-2 text-xs text-muted-foreground"><Copy k="arena-new.new-duel.voters-see-the-two-outputs" multiline>Voters see the two outputs in random order, without the model names. The names appear after they vote.</Copy></p>
 
         <FieldSet>
           <FieldLegend variant="label">Task</FieldLegend>
           <div role="radiogroup" aria-label="Task" className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
-            {(Object.keys(DUEL_TASKS) as DuelTask[]).map((t) => {
+            {(Object.keys(DUEL_TASKS) as DuelTask[]).filter((t) => DUEL_TASKS[t].enabled).map((t) => {
               const Icon = TASK_ICON[t]
               const on = task === t
               return (
@@ -150,7 +155,7 @@ function Form() {
               )
             })}
           </div>
-          {errors.langs ? <FieldError id="duel-langs-error">{errors.langs}</FieldError> : <FieldDescription>The languages of the prompt and the answers, up to four. Ratings can be filtered by language.</FieldDescription>}
+          {errors.langs ? <FieldError id="duel-langs-error">{errors.langs}</FieldError> : <FieldDescription><Copy k="arena-new.new-duel.the-languages-of-the-prompt" multiline>The languages of the prompt and the answers, up to four. Ratings can be filtered by language.</Copy></FieldDescription>}
         </FieldSet>
 
         {errors.form && <FieldError>{errors.form}</FieldError>}
@@ -158,7 +163,7 @@ function Form() {
           <Button type="submit" size="lg" disabled={busy}>
             {busy ? "Posting…" : "Post duel"}
           </Button>
-          {!live && <span className="text-sm text-muted-foreground">This copy has no database, so the duel stays in this browser.</span>}
+          {!live && <span className="text-sm text-muted-foreground"><Copy k="arena-new.new-duel.this-copy-has-no-database">This copy has no database, so the duel stays in this browser.</Copy></span>}
         </div>
       </FieldGroup>
     </form>

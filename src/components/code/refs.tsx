@@ -18,6 +18,7 @@ import { VALID_REF } from "@/lib/code/tree"
 import { cn } from "@/lib/utils"
 import { resolveRef, useRepo } from "./repo-context"
 import { EmptyState, ErrorNote, FormError, href, inputCls, Panel, PanelHead, PersonName, plural, useLoad } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /* Branches, tags and releases. */
 
@@ -99,13 +100,13 @@ export function BranchesPage() {
   return (
     <div className="flex flex-col gap-4">
       <h2 className="flex items-center gap-2 text-lg font-semibold">
-        <GitBranchIcon aria-hidden className="size-5 text-ion" /> Branches
+        <GitBranchIcon aria-hidden className="size-5 text-ion" /> <Copy k="code-repo.refs.branches">Branches</Copy>
       </h2>
       {writable && branches.length > 0 && <NewRefForm kind="branch" />}
       <FormError message={error} />
       {!branches.length ? (
         <Panel>
-          <EmptyState icon={GitBranchIcon} title="No branches yet">
+          <EmptyState icon={GitBranchIcon} title={<Copy k="code-repo.refs.no-branches-yet">No branches yet</Copy>}>
             The first commit creates the {repo.defaultBranch} branch.
           </EmptyState>
         </Panel>
@@ -120,7 +121,7 @@ export function BranchesPage() {
                   <Link href={href(`${base}/tree/${encPath(b.name)}`)} className="font-mono text-sm text-ion hover:underline">
                     {b.name}
                   </Link>
-                  {isDefault && <span className="rounded-full border border-border px-2 text-[11px] text-muted-foreground">default</span>}
+                  {isDefault && <span className="rounded-full border border-border px-2 text-[11px] text-muted-foreground"><Copy k="code-repo.refs.default">default</Copy></span>}
                   <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
                     {h ? (
                       <>
@@ -133,12 +134,12 @@ export function BranchesPage() {
                   <div className="flex items-center gap-1">
                     {!isDefault && (
                       <Button size="sm" variant="outline" className="h-7 rounded-full" nativeButton={false} render={<Link href={href(`${base}/compare?base=${encodeURIComponent(repo.defaultBranch)}&head=${encodeURIComponent(b.name)}`)} />}>
-                        <GitPullRequestIcon aria-hidden /> Compare
+                        <GitPullRequestIcon aria-hidden /> <Copy k="code-repo.refs.compare">Compare</Copy>
                       </Button>
                     )}
                     {admin && !isDefault && !repo.archivedAt && (
                       <Button size="sm" variant="ghost" className="h-7 rounded-full" disabled={busy === b.name} onClick={() => act(b.name, async () => setRepo(await updateRepo(repo.id, { default_branch: b.name })))}>
-                        Make default
+                        <Copy k="code-repo.refs.make-default">Make default</Copy>
                       </Button>
                     )}
                     {writable && !isDefault && (
@@ -198,13 +199,13 @@ export function TagsPage() {
   return (
     <div className="flex flex-col gap-4">
       <h2 className="flex items-center gap-2 text-lg font-semibold">
-        <TagIcon aria-hidden className="size-5 text-gold" /> Tags
+        <TagIcon aria-hidden className="size-5 text-gold" /> <Copy k="code-repo.refs.tags">Tags</Copy>
       </h2>
       {writable && refs.some((r) => r.kind === "branch") && <NewRefForm kind="tag" />}
       <FormError message={error} />
       {!tags.length ? (
         <Panel>
-          <EmptyState icon={TagIcon} title="No tags yet">
+          <EmptyState icon={TagIcon} title={<Copy k="code-repo.refs.no-tags-yet">No tags yet</Copy>}>
             A tag marks one commit for good, like a version. Releases are built on tags.
           </EmptyState>
         </Panel>
@@ -268,11 +269,11 @@ export function ReleasesPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <PackageIcon aria-hidden className="size-5 text-gold" /> Releases
+          <PackageIcon aria-hidden className="size-5 text-gold" /> <Copy k="code-repo.refs.releases">Releases</Copy>
         </h2>
         {writable && refs.some((r) => r.kind === "branch") && (
           <Button size="sm" className="ml-auto" nativeButton={false} render={<Link href={href(`${base}/releases/new`)} />}>
-            <PlusIcon aria-hidden /> New release
+            <PlusIcon aria-hidden /> <Copy k="code-repo.refs.new-release">New release</Copy>
           </Button>
         )}
       </div>
@@ -283,7 +284,7 @@ export function ReleasesPage() {
         <Skeleton className="h-64 w-full rounded-xl" />
       ) : !list.data.length ? (
         <Panel>
-          <EmptyState icon={PackageIcon} title="No releases yet">
+          <EmptyState icon={PackageIcon} title={<Copy k="code-repo.refs.no-releases-yet">No releases yet</Copy>}>
             A release is a tagged version with notes and downloadable files, such as model weights or a build.
           </EmptyState>
         </Panel>
@@ -298,8 +299,8 @@ export function ReleasesPage() {
                   <div className="flex flex-col gap-3 p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-semibold">{r.title}</h3>
-                      {i === 0 && !r.prerelease && <span className="rounded-full border border-ok/30 bg-ok/10 px-2 text-[11px] text-ok">Latest</span>}
-                      {r.prerelease && <span className="rounded-full border border-gold/30 bg-gold/10 px-2 text-[11px] text-gold">Pre-release</span>}
+                      {i === 0 && !r.prerelease && <span className="rounded-full border border-ok/30 bg-ok/10 px-2 text-[11px] text-ok"><Copy k="code-repo.refs.latest">Latest</Copy></span>}
+                      {r.prerelease && <span className="rounded-full border border-gold/30 bg-gold/10 px-2 text-[11px] text-gold"><Copy k="code-repo.refs.pre-release">Pre-release</Copy></span>}
                       <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
                         <TagIcon aria-hidden className="size-3.5" />
                         <Link href={href(`${base}/tree/${encPath(r.tag)}`)} className="font-mono hover:text-ion">
@@ -311,7 +312,7 @@ export function ReleasesPage() {
                     {r.notes && <PostBody source={r.notes} />}
                   </div>
                   <PanelHead className="border-t border-b-0">
-                    <span className="font-medium">Assets</span>
+                    <span className="font-medium"><Copy k="code-repo.refs.assets">Assets</Copy></span>
                     <span className="text-muted-foreground">{r.assets.length + (tag ? 1 : 0)}</span>
                   </PanelHead>
                   <ul>
@@ -327,7 +328,7 @@ export function ReleasesPage() {
                     {tag && (
                       <li className="flex items-center gap-3 border-t border-border px-4 py-2 text-sm">
                         <FileArchiveIcon aria-hidden className="size-4 text-muted-foreground" />
-                        <span className="flex-1 text-muted-foreground">Source code</span>
+                        <span className="flex-1 text-muted-foreground"><Copy k="code-repo.refs.source-code">Source code</Copy></span>
                         <ZipButton commit={tag.commit} name={r.tag} label="Download zip" />
                       </li>
                     )}
@@ -387,7 +388,7 @@ export function NewReleasePage() {
   if (!writable) {
     return (
       <Panel>
-        <EmptyState icon={PackageIcon} title="Only people who can write to this repository publish releases" />
+        <EmptyState icon={PackageIcon} title={<Copy k="code-repo.refs.only-people-who-can-write">Only people who can write to this repository publish releases</Copy>} />
       </Panel>
     )
   }
@@ -429,7 +430,7 @@ export function NewReleasePage() {
   return (
     <form onSubmit={submit} className="flex max-w-3xl flex-col gap-5">
       <h2 className="flex items-center gap-2 text-lg font-semibold">
-        <PackageIcon aria-hidden className="size-5 text-gold" /> New release
+        <PackageIcon aria-hidden className="size-5 text-gold" /> <Copy k="code-repo.refs.new-release">New release</Copy>
       </h2>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-1.5">
@@ -464,11 +465,11 @@ export function NewReleasePage() {
         <input id={`${id}-title`} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={140} placeholder={tag || "Release title"} className={inputCls} />
       </div>
       <div className="grid gap-1.5">
-        <span className="text-sm font-medium">Notes</span>
+        <span className="text-sm font-medium"><Copy k="code-repo.refs.notes">Notes</Copy></span>
         <MarkdownComposer id={`${id}-notes`} value={notes} onChange={setNotes} label="Release notes" placeholder="What changed, what to download, how to upgrade." rows={8} maxLength={20000} mentions={false} />
       </div>
       <div className="grid gap-2">
-        <span className="text-sm font-medium">Files</span>
+        <span className="text-sm font-medium"><Copy k="code-repo.refs.files">Files</Copy></span>
         <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border bg-card/30 p-6 text-center text-sm text-muted-foreground transition-colors hover:border-ion/40 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
           <DownloadIcon aria-hidden className="size-5 rotate-180" />
           Attach binaries, weights or archives (up to 25 MB each)
@@ -492,7 +493,7 @@ export function NewReleasePage() {
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={pre} onChange={(e) => setPre(e.target.checked)} className="size-4 accent-[var(--ion)]" />
-        This is a pre-release
+        <Copy k="code-repo.refs.this-is-a-pre-release">This is a pre-release</Copy>
       </label>
       <FormError message={error} />
       <div>

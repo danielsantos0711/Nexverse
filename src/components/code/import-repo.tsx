@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { accessToken, type Visibility } from "@/lib/code/api"
 import { cn } from "@/lib/utils"
 import { FormError, href, inputCls } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 const STEPS = ["Reading the repository on GitHub", "Downloading its files", "Hashing and uploading", "Writing the first commit"]
 
@@ -69,12 +70,12 @@ function ImportForm() {
           GitHub repository
         </label>
         <input id={`${id}-url`} value={url} onChange={(e) => setUrl(e.target.value)} required placeholder="https://github.com/owner/repo" inputMode="url" autoFocus className={cn(inputCls, "font-mono")} />
-        <p className="text-xs text-muted-foreground">Public repositories only. Add /tree/branch-name to import a branch other than the default one.</p>
+        <p className="text-xs text-muted-foreground"><Copy k="code-import.import-repo.public-repositories-only-add-tree" multiline>Public repositories only. Add /tree/branch-name to import a branch other than the default one.</Copy></p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
           <label htmlFor={`${id}-name`} className="text-sm font-medium">
-            Name on Nexverse <span className="font-normal text-muted-foreground">(optional)</span>
+            Name on Nexverse <span className="font-normal text-muted-foreground"><Copy k="code-import.import-repo.optional">(optional)</Copy></span>
           </label>
           <input id={`${id}-name`} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} placeholder="Same as on GitHub" className={inputCls} />
         </div>
@@ -90,10 +91,10 @@ function ImportForm() {
       </div>
 
       <div className="rounded-xl border border-border bg-card/40 p-4 text-sm text-muted-foreground">
-        <p className="mb-2 font-medium text-foreground">What gets imported</p>
+        <p className="mb-2 font-medium text-foreground"><Copy k="code-import.import-repo.what-gets-imported">What gets imported</Copy></p>
         <ul className="list-disc space-y-1 pl-5">
-          <li>The files of one branch, as they are now, in a single commit that names the GitHub commit it came from.</li>
-          <li>The description, topics and licence. Git history, issues and pull requests stay on GitHub.</li>
+          <li><Copy k="code-import.import-repo.the-files-of-one-branch" multiline>The files of one branch, as they are now, in a single commit that names the GitHub commit it came from.</Copy></li>
+          <li><Copy k="code-import.import-repo.the-description-topics-and-licence">The description, topics and licence. Git history, issues and pull requests stay on GitHub.</Copy></li>
           <li>Up to 3,000 files and 80 MB; files over 25 MB are left out, and the commit message says how many.</li>
         </ul>
       </div>

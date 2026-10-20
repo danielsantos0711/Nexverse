@@ -34,6 +34,7 @@ import {
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /** One launch: countdown before, the live board with boosts on the day, the result after, and comments. */
 export function LaunchDetail({ id }: { id: string }) {
@@ -150,10 +151,10 @@ function LaunchPage({ initial }: { initial: Launch }) {
             {phase ? <PhaseBadge phase={phase} /> : <Skeleton className="h-5 w-20 rounded-full" />}
             {rank?.crowned && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">
-                <CrownIcon aria-hidden className="size-3.5" /> Launch of the day
+                <CrownIcon aria-hidden className="size-3.5" /> <Copy k="launch.launch-detail.launch-of-the-day">Launch of the day</Copy>
               </span>
             )}
-            {l.local && <span className="text-xs text-muted-foreground">Saved in this browser only</span>}
+            {l.local && <span className="text-xs text-muted-foreground"><Copy k="launch.launch-detail.saved-in-this-browser-only">Saved in this browser only</Copy></span>}
           </div>
           <h1 className="text-2xl leading-tight font-semibold tracking-[-0.02em]">{l.name}</h1>
           <p className="max-w-[60ch] text-[15px] text-foreground/85">{l.tagline}</p>
@@ -198,7 +199,7 @@ function LaunchPage({ initial }: { initial: Launch }) {
           {l.description && (
             <section aria-labelledby="about-h" className="flex flex-col gap-2">
               <h2 id="about-h" className="font-sans text-base font-semibold tracking-normal">
-                About this launch
+                <Copy k="launch.launch-detail.about-this-launch">About this launch</Copy>
               </h2>
               <PostBody source={l.description} />
             </section>
@@ -207,7 +208,7 @@ function LaunchPage({ initial }: { initial: Launch }) {
           {l.gallery.length > 0 && (
             <section aria-labelledby="gallery-h" className="flex flex-col gap-3">
               <h2 id="gallery-h" className="font-sans text-base font-semibold tracking-normal">
-                Gallery
+                <Copy k="launch.launch-detail.gallery">Gallery</Copy>
               </h2>
               <ul className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 {l.gallery.map((src, i) => (
@@ -226,7 +227,7 @@ function LaunchPage({ initial }: { initial: Launch }) {
                         decoding="async"
                         className="aspect-video w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
                       />
-                      <span className="sr-only">(opens full size in a new tab)</span>
+                      <span className="sr-only"><Copy k="launch.launch-detail.opens-full-size-in-a">(opens full size in a new tab)</Copy></span>
                     </a>
                   </li>
                 ))}
@@ -239,7 +240,7 @@ function LaunchPage({ initial }: { initial: Launch }) {
           {isOwner && phase === "scheduled" && (
             <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
               <Button variant="ghost" size="sm" onClick={() => setConfirm(true)}>
-                <Trash2Icon aria-hidden /> Scrub this launch
+                <Trash2Icon aria-hidden /> <Copy k="launch.launch-detail.scrub-this-launch">Scrub this launch</Copy>
               </Button>
             </div>
           )}
@@ -256,7 +257,7 @@ function LaunchPage({ initial }: { initial: Launch }) {
             ) : phase === "scheduled" ? (
               <>
                 <Countdown to={l.launchAt} />
-                <p className="text-xs text-muted-foreground">Boosting opens at launch time and stays open for 24 hours. Come back then, or share the page.</p>
+                <p className="text-xs text-muted-foreground"><Copy k="launch.launch-detail.boosting-opens-at-launch-time" multiline>Boosting opens at launch time and stays open for 24 hours. Come back then, or share the page.</Copy></p>
               </>
             ) : (
               <>
@@ -287,7 +288,7 @@ function LaunchPage({ initial }: { initial: Launch }) {
           {phase !== "scheduled" && (
             <section aria-labelledby="boosters-h" className="flex flex-col gap-2 rounded-2xl border border-border p-4">
               <h2 id="boosters-h" className="font-sans text-sm font-semibold tracking-normal">
-                Boosted by
+                <Copy k="launch.launch-detail.boosted-by">Boosted by</Copy>
               </h2>
               {boosters === null ? (
                 <Skeleton className="h-7 w-2/3" />
@@ -312,10 +313,10 @@ function LaunchPage({ initial }: { initial: Launch }) {
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirm(false)}>
-              Keep it
+              <Copy k="launch.launch-detail.keep-it">Keep it</Copy>
             </Button>
             <Button variant="destructive" onClick={scrub}>
-              Scrub launch
+              <Copy k="launch.launch-detail.scrub-launch">Scrub launch</Copy>
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -333,7 +334,7 @@ function Missing({ title, detail }: { title: string; detail: string }) {
       </EmptyHeader>
       <EmptyContent>
         <Link href="/launchpad" className="text-ion hover:underline">
-          Back to the Launchpad
+          <Copy k="launch.launch-detail.back-to-the-launchpad">Back to the Launchpad</Copy>
         </Link>
       </EmptyContent>
     </Empty>

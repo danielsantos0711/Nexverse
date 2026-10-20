@@ -1,8 +1,11 @@
 import type { Metadata } from "next"
 import { StudioHead } from "@/components/studio/ui"
 import { WelcomeFlow } from "@/components/settings/welcome-flow"
+import { seoMetadata } from "@/lib/content-server"
 
-export const metadata: Metadata = { title: "Welcome", description: "Set up your Nexverse: your profile, interests, categories and people to follow.", robots: { index: false } }
+export async function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("/welcome", { title: "Welcome", description: "Set up your Nexverse: your profile, interests, categories and people to follow.", robots: { index: false } })
+}
 
 export default function WelcomePage() {
   return (

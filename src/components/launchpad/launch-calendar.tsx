@@ -5,6 +5,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { dayKey, type Launch } from "@/lib/launchpad"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const monthName = (y: number, m: number) =>
@@ -102,7 +103,7 @@ export function LaunchCalendar({ launches, now, selected, onSelect }: { launches
           )
         })}
       </div>
-      <p className="text-[11px] text-muted-foreground">Days follow UTC, like the Launch of the day.</p>
+      <p className="text-[11px] text-muted-foreground"><Copy k="launchpad.launch-calendar.days-follow-utc-like-the">Days follow UTC, like the Launch of the day.</Copy></p>
     </div>
   )
 }

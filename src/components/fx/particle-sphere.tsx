@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { pixelRatio, qualityScale, useFx } from "@/lib/perf"
 import { cn } from "@/lib/utils"
 
 /*
@@ -25,13 +26,17 @@ type Props = {
 
 export function ParticleSphere({ className, count = 2600, color = "188 208 255", speed = 0.16, reach = 70, still = false }: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
+  // perf (src/lib/perf.ts): fewer points and a lower pixel ratio on lower tiers; "off" or another heavy
+  // effect's turn on screen holds one still frame
+  const { quality, run } = useFx(ref)
+  const hold = still || !run
 
   useEffect(() => {
     const canvas = ref.current
     const ctx = canvas?.getContext("2d")
     if (!canvas || !ctx) return
-    const reduce = still || matchMedia("(prefers-reduced-motion: reduce)").matches
-    const n = Math.max(100, Math.min(8000, Math.round(count)))
+    const reduce = hold || matchMedia("(prefers-reduced-motion: reduce)").matches
+    const n = Math.max(100, Math.min(8000, Math.round(count * Math.max(0.35, qualityScale(quality)))))
     const golden = Math.PI * (3 - Math.sqrt(5))
     const base = new Float32Array(n * 3)
     const shove = new Float32Array(n * 2) // displacement on screen, in sphere radii
@@ -57,7 +62,7 @@ export function ParticleSphere({ className, count = 2600, color = "188 208 255",
 
     const size = () => {
       const b = canvas.getBoundingClientRect()
-      dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      dpr = pixelRatio(quality)
       w = Math.max(1, b.width)
       h = Math.max(1, b.height)
       canvas.width = Math.round(w * dpr)
@@ -200,7 +205,7 @@ export function ParticleSphere({ className, count = 2600, color = "188 208 255",
       canvas.removeEventListener("pointerleave", onLeave)
       document.removeEventListener("visibilitychange", refresh)
     }
-  }, [count, color, speed, reach, still])
+  }, [count, color, speed, reach, hold, quality])
 
   return <canvas ref={ref} aria-hidden className={cn("block size-full touch-pan-y", className)} />
 }

@@ -39,6 +39,7 @@ import {
 import { useSession, type Member } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 type Tab = "wall" | "chat" | "collections" | "members" | "settings"
 const created = new Intl.DateTimeFormat("en", { month: "long", year: "numeric", timeZone: "UTC" })
@@ -180,10 +181,10 @@ export function CrewPage({ slug }: { slug: string }) {
   if (crew === null) {
     return (
       <div className="shell flex max-w-3xl flex-col items-center gap-3 py-24 text-center">
-        <h1 className="text-xl font-semibold">There is no crew at this address</h1>
+        <h1 className="text-xl font-semibold"><Copy k="crew.crew-page.there-is-no-crew-at">There is no crew at this address</Copy></h1>
         <p className="max-w-sm text-sm text-muted-foreground">{error || "It may have been deleted, or the link has a typo."}</p>
         <Link href="/crews" className="pressable inline-flex h-9 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground">
-          See all crews
+          <Copy k="crew.crew-page.see-all-crews">See all crews</Copy>
         </Link>
       </div>
     )
@@ -213,11 +214,11 @@ export function CrewPage({ slug }: { slug: string }) {
     <RoleBadge role="owner" className="h-7 px-3 text-xs" />
   ) : standing.role ? (
     <Button variant="ghost" size="sm" disabled={busy} onClick={() => confirm(`Leave ${crew.name}?`) && run(() => leaveCrew(crew))}>
-      <LogOutIcon aria-hidden /> Leave
+      <LogOutIcon aria-hidden /> <Copy k="crew.crew-page.leave">Leave</Copy>
     </Button>
   ) : live && !session.user ? (
     <Link href={signIn} className="pressable inline-flex h-9 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground">
-      Sign in to join
+      <Copy k="crew.crew-page.sign-in-to-join">Sign in to join</Copy>
     </Link>
   ) : crew.visibility === "public" ? (
     <Button disabled={busy} onClick={() => run(() => joinCrew(crew))}>
@@ -225,11 +226,11 @@ export function CrewPage({ slug }: { slug: string }) {
     </Button>
   ) : standing.requested ? (
     <Button variant="secondary" disabled={busy} onClick={() => run(() => withdrawRequest(crew))} title="Withdraw your request">
-      <CheckIcon aria-hidden /> Request sent
+      <CheckIcon aria-hidden /> <Copy k="crew.crew-page.request-sent">Request sent</Copy>
     </Button>
   ) : (
     <Button disabled={busy} onClick={() => setAsking(true)}>
-      <MailPlusIcon aria-hidden /> Ask to join
+      <MailPlusIcon aria-hidden /> <Copy k="crew.crew-page.ask-to-join">Ask to join</Copy>
     </Button>
   )
 
@@ -298,7 +299,7 @@ export function CrewPage({ slug }: { slug: string }) {
             </p>
             {live && !session.user ? (
               <Link href={signIn} className="pressable inline-flex h-9 items-center self-start rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground">
-                Sign in to accept
+                <Copy k="crew.crew-page.sign-in-to-accept">Sign in to accept</Copy>
               </Link>
             ) : (
               <Button
@@ -312,7 +313,7 @@ export function CrewPage({ slug }: { slug: string }) {
                   })
                 }
               >
-                Accept invite
+                <Copy k="crew.crew-page.accept-invite">Accept invite</Copy>
               </Button>
             )}
           </div>
@@ -343,13 +344,13 @@ export function CrewPage({ slug }: { slug: string }) {
             />
             <div className="flex gap-2">
               <Button type="submit" size="sm" disabled={busy}>
-                Send request
+                <Copy k="crew.crew-page.send-request">Send request</Copy>
               </Button>
               <Button type="button" size="sm" variant="ghost" onClick={() => setAsking(false)}>
-                Cancel
+                <Copy k="crew.crew-page.cancel">Cancel</Copy>
               </Button>
             </div>
-            {!live && <p className="text-xs text-muted-foreground">Local preview: the request is saved in this browser, and nobody will answer it.</p>}
+            {!live && <p className="text-xs text-muted-foreground"><Copy k="crew.crew-page.local-preview-the-request-is">Local preview: the request is saved in this browser, and nobody will answer it.</Copy></p>}
           </form>
         )}
 
@@ -434,7 +435,7 @@ export function CrewPage({ slug }: { slug: string }) {
                     The crew
                   </h2>
                   <button type="button" onClick={() => setTab("members")} className="text-xs text-ion hover:underline">
-                    See all
+                    <Copy k="crew.crew-page.see-all">See all</Copy>
                   </button>
                 </div>
                 <ul className="flex flex-wrap gap-1.5">
@@ -454,7 +455,7 @@ export function CrewPage({ slug }: { slug: string }) {
             )}
             {!readable && (
               <p className="rounded-xl border border-border bg-card/40 p-4 text-sm text-muted-foreground">
-                This crew is invite only. Its wall, members and collections are visible to members.
+                <Copy k="crew.crew-page.this-crew-is-invite-only">This crew is invite only. Its wall, members and collections are visible to members.</Copy>
               </p>
             )}
           </aside>

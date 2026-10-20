@@ -5,6 +5,7 @@ import { SparklesIcon, UsersIcon } from "lucide-react"
 import { STATUS_ICON, STATUS_TONE } from "@/components/missions/mission-bits"
 import { STATUSES, type MissionCounts, type MissionStatus } from "@/lib/missions"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 
@@ -56,7 +57,7 @@ export function MissionControl({ counts, status, onStatus, live }: { counts: Mis
             status === "all" ? "bg-white/[0.08] text-foreground" : "text-muted-foreground hover:text-foreground",
           )}
         >
-          All missions
+          <Copy k="missions.mission-control.all-missions">All missions</Copy>
         </button>
       </div>
       <div className="overflow-hidden">
@@ -88,13 +89,13 @@ export function MissionControl({ counts, status, onStatus, live }: { counts: Mis
           })}
           <div className="col-span-3 flex flex-col items-start gap-1 border-r border-b border-white/[0.06] px-4 py-3 sm:col-span-2 lg:col-span-1">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <SparklesIcon aria-hidden className="size-3.5 text-gold" /> Points riding
+              <SparklesIcon aria-hidden className="size-3.5 text-gold" /> <Copy k="missions.mission-control.points-riding">Points riding</Copy>
             </span>
             <span className="text-xl leading-none font-semibold text-gold">{counts ? <Ticker value={counts.pledged} /> : "–"}</span>
           </div>
           <div className="col-span-3 flex flex-col items-start gap-1 border-r border-b border-white/[0.06] px-4 py-3 lg:col-span-1">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <UsersIcon aria-hidden className="size-3.5 text-ion" /> Pilots flying
+              <UsersIcon aria-hidden className="size-3.5 text-ion" /> <Copy k="missions.mission-control.pilots-flying">Pilots flying</Copy>
             </span>
             <span className="text-xl leading-none font-semibold">{counts ? <Ticker value={counts.pilots} /> : "–"}</span>
           </div>

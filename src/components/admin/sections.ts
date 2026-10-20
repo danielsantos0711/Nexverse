@@ -8,7 +8,7 @@ import type { SettingKey } from "@/lib/site-settings"
 export const SETTING_SECTIONS: { key: SettingKey; label: string; blurb: string }[] = [
   { key: "brand", label: "Brand", blurb: "Site name, tagline and the description search engines and footers use" },
   { key: "announcement", label: "Announcement", blurb: "A line above the header for news, launches or maintenance" },
-  { key: "theme", label: "Theme", blurb: "Accent colour, how much moves, and the home page backdrop" },
+  { key: "theme", label: "Theme", blurb: "Accent colours, glass, background, text size, corners and motion" },
   { key: "hero", label: "Home hero", blurb: "The first words and button visitors see on the home page" },
   { key: "home", label: "Home sections", blurb: "Order the home page sections and choose which ones show" },
   { key: "nav", label: "Navigation", blurb: "Hide links from the header menus, footer and search" },
@@ -28,9 +28,12 @@ export const ADMIN_PAGES = [
   { href: "/admin/newsroom", label: "Newsroom", admin: false },
   { href: "/admin/forum", label: "Forum", admin: false },
   { href: "/admin/chat", label: "Chat rooms", admin: false },
+  { href: "/admin/site", label: "Site editor", admin: false },
   { href: "/admin/pages", label: "Pages", admin: false },
   { href: "/admin/menus", label: "Menus", admin: false },
+  { href: "/admin/lists", label: "Curated lists", admin: true },
   { href: "/admin/roles", label: "Roles and powers", admin: true },
   { href: "/admin/ai", label: "AI", admin: true },
+  { href: "/admin/logins", label: "Sign-in methods", admin: true },
   { href: "/admin/settings", label: "Site settings", admin: true },
 ] as const

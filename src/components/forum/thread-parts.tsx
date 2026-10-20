@@ -5,6 +5,7 @@ import type { Poster, Topic } from "@/components/forum/topics"
 import { TimeAgo } from "@/components/live/time"
 import { plural } from "@/lib/data"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /** The anchor every numbered post carries, so "#3" links to it. */
 export const postId = (n: number) => `post-${n}`
@@ -61,13 +62,13 @@ export function Post({
           <PosterAvatar poster={poster} size={28} />
           {poster.name}
         </span>
-        {original && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs text-muted-foreground">Started the thread</span>}
+        {original && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs text-muted-foreground"><Copy k="thread.thread-parts.started-the-thread">Started the thread</Copy></span>}
         <TimeAgo date={date} className="text-xs text-muted-foreground" />
         {note}
         <span className="ml-auto flex items-center gap-2">
           {accepted && (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-ok">
-              <CheckCircle2Icon aria-hidden className="size-3.5" /> Solution
+              <CheckCircle2Icon aria-hidden className="size-3.5" /> <Copy k="thread.thread-parts.solution">Solution</Copy>
             </span>
           )}
           <a
@@ -91,21 +92,21 @@ export function ThreadStats({ replies, participants, created, lastReply }: { rep
   return (
     <section aria-labelledby="stats-h" className="glass rounded-xl p-4">
       <h2 id="stats-h" className="mb-3 font-sans text-sm font-semibold tracking-normal">
-        About this thread
+        <Copy k="thread.thread-parts.about-this-thread">About this thread</Copy>
       </h2>
       <dl className="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
         <div>
-          <dt className="text-xs text-muted-foreground">Replies</dt>
+          <dt className="text-xs text-muted-foreground"><Copy k="thread.thread-parts.replies">Replies</Copy></dt>
           <dd className="text-lg font-semibold tabular">{replies}</dd>
         </div>
         <div>
-          <dt className="text-xs text-muted-foreground">Started</dt>
+          <dt className="text-xs text-muted-foreground"><Copy k="thread.thread-parts.started">Started</Copy></dt>
           <dd className="pt-1">
             <time dateTime={created}>{DAY.format(new Date(created))}</time>
           </dd>
         </div>
         <div className="col-span-2">
-          <dt className="text-xs text-muted-foreground">Last reply</dt>
+          <dt className="text-xs text-muted-foreground"><Copy k="thread.thread-parts.last-reply">Last reply</Copy></dt>
           <dd>{lastReply ? <TimeAgo date={lastReply} /> : "None yet"}</dd>
         </div>
         <div className="col-span-2">

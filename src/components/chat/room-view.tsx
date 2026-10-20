@@ -661,7 +661,7 @@ export function RoomView({ slug, room, missing, me, canWrite, ready, crowd, unre
           </>
         ) : (
           <div className="glass flex flex-col items-start gap-2 rounded-xl px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">Anyone can read. Sign in with your email to join the conversation.</p>
+            <p className="text-sm text-muted-foreground">Sign in with your email to join the conversation.</p>
             <Link
               href={signInHref(slug)}
               className="pressable inline-flex h-9 shrink-0 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground"

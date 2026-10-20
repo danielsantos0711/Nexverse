@@ -4,6 +4,7 @@
 // (aria-hidden), fills its parent, renders at a low pixel budget and about 30 fps because it sits behind the star
 // map and is soft anyway, pauses offscreen, when the tab is hidden or when `paused` is set, and cleans up on unmount.
 import { useLayoutEffect, useRef } from 'react';
+import { qualityScale, useFx } from '@/lib/perf';
 
 const CSS = `
 .cosmos-nebula{position:absolute;inset:0;overflow:hidden}
@@ -54,7 +55,7 @@ const FRAME_MS = 1000 / 30;
 
 const rgb = (hex) => [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255);
 
-function mountNebula(canvas, isPaused) {
+function mountNebula(canvas, isPaused, getQuality) {
   let gl, program, buffer, shaders = [], uniforms = {};
   let frame = 0, last = 0, lastDraw = 0, time = 0, visible = true, destroyed = false, lost = false;
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -94,7 +95,9 @@ function mountNebula(canvas, isPaused) {
   function draw() {
     if (destroyed || lost || !program) return;
     const box = canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(PIXEL_BUDGET / Math.max(1, box.width * box.height)));
+    // lower tiers draw fewer pixels (high 300k, medium 180k, low 105k); the field is soft, so it barely shows
+    const budget = PIXEL_BUDGET * Math.max(0.35, qualityScale(getQuality()));
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(budget / Math.max(1, box.width * box.height)));
     const width = Math.max(1, Math.round(box.width * dpr));
     const height = Math.max(1, Math.round(box.height * dpr));
     if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
@@ -151,8 +154,12 @@ function mountNebula(canvas, isPaused) {
 
 export default function Nebula({ paused = false, className = '' }) {
   const root = useRef(null);
-  const pausedRef = useRef(paused);
   const scene = useRef(null);
+  // perf (src/lib/perf.ts): "off" or another heavy effect's turn on screen holds the field still
+  const { quality, run } = useFx(root, { minimum: 'medium' });
+  const halt = paused || !run;
+  const pausedRef = useRef(halt);
+  const qualityRef = useRef(quality);
 
   useLayoutEffect(() => {
     if (!document.querySelector('style[data-cosmos-nebula]')) {
@@ -161,14 +168,15 @@ export default function Nebula({ paused = false, className = '' }) {
       tag.textContent = CSS;
       document.head.append(tag);
     }
-    scene.current = mountNebula(root.current.querySelector('canvas'), () => pausedRef.current);
+    scene.current = mountNebula(root.current.querySelector('canvas'), () => pausedRef.current, () => qualityRef.current);
     return () => { scene.current?.destroy(); scene.current = null; };
   }, []);
 
   useLayoutEffect(() => {
-    pausedRef.current = paused;
+    pausedRef.current = halt;
+    qualityRef.current = quality;
     scene.current?.refresh();
-  }, [paused]);
+  }, [halt, quality]);
 
   return (
     <div ref={root} className={`cosmos-nebula ${className}`} aria-hidden="true">

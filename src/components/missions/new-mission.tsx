@@ -16,6 +16,7 @@ import { createMission, DIFFICULTIES, LIMITS, pointsAvailable, REWARD_PRESETS, v
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /** Post a mission. Renders in the browser only, because the deadline defaults depend on your clock. */
 export function NewMissionForm() {
@@ -137,7 +138,7 @@ function Form() {
     <form onSubmit={submit} noValidate className="glass rounded-2xl p-5 md:p-7">
       <FieldGroup>
         <Field data-invalid={errors.title ? true : undefined}>
-          <FieldLabel htmlFor="ms-title">What should be built?</FieldLabel>
+          <FieldLabel htmlFor="ms-title"><Copy k="missions-new.new-mission.what-should-be-built">What should be built?</Copy></FieldLabel>
           <Input
             id="ms-title"
             value={title}
@@ -147,7 +148,7 @@ function Form() {
             className="h-11 bg-background/60"
             {...err("title")}
           />
-          {errors.title ? <FieldError id="ms-title-error">{errors.title}</FieldError> : <FieldDescription>One line that says what done looks like.</FieldDescription>}
+          {errors.title ? <FieldError id="ms-title-error">{errors.title}</FieldError> : <FieldDescription><Copy k="missions-new.new-mission.one-line-that-says-what">One line that says what done looks like.</Copy></FieldDescription>}
         </Field>
 
         <FieldSet>
@@ -176,7 +177,7 @@ function Form() {
         </FieldSet>
 
         <Field data-invalid={errors.brief ? true : undefined}>
-          <FieldLabel htmlFor="ms-brief">Brief</FieldLabel>
+          <FieldLabel htmlFor="ms-brief"><Copy k="missions-new.new-mission.brief">Brief</Copy></FieldLabel>
           <MarkdownComposer
             id="ms-brief"
             value={brief}
@@ -192,7 +193,7 @@ function Form() {
 
         <FieldSet>
           <FieldLegend variant="label">Acceptance criteria</FieldLegend>
-          <FieldDescription className="-mt-1">The checklist an entry must meet. Pilots see it before they accept.</FieldDescription>
+          <FieldDescription className="-mt-1"><Copy k="missions-new.new-mission.the-checklist-an-entry-must">The checklist an entry must meet. Pilots see it before they accept.</Copy></FieldDescription>
           <ol className="flex flex-col gap-2">
             {criteria.map((c, i) => (
               <li key={i} className="flex items-center gap-2">
@@ -234,7 +235,7 @@ function Form() {
           </ol>
           <div className="flex flex-wrap items-center gap-3">
             <Button type="button" variant="secondary" size="sm" onClick={() => addCriterion()} disabled={criteria.length >= LIMITS.criteria}>
-              <PlusIcon aria-hidden /> Add a criterion
+              <PlusIcon aria-hidden /> <Copy k="missions-new.new-mission.add-a-criterion">Add a criterion</Copy>
             </Button>
             <span className="text-xs text-muted-foreground">Press Enter to add the next one. Up to {LIMITS.criteria}.</span>
           </div>
@@ -243,7 +244,7 @@ function Form() {
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <Field data-invalid={errors.reward ? true : undefined}>
-            <FieldLabel htmlFor="ms-reward">Reward in reputation points</FieldLabel>
+            <FieldLabel htmlFor="ms-reward"><Copy k="missions-new.new-mission.reward-in-reputation-points">Reward in reputation points</Copy></FieldLabel>
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Quick amounts">
               {REWARD_PRESETS.map((p) => {
                 const on = Number(reward || 0) === p
@@ -294,7 +295,7 @@ function Form() {
           </Field>
 
           <Field data-invalid={errors.deadline ? true : undefined}>
-            <FieldLabel htmlFor="ms-deadline">Deadline</FieldLabel>
+            <FieldLabel htmlFor="ms-deadline"><Copy k="missions-new.new-mission.deadline">Deadline</Copy></FieldLabel>
             <Input
               id="ms-deadline"
               type="date"
@@ -317,9 +318,9 @@ function Form() {
         </div>
 
         <Field data-invalid={errors.tags ? true : undefined}>
-          <FieldLabel htmlFor="ms-tags">Tags</FieldLabel>
+          <FieldLabel htmlFor="ms-tags"><Copy k="missions-new.new-mission.tags">Tags</Copy></FieldLabel>
           <TagInput id="ms-tags" value={tags} onChange={setTags} describedBy={errors.tags ? "ms-tags-error" : undefined} />
-          {errors.tags ? <FieldError id="ms-tags-error">{errors.tags}</FieldError> : <FieldDescription>Up to 5, like portuguese or speech, so the right pilots find it.</FieldDescription>}
+          {errors.tags ? <FieldError id="ms-tags-error">{errors.tags}</FieldError> : <FieldDescription><Copy k="missions-new.new-mission.up-to-5-like-portuguese">Up to 5, like portuguese or speech, so the right pilots find it.</Copy></FieldDescription>}
         </Field>
 
         {errors.form && <FieldError>{errors.form}</FieldError>}
@@ -327,7 +328,7 @@ function Form() {
           <Button type="submit" size="lg" disabled={busy}>
             {busy ? "Posting…" : "Post mission"}
           </Button>
-          {!live && <span className="text-sm text-muted-foreground">This copy has no database, so the mission stays in this browser.</span>}
+          {!live && <span className="text-sm text-muted-foreground"><Copy k="missions-new.new-mission.this-copy-has-no-database">This copy has no database, so the mission stays in this browser.</Copy></span>}
         </div>
       </FieldGroup>
     </form>

@@ -12,6 +12,7 @@ import { toggleBookmark, useBookmarks, type Bookmark } from "@/lib/social"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 
@@ -100,7 +101,7 @@ export function SavedView() {
         <p className="glass rounded-xl px-4 py-3 text-sm text-muted-foreground">
           These are saved in this browser only.{" "}
           <Link href="/sign-in?next=/saved" className="text-ion hover:underline">
-            Sign in
+            <Copy k="saved.saved-view.sign-in">Sign in</Copy>
           </Link>{" "}
           to keep them on every device.
         </p>
@@ -140,7 +141,7 @@ export function SavedView() {
         </div>
         <label className="glass flex h-10 w-full items-center gap-2 rounded-full px-3.5 md:w-64">
           <SearchIcon aria-hidden className="size-4 text-muted-foreground" />
-          <span className="sr-only">Search saved items</span>
+          <span className="sr-only"><Copy k="saved.saved-view.search-saved-items">Search saved items</Copy></span>
           <input
             type="search"
             value={query}
@@ -226,7 +227,7 @@ export function SavedView() {
               onClick={undo}
               className="inline-flex items-center gap-1.5 rounded-full bg-ion/15 px-3 py-1.5 text-ion transition-colors hover:bg-ion/25 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
             >
-              <Undo2Icon aria-hidden className="size-3.5" /> Undo
+              <Undo2Icon aria-hidden className="size-3.5" /> <Copy k="saved.saved-view.undo">Undo</Copy>
             </button>
           </motion.div>
         )}
@@ -242,15 +243,15 @@ function EmptySaved() {
         <BookmarkIcon aria-hidden className="size-6" />
       </span>
       <div className="flex max-w-md flex-col gap-1.5">
-        <h2 className="text-lg font-semibold">Nothing saved yet</h2>
-        <p className="text-muted-foreground">Tap the bookmark on any model, dataset, tool, repo, thread or story and it lands here, ready when you are.</p>
+        <h2 className="text-lg font-semibold"><Copy k="saved.saved-view.nothing-saved-yet">Nothing saved yet</Copy></h2>
+        <p className="text-muted-foreground"><Copy k="saved.saved-view.tap-the-bookmark-on-any" multiline>Tap the bookmark on any model, dataset, tool, repo, thread or story and it lands here, ready when you are.</Copy></p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         <Link href="/explore" className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground">
-          Explore the hub
+          <Copy k="saved.saved-view.explore-the-hub">Explore the hub</Copy>
         </Link>
         <Link href="/forum" className="pressable inline-flex h-10 items-center rounded-full border border-border bg-secondary/60 px-5 text-sm hover:bg-secondary">
-          Browse the forum
+          <Copy k="saved.saved-view.browse-the-forum">Browse the forum</Copy>
         </Link>
       </div>
     </div>
@@ -277,7 +278,7 @@ function SavedRow({ info }: { info: ItemInfo }) {
   ) : (
     <div className="flex flex-col gap-0.5 rounded-xl border border-dashed border-border bg-card/40 p-4 text-muted-foreground">
       {body}
-      <span className="text-xs">Remove it with the bookmark button.</span>
+      <span className="text-xs"><Copy k="saved.saved-view.remove-it-with-the-bookmark">Remove it with the bookmark button.</Copy></span>
     </div>
   )
 }

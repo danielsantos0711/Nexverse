@@ -8,7 +8,9 @@ import { GlowCard } from "@/components/hub/glow-card"
 import { Kbd } from "@/components/ui/kbd"
 import { cn } from "@/lib/utils"
 import { ToolPreview } from "./previews"
-import { CATEGORIES, LAB_TOOLS, labPath, type LabCategory, type LabTool } from "./tools"
+import { labPath, type LabCategory, type LabTool } from "./tools"
+import { useLabShelves, useLabTools } from "@/lib/lists/hooks"
+import { Copy } from "@/components/content/copy"
 
 /** HorizonX "Particle Veil", decorative, browser-only, paused offscreen and under reduced motion. */
 const ParticleVeil = dynamic(() => import("./fx/particle-veil"), { ssr: false })
@@ -24,6 +26,10 @@ export function LabHeroFx() {
 }
 
 export function LabIndex() {
+  // The admins' tools (switched-on ones, featured first) and shelves, from /admin/lists.
+  const tools = useLabTools()
+  const LAB_TOOLS = useMemo(() => [...tools.filter((t) => t.featured), ...tools.filter((t) => !t.featured)], [tools])
+  const CATEGORIES = useLabShelves()
   const [q, setQ] = useState("")
   const [cat, setCat] = useState<LabCategory | "all">("all")
   const search = useRef<HTMLInputElement>(null)
@@ -45,7 +51,7 @@ export function LabIndex() {
   const results = useMemo(() => {
     const words = norm(q).split(/\s+/).filter(Boolean)
     return LAB_TOOLS.filter((t) => (cat === "all" || t.group === cat) && words.every((w) => norm(`${t.name} ${t.tagline} ${t.keywords}`).includes(w)))
-  }, [q, cat])
+  }, [q, cat, LAB_TOOLS])
 
   const grouped = !q.trim() && cat === "all"
 
@@ -70,7 +76,7 @@ export function LabIndex() {
         <div className="relative w-full md:max-w-sm">
           <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <label htmlFor="lab-search" className="sr-only">
-            Search the Lab
+            <Copy k="lab.lab-index.search-the-lab">Search the Lab</Copy>
           </label>
           <input
             id="lab-search"
@@ -129,7 +135,7 @@ export function LabIndex() {
             <p className="mt-1 text-sm text-muted-foreground">
               Try a broader word, or{" "}
               <Link href="/forum/new" className="text-ion underline-offset-2 hover:underline">
-                suggest the tool you need
+                <Copy k="lab.lab-index.suggest-the-tool-you-need">suggest the tool you need</Copy>
               </Link>
               .
             </p>
@@ -182,8 +188,8 @@ function Cards({ tools }: { tools: LabTool[] }) {
                     <Icon aria-hidden className="size-5" />
                   </span>
                   <span className="flex items-center gap-1.5">
-                    {t.isNew && <span className="rounded-full bg-ion/12 px-2 py-0.5 text-[11px] font-medium text-ion ring-1 ring-ion/25 ring-inset">New</span>}
-                    {t.usesAi && <span className="rounded-full bg-ok/10 px-2 py-0.5 text-[11px] font-medium text-ok ring-1 ring-ok/25 ring-inset">Free AI</span>}
+                    {t.isNew && <span className="rounded-full bg-ion/12 px-2 py-0.5 text-[11px] font-medium text-ion ring-1 ring-ion/25 ring-inset"><Copy k="lab.lab-index.new">New</Copy></span>}
+                    {t.usesAi && <span className="rounded-full bg-ok/10 px-2 py-0.5 text-[11px] font-medium text-ok ring-1 ring-ok/25 ring-inset"><Copy k="lab.lab-index.free-ai">Free AI</Copy></span>}
                     <ArrowUpRightIcon aria-hidden className="size-4 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground motion-reduce:transition-none" />
                   </span>
                 </div>

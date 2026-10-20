@@ -7,6 +7,7 @@ import { BarChart3Icon, LockIcon, XIcon } from "lucide-react"
 import { CategoryIcon } from "@/components/forum/category-icon"
 import { AiAssistButton } from "@/components/ai/ai-assist-button"
 import { MarkdownComposer } from "@/components/forum/markdown-composer"
+import { clearDraft } from "@/lib/editor/drafts"
 import { Gate } from "@/components/moderation/gate"
 import { PollBuilder } from "@/components/forum/poll"
 import { TagInput } from "@/components/forum/tags"
@@ -15,7 +16,8 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegen
 import { Input } from "@/components/ui/input"
 import { createThread, mentionedMemberIds, normalizeTag, validatePoll, validateThread, type MentionCandidate, type NewPoll } from "@/lib/community"
 import { useCaps } from "@/lib/caps"
-import { LANGUAGES, type LanguageCode } from "@/lib/data"
+import { type LanguageCode } from "@/lib/data"
+import { useLanguages } from "@/lib/lists/hooks"
 import { findCategory, myReputation, postBlock, postBlockText, useForumMap, visibleGroups } from "@/lib/forum-categories"
 import { useRole } from "@/lib/roles"
 import { useSession } from "@/lib/store"
@@ -34,6 +36,7 @@ export function NewThread() {
 }
 
 function NewThreadForm() {
+  const LANGUAGES = useLanguages()
   const params = useSearchParams()
   const router = useRouter()
   const reduce = useReducedMotion()
@@ -90,6 +93,7 @@ function NewThreadForm() {
     setBusy(true)
     try {
       const q = await createThread({ title: title.trim(), body: body.trim(), orbit: cat, lang, tags, mentions: mentionedMemberIds(body, picked) }, poll)
+      void clearDraft("forum:new:body")
       router.push(`/forum/${q.id}`)
     } catch (err) {
       const threadId = (err as { threadId?: string }).threadId
@@ -179,6 +183,7 @@ function NewThreadForm() {
           </div>
           <MarkdownComposer
             id="body"
+            draftKey="forum:new:body"
             value={body}
             onChange={setBody}
             rows={8}

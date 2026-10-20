@@ -9,6 +9,7 @@ import { getFollowCounts, isFollowing, toggleFollow } from "@/lib/social"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 
@@ -117,7 +118,7 @@ export function FollowButton({
         {showCount && (
           <motion.span layout={layout ? "position" : false} className={cn("tabular", following || unfollow ? "opacity-80" : "opacity-70")}>
             {compact(base + state.followers)}
-            <span className="sr-only"> followers</span>
+            <span className="sr-only"> <Copy k="common.follow-button.followers">followers</Copy></span>
           </motion.span>
         )}
       </motion.button>

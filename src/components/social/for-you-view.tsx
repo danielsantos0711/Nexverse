@@ -18,6 +18,7 @@ import { getMemberNames, listFollowing } from "@/lib/social"
 import { listQuestions, useSession, type Question } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 
@@ -146,12 +147,12 @@ export function ForYouView() {
         <p className="text-sm text-muted-foreground">
           Built from {follows.length} {follows.length === 1 ? "follow" : "follows"} and your interests.{" "}
           <Link href="/you" className="text-ion hover:underline">
-            Manage
+            <Copy k="for-you.for-you-view.manage">Manage</Copy>
           </Link>
         </p>
       </div>
       {shown.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nothing of this kind in your feed yet.</p>
+        <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground"><Copy k="for-you.for-you-view.nothing-of-this-kind-in">Nothing of this kind in your feed yet.</Copy></p>
       ) : (
         <ol className="flex flex-col gap-3">
           <AnimatePresence initial={false} mode="popLayout">
@@ -189,10 +190,10 @@ export function ThreadRow({ q }: { q: Question }) {
       </span>
       <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
         <span className="text-ion">{getCategory(q.orbit)?.name ?? q.orbit}</span>
-        <span>{q.author?.name ?? (q.local ? "You" : "A member")}</span>
+        <span>{q.author?.name ?? (q.local ? "You" : <Copy k="for-you.for-you-view.a-member">A member</Copy>)}</span>
         <TimeAgo date={q.createdAt} />
         <span className="inline-flex items-center gap-1">
-          <MessageSquareIcon aria-hidden className="size-3" /> {q.answerCount} <span className="sr-only">replies</span>
+          <MessageSquareIcon aria-hidden className="size-3" /> {q.answerCount} <span className="sr-only"><Copy k="for-you.for-you-view.replies">replies</Copy></span>
         </span>
       </span>
     </Link>
@@ -221,12 +222,12 @@ function StartHere({ followsSomething }: { followsSomething: boolean }) {
     <div className="flex flex-col gap-10">
       <p className="max-w-[62ch] text-muted-foreground">
         {followsSomething
-          ? "The members and categories you follow have not posted anything yet. Follow a few more, or pick interests in settings, and your feed fills up."
-          : "Your feed fills up as you follow members and forum categories and pick interests. Here is a start."}
+          ? <Copy k="for-you.for-you-view.the-members-and-categories-you" multiline>The members and categories you follow have not posted anything yet. Follow a few more, or pick interests in settings, and your feed fills up.</Copy>
+          : <Copy k="for-you.for-you-view.your-feed-fills-up-as" multiline>Your feed fills up as you follow members and forum categories and pick interests. Here is a start.</Copy>}
       </p>
       <section aria-labelledby="fy-cats" className="flex flex-col gap-3">
         <h2 id="fy-cats" className="font-medium">
-          Follow a few categories
+          <Copy k="for-you.for-you-view.follow-a-few-categories">Follow a few categories</Copy>
         </h2>
         <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {categories.slice(0, 9).map((c) => {
@@ -246,13 +247,13 @@ function StartHere({ followsSomething }: { followsSomething: boolean }) {
           })}
         </ul>
         <Link href="/people" className="text-sm text-ion hover:underline">
-          Find members to follow →
+          <Copy k="for-you.for-you-view.find-members-to-follow">Find members to follow →</Copy>
         </Link>
       </section>
       {hub && hub.length > 0 && (
         <section aria-labelledby="fy-hub" className="flex flex-col gap-3">
           <h2 id="fy-hub" className="font-medium">
-            New in the hub
+            <Copy k="for-you.for-you-view.new-in-the-hub">New in the hub</Copy>
           </h2>
           <div className="grid gap-3 md:grid-cols-2">
             {hub.map((e) => (
@@ -264,7 +265,7 @@ function StartHere({ followsSomething }: { followsSomething: boolean }) {
       {threads && threads.length > 0 && (
         <section aria-labelledby="fy-threads" className="flex flex-col gap-3">
           <h2 id="fy-threads" className="font-medium">
-            New in the forum
+            <Copy k="for-you.for-you-view.new-in-the-forum">New in the forum</Copy>
           </h2>
           <div className="flex flex-col gap-2">
             {threads.map((q) => (
@@ -276,7 +277,7 @@ function StartHere({ followsSomething }: { followsSomething: boolean }) {
       {news && news.length > 0 && (
         <section aria-labelledby="fy-news" className="flex flex-col gap-3">
           <h2 id="fy-news" className="font-medium">
-            Latest news
+            <Copy k="for-you.for-you-view.latest-news">Latest news</Copy>
           </h2>
           <div className="grid gap-3 md:grid-cols-2">
             {news.map((s) => (
@@ -287,12 +288,12 @@ function StartHere({ followsSomething }: { followsSomething: boolean }) {
       )}
       {hub?.length === 0 && threads?.length === 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
-          <p className="flex-1">Nexverse is new and quiet. Start something people can follow.</p>
+          <p className="flex-1"><Copy k="for-you.for-you-view.nexverse-is-new-and-quiet">Nexverse is new and quiet. Start something people can follow.</Copy></p>
           <Button nativeButton={false} size="sm" render={<Link href="/forum/new" />}>
-            Start a thread
+            <Copy k="for-you.for-you-view.start-a-thread">Start a thread</Copy>
           </Button>
           <Button nativeButton={false} size="sm" variant="secondary" render={<Link href="/new/project" />}>
-            Publish a project
+            <Copy k="for-you.for-you-view.publish-a-project">Publish a project</Copy>
           </Button>
         </div>
       )}

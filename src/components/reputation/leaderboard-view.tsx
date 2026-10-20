@@ -6,12 +6,16 @@ import { useEffect, useState } from "react"
 import { TrophyIcon } from "lucide-react"
 import { PosterAvatar } from "@/components/forum/forum-ui"
 import { MemberPlanet } from "@/components/planet/member-planet"
-import { LevelChip, LevelRing } from "@/components/reputation/level-ring"
+import { GlassTabs } from "@/components/glass/glass-tabs"
+import { AmberSphere } from "@/components/reputation/fx/amber-sphere"
+import { LEVEL_COLORS, LevelChip, LevelRing } from "@/components/reputation/level-ring"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CAP_INFO, isCap, useCaps } from "@/lib/caps"
-import { getLeaderboard, LEVELS, PERIODS, POINTS, type LeaderRow, type Period } from "@/lib/community"
+import { getLeaderboard, levelFor, PERIODS, type LeaderRow, type Period } from "@/lib/community"
+import { useLevels, usePoints } from "@/lib/lists/hooks"
 import { compact } from "@/lib/data"
 import { useSession } from "@/lib/store"
+import { Copy } from "@/components/content/copy"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
@@ -20,6 +24,7 @@ const MEDALS = ["text-gold", "text-[#c9cfdb]", "text-[#e0a77a]"]
 
 /** Who helped most this week, this month and of all time, from the same points as everyone's level. */
 export function LeaderboardView() {
+  const POINTS = usePoints()
   const { ready, user } = useSession()
   const reduce = useReducedMotion()
   const [period, setPeriod] = useState<Period>("week")
@@ -43,31 +48,17 @@ export function LeaderboardView() {
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="flex min-w-0 flex-col gap-4">
-        <div role="tablist" aria-label="Period" className="glass flex w-fit max-w-full overflow-x-auto rounded-full p-1">
-          {PERIODS.map((p) => {
-            const on = p.value === period
-            return (
-              <button
-                key={p.value}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                aria-controls="leaderboard-panel"
-                onClick={() => {
-                  setError("")
-                  setPeriod(p.value)
-                }}
-                className={cn(
-                  "relative shrink-0 rounded-full px-3.5 py-1.5 text-sm whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                  on ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {on && <motion.span layoutId="leaderboard-period" className="absolute inset-0 rounded-full bg-primary" transition={reduce ? { duration: 0 } : { type: "spring", bounce: 0.18, duration: 0.45 }} />}
-                <span className="relative">{p.label}</span>
-              </button>
-            )
-          })}
-        </div>
+        <GlassTabs
+          tabs={PERIODS.map((p) => ({ value: p.value, label: p.label }))}
+          value={period}
+          onChange={(v) => {
+            setError("")
+            setPeriod(v)
+          }}
+          label="Period"
+          controls="leaderboard-panel"
+          className="w-fit max-w-full"
+        />
 
         <div id="leaderboard-panel" role="tabpanel" aria-label={PERIODS.find((p) => p.value === period)?.label} aria-busy={!rows && !error}>
           {error ? (
@@ -83,12 +74,12 @@ export function LeaderboardView() {
               ))}
             </ul>
           ) : rows.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 px-6 py-14 text-center">
+            <div className="liquid-glass-flat flex flex-col items-center gap-3 rounded-2xl px-6 py-14 text-center">
               <span className="grid size-10 place-items-center rounded-full bg-gold/10 text-gold">
                 <TrophyIcon aria-hidden className="size-5" />
               </span>
               <p className="max-w-sm text-sm text-muted-foreground">
-                {period === "all" ? "Nobody has earned points yet." : `Nobody has earned points ${period === "week" ? "this week" : "this month"} yet.`} Start a thread or answer one to be first.
+                {period === "all" ? "No stars have risen yet." : `No stars have risen ${period === "week" ? "this week" : "this month"} yet.`} Start a thread or answer one to be the first light in this sky.
               </p>
               <Link href="/forum" className="text-sm text-ion hover:underline">
                 Go to the forum
@@ -121,7 +112,8 @@ export function LeaderboardView() {
 
       <aside aria-label="How points work" className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
         {you && (
-          <section aria-labelledby="you-h" className="glass flex flex-col gap-3 rounded-xl p-4">
+          <section aria-labelledby="you-h" className="liquid-glass relative flex flex-col gap-3 overflow-hidden rounded-2xl p-4">
+            <YourStar points={you.points} />
             <h2 id="you-h" className="font-sans text-sm font-semibold tracking-normal">
               You, {PERIODS.find((p) => p.value === period)?.label.toLowerCase()}
             </h2>
@@ -135,9 +127,9 @@ export function LeaderboardView() {
             )}
           </section>
         )}
-        <section id="how-points" aria-labelledby="points-h" className="glass scroll-mt-24 rounded-xl p-4">
+        <section id="how-points" aria-labelledby="points-h" className="liquid-glass scroll-mt-24 rounded-2xl p-4">
           <h2 id="points-h" className="mb-3 font-sans text-sm font-semibold tracking-normal">
-            How points work
+            <Copy k="leaderboard.points.title">How points work</Copy>
           </h2>
           <dl className="flex flex-col gap-1.5 text-sm">
             {[
@@ -156,22 +148,17 @@ export function LeaderboardView() {
           <p className="mt-3 text-xs text-muted-foreground">Liking or reacting to your own posts earns nothing.</p>
         </section>
         <Unlocks />
-        <section aria-labelledby="levels-h" className="glass rounded-xl p-4">
-          <h2 id="levels-h" className="mb-3 font-sans text-sm font-semibold tracking-normal">
-            Levels
-          </h2>
-          <ol className="flex flex-col gap-2">
-            {LEVELS.map((l) => (
-              <li key={l.name} className="flex items-center justify-between gap-3 text-sm">
-                <LevelChip points={l.min} />
-                <span className="text-xs text-muted-foreground tabular">{compact(l.min)}+</span>
-              </li>
-            ))}
-          </ol>
-        </section>
       </aside>
     </div>
   )
+}
+
+/** Your level as an Amber Sphere in the corner of your card, brighter as you near the next level. */
+function YourStar({ points }: { points: number }) {
+  const levels = useLevels()
+  const info = levelFor(points, levels)
+  const [amber, gold] = LEVEL_COLORS[info.level.name] ?? LEVEL_COLORS.Stardust
+  return <AmberSphere amber={amber} gold={gold} energy={info.progress} size={88} className="pointer-events-none absolute -top-3 -right-3 opacity-90" />
 }
 
 /** "Post outside links, publish projects and the Contributor badge". */
@@ -193,7 +180,7 @@ function Unlocks() {
     .filter((t) => t.text.length || t.min === 0)
   if (!rows.length) return null
   return (
-    <section aria-labelledby="unlocks-h" className="glass rounded-xl p-4">
+    <section aria-labelledby="unlocks-h" className="liquid-glass rounded-2xl p-4">
       <h2 id="unlocks-h" className="mb-1 font-sans text-sm font-semibold tracking-normal">
         What points unlock
       </h2>
@@ -226,7 +213,7 @@ function Row({ r, rank, showLevel }: { r: LeaderRow; rank: number; showLevel: bo
     <span className="truncate font-medium">{r.who.name}</span>
   )
   return (
-    <div className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5 sm:px-4", r.you ? "border-ion/40 bg-ion/[0.06]" : "border-border bg-card/40")}>
+    <div className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5 sm:px-4", r.you ? "border-ion/40 bg-ion/[0.06]" : "border-white/[0.07] bg-white/[0.025]")}>
       <span className={cn("w-7 shrink-0 text-center font-mono text-sm tabular", rank <= 3 ? cn("font-semibold", MEDALS[rank - 1]) : "text-muted-foreground")}>
         {rank <= 3 ? <TrophyIcon aria-hidden className="mx-auto size-4" /> : rank}
         <span className="sr-only">Rank {rank}</span>
@@ -257,7 +244,7 @@ function Podium({ rows }: { rows: LeaderRow[] }) {
   if (rows.length < 3) return null
   const order = [rows[1], rows[0], rows[2]]
   return (
-    <ol aria-label="Top three" className="mb-4 grid grid-cols-3 items-end gap-2 rounded-2xl bg-card/40 px-2 pt-2 pb-4 sm:gap-6 sm:px-6">
+    <ol aria-label="Top three" className="liquid-glass-flat mb-4 grid grid-cols-3 items-end gap-2 rounded-3xl px-2 pt-2 pb-4 sm:gap-6 sm:px-6">
       {order.map((r) => {
         const rank = rows.indexOf(r) + 1
         const seed = r.who.handle ?? r.who.memberId ?? r.who.name

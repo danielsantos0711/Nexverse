@@ -11,6 +11,7 @@ import { useCaps } from "@/lib/caps"
 import { getPageBySlug, type SitePage } from "@/lib/pages"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
+import { Copy } from "@/components/content/copy"
 
 /**
  * A custom page, read in the browser: published pages for everyone, drafts for page editors (row level security
@@ -59,7 +60,7 @@ export function PageView({ slug }: { slug: string }) {
         </EmptyHeader>
         <EmptyContent>
           <Link href="/" className="text-sm text-ion hover:underline">
-            Back to the home page
+            <Copy k="custom-page.page-view.back-to-the-home-page">Back to the home page</Copy>
           </Link>
         </EmptyContent>
       </Empty>
@@ -80,7 +81,7 @@ export function PageView({ slug }: { slug: string }) {
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: page.title }]} />
         {page.status === "draft" && (
           <p role="note" className="w-fit rounded-full border border-gold/30 bg-gold/[0.08] px-3 py-1 text-xs text-gold">
-            Draft: only page editors can see this page
+            <Copy k="custom-page.page-view.draft-only-page-editors-can">Draft: only page editors can see this page</Copy>
           </p>
         )}
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -90,13 +91,13 @@ export function PageView({ slug }: { slug: string }) {
               href={`/admin/pages/${page.id}`}
               className="pressable inline-flex h-9 items-center gap-1.5 rounded-full border border-border px-3.5 text-sm text-muted-foreground hover:border-white/20 hover:text-foreground"
             >
-              <PencilIcon aria-hidden className="size-4" /> Edit page
+              <PencilIcon aria-hidden className="size-4" /> <Copy k="custom-page.page-view.edit-page">Edit page</Copy>
             </Link>
           )}
         </div>
         {page.description && <p className="max-w-[68ch] text-[15px] text-muted-foreground">{page.description}</p>}
       </header>
-      {page.blocks.length ? <PageBlocks blocks={page.blocks} /> : <p className="text-sm text-muted-foreground">This page has no content yet.</p>}
+      {page.blocks.length ? <PageBlocks blocks={page.blocks} /> : <p className="text-sm text-muted-foreground"><Copy k="custom-page.page-view.this-page-has-no-content">This page has no content yet.</Copy></p>}
     </article>
   )
 }

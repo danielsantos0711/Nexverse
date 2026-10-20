@@ -8,6 +8,8 @@ import { useRole } from "@/lib/roles"
 import { useMenus } from "@/lib/menus"
 import { isLinkVisible, useSiteSettings } from "@/lib/site-settings"
 import { db } from "@/lib/supabase"
+import { useCopy } from "@/lib/content"
+import { GlassKeys } from "@/components/glass/glass-keys"
 
 const Ctx = createContext<() => void>(() => {})
 export const useOpenCommandMenu = () => use(Ctx)
@@ -64,7 +66,7 @@ async function searchHub(q: string): Promise<Hit[]> {
   const [threads, links, projects, people, pages, stories] = await Promise.all([
     c.from("questions").select("id, title").ilike("title", like).order("created_at", { ascending: false }).limit(6),
     c.from("submissions").select("id, kind, title").ilike("title", like).order("created_at", { ascending: false }).limit(6),
-    c.from("projects").select("id, name, kind").eq("status", "published").ilike("name", like).limit(6),
+    c.from("projects").select("id, name, kind").eq("status", "published").eq("visibility", "public").ilike("name", like).limit(6),
     c.from("profiles").select("handle, name").not("handle", "is", null).or(`name.ilike.${like},handle.ilike.${like}`).limit(6),
     c.from("site_pages").select("slug, title").eq("status", "published").ilike("title", like).limit(6),
     c.from("news_stories").select("slug, title").eq("status", "published").ilike("title", like).order("published_at", { ascending: false }).limit(6),
@@ -89,6 +91,9 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
   const { settings } = useSiteSettings()
   const { isStaff } = useRole()
   const { pages: menuPages } = useMenus()
+  const placeholder = useCopy("search.placeholder", "Search the universe…")
+  const empty = useCopy("search.empty", "No star matches that yet. Try another word, or ask in the forum.")
+  const goTo = useCopy("search.goto", "Jump to")
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -134,10 +139,10 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
       {children}
       <CommandDialog open={open} onOpenChange={setOpen} title="Search Nexverse" description="Find pages, threads, links, projects and people">
         <Command>
-          <CommandInput placeholder="Search everything…" value={query} onValueChange={setQuery} />
+          <CommandInput placeholder={placeholder} value={query} onValueChange={setQuery} />
           <CommandList className="max-h-[60vh]">
-            <CommandEmpty>Nothing found. Try another word, or search in the forum.</CommandEmpty>
-            <CommandGroup heading="Go to">
+            <CommandEmpty>{empty}</CommandEmpty>
+            <CommandGroup heading={goTo}>
               {pages.map(([label, href]) => (
                 <CommandItem key={href} value={label} onSelect={() => go(href)}>
                   {label}
@@ -159,6 +164,21 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
               </CommandGroup>
             ))}
           </CommandList>
+          {/* the keys that drive the palette, as glass keycaps */}
+          <div aria-hidden className="hidden items-center gap-4 border-t border-white/[0.06] px-3 py-2 text-xs text-muted-foreground sm:flex">
+            <span className="inline-flex items-center gap-1.5">
+              <GlassKeys keys={["↑", "↓"]} live={false} /> move
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <GlassKeys keys={["↵"]} live={false} /> open
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <GlassKeys keys={["Esc"]} live={false} /> close
+            </span>
+            <span className="ml-auto inline-flex items-center gap-1.5">
+              <GlassKeys keys={["mod", "K"]} /> anywhere
+            </span>
+          </div>
         </Command>
       </CommandDialog>
     </Ctx>

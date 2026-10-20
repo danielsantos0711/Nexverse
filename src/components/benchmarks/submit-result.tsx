@@ -9,10 +9,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { BENCHMARKS, getBenchmark, submitResult, validateResult, type BenchmarkResult, type NewResult, type ResultErrors } from "@/lib/benchmarks"
+import { getBenchmark, submitResult, validateResult, type BenchmarkResult, type NewResult, type ResultErrors } from "@/lib/benchmarks"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
+import { useBenchmarks } from "@/lib/lists/hooks"
 
 const select = "h-10 w-full rounded-lg border border-input bg-background/60 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
 
@@ -31,6 +33,8 @@ const empty = (benchmark: string): NewResult => ({
 
 /** "Submit a result" and the dialog behind it. Anyone can open it; the form inside is for members. */
 export function SubmitResult({ benchmark, onSubmitted, className }: { benchmark?: string; onSubmitted: (r: BenchmarkResult) => void; className?: string }) {
+  // Retired benchmarks keep their results but take no new ones.
+  const BENCHMARKS = useBenchmarks().filter((b) => !b.retired)
   const { ready } = useSession()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<NewResult>(() => empty(benchmark ?? BENCHMARKS[0].slug))
@@ -79,7 +83,7 @@ export function SubmitResult({ benchmark, onSubmitted, className }: { benchmark?
             <FieldGroup className="gap-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field data-invalid={errors.benchmark ? true : undefined}>
-                  <FieldLabel htmlFor="res-benchmark">Benchmark</FieldLabel>
+                  <FieldLabel htmlFor="res-benchmark"><Copy k="benchmark.submit-result.benchmark">Benchmark</Copy></FieldLabel>
                   <select
                     id="res-benchmark"
                     value={form.benchmark}
@@ -124,7 +128,7 @@ export function SubmitResult({ benchmark, onSubmitted, className }: { benchmark?
               </div>
 
               <Field data-invalid={errors.model ? true : undefined}>
-                <FieldLabel htmlFor="res-model">Model</FieldLabel>
+                <FieldLabel htmlFor="res-model"><Copy k="benchmark.submit-result.model">Model</Copy></FieldLabel>
                 <Input
                   id="res-model"
                   value={form.model}
@@ -137,18 +141,18 @@ export function SubmitResult({ benchmark, onSubmitted, className }: { benchmark?
                 {errors.model ? (
                   <FieldError id="res-model-error">{errors.model}</FieldError>
                 ) : (
-                  <FieldDescription>Use the name its makers use, with the size and variant, so results for the same model line up.</FieldDescription>
+                  <FieldDescription><Copy k="benchmark.submit-result.use-the-name-its-makers" multiline>Use the name its makers use, with the size and variant, so results for the same model line up.</Copy></FieldDescription>
                 )}
               </Field>
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field data-invalid={errors.shots ? true : undefined}>
-                  <FieldLabel htmlFor="res-shots">Shots</FieldLabel>
+                  <FieldLabel htmlFor="res-shots"><Copy k="benchmark.submit-result.shots">Shots</Copy></FieldLabel>
                   <Input id="res-shots" inputMode="numeric" value={form.shots} onChange={(e) => set("shots", e.target.value)} placeholder="5" className="h-10 bg-background/60" {...err("shots")} />
                   {errors.shots && <FieldError id="res-shots-error">{errors.shots}</FieldError>}
                 </Field>
                 <Field data-invalid={errors.quantisation ? true : undefined}>
-                  <FieldLabel htmlFor="res-quantisation">Quantisation</FieldLabel>
+                  <FieldLabel htmlFor="res-quantisation"><Copy k="benchmark.submit-result.quantisation">Quantisation</Copy></FieldLabel>
                   <Input
                     id="res-quantisation"
                     value={form.quantisation}
@@ -160,7 +164,7 @@ export function SubmitResult({ benchmark, onSubmitted, className }: { benchmark?
                   />
                 </Field>
                 <Field data-invalid={errors.hardware ? true : undefined}>
-                  <FieldLabel htmlFor="res-hardware">Hardware</FieldLabel>
+                  <FieldLabel htmlFor="res-hardware"><Copy k="benchmark.submit-result.hardware">Hardware</Copy></FieldLabel>
                   <Input
                     id="res-hardware"
                     value={form.hardware}
@@ -174,7 +178,7 @@ export function SubmitResult({ benchmark, onSubmitted, className }: { benchmark?
               </div>
 
               <Field data-invalid={errors.harness ? true : undefined}>
-                <FieldLabel htmlFor="res-harness">Harness and version</FieldLabel>
+                <FieldLabel htmlFor="res-harness"><Copy k="benchmark.submit-result.harness-and-version">Harness and version</Copy></FieldLabel>
                 <Input
                   id="res-harness"
                   value={form.harness}
@@ -187,7 +191,7 @@ export function SubmitResult({ benchmark, onSubmitted, className }: { benchmark?
               </Field>
 
               <Field data-invalid={errors.logsUrl ? true : undefined}>
-                <FieldLabel htmlFor="res-logsUrl">Link to the logs</FieldLabel>
+                <FieldLabel htmlFor="res-logsUrl"><Copy k="benchmark.submit-result.link-to-the-logs">Link to the logs</Copy></FieldLabel>
                 <Input
                   id="res-logsUrl"
                   type="url"
@@ -202,12 +206,12 @@ export function SubmitResult({ benchmark, onSubmitted, className }: { benchmark?
                 {errors.logsUrl ? (
                   <FieldError id="res-logsUrl-error">{errors.logsUrl}</FieldError>
                 ) : (
-                  <FieldDescription>Per-sample outputs or the harness’s results file, so others can check the run.</FieldDescription>
+                  <FieldDescription><Copy k="benchmark.submit-result.per-sample-outputs-or-the">Per-sample outputs or the harness’s results file, so others can check the run.</Copy></FieldDescription>
                 )}
               </Field>
 
               <Field data-invalid={errors.notes ? true : undefined}>
-                <FieldLabel htmlFor="res-notes">Notes (optional)</FieldLabel>
+                <FieldLabel htmlFor="res-notes"><Copy k="benchmark.submit-result.notes-optional">Notes (optional)</Copy></FieldLabel>
                 <Textarea
                   id="res-notes"
                   value={form.notes}
@@ -226,7 +230,7 @@ export function SubmitResult({ benchmark, onSubmitted, className }: { benchmark?
                 <Button type="submit" disabled={busy}>
                   {busy ? "Submitting…" : "Submit result"}
                 </Button>
-                {!live && <span className="text-xs text-muted-foreground">This copy has no database, so the result stays in this browser.</span>}
+                {!live && <span className="text-xs text-muted-foreground"><Copy k="benchmark.submit-result.this-copy-has-no-database">This copy has no database, so the result stays in this browser.</Copy></span>}
               </div>
             </FieldGroup>
           </form>

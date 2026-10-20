@@ -11,8 +11,18 @@ import { FeedMeta, FeedUnavailable } from "@/components/live/bits"
 import { GitHubRepoCard } from "@/components/live/github-repo-card"
 import { CardsSkeleton, RowsSkeleton } from "@/components/live/skeletons"
 import { KINDS, type ResourceKind } from "@/lib/data"
+import { Copy } from "@/components/content/copy"
 import { isHubId } from "@/lib/refs"
 import { ghTopicHref, githubTopicRepos, githubTrendingAi, type Feed, type GhRepo } from "@/lib/live"
+
+/** Where each list sits in the Nexverse galaxy, for the eyebrow over its title. */
+const WORLD: Record<ResourceKind | "all", string> = {
+  model: "The planet of models",
+  dataset: "The planet of datasets",
+  tool: "The planet of tools",
+  repo: "The moons of open source",
+  all: "The whole galaxy",
+}
 
 /**
  * What each list shows from GitHub next to members' work: open-source repositories under a fitting topic, most
@@ -32,14 +42,12 @@ export function ResourceListPage({ kind }: { kind?: ResourceKind }) {
   return (
     <div className="shell pb-16">
       <PageTitle
+        k={`${kind ?? "explore"}.header`}
+        backdrop="warp"
         eyebrow={
-          Icon ? (
-            <span className="inline-flex items-center gap-1.5">
-              <Icon aria-hidden className="size-4" /> Hub
-            </span>
-          ) : (
-            "Hub"
-          )
+          <span className="inline-flex items-center gap-1.5">
+            {Icon && <Icon aria-hidden className="size-4" />} {WORLD[kind ?? "all"]}
+          </span>
         }
         title={kind ? KINDS[kind].plural : "Explore the hub"}
         lead={
@@ -49,25 +57,25 @@ export function ResourceListPage({ kind }: { kind?: ResourceKind }) {
         }
       >
         <div className="mt-1 flex flex-wrap gap-2">
-          <Link href={kind ? `/new/project?kind=${kind}` : "/new/project"} className="pressable inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+          <Link href={kind ? `/new/project?kind=${kind}` : "/new/project"} className="halo-btn">
             <PlusIcon aria-hidden className="size-4" /> Publish {kind ? `a ${KINDS[kind].label.toLowerCase()}` : "a project"}
           </Link>
-          <Link href={kind ? `/share?kind=${kind}` : "/share"} className="pressable inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-secondary/60 px-4 text-sm hover:bg-secondary focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+          <Link href={kind ? `/share?kind=${kind}` : "/share"} className="liquid-glass-pill inline-flex h-9 items-center gap-1.5 px-4 text-sm focus-visible:outline-2 focus-visible:outline-ring">
             <LinkIcon aria-hidden className="size-4" /> Share a link
           </Link>
         </div>
       </PageTitle>
 
       <section aria-labelledby="members-h" className="flex flex-col gap-4">
-        <h2 id="members-h" className="text-xl font-semibold">
-          From members
+        <h2 id="members-h" className="section-glow text-xl font-semibold">
+          <Copy k={`${kind ?? "explore"}.members`}>{kind ? `${KINDS[kind].plural} charted by members` : "Charted by members"}</Copy>
         </h2>
         <Suspense fallback={<RowsSkeleton rows={4} />}>
           <ResourceIndex kind={kind} />
         </Suspense>
       </section>
 
-      <section aria-labelledby="gh-h" className="mt-14 border-t border-border pt-10">
+      <section aria-labelledby="gh-h" className="horizon-rule mt-14 pt-10">
         <SectionHead id="gh-h" title={live.title} href={live.topic ? ghTopicHref(live.topic) : "/trending#repos"} action={live.topic ? `More on #${live.topic}` : "Trending"}>
           <p className="text-sm text-muted-foreground">{live.lead}</p>
         </SectionHead>

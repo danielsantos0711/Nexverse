@@ -12,6 +12,7 @@ import { deleteResult, formatScore, getBenchmark, reproStaysLocal, reproSummary,
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /** A result's settings, its reproductions, and your own verdict: reproduced (within tolerance) or not. */
 export function ReproPanel({ result, onRepros, onDeleted }: { result: BenchmarkResult; onRepros: (r: Repro[]) => void; onDeleted: () => void }) {
@@ -96,7 +97,7 @@ export function ReproPanel({ result, onRepros, onDeleted }: { result: BenchmarkR
             Logs <ExternalLinkIcon aria-hidden className="size-3.5" />
           </a>
         ) : (
-          <span className="text-muted-foreground">Sample result: no logs to check.</span>
+          <span className="text-muted-foreground"><Copy k="benchmark.repro-panel.sample-result-no-logs-to">Sample result: no logs to check.</Copy></span>
         )}
         <span className="text-xs text-muted-foreground">
           Submitted by {result.author.name} · <TimeAgo date={result.createdAt} />
@@ -108,14 +109,14 @@ export function ReproPanel({ result, onRepros, onDeleted }: { result: BenchmarkR
             disabled={busy}
             className="pressable ml-auto inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
-            <Trash2Icon aria-hidden className="size-3.5" /> Withdraw
+            <Trash2Icon aria-hidden className="size-3.5" /> <Copy k="benchmark.repro-panel.withdraw">Withdraw</Copy>
           </button>
         )}
       </div>
 
       <section aria-label="Reproductions" className="flex flex-col gap-2 rounded-xl border border-border bg-black/20 p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-sans text-sm font-medium tracking-normal">Reproductions</h3>
+          <h3 className="font-sans text-sm font-medium tracking-normal"><Copy k="benchmark.repro-panel.reproductions">Reproductions</Copy></h3>
           <ReproBadge result={result} />
           <span className="text-xs text-muted-foreground">
             Counts when within ±{bench.tolerance}
@@ -138,11 +139,11 @@ export function ReproPanel({ result, onRepros, onDeleted }: { result: BenchmarkR
             ))}
           </ul>
         ) : (
-          <p className="text-xs text-muted-foreground">Nobody has checked this result yet. Run it with the same settings and say what you got.</p>
+          <p className="text-xs text-muted-foreground"><Copy k="benchmark.repro-panel.nobody-has-checked-this-result">Nobody has checked this result yet. Run it with the same settings and say what you got.</Copy></p>
         )}
 
         {own ? (
-          <p className="text-xs text-muted-foreground">This is your result. Someone else has to reproduce it.</p>
+          <p className="text-xs text-muted-foreground"><Copy k="benchmark.repro-panel.this-is-your-result-someone">This is your result. Someone else has to reproduce it.</Copy></p>
         ) : needsSignIn ? (
           <p className="text-xs text-muted-foreground">
             <Link href={`/sign-in?next=${encodeURIComponent(`/benchmarks/${result.benchmark}`)}`} className="text-ion underline-offset-4 hover:underline">
@@ -153,10 +154,10 @@ export function ReproPanel({ result, onRepros, onDeleted }: { result: BenchmarkR
         ) : !editing && mine ? (
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setEditing(true)} disabled={busy}>
-              Change my report
+              <Copy k="benchmark.repro-panel.change-my-report">Change my report</Copy>
             </Button>
             <Button size="sm" variant="ghost" onClick={takeBack} disabled={busy}>
-              Take it back
+              <Copy k="benchmark.repro-panel.take-it-back">Take it back</Copy>
             </Button>
           </div>
         ) : (
@@ -182,14 +183,14 @@ export function ReproPanel({ result, onRepros, onDeleted }: { result: BenchmarkR
                 <Input inputMode="decimal" value={measured} onChange={(e) => setMeasured(e.target.value)} placeholder={String(result.score)} className="h-9 w-28 bg-background/60" />
               </label>
               <label className="flex min-w-48 flex-1 flex-col gap-1">
-                <span className="text-xs text-muted-foreground">Note (optional)</span>
+                <span className="text-xs text-muted-foreground"><Copy k="benchmark.repro-panel.note-optional">Note (optional)</Copy></span>
                 <Input value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder="Same harness, different GPU" className="h-9 bg-background/60" />
               </label>
               <Button type="submit" size="sm" className="h-9" disabled={busy}>
                 {busy ? "Saving…" : "Save"}
               </Button>
             </div>
-            {reproStaysLocal(result) && <p className="text-xs text-muted-foreground">This copy has no database, so your report stays in this browser.</p>}
+            {reproStaysLocal(result) && <p className="text-xs text-muted-foreground"><Copy k="benchmark.repro-panel.this-copy-has-no-database">This copy has no database, so your report stays in this browser.</Copy></p>}
           </form>
         )}
         {error && (

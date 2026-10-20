@@ -1,6 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache"
-import { STORY_COLUMNS, STORY_SLUG, toStory, type NewsCategory, type Story, type StoryRow } from "@/lib/newsroom"
-import { publicDb, select } from "./rest"
+import { categoryNames, LEGACY_STORY_COLUMNS, readNewsroomSettings, STORY_COLUMNS, STORY_SLUG, toStory, type CategoryNames, type NewsCategory, type Story, type StoryRow } from "@/lib/newsroom"
+import { DbError, publicDb, select } from "./rest"
 
 /*
  * Server only. What readers see: published stories (and scheduled ones whose time has come), read with the
@@ -13,11 +13,19 @@ export type Stories = { ok: boolean; items: Story[] }
 
 const LIST_COLUMNS = STORY_COLUMNS.replace("body, ", "")
 
+/** Reads with the long-form columns, and again without them while the database does not have them yet. */
 async function read(query: string): Promise<Stories> {
   const db = publicDb()
   if (!db) return { ok: false, items: [] }
   try {
-    const rows = await select<StoryRow>(db, "news_stories", query)
+    let rows: StoryRow[]
+    try {
+      rows = await select<StoryRow>(db, "news_stories", query)
+    } catch (err) {
+      if (!(err instanceof DbError && (err.code === "42703" || err.code === "PGRST204"))) throw err
+      const legacy = query.includes(encodeURIComponent(LIST_COLUMNS)) ? LEGACY_STORY_COLUMNS.replace("body, ", "") : LEGACY_STORY_COLUMNS
+      rows = await select<StoryRow>(db, "news_stories", query.replace(/select=[^&]*/, `select=${encodeURIComponent(legacy)}`))
+    }
     return { ok: true, items: rows.map((r) => toStory({ ...r, body: r.body ?? "" })) }
   } catch (err) {
     console.warn("[newsroom] public read failed:", err instanceof Error ? err.message : err)
@@ -60,4 +68,15 @@ export async function relatedStories(category: NewsCategory, exclude: string, li
   const others = all.items.filter((s) => s.id !== exclude)
   const same = others.filter((s) => s.category === category)
   return [...same, ...others.filter((s) => s.category !== category)].slice(0, limit)
+}
+
+/** The readers' category names and visibility, as the editors set them. */
+export async function newsCategoryNames(): Promise<CategoryNames> {
+  "use cache"
+  cacheTag("newsroom")
+  cacheLife("minutes")
+  const db = publicDb()
+  if (!db) return categoryNames(readNewsroomSettings(null))
+  const rows = await select<{ value: unknown }>(db, "site_settings", "key=eq.newsroom&select=value").catch(() => [])
+  return categoryNames(readNewsroomSettings(rows[0]?.value))
 }

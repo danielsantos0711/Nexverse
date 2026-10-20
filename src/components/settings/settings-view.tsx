@@ -37,6 +37,7 @@ import {
 import { signOut, useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "profile", label: "Profile", icon: UserIcon },
@@ -90,7 +91,7 @@ function Settings({ profile, user }: { profile: Profile; user: User | null }) {
             </a>
           ))}
           <Link href="/studio" className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm text-ion hover:bg-secondary lg:mt-2">
-            Your studio →
+            <Copy k="settings.settings-view.your-studio">Your studio →</Copy>
           </Link>
         </nav>
         <div className="flex min-w-0 flex-col gap-8">
@@ -205,7 +206,7 @@ function ProfileSection({ profile }: { profile: Profile }) {
           <div className="grid gap-6 md:grid-cols-2">
             <TextField id="pf-name" label="Display name" value={form.name} onChange={(v) => set("name", v)} error={errors.name} maxLength={PROFILE_LIMITS.name} autoComplete="name" />
             <Field data-invalid={errors.handle ? true : undefined}>
-              <FieldLabel htmlFor="pf-handle">Handle</FieldLabel>
+              <FieldLabel htmlFor="pf-handle"><Copy k="settings.settings-view.handle">Handle</Copy></FieldLabel>
               <div className="flex h-11 items-center rounded-lg border border-input bg-background/60 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30 has-aria-invalid:border-destructive has-aria-invalid:ring-3 has-aria-invalid:ring-destructive/20">
                 <span aria-hidden className="pl-2.5 text-muted-foreground">
                   @
@@ -223,12 +224,12 @@ function ProfileSection({ profile }: { profile: Profile }) {
                   className="h-full min-w-0 flex-1 bg-transparent px-1 text-base outline-none placeholder:text-muted-foreground md:text-sm"
                 />
               </div>
-              {errors.handle ? <FieldError id="pf-handle-error">{errors.handle}</FieldError> : <FieldDescription id="pf-handle-hint">3 to 30 lowercase letters, numbers or underscores.</FieldDescription>}
+              {errors.handle ? <FieldError id="pf-handle-error">{errors.handle}</FieldError> : <FieldDescription id="pf-handle-hint"><Copy k="settings.settings-view.3-to-30-lowercase-letters">3 to 30 lowercase letters, numbers or underscores.</Copy></FieldDescription>}
             </Field>
           </div>
           <Field data-invalid={errors.bio ? true : undefined}>
             <div className="flex items-baseline justify-between gap-3">
-              <FieldLabel htmlFor="pf-bio">Bio</FieldLabel>
+              <FieldLabel htmlFor="pf-bio"><Copy k="settings.settings-view.bio">Bio</Copy></FieldLabel>
               <span className={cn("text-xs tabular", form.bio.length > PROFILE_LIMITS.bio ? "text-destructive" : "text-muted-foreground")}>
                 {form.bio.length}/{PROFILE_LIMITS.bio}
               </span>
@@ -253,7 +254,7 @@ function ProfileSection({ profile }: { profile: Profile }) {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={busy || !dirty}>
-              {busy ? "Saving…" : "Save profile"}
+              {busy ? "Saving…" : <Copy k="settings.settings-view.save-profile">Save profile</Copy>}
             </Button>
             {dirty && !busy && (
               <Button
@@ -264,7 +265,7 @@ function ProfileSection({ profile }: { profile: Profile }) {
                   setErrors({})
                 }}
               >
-                Discard changes
+                <Copy k="settings.settings-view.discard-changes">Discard changes</Copy>
               </Button>
             )}
             <Saved text={note} />
@@ -387,11 +388,11 @@ function AvatarField({ profile, name }: { profile: Profile; name: string }) {
               )}
             </div>
             <p id={hint} className="text-xs text-muted-foreground">
-              PNG, JPEG, WebP or GIF, up to 2 MB. Without one, your initials stand in.
+              <Copy k="settings.settings-view.png-jpeg-webp-or-gif">PNG, JPEG, WebP or GIF, up to 2 MB. Without one, your initials stand in.</Copy>
             </p>
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">Your picture is drawn from your initials. Uploading one needs a database connected to this copy of Nexverse.</p>
+          <p className="text-sm text-muted-foreground"><Copy k="settings.settings-view.your-picture-is-drawn-from" multiline>Your picture is drawn from your initials. Uploading one needs a database connected to this copy of Nexverse.</Copy></p>
         )}
         <Saved text={note} />
       </div>
@@ -433,7 +434,7 @@ function InterestsSection({ profile }: { profile: Profile }) {
       />
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" onClick={save} disabled={busy || !dirty}>
-          {busy ? "Saving…" : "Save interests"}
+          {busy ? "Saving…" : <Copy k="settings.settings-view.save-interests">Save interests</Copy>}
         </Button>
         <span className="text-sm text-muted-foreground tabular">{value.length} picked</span>
         <Saved text={note} />
@@ -539,9 +540,9 @@ function AccountSection({ profile, email }: { profile: Profile; email: string | 
     return (
       <Section id="account" title="Data on this device" lead="Without a database there is no account. Everything you made is kept in this browser.">
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground">Remove your local projects, threads, replies, bookmarks, likes and profile from this browser.</p>
+          <p className="text-sm text-muted-foreground"><Copy k="settings.settings-view.remove-your-local-projects-threads" multiline>Remove your local projects, threads, replies, bookmarks, likes and profile from this browser.</Copy></p>
           <Button variant="destructive" onClick={() => setConfirm("clear")}>
-            <Trash2Icon aria-hidden /> Clear this browser
+            <Trash2Icon aria-hidden /> <Copy k="settings.settings-view.clear-this-browser">Clear this browser</Copy>
           </Button>
         </div>
         <Saved text={note} />
@@ -563,27 +564,27 @@ function AccountSection({ profile, email }: { profile: Profile; email: string | 
   return (
     <Section id="account" title="Account" lead={email ? `You sign in with ${email}.` : undefined}>
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">Sign out on this device. Your work stays in your account.</p>
+        <p className="text-sm text-muted-foreground"><Copy k="settings.settings-view.sign-out-on-this-device">Sign out on this device. Your work stays in your account.</Copy></p>
         <Button variant="secondary" onClick={out} disabled={signingOut}>
           <LogOutIcon aria-hidden /> {signingOut ? "Signing out…" : "Sign out"}
         </Button>
       </div>
       <div className="flex flex-col gap-3 border-t border-border pt-5">
-        <h3 className="text-sm font-medium">Delete your account</h3>
+        <h3 className="text-sm font-medium"><Copy k="settings.settings-view.delete-your-account">Delete your account</Copy></h3>
         {requested ? (
           <div className="flex flex-col items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
             <p>
               You asked for your account to be deleted on {formatDate(requested)}. The Nexverse team will remove it and everything you wrote. Changed your mind before then?
             </p>
             <Button variant="secondary" size="sm" onClick={withdraw}>
-              Keep my account
+              <Copy k="settings.settings-view.keep-my-account">Keep my account</Copy>
             </Button>
           </div>
         ) : (
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">The Nexverse team removes your profile, projects, threads, replies, likes, follows and pictures. You can withdraw the request until it is done.</p>
+            <p className="text-sm text-muted-foreground"><Copy k="settings.settings-view.the-nexverse-team-removes-your" multiline>The Nexverse team removes your profile, projects, threads, replies, likes, follows and pictures. You can withdraw the request until it is done.</Copy></p>
             <Button variant="destructive" onClick={() => setConfirm("delete")}>
-              <Trash2Icon aria-hidden /> Request deletion
+              <Trash2Icon aria-hidden /> <Copy k="settings.settings-view.request-deletion">Request deletion</Copy>
             </Button>
           </div>
         )}

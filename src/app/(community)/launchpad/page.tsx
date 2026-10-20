@@ -2,16 +2,19 @@ import type { Metadata } from "next"
 import { RocketIcon } from "lucide-react"
 import { ForumHeader } from "@/components/forum/forum-header"
 import { LaunchpadView } from "@/components/launchpad/launchpad-view"
+import { seoMetadata } from "@/lib/content-server"
 
-export const metadata: Metadata = {
-  title: "Launchpad",
-  description: "Project launches with a countdown, a launch day where members boost live, and a Launch of the day.",
+export async function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("/launchpad", {
+    title: "Launchpad",
+    description: "Project launches with a countdown, a launch day where members boost live, and a Launch of the day.",
+  })
 }
 
 export default function LaunchpadPage() {
   return (
     <div className="shell max-w-6xl pb-16">
-      <ForumHeader
+      <ForumHeader k="launchpad.header"
         title="Launchpad"
         lead="Schedule a launch for your project. A countdown builds up to it, then for 24 hours members boost it once each. The most boosted launch of each day becomes Launch of the day."
         icon={

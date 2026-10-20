@@ -20,7 +20,7 @@ export const SOURCES = [
   { label: "Dettmers et al. 2023, QLoRA", url: "https://arxiv.org/abs/2305.14314" },
 ]
 
-/** Dense BF16/FP16 tensor throughput without sparsity, from NVIDIA's spec sheets. */
+/** Dense BF16/FP16 tensor throughput without sparsity, from NVIDIA's spec sheets. Defaults; admins edit the live list in /admin/lists (useGpus()). */
 export const GPUS: { id: string; name: string; tflops: number; memory: number; url: string }[] = [
   { id: "h100-sxm", name: "H100 SXM", tflops: 989, memory: 80, url: "https://www.nvidia.com/en-us/data-center/h100/" },
   { id: "a100-80", name: "A100 80GB SXM", tflops: 312, memory: 80, url: "https://www.nvidia.com/en-us/data-center/a100/" },

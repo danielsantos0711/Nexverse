@@ -5,11 +5,13 @@ import { useEffect, useState } from "react"
 import { BadgeCheckIcon, CalendarHeartIcon, FlameIcon, HandHelpingIcon, LibraryIcon, SunriseIcon, TelescopeIcon, type LucideIcon } from "lucide-react"
 import { LevelRing } from "@/components/reputation/level-ring"
 import { Skeleton } from "@/components/ui/skeleton"
-import { BADGES, getMemberReputation, POINTS, type RepStats } from "@/lib/community"
+import { getMemberReputation, type RepStats } from "@/lib/community"
+import { useBadges, usePoints } from "@/lib/lists/hooks"
 import { compact } from "@/lib/data"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const BADGE_ICONS: Record<string, LucideIcon> = {
   "first-light": SunriseIcon,
@@ -23,6 +25,7 @@ const BADGE_ICONS: Record<string, LucideIcon> = {
 
 /** Earned badges first, then the ones still to earn (dimmed, described for screen readers). */
 export function Badges({ stats, showLocked = true, className }: { stats: RepStats; showLocked?: boolean; className?: string }) {
+  const BADGES = useBadges()
   const list = BADGES.map((b) => ({ ...b, has: b.earned(stats) })).filter((b) => showLocked || b.has)
   const earned = list.filter((b) => b.has).length
   if (!list.length) return null
@@ -56,6 +59,7 @@ export function Badges({ stats, showLocked = true, className }: { stats: RepStat
  * it shows the signed-in member, or, without a database, what this browser holds.
  */
 export function ReputationCard({ memberId, className }: { memberId?: string; className?: string }) {
+  const POINTS = usePoints()
   const { ready, user } = useSession()
   const subject = memberId ?? user?.id ?? null
   const [loaded, setLoaded] = useState<{ key: string; stats: RepStats } | null>(null)
@@ -75,7 +79,7 @@ export function ReputationCard({ memberId, className }: { memberId?: string; cla
 
   const stats = loaded?.key === key ? loaded.stats : null
 
-  if (error) return <p className="text-sm text-muted-foreground">Reputation could not be loaded.</p>
+  if (error) return <p className="text-sm text-muted-foreground"><Copy k="common.reputation-card.reputation-could-not-be-loaded">Reputation could not be loaded.</Copy></p>
   if (!stats) {
     return (
       <div className={cn("glass flex flex-col gap-3 rounded-2xl p-5", className)} aria-busy="true" aria-label="Loading reputation">
@@ -105,7 +109,7 @@ export function ReputationCard({ memberId, className }: { memberId?: string; cla
           Reputation
         </h2>
         <Link href="/leaderboard" className="text-xs text-ion hover:underline">
-          Leaderboard
+          <Copy k="common.reputation-card.leaderboard">Leaderboard</Copy>
         </Link>
       </div>
       <LevelRing points={stats.points} size={84} />

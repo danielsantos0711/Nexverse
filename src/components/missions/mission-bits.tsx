@@ -1,6 +1,7 @@
 import { CheckCircle2Icon, CircleDotIcon, ClockIcon, HourglassIcon, RocketIcon, SearchCheckIcon, SparklesIcon, type LucideIcon } from "lucide-react"
 import { DIFFICULTIES, STATUSES, type Difficulty, type MissionStatus } from "@/lib/missions"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 export const STATUS_ICON: Record<MissionStatus, LucideIcon> = {
   open: CircleDotIcon,
@@ -81,10 +82,10 @@ export function Reward({ points, className, size = "sm" }: { points: number; cla
       <SparklesIcon aria-hidden className={size === "lg" ? "size-4" : "size-3.5"} />
       {points > 0 ? (
         <>
-          {points.toLocaleString("en")} <span className="font-normal text-gold/80">pts</span>
+          {points.toLocaleString("en")} <span className="font-normal text-gold/80"><Copy k="missions.mission-bits.pts">pts</Copy></span>
         </>
       ) : (
-        <span className="font-normal">Badge only</span>
+        <span className="font-normal"><Copy k="missions.mission-bits.badge-only">Badge only</Copy></span>
       )}
     </span>
   )

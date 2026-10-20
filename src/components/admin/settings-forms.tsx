@@ -15,8 +15,15 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { moderationReady, NAV_LINKS } from "@/lib/admin"
 import {
+  accentColors,
   ACCENTS,
   ANNOUNCEMENT_TONES,
+  BACKDROPS,
+  contrast,
+  FONT_SCALES,
+  GLASS_LEVELS,
+  HEX,
+  RADII,
   DEFAULTS,
   FEATURES,
   featureForPath,
@@ -172,7 +179,11 @@ const VALIDATE: { [K in SettingKey]: (v: SiteSettings[K]) => Errors } = {
       ["text", v.enabled && !v.text.trim() ? "Write the announcement, or switch it off." : len(v.text, 160, "The announcement")],
       ["href", v.href.trim() && !isSafeHref(v.href) ? `That link will not work. ${HREF_HELP}` : null],
     ]),
-  theme: () => ({}),
+  theme: (v) =>
+    collect([
+      ["customAccent", v.accent === "custom" && !HEX.test(v.customAccent) ? "Write the colour as #rrggbb, for example #8fb4ff." : null],
+      ["secondary", v.secondary && !HEX.test(v.secondary) ? "Write the colour as #rrggbb, or leave it empty." : null],
+    ]),
   hero: (v) =>
     collect([
       ["badge", len(v.badge, 80, "The badge")],
@@ -428,22 +439,88 @@ function AnnouncementFields({ value, change, errors }: FieldsProps<"announcement
   )
 }
 
-function ThemeFields({ value, change }: FieldsProps<"theme">) {
+function ThemeFields({ value, change, errors }: FieldsProps<"theme">) {
+  const accent = accentColors(value)
+  const secondary = HEX.test(value.secondary) ? value.secondary : "#d8c59e"
+  const accentContrast = contrast(accent.color, "#05060a")
+  const options = [...ACCENTS, { id: "custom" as const, label: "Your colour", blurb: "Any colour you pick", color: HEX.test(value.customAccent) ? value.customAccent : "#8fb4ff", foreground: "" }]
   return (
     <FieldGroup>
-      <ChoiceCards name="accent" label="Accent colour" columns={5} value={value.accent} options={ACCENTS} swatch={(id) => ACCENTS.find((a) => a.id === id)!.color} onChange={(accent) => change({ ...value, accent })} />
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-background/50 px-4 py-3 text-sm" style={{ ["--preview" as string]: ACCENTS.find((a) => a.id === value.accent)!.color }}>
+      <ChoiceCards name="accent" label="Accent colour" columns={3} value={value.accent} options={options} swatch={(id) => options.find((a) => a.id === id)!.color} onChange={(a) => change({ ...value, accent: a })} />
+      {value.accent === "custom" && (
+        <ColorField
+          id="customAccent"
+          label="Your accent"
+          value={value.customAccent}
+          error={errors.customAccent}
+          onChange={(customAccent) => change({ ...value, customAccent })}
+          help={HEX.test(value.customAccent) ? (accentContrast < 4.5 ? `Contrast on the dark ground is ${accentContrast.toFixed(1)}:1. Pick a lighter colour so links stay readable (4.5:1 or more).` : `Contrast on the dark ground: ${accentContrast.toFixed(1)}:1.`) : "A colour as #rrggbb."}
+        />
+      )}
+      <ColorField
+        id="secondary"
+        label="Second colour (optional)"
+        value={value.secondary}
+        error={errors.secondary}
+        allowEmpty
+        base="#d8c59e"
+        onChange={(s) => change({ ...value, secondary: s })}
+        help="The warm colour of highlights and badges. Leave empty for the built-in champagne."
+      />
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-background/50 px-4 py-3 text-sm" style={{ ["--preview" as string]: accent.color, ["--preview-2" as string]: secondary }}>
         <span className="text-muted-foreground">Preview:</span>
         <span className="font-medium text-(--preview)">A link in the accent</span>
-        <span className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium" style={{ background: "var(--preview)", color: ACCENTS.find((a) => a.id === value.accent)!.foreground }}>
+        <span className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium" style={{ background: "var(--preview)", color: accent.foreground }}>
           Live
         </span>
         <span className="inline-flex h-7 items-center rounded-full border border-(--preview) px-3 text-xs">Focus ring</span>
+        <span className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium text-(--preview-2) ring-1 ring-(--preview-2)/40">Highlight</span>
       </div>
+      <ChoiceCards name="glass" label="Glass" columns={2} value={value.glass} options={GLASS_LEVELS} onChange={(glass) => change({ ...value, glass })} />
+      <p className="-mt-3 text-xs text-muted-foreground">Slower computers automatically get lighter glass, whatever is chosen here.</p>
+      <ChoiceCards name="background" label="Background" columns={2} value={value.background} options={BACKDROPS} onChange={(background) => change({ ...value, background })} />
       <ChoiceCards name="motion" label="Motion" value={value.motion} options={MOTION_LEVELS} onChange={(motion) => change({ ...value, motion })} />
       <p className="-mt-3 text-xs text-muted-foreground">Visitors who ask their device for reduced motion always get less, whatever is chosen here.</p>
       <ChoiceCards name="hero" label="Home page backdrop" value={value.heroEffect} options={HERO_EFFECTS} onChange={(heroEffect) => change({ ...value, heroEffect })} />
+      <ChoiceCards name="fontScale" label="Text size" columns={2} value={value.fontScale} options={FONT_SCALES} onChange={(fontScale) => change({ ...value, fontScale })} />
+      <ChoiceCards name="radius" label="Corners" value={value.radius} options={RADII} onChange={(radius) => change({ ...value, radius })} />
     </FieldGroup>
+  )
+}
+
+/** A colour: a picker and the same value as #rrggbb text. */
+function ColorField({ id, label, value, onChange, help, error, allowEmpty, base = "#8fb4ff" }: { id: string; label: string; value: string; onChange: (v: string) => void; help?: string; error?: string; allowEmpty?: boolean; base?: string }) {
+  const valid = HEX.test(value)
+  return (
+    <Field data-invalid={error ? true : undefined}>
+      <FieldLabel htmlFor={`f-${id}`}>{label}</FieldLabel>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          aria-label={`${label}: pick`}
+          value={valid ? value.toLowerCase() : base}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-input bg-transparent p-1"
+        />
+        <Input
+          id={`f-${id}`}
+          value={value}
+          maxLength={7}
+          placeholder={allowEmpty ? "Built-in" : "#8fb4ff"}
+          onChange={(e) => onChange(e.target.value.trim())}
+          className="h-10 max-w-40 bg-background/60 font-mono"
+          aria-invalid={error ? true : undefined}
+          aria-describedby={`f-${id}-help${error ? ` f-${id}-error` : ""}`}
+        />
+        {allowEmpty && value && (
+          <Button type="button" size="sm" variant="ghost" onClick={() => onChange("")}>
+            Clear
+          </Button>
+        )}
+      </div>
+      {help && <FieldDescription id={`f-${id}-help`}>{help}</FieldDescription>}
+      {error && <FieldError id={`f-${id}-error`}>{error}</FieldError>}
+    </Field>
   )
 }
 

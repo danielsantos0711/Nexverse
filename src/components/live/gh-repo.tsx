@@ -18,6 +18,7 @@ import { FileList, type FileRow } from "./file-list"
 import { LanguageBar } from "./language-bar"
 import { Markdown } from "./markdown"
 import { TimeAgo } from "./time"
+import { Copy } from "@/components/content/copy"
 
 /* The in-site page of a GitHub repository, and its file and folder views. */
 
@@ -152,7 +153,7 @@ function Releases({ releases, owner, repo, branch }: { releases: GhRelease[]; ow
               <TimeAgo date={r.publishedAt} className="ml-auto text-xs text-muted-foreground" />
             </summary>
             <div className="border-t border-border px-4 py-3">
-              {r.body.trim() ? <Markdown source={r.body} ctx={{ source: "github", owner, repo, branch, dir: "" }} className="text-sm" /> : <p className="text-sm text-muted-foreground">No release notes.</p>}
+              {r.body.trim() ? <Markdown source={r.body} ctx={{ source: "github", owner, repo, branch, dir: "" }} className="text-sm" /> : <p className="text-sm text-muted-foreground"><Copy k="gh-repo.gh-repo.no-release-notes">No release notes.</Copy></p>}
             </div>
           </details>
         </li>
@@ -169,7 +170,7 @@ function Clone({ fullName }: { fullName: string }) {
   const cmd = `git clone https://github.com/${fullName}.git`
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs text-muted-foreground">Clone</span>
+      <span className="text-xs text-muted-foreground"><Copy k="gh-repo.gh-repo.clone">Clone</Copy></span>
       <div className="flex items-center gap-2 rounded-lg border border-border bg-[#07080d] py-1 pr-1 pl-3">
         <code className="min-w-0 flex-1 truncate font-mono text-xs text-[#cfd8ea]" title={cmd}>
           {cmd}
@@ -308,7 +309,7 @@ export async function RepoView({ owner, repo }: { owner: string; repo: string })
 
           {langs.ok && langs.data.length > 0 && (
             <Panel label="Languages">
-              <h2 className="text-sm font-medium">Languages</h2>
+              <h2 className="text-sm font-medium"><Copy k="gh-repo.gh-repo.languages">Languages</Copy></h2>
               <LanguageBar languages={langs.data} />
             </Panel>
           )}

@@ -18,6 +18,7 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 import { useLayoutEffect, useRef } from 'react';
+import { pixelRatio, qualityScale, useQuality } from '@/lib/perf';
 
 function attachPixelField(card, canvas, config) {
   const ctx = canvas.getContext('2d');
@@ -75,7 +76,7 @@ function attachPixelField(card, canvas, config) {
     const on = active();
     card.dataset.lit = String(on);
     if (destroyed || !visible || doc.hidden || !width || !height) return;
-    if (motion.matches) {
+    if (motion.matches || config.quality === 'off') {
       for (const p of pixels) p.size = on ? p.max * 0.8 : 0;
       draw();
     } else if (on || pixels.some((p) => p.size > 0)) raf = win.requestAnimationFrame(tick);
@@ -85,12 +86,13 @@ function attachPixelField(card, canvas, config) {
   function resize() {
     width = card.clientWidth;
     height = card.clientHeight;
-    const dpr = Math.min(1.5, win.devicePixelRatio || 1);
+    const dpr = pixelRatio(config.quality);
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     pixels = [];
-    const gap = Math.max(config.gap, Math.sqrt((width * height) / 18e3));
+    // lower quality tiers space the pixels wider: fewer to draw each frame
+    const gap = Math.max(config.gap, Math.sqrt((width * height) / 18e3)) / Math.sqrt(Math.max(0.35, qualityScale(config.quality)));
     const ox = origin?.x ?? width / 2, oy = origin?.y ?? height / 2;
     for (let x = 0; x < width; x += gap) for (let y = 0; y < height; y += gap) pixels.push({
       x, y,
@@ -145,12 +147,14 @@ function attachPixelField(card, canvas, config) {
  */
 export default function PixelField({ colors = '#8fb4ff,#c9d9ff,#d8c59e', gap = 6, speed = 35, className = '' }) {
   const ref = useRef(null);
+  // perf (src/lib/perf.ts): it only moves while hovered, so it needs no turn; the tier sets its density
+  const quality = useQuality();
   useLayoutEffect(() => {
     const canvas = ref.current;
     const card = canvas?.parentElement;
     if (!card) return;
-    return attachPixelField(card, canvas, { colors, gap, speed });
-  }, [colors, gap, speed]);
+    return attachPixelField(card, canvas, { colors, gap, speed, quality });
+  }, [colors, gap, speed, quality]);
   return (
     <canvas
       ref={ref}

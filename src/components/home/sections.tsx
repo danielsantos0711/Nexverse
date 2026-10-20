@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { ArrowRightIcon, CheckCircle2Icon, LibraryIcon, MessageSquareIcon, PenLineIcon, SparklesIcon, UserPlusIcon } from "lucide-react"
@@ -8,18 +7,26 @@ import { MemberAvatar } from "@/components/forum/forum-ui"
 import { MemberPlanet } from "@/components/planet/member-planet"
 import { Skeleton } from "@/components/ui/skeleton"
 import { categoriesIn, categoryGroups, compact, getCategory, LANGUAGES, type LanguageCode } from "@/lib/data"
-import { useSiteSettings } from "@/lib/site-settings"
-import { useReducedMotion } from "motion/react"
+import { useCopy } from "@/lib/content"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
-import { FilamentFlow, HalftoneOrbit, LoopVideo } from "@/components/fx"
+import { Copy } from "@/components/content/copy"
 import { GlowCard } from "@/components/hub/glow-card"
+import { HalftoneOrbit } from "@/components/fx"
+import { useQuality } from "@/lib/perf"
+import { PlasmaOrb } from "./fx"
 import { loadBuilders, loadCollections, loadHotThreads, since, useLoad, type HotThread } from "./hub-data"
 import { Slot } from "./slot"
 
-/** A section heading: title and one plain sentence, an optional way onward on the right. */
-export function Head({ id, title, lead, href, action, className }: { id: string; title: string; lead?: string; href?: Route; action?: string; className?: string }) {
+/**
+ * A section heading: title and one plain sentence, an optional way onward on the right. Each text is editable
+ * under "<k>.title", "<k>.lead" and "<k>.action" (the props are the defaults).
+ */
+export function Head({ id, k, title: titleDefault, lead: leadDefault, href, action: actionDefault, className }: { id: string; k: string; title: string; lead?: string; href?: Route; action?: string; className?: string }) {
+  const title = useCopy(`${k}.title`, titleDefault)
+  const lead = useCopy(`${k}.lead`, leadDefault ?? "")
+  const action = useCopy(`${k}.action`, actionDefault ?? "")
   return (
     <div className={cn("rise mb-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-3", className)}>
       <div className="flex max-w-[62ch] flex-col gap-2">
@@ -44,7 +51,27 @@ export function Head({ id, title, lead, href, action, className }: { id: string;
  * The honest "nothing here yet": a small drawn orbit with an empty seat, one sentence, and the one thing that
  * would fill it. Used wherever the community has not made something yet.
  */
-export function FirstLight({ title, body, href, action, icon: Icon = SparklesIcon, className }: { title: string; body: string; href: Route; action: string; icon?: React.ComponentType<{ className?: string }>; className?: string }) {
+export function FirstLight({
+  k,
+  title: titleDefault,
+  body: bodyDefault,
+  href,
+  action: actionDefault,
+  icon: Icon = SparklesIcon,
+  className,
+}: {
+  /** The texts are editable under "<k>.title", "<k>.body" and "<k>.action". */
+  k: string
+  title: string
+  body: string
+  href: Route
+  action: string
+  icon?: React.ComponentType<{ className?: string }>
+  className?: string
+}) {
+  const title = useCopy(`${k}.title`, titleDefault)
+  const body = useCopy(`${k}.body`, bodyDefault)
+  const action = useCopy(`${k}.action`, actionDefault)
   return (
     <div className={cn("rise relative isolate flex flex-col items-start gap-4 overflow-hidden rounded-2xl border border-dashed border-white/[0.1] bg-white/[0.015] p-6 sm:flex-row sm:items-center md:p-7", className)}>
       <span aria-hidden className="relative grid size-16 shrink-0 place-items-center">
@@ -90,7 +117,7 @@ function ThreadRow({ t, i }: { t: HotThread; i: number }) {
             <span>{since(t.at)}</span>
             {t.solved && (
               <span className="inline-flex items-center gap-1 text-ok">
-                <CheckCircle2Icon aria-hidden className="size-3.5" /> Solved
+                <CheckCircle2Icon aria-hidden className="size-3.5" /> <Copy k="home.forum.solved">Solved</Copy>
               </span>
             )}
           </div>
@@ -106,7 +133,7 @@ export function HotInForum({ online }: { online?: React.ReactNode }) {
   return (
     <section aria-labelledby="forum-h" className="shell grid grid-cols-1 gap-x-14 gap-y-10 lg:grid-cols-[minmax(0,1fr)_21rem]">
       <div className="min-w-0">
-        <Head id="forum-h" title="Lively in the forum" lead="Ask in any language. The threads with the most replies this week rise to the top." href="/forum" action="Open the forum" />
+        <Head id="forum-h" k="home.forum" title="Lively in the forum" lead="Ask in any language. The threads with the most replies this week rise to the top." href="/forum" action="Open the forum" />
         {threads === undefined ? (
           <div className="flex flex-col gap-3">
             {[0, 1, 2, 3].map((i) => (
@@ -121,6 +148,7 @@ export function HotInForum({ online }: { online?: React.ReactNode }) {
           </ol>
         ) : (
           <FirstLight
+            k="home.forum.empty"
             icon={MessageSquareIcon}
             title="The forum is waiting for its first thread"
             body={live ? "Ask what you are stuck on, share what you built, or start a debate. The first threads set the tone for everyone after." : "Connect the database and members' threads appear here."}
@@ -134,7 +162,9 @@ export function HotInForum({ online }: { online?: React.ReactNode }) {
           {online}
         </Slot>
         <div className="rise flex flex-col gap-3">
-          <h3 className="font-sans text-sm font-medium tracking-normal text-muted-foreground">Rooms of the forum</h3>
+          <h3 className="font-sans text-sm font-medium tracking-normal text-muted-foreground">
+            <Copy k="home.forum.rooms">Rooms of the forum</Copy>
+          </h3>
           <ul className="flex flex-col">
             {categoryGroups.map((g) => (
               <li key={g.slug}>
@@ -150,7 +180,7 @@ export function HotInForum({ online }: { online?: React.ReactNode }) {
             ))}
           </ul>
           <Link href="/forum/new" className="pressable mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary text-sm font-medium text-primary-foreground">
-            <PenLineIcon aria-hidden className="size-4" /> Start a thread
+            <PenLineIcon aria-hidden className="size-4" /> <Copy k="home.forum.start">Start a thread</Copy>
           </Link>
         </div>
       </aside>
@@ -166,7 +196,7 @@ export function DoToday({ missions, arena }: { missions?: React.ReactNode; arena
   if (process.env.NODE_ENV === "production" && !missions && !arena) return null
   return (
     <section aria-labelledby="today-h" className="shell">
-      <Head id="today-h" title="Take part today" lead="Take on a mission someone posted, or judge a duel between two models without knowing which is which." />
+      <Head id="today-h" k="home.today" title="Take part today" lead="Take on a mission someone posted, or judge a duel between two models without knowing which is which." />
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rise relative flex min-w-0 flex-col overflow-hidden rounded-3xl border border-white/[0.06] bg-card p-5 md:p-7" style={{ "--i": 1 } as React.CSSProperties}>
           <Slot name="Missions">{missions}</Slot>
@@ -185,17 +215,17 @@ const itemLabel = (target: string) => target.split(":").slice(1).join(":") || ta
 /** Constellations: the public collections members curate, each drawn as a small star map of its items. */
 export function Constellations() {
   const list = useLoad(() => loadCollections(4), [])
-  const still = useStill()
+  const stars = useCopy("home.constellations.stars", "stars")
+  const star = useCopy("home.constellations.star", "star")
+  const by = useCopy("home.constellations.by", "by")
   return (
     <section aria-labelledby="const-h" className="relative isolate overflow-hidden">
-      <Image src="/space/deep-field.webp" alt="" fill sizes="100vw" className="fade-band -z-10 object-cover opacity-20" />
-      {/* HorizonX Filament Flow: threads of gas between the stars, the way a collection ties its pieces together */}
-      <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 -z-10 w-[min(48rem,62%)] opacity-40 [mask-image:linear-gradient(90deg,transparent,#000_45%),linear-gradient(180deg,transparent,#000_22%,#000_78%,transparent)] [mask-composite:intersect] max-md:hidden">
-        <FilamentFlow className="size-full" still={still} settings={{ scale: 1.35, turbulence: 0.85 }} />
-      </div>
-      <div className="shell py-14">
+      {/* a crisp night sky drawn as vectors: round, sharp stars on any screen, and one faint figure */}
+      <SkyField className="absolute inset-0 -z-10 [mask-image:linear-gradient(180deg,transparent,#000_18%,#000_82%,transparent)]" />
+      <div className="shell py-16 md:py-24">
         <Head
           id="const-h"
+          k="home.constellations"
           title="Constellations"
           lead="A model alone is a star. Members connect the models, data, tools and code that make something work, and save it as a collection anyone can follow."
           href="/collections"
@@ -212,26 +242,31 @@ export function Constellations() {
             {list.map((c, i) => (
               <li key={c.id} className="rise" style={{ "--i": i } as React.CSSProperties}>
                 <GlowCard className="h-full rounded-2xl">
-                <Link href={`/collections/${c.id}` as Route} className="press group relative z-[1] flex h-full flex-col gap-3 rounded-2xl border border-white/[0.06] bg-card/80 p-4 hover:border-white/15 hover:bg-card">
-                  <StarMap seed={c.id} count={Math.min(c.items, 7)} />
-                  <span className="font-medium group-hover:text-ion">{c.title}</span>
-                  {c.description && <span className="line-clamp-2 text-sm text-muted-foreground">{c.description}</span>}
-                  {c.targets.length > 0 && <span className="truncate text-xs text-foreground/60">{c.targets.slice(0, 3).map(itemLabel).join(" · ")}</span>}
-                  <span className="mt-auto text-xs text-muted-foreground">
-                    {c.items} {c.items === 1 ? "star" : "stars"} · by {c.by} · {since(c.at)}
-                  </span>
-                </Link>
+                  <Link
+                    href={`/collections/${c.id}` as Route}
+                    className="press group relative z-[1] flex h-full flex-col gap-3 rounded-2xl border border-white/[0.07] bg-[#080a12]/85 p-4 hover:border-white/15 hover:bg-[#0a0d16]"
+                  >
+                    <StarMap seed={c.id} count={Math.min(c.items, 7)} />
+                    <span className="font-medium group-hover:text-ion">{c.title}</span>
+                    {c.description && <span className="line-clamp-2 text-sm text-muted-foreground">{c.description}</span>}
+                    {c.targets.length > 0 && <span className="truncate text-xs text-foreground/60">{c.targets.slice(0, 3).map(itemLabel).join(" · ")}</span>}
+                    <span className="mt-auto text-xs text-muted-foreground">
+                      {c.items} {c.items === 1 ? star : stars} · {by} {c.by} · {since(c.at)}
+                    </span>
+                  </Link>
                 </GlowCard>
               </li>
             ))}
           </ul>
         ) : (
           <FirstLight
+            k="home.constellations.empty"
             icon={LibraryIcon}
             title="No constellation has been drawn yet"
             body="Gather the models, datasets, tools and threads that belong together into a public collection. It becomes the first constellation in this sky."
             href="/collections"
             action="Draw a constellation"
+            className="bg-[#080a12]/80"
           />
         )}
       </div>
@@ -249,16 +284,48 @@ function sequence(seed: string) {
   }
 }
 
-/** A tiny star map for a collection: its items as stars joined in order, laid out from its id. */
+/** The night behind the constellations: a fixed field of round, sharp stars (never stretched) and a faint figure. */
+function SkyField({ className }: { className?: string }) {
+  const rand = sequence("nexverse-sky")
+  const field = Array.from({ length: 150 }, () => ({ x: rand() * 1600, y: rand() * 700, r: 0.35 + rand() * rand() * 1.5, o: 0.25 + rand() * 0.6 }))
+  // a few brighter stars joined like a constellation, low on the left where the heading leaves room
+  const figure = [
+    [120, 560],
+    [230, 500],
+    [330, 530],
+    [420, 450],
+    [540, 470],
+  ]
+  return (
+    <svg aria-hidden viewBox="0 0 1600 700" preserveAspectRatio="xMidYMid slice" className={cn("pointer-events-none size-full", className)}>
+      <defs>
+        <radialGradient id="sky-glow" cx="0.3" cy="0.75" r="0.6">
+          <stop offset="0" stopColor="#8fb4ff" stopOpacity="0.07" />
+          <stop offset="1" stopColor="#8fb4ff" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="1600" height="700" fill="url(#sky-glow)" />
+      {field.map((s, i) => (
+        <circle key={i} cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={s.r.toFixed(2)} fill={i % 11 === 0 ? "#d8c59e" : "#e9ebf1"} opacity={s.o.toFixed(2)} className={i % 9 === 0 ? "sky-twinkle" : undefined} style={i % 9 === 0 ? ({ "--d": `${(i % 5) * 0.9}s` } as React.CSSProperties) : undefined} />
+      ))}
+      <polyline points={figure.map((p) => p.join(",")).join(" ")} fill="none" stroke="#8fb4ff" strokeOpacity="0.22" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      {figure.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={i === 0 ? 2.6 : 1.9} fill={i === 0 ? "#d8c59e" : "#ffffff"} opacity="0.85" />
+      ))}
+    </svg>
+  )
+}
+
+/** A tiny star map for a collection: its items as stars joined in order, laid out from its id. Round stars, any width. */
 function StarMap({ seed, count }: { seed: string; count: number }) {
   const rand = sequence(seed)
   const n = Math.max(2, count)
-  const stars = Array.from({ length: n }, (_, i) => ({ x: 10 + ((i + rand() * 0.8) / n) * 80, y: 18 + rand() * 64, r: 1.2 + rand() * 1.6 }))
+  const stars = Array.from({ length: n }, (_, i) => ({ x: 20 + ((i + 0.1 + rand() * 0.8) / n) * 260, y: 16 + rand() * 48, r: 1.4 + rand() * 1.6 }))
   return (
-    <svg aria-hidden viewBox="0 0 100 100" preserveAspectRatio="none" className="h-20 w-full rounded-xl bg-[radial-gradient(ellipse_at_30%_20%,rgb(143_180_255/0.12),transparent_60%)]">
-      <polyline points={stars.map((s) => `${s.x},${s.y}`).join(" ")} fill="none" stroke="rgb(143 180 255 / 0.35)" strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
+    <svg aria-hidden viewBox="0 0 300 80" preserveAspectRatio="xMidYMid meet" className="h-20 w-full rounded-xl bg-[radial-gradient(ellipse_at_30%_20%,rgb(143_180_255/0.12),transparent_60%)]">
+      <polyline points={stars.map((s) => `${s.x.toFixed(1)},${s.y.toFixed(1)}`).join(" ")} fill="none" stroke="rgb(143 180 255 / 0.4)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
       {stars.map((s, i) => (
-        <circle key={i} cx={s.x} cy={s.y} r={s.r} fill={i === 0 ? "#d8c59e" : "#e9ebf1"} />
+        <circle key={i} cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={s.r.toFixed(2)} fill={i === 0 ? "#d8c59e" : "#e9ebf1"} />
       ))}
     </svg>
   )
@@ -267,11 +334,17 @@ function StarMap({ seed, count }: { seed: string; count: number }) {
 /** Builders as worlds: real members, each one's planet grown from their reputation. */
 export function BuilderWorlds() {
   const builders = useLoad(() => loadBuilders(8), [])
-  const still = useStill()
+  const still = useQuality() === "off"
   const { member } = useSession()
+  const seat = {
+    you: useCopy("home.builders.seat.you", "Your planet"),
+    youHint: useCopy("home.builders.seat.youHint", "Start a thread to grow it"),
+    guest: useCopy("home.builders.seat.guest", "Your planet here"),
+    guestHint: useCopy("home.builders.seat.guestHint", "Join to claim it"),
+  }
   return (
     <section aria-labelledby="people-h" className="shell">
-      <Head id="people-h" title="Builders" lead="Every member is a planet. It grows with reputation; rings are what they wrote, moons what they made." href="/leaderboard" action="Leaderboard" />
+      <Head id="people-h" k="home.builders" title="Builders" lead="Every member is a planet. It grows with reputation; rings are what they wrote, moons what they made." href="/leaderboard" action="Leaderboard" />
       {builders === undefined ? (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-8">
           {Array.from({ length: 8 }, (_, i) => (
@@ -320,14 +393,15 @@ export function BuilderWorlds() {
                     <UserPlusIcon className="size-5" />
                   </span>
                 </span>
-                <span className="w-full truncate text-sm font-medium">{member ? "Your planet" : "Your planet here"}</span>
-                <span className="w-full truncate text-xs text-muted-foreground">{member ? "Start a thread to grow it" : "Join to claim it"}</span>
+                <span className="w-full truncate text-sm font-medium">{member ? seat.you : seat.guest}</span>
+                <span className="w-full truncate text-xs text-muted-foreground">{member ? seat.youHint : seat.guestHint}</span>
               </Link>
             </li>
           )}
         </ul>
       ) : (
         <FirstLight
+          k="home.builders.empty"
           icon={UserPlusIcon}
           title="This sky has no planets yet"
           body={live ? "Join, and your planet appears here. It grows as you start threads, answer questions and publish what you build." : "Connect the database and members appear here as planets."}
@@ -339,47 +413,42 @@ export function BuilderWorlds() {
   )
 }
 
-/** True when nothing on the page should move: the visitor's reduced-motion setting, or the site's motion "off". */
-function useStill() {
-  const { settings } = useSiteSettings()
-  return Boolean(useReducedMotion()) || settings.theme.motion === "off"
-}
-
 /**
- * The close, as a cinematic band: the brand film (the official N in its galaxy, rendered from the hero's own
- * scene) runs on the right while it is on screen, and one thing to do sits on the left. The film is a muted
- * 8-second loop that loads only as the band nears the screen; with motion off it is its poster.
+ * The close: "join the universe" as a band. HorizonX Plasma Orb, a glass world with a living core, glows on the
+ * right (on top on phones) and one thing to do sits on the left. It is the biggest effect on screen when the
+ * band is in view, so it gets the turn to animate; hovering the band lifts its plasma; with motion off, or on
+ * a slow computer, it is one still frame.
  */
 export function Close() {
-  const still = useStill()
   return (
     <section aria-labelledby="join-h" className="shell">
       <div className="relative isolate overflow-hidden rounded-3xl border border-white/[0.06] bg-[#05060a] shadow-[0_40px_120px_-60px_rgb(143_180_255/0.35)]">
-        {/* the film: on top on phones (cropped closer to the N), the right two thirds from md up, fading into the text side */}
-        <div aria-hidden className="relative aspect-[5/4] w-full sm:aspect-video md:absolute md:inset-y-0 md:right-0 md:aspect-auto md:w-[68%] md:[mask-image:linear-gradient(90deg,transparent,#000_32%)] max-md:[mask-image:linear-gradient(0deg,transparent,#000_30%)]">
-          <LoopVideo name="brand" still={still} />
+        <div aria-hidden className="relative mx-auto aspect-square w-[min(100%,22rem)] md:absolute md:top-1/2 md:right-[6%] md:w-[min(46%,30rem)] md:-translate-y-1/2">
+          {/* a soft glow stands in before the orb draws, and where WebGL2 is not available */}
+          <div className="absolute inset-[20%] rounded-full bg-[radial-gradient(closest-side,rgb(143_180_255/0.4),rgb(42_79_214/0.18)_60%,transparent)]" />
+          <PlasmaOrb className="absolute inset-0" />
         </div>
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_15%_80%,rgb(143_180_255/0.10),transparent_55%)]" />
-        <div className="relative flex max-w-xl flex-col justify-center gap-5 px-6 pt-2 pb-10 md:min-h-[28rem] md:px-14 md:py-14">
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_12%_85%,rgb(143_180_255/0.08),transparent_55%)]" />
+        <div className="relative flex max-w-lg flex-col justify-center gap-5 px-6 pt-0 pb-10 md:min-h-[30rem] md:px-14 md:py-14">
           <p className="rise inline-flex items-center gap-2 text-xs tracking-[0.18em] text-ion/80 uppercase">
-            <span aria-hidden className="h-px w-6 bg-ion/60" /> Your place in the universe
+            <span aria-hidden className="h-px w-6 bg-ion/60" /> <Copy k="home.close.eyebrow">Join the universe</Copy>
           </p>
           <h2 id="join-h" className="rise font-display text-2xl font-semibold tracking-[-0.03em] text-balance md:text-[2.1rem] md:leading-[1.1]" style={{ "--i": 1 } as React.CSSProperties}>
-            Put your work in the sky.
+            <Copy k="home.close.title">Put your work in the sky.</Copy>
           </h2>
-          <p className="rise text-foreground/80 md:text-[17px]" style={{ "--i": 2 } as React.CSSProperties}>
+          <Copy as="p" multiline k="home.close.body" className="rise text-foreground/80 md:text-[17px]">
             Share a model, a dataset, a tool or a repo in under a minute. Others will find it, use it and connect it to theirs.
-          </p>
+          </Copy>
           <div className="rise flex flex-wrap items-center gap-4" style={{ "--i": 3 } as React.CSSProperties}>
             <Link
               href="/share"
               className="pressable group inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 font-medium text-primary-foreground shadow-[0_10px_40px_-12px_rgb(255_255_255/0.45)] transition-[box-shadow] hover:shadow-[0_10px_50px_-6px_rgb(143_180_255/0.7)]"
             >
-              Share what you built
+              <Copy k="home.close.primary">Share what you built</Copy>
               <ArrowRightIcon aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
             <Link href="/new/project" className="pressable inline-flex h-11 items-center rounded-full px-2 text-sm text-foreground/75 hover:text-foreground">
-              Or publish a full project page
+              <Copy k="home.close.secondary">Or publish a full project page</Copy>
             </Link>
           </div>
         </div>

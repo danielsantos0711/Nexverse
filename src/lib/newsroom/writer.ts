@@ -77,7 +77,7 @@ export function storyRequest(material: Material[], note = ""): Omit<LlmOptions, 
 Return:
 - "title": a factual headline, 40 to 100 characters, no clickbait, no trailing period.
 - "dek": one or two sentences (at most 260 characters) that say what happened and why it matters to people building with AI.
-- "body": 120 to 350 words of Markdown: short paragraphs, optionally one short bulleted list. No headings, no links, no images.
+- "body": 150 to 400 words of Markdown: short paragraphs, optionally one short bulleted list. No headings, no links, no images.
 - "category", "unconfirmed", "sources" (each {"url"} copied exactly from the material), "skip", "skip_reason".
 ${note ? `\nA note from the editor:\n${fence("editor_note", note)}\n` : ""}
 ${parts.join("\n\n")}`,

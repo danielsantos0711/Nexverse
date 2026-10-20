@@ -54,9 +54,9 @@ export function NewsroomTips() {
   async function draft(t: Tip) {
     if (!t.url) return
     setBusy(t.id)
-    setStatus({ ok: true, text: "Reading the page and drafting… this can take half a minute." })
+    setStatus({ ok: true, text: "Reading the page and the official pages it links to, then researching and writing… this can take two or three minutes." })
     try {
-      const { story } = await draftFromLink(t.url, t.note, t.id)
+      const { story } = await draftFromLink(t.url, t.note, { tipId: t.id })
       router.push(`/admin/newsroom?tab=write&story=${story.id}` as Route)
     } catch (err) {
       setStatus({ ok: false, text: (err as Error).message })

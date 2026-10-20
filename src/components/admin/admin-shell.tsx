@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FileTextIcon, FlagIcon, KeyRoundIcon, LayoutDashboardIcon, ListChecksIcon, MenuIcon, MessageCircleIcon, MessagesSquareIcon, NewspaperIcon, RadioTowerIcon, Settings2Icon, ShieldCheckIcon, SparklesIcon, UsersIcon, type LucideIcon } from "lucide-react"
+import { FileTextIcon, FlagIcon, KeyRoundIcon, LayoutDashboardIcon, LogInIcon, ListChecksIcon, ListOrderedIcon, MenuIcon, MessageCircleIcon, MessagesSquareIcon, NewspaperIcon, PanelsTopLeftIcon, RadioTowerIcon, Settings2Icon, ShieldCheckIcon, SparklesIcon, UsersIcon, type LucideIcon } from "lucide-react"
 import { Notice } from "@/components/admin/controls"
 import { ADMIN_PAGES } from "@/components/admin/sections"
 import { Gate } from "@/components/moderation/gate"
@@ -24,6 +24,9 @@ const ICONS: Record<(typeof ADMIN_PAGES)[number]["href"], LucideIcon> = {
   "/admin/menus": MenuIcon,
   "/admin/roles": KeyRoundIcon,
   "/admin/ai": SparklesIcon,
+  "/admin/logins": LogInIcon,
+  "/admin/lists": ListOrderedIcon,
+  "/admin/site": PanelsTopLeftIcon,
   "/admin/settings": Settings2Icon,
 }
 

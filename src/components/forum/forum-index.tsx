@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { categoryPath, compact, plural } from "@/lib/data"
 import { accentChip, findCategory, useForumMap, visibleGroups, type ForumCategory } from "@/lib/forum-categories"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const COLS = "md:grid-cols-[minmax(0,1fr)_4.5rem_4.5rem_16rem]"
 
@@ -34,7 +35,7 @@ export function ForumIndex() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <ForumSearch topics={topics} className="sm:max-w-md sm:flex-1" placeholder="Search thread titles and tags" />
         <Link href="/forum/new" className={`${primaryButton} sm:ml-auto`}>
-          <SquarePenIcon aria-hidden className="size-4" /> Start a thread
+          <SquarePenIcon aria-hidden className="size-4" /> <Copy k="forum.forum-index.start-a-thread">Start a thread</Copy>
         </Link>
       </div>
 
@@ -42,7 +43,7 @@ export function ForumIndex() {
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm">
           <span>The threads could not be loaded. {error}</span>
           <Button size="sm" variant="secondary" onClick={retry}>
-            <RotateCwIcon aria-hidden /> Try again
+            <RotateCwIcon aria-hidden /> <Copy k="forum.forum-index.try-again">Try again</Copy>
           </Button>
         </div>
       )}
@@ -60,15 +61,15 @@ export function ForumIndex() {
               </span>
               <div className="flex flex-col gap-1">
                 <h2 id="fresh-h" className="font-sans text-base font-semibold tracking-normal">
-                  The forum is brand new
+                  <Copy k="forum.forum-index.the-forum-is-brand-new">The forum is brand new</Copy>
                 </h2>
                 <p className="max-w-[60ch] text-sm text-muted-foreground">
-                  Every category below is open and waiting for its first thread. Ask something you are stuck on, share what you built, or start a discussion about a paper.
+                  <Copy k="forum.forum-index.every-category-below-is-open" multiline>Every category below is open and waiting for its first thread. Ask something you are stuck on, share what you built, or start a discussion about a paper.</Copy>
                 </p>
               </div>
             </div>
             <Link href="/forum/new" className={cn(primaryButton, "shrink-0 self-start md:self-auto")}>
-              <SquarePenIcon aria-hidden className="size-4" /> Start the first thread
+              <SquarePenIcon aria-hidden className="size-4" /> <Copy k="forum.forum-index.start-the-first-thread">Start the first thread</Copy>
             </Link>
           </div>
         </section>
@@ -86,10 +87,10 @@ export function ForumIndex() {
               </div>
               <div className="overflow-hidden rounded-xl border border-border bg-card/40">
                 <div aria-hidden className={cn("hidden gap-4 border-b border-border px-4 py-2 text-xs text-muted-foreground md:grid", COLS)}>
-                  <span>Category</span>
-                  <span className="text-right">Threads</span>
-                  <span className="text-right">Replies</span>
-                  <span>Latest</span>
+                  <span><Copy k="forum.forum-index.category">Category</Copy></span>
+                  <span className="text-right"><Copy k="forum.forum-index.threads">Threads</Copy></span>
+                  <span className="text-right"><Copy k="forum.forum-index.replies">Replies</Copy></span>
+                  <span><Copy k="forum.forum-index.latest">Latest</Copy></span>
                 </div>
                 <ul aria-label={`${g.name} categories`} className="divide-y divide-border">
                   {categories.map((c, i) => (
@@ -106,7 +107,7 @@ export function ForumIndex() {
         <aside aria-label="Forum overview" className="flex flex-col gap-6 lg:sticky lg:top-20 lg:self-start">
           <section aria-labelledby="latest-h" className="flex flex-col gap-2">
             <h2 id="latest-h" className="px-1 font-sans text-sm font-semibold tracking-normal">
-              Latest activity
+              <Copy k="forum.forum-index.latest-activity">Latest activity</Copy>
             </h2>
             {loading ? (
               <div className="flex flex-col gap-2" aria-busy="true" aria-label="Loading the latest threads">
@@ -123,40 +124,40 @@ export function ForumIndex() {
                 ))}
               </ol>
             ) : (
-              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">No threads yet. New threads and replies show up here as they happen.</p>
+              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-sm text-muted-foreground"><Copy k="forum.forum-index.no-threads-yet-new-threads">No threads yet. New threads and replies show up here as they happen.</Copy></p>
             )}
           </section>
 
           {topics.length > 0 && (
             <section aria-labelledby="stats-h" className="glass rounded-xl p-4">
               <h2 id="stats-h" className="mb-3 font-sans text-sm font-semibold tracking-normal">
-                At a glance
+                <Copy k="forum.forum-index.at-a-glance">At a glance</Copy>
               </h2>
               <dl className="grid grid-cols-3 gap-3">
                 <Figure label="Threads" value={topics.length} />
                 <Figure label="Replies" value={replies} />
                 <Figure label="Active categories" value={active} />
               </dl>
-              {topics.some((t) => t.local) && <p className="mt-3 text-xs text-muted-foreground">Saved in this browser: this copy of Nexverse has no database.</p>}
+              {topics.some((t) => t.local) && <p className="mt-3 text-xs text-muted-foreground"><Copy k="forum.forum-index.saved-in-this-browser-this">Saved in this browser: this copy of Nexverse has no database.</Copy></p>}
             </section>
           )}
 
           <section aria-labelledby="norms-h" className="rounded-xl border border-border bg-card/30 p-4">
             <h2 id="norms-h" className="mb-2 font-sans text-sm font-semibold tracking-normal">
-              How the forum works
+              <Copy k="forum.forum-index.how-the-forum-works">How the forum works</Copy>
             </h2>
             <ul className="flex list-disc flex-col gap-1.5 pl-4 text-sm text-muted-foreground marker:text-white/25">
-              <li>Anyone can read. Posting needs a free account.</li>
-              <li>Write in the language you think in.</li>
-              <li>Say what you tried and what happened. Links and code help.</li>
-              <li>Quote the post you are answering, and keep it kind.</li>
-              <li>Moderators can hide posts that break the rules.</li>
+              <li><Copy k="forum.forum-index.anyone-can-read-posting-needs">Anyone can read. Posting needs a free account.</Copy></li>
+              <li><Copy k="forum.forum-index.write-in-the-language-you">Write in the language you think in.</Copy></li>
+              <li><Copy k="forum.forum-index.say-what-you-tried-and">Say what you tried and what happened. Links and code help.</Copy></li>
+              <li><Copy k="forum.forum-index.quote-the-post-you-are">Quote the post you are answering, and keep it kind.</Copy></li>
+              <li><Copy k="forum.forum-index.moderators-can-hide-posts-that">Moderators can hide posts that break the rules.</Copy></li>
             </ul>
           </section>
 
           <nav aria-labelledby="around-h" className="flex flex-col gap-1">
             <h2 id="around-h" className="px-1 pb-1 font-sans text-sm font-semibold tracking-normal">
-              Elsewhere on Nexverse
+              <Copy k="forum.forum-index.elsewhere-on-nexverse">Elsewhere on Nexverse</Copy>
             </h2>
             {[
               { href: "/chat" as const, label: "Chat", hint: "Live rooms for quick questions", icon: MessageCircleIcon },
@@ -199,7 +200,7 @@ function CategoryRow({ c, s, loading }: { c: ForumCategory; s: CategoryStats; lo
           {c.blurb && <p className="text-sm text-muted-foreground">{c.blurb}</p>}
           {c.archived && (
             <p className="flex items-center gap-1 text-xs text-gold">
-              <ArchiveIcon aria-hidden className="size-3" /> Archived · read only
+              <ArchiveIcon aria-hidden className="size-3" /> <Copy k="forum.forum-index.archived-read-only">Archived · read only</Copy>
             </p>
           )}
           {!loading && s.threads > 0 && (
@@ -211,11 +212,11 @@ function CategoryRow({ c, s, loading }: { c: ForumCategory; s: CategoryStats; lo
       </div>
       <div className="hidden text-right text-sm tabular md:block">
         {loading ? <Skeleton className="ml-auto h-4 w-6" /> : compact(s.threads)}
-        <span className="sr-only"> threads</span>
+        <span className="sr-only"> <Copy k="forum.forum-index.threads">threads</Copy></span>
       </div>
       <div className="hidden text-right text-sm tabular md:block">
         {loading ? <Skeleton className="ml-auto h-4 w-6" /> : compact(s.replies)}
-        <span className="sr-only"> replies</span>
+        <span className="sr-only"> <Copy k="forum.forum-index.replies">replies</Copy></span>
       </div>
       <div className="min-w-0 border-t border-border/60 pt-3 md:border-0 md:pt-0">
         {loading ? (
@@ -230,7 +231,7 @@ function CategoryRow({ c, s, loading }: { c: ForumCategory; s: CategoryStats; lo
           <div className="flex min-w-0 items-center gap-2.5">
             <PosterAvatar poster={s.latest.lastPoster} size={26} />
             <div className="flex min-w-0 flex-col">
-              <span className="sr-only">Latest thread: </span>
+              <span className="sr-only"><Copy k="forum.forum-index.latest-thread">Latest thread:</Copy> </span>
               <Link
                 href={s.latest.href}
                 lang={s.latest.lang}
@@ -244,13 +245,13 @@ function CategoryRow({ c, s, loading }: { c: ForumCategory; s: CategoryStats; lo
             </div>
           </div>
         ) : c.staffOnlyPosting || c.archived ? (
-          <span className="text-sm text-muted-foreground">No threads yet</span>
+          <span className="text-sm text-muted-foreground"><Copy k="forum.forum-index.no-threads-yet">No threads yet</Copy></span>
         ) : (
           <Link
             href={`/forum/new?c=${c.slug}`}
             className="relative z-10 inline-flex items-center gap-1.5 rounded-sm text-sm text-muted-foreground hover:text-ion focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
-            <SquarePenIcon aria-hidden className="size-3.5" /> No threads yet · start one
+            <SquarePenIcon aria-hidden className="size-3.5" /> <Copy k="forum.forum-index.no-threads-yet-start-one">No threads yet · start one</Copy>
           </Link>
         )}
       </div>

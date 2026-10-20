@@ -30,6 +30,7 @@ import { MemberAvatar } from "@/components/forum/forum-ui"
 import type { Who } from "@/lib/community"
 import { CREW_COLORS, type CrewColor, type CrewIcon } from "@/lib/crews"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 export const CREW_ICON: Record<CrewIcon, LucideIcon> = {
   orbit: OrbitIcon,
@@ -97,8 +98,8 @@ export function WhoAvatar({ who, size = 28, className }: { who: Who; size?: numb
 export function CrewBadges({ crew, className }: { crew: { visibility: string; local: boolean }; className?: string }) {
   return (
     <span className={cn("inline-flex flex-wrap items-center gap-1.5", className)}>
-      {crew.visibility === "invite" && <span className="rounded-full border border-gold/30 bg-gold/10 px-2 py-0.5 text-[11px] font-medium text-gold">Invite only</span>}
-      {crew.local && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] text-muted-foreground">Saved in this browser</span>}
+      {crew.visibility === "invite" && <span className="rounded-full border border-gold/30 bg-gold/10 px-2 py-0.5 text-[11px] font-medium text-gold"><Copy k="crews.emblem.invite-only">Invite only</Copy></span>}
+      {crew.local && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] text-muted-foreground"><Copy k="crews.emblem.saved-in-this-browser">Saved in this browser</Copy></span>}
     </span>
   )
 }

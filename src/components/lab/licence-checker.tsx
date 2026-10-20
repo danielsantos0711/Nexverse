@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { getLicence, LICENCES, USES, VERDICT, type LicenceId, type UseId, type Verdict } from "./licences"
 import { ActionButton, EASE, NativeSelect, Panel, Segmented } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 const ICON: Record<Verdict, typeof CheckIcon> = { yes: CheckIcon, conditions: TriangleAlertIcon, no: XIcon, unclear: CircleHelpIcon }
 
@@ -15,10 +16,10 @@ export function LicenceChecker() {
     <Tabs defaultValue="check" className="gap-4">
       <TabsList className="w-full rounded-xl p-1 group-data-horizontal/tabs:h-10 sm:w-fit">
         <TabsTrigger value="check" className="h-full rounded-lg px-4">
-          Check a use
+          <Copy k="lab-tool.licence-checker.check-a-use">Check a use</Copy>
         </TabsTrigger>
         <TabsTrigger value="compare" className="h-full rounded-lg px-4">
-          Compare two
+          <Copy k="lab-tool.licence-checker.compare-two">Compare two</Copy>
         </TabsTrigger>
       </TabsList>
       <TabsContent value="check">
@@ -37,7 +38,7 @@ function LegalNote() {
     <p className="flex gap-2 rounded-xl border border-border bg-white/[0.02] px-4 py-3 text-sm text-muted-foreground">
       <ScaleIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
       <span>
-        <span className="font-medium text-foreground/90">Not legal advice.</span> These are simplified summaries of the licence texts to help you orient. The licence attached to the model or dataset is what counts, and models often add their own terms. For anything that matters, read it in full and ask a lawyer.
+        <span className="font-medium text-foreground/90"><Copy k="lab-tool.licence-checker.not-legal-advice">Not legal advice.</Copy></span> These are simplified summaries of the licence texts to help you orient. The licence attached to the model or dataset is what counts, and models often add their own terms. For anything that matters, read it in full and ask a lawyer.
       </span>
     </p>
   )
@@ -78,7 +79,7 @@ function Check() {
         <p className="mt-3 text-sm text-muted-foreground">
           <span className="text-foreground/80">{l.family}.</span> {l.blurb}
         </p>
-        <h3 className="mt-6 mb-3 text-[15px] font-medium tracking-normal">2. What you want to do</h3>
+        <h3 className="mt-6 mb-3 text-[15px] font-medium tracking-normal"><Copy k="lab-tool.licence-checker.2-what-you-want-to">2. What you want to do</Copy></h3>
         <Segmented<UseId> label="Intended use" value={use} onChange={setUse} options={USES.map((x) => ({ value: x.id, label: x.label, hint: x.question }))} itemClassName="flex-auto" />
       </Panel>
 
@@ -176,7 +177,7 @@ function Compare() {
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 sm:gap-3">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="lc-a" className="text-sm font-medium text-foreground/90">
-              Licence A
+              <Copy k="lab-tool.licence-checker.licence-a">Licence A</Copy>
             </label>
             <NativeSelect id="lc-a" value={a} onChange={(v) => setA(v as LicenceId)}>
               {LICENCES.map((l) => (
@@ -198,7 +199,7 @@ function Compare() {
           </ActionButton>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="lc-b" className="text-sm font-medium text-foreground/90">
-              Licence B
+              <Copy k="lab-tool.licence-checker.licence-b">Licence B</Copy>
             </label>
             <NativeSelect id="lc-b" value={b} onChange={(v) => setB(v as LicenceId)}>
               {LICENCES.map((l) => (
@@ -222,7 +223,7 @@ function Compare() {
           <thead>
             <tr className="border-b border-border text-left">
               <th scope="col" className="w-[28%] p-3 font-normal text-muted-foreground sm:p-4">
-                Use
+                <Copy k="lab-tool.licence-checker.use">Use</Copy>
               </th>
               <th scope="col" className="p-3 font-medium sm:p-4">
                 {la.name}
@@ -241,7 +242,7 @@ function Compare() {
                 <tr key={u.id} className={cn("align-top transition-colors", differs && "bg-ion/[0.04]")}>
                   <th scope="row" className="p-3 text-left font-normal sm:p-4">
                     <span className="block">{u.label}</span>
-                    {differs && <span className="mt-1 inline-block text-[11px] text-ion">Differs</span>}
+                    {differs && <span className="mt-1 inline-block text-[11px] text-ion"><Copy k="lab-tool.licence-checker.differs">Differs</Copy></span>}
                   </th>
                   {[x, y].map((ans, i) => (
                     <td key={i} className="p-3 sm:p-4">

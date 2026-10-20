@@ -5,14 +5,17 @@ import { ArrowDownIcon, ArrowUpIcon, FileTextIcon } from "lucide-react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { BenchmarkDetail } from "@/components/benchmarks/benchmark-detail"
 import { ForumHeader } from "@/components/forum/forum-header"
-import { BENCHMARKS, getBenchmark } from "@/lib/benchmarks"
+import { BENCHMARKS } from "@/lib/benchmarks"
+import { getBenchmarks } from "@/lib/lists/server"
+import { Copy } from "@/components/content/copy"
 
 export function generateStaticParams() {
   return BENCHMARKS.map((b) => ({ slug: b.slug }))
 }
 
 export async function generateMetadata({ params }: PageProps<"/benchmarks/[slug]">): Promise<Metadata> {
-  const b = getBenchmark((await params).slug)
+  const slug = (await params).slug
+  const b = (await getBenchmarks()).find((x) => x.slug === slug)
   return b ? { title: `${b.name} results`, description: b.description } : { title: "Benchmark" }
 }
 
@@ -25,7 +28,9 @@ export default function BenchmarkPage({ params }: PageProps<"/benchmarks/[slug]"
 }
 
 async function Benchmark({ params }: { params: PageProps<"/benchmarks/[slug]">["params"] }) {
-  const b = getBenchmark((await params).slug)
+  const slug = (await params).slug
+  // The admins' list (/admin/lists): renamed, retuned and newly added benchmarks included.
+  const b = (await getBenchmarks()).find((x) => x.slug === slug)
   if (!b) notFound()
   return (
     <div className="shell max-w-5xl pb-16">
@@ -48,7 +53,7 @@ async function Benchmark({ params }: { params: PageProps<"/benchmarks/[slug]">["
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 transition-colors hover:border-ion/40 hover:text-foreground"
           >
-            <FileTextIcon aria-hidden className="size-3" /> The paper on arXiv
+            <FileTextIcon aria-hidden className="size-3" /> <Copy k="benchmark.page.the-paper-on-arxiv">The paper on arXiv</Copy>
           </a>
         </li>
       </ul>

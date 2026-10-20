@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { listMyCollections, listPublicCollections, type Collection } from "@/lib/community"
 import { canManage, listCrewCollections, shareCollection, subscribeCrew, unshareCollection, type Crew, type CrewRole } from "@/lib/crews"
+import { Copy } from "@/components/content/copy"
 
 /** Collections the crew shares: anyone in the crew can add one of theirs (or any public one); admins remove. */
 export function CrewCollections({ crew, role }: { crew: Crew; role: CrewRole | null }) {
@@ -52,10 +53,10 @@ export function CrewCollections({ crew, role }: { crew: Crew; role: CrewRole | n
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">Reading lists, model picks and datasets the crew works from.</p>
+        <p className="text-sm text-muted-foreground"><Copy k="crew.crew-collections.reading-lists-model-picks-and">Reading lists, model picks and datasets the crew works from.</Copy></p>
         {role && (
           <Button variant="secondary" size="sm" onClick={() => setPicking(true)}>
-            <PlusIcon aria-hidden /> Share a collection
+            <PlusIcon aria-hidden /> <Copy k="crew.crew-collections.share-a-collection">Share a collection</Copy>
           </Button>
         )}
       </div>
@@ -77,7 +78,7 @@ export function CrewCollections({ crew, role }: { crew: Crew; role: CrewRole | n
           <p>No shared collections yet. {role ? "Share one of yours, or a public one you rely on." : ""}</p>
           {role && (
             <Link href="/collections" className="text-ion hover:underline">
-              Browse collections
+              <Copy k="crew.crew-collections.browse-collections">Browse collections</Copy>
             </Link>
           )}
         </div>
@@ -197,7 +198,7 @@ function SharePicker({ open, onOpenChange, shared, onShare }: { open: boolean; o
                                   {!c.isPublic && " · private"}
                                 </span>
                               </span>
-                              {already ? <span className="text-xs text-muted-foreground">Shared</span> : busy === c.id && <Loader2Icon aria-hidden className="size-4 animate-spin" />}
+                              {already ? <span className="text-xs text-muted-foreground"><Copy k="crew.crew-collections.shared">Shared</Copy></span> : busy === c.id && <Loader2Icon aria-hidden className="size-4 animate-spin" />}
                             </button>
                           </li>
                         )
@@ -207,7 +208,7 @@ function SharePicker({ open, onOpenChange, shared, onShare }: { open: boolean; o
                 )
             )
           )}
-          {mine !== null && groups.every((g) => g.items.length === 0) && <p className="px-2 py-4 text-center text-sm text-muted-foreground">No collection matches.</p>}
+          {mine !== null && groups.every((g) => g.items.length === 0) && <p className="px-2 py-4 text-center text-sm text-muted-foreground"><Copy k="crew.crew-collections.no-collection-matches">No collection matches.</Copy></p>}
         </div>
         {error && (
           <p role="alert" className="text-sm text-destructive">
@@ -215,7 +216,7 @@ function SharePicker({ open, onOpenChange, shared, onShare }: { open: boolean; o
           </p>
         )}
         <Link href="/collections" className="text-sm text-ion hover:underline">
-          Make a new collection
+          <Copy k="crew.crew-collections.make-a-new-collection">Make a new collection</Copy>
         </Link>
       </DialogContent>
     </Dialog>

@@ -50,6 +50,7 @@ import { CommitBox, commitOnto, type CommitTarget } from "./commit-box"
 import { CodeMenu, RefPicker } from "./ref-picker"
 import { resolveRef, useRepo } from "./repo-context"
 import { Avatar, EmptyState, ErrorNote, FormError, href, inputCls, Panel, PanelHead, plural, useLoad } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /* The Code tab: the file explorer, the file viewer, the in-browser editor and uploads. */
 
@@ -135,10 +136,10 @@ function EmptyRepo() {
             writable ? (
               <div className="flex flex-wrap justify-center gap-2">
                 <Button size="sm" nativeButton={false} render={<Link href={href(`${base}/new/${b}`)} />}>
-                  <FilePlusIcon aria-hidden /> Create a file
+                  <FilePlusIcon aria-hidden /> <Copy k="code-repo.files.create-a-file">Create a file</Copy>
                 </Button>
                 <Button size="sm" variant="outline" nativeButton={false} render={<Link href={href(`${base}/upload/${b}`)} />}>
-                  <UploadIcon aria-hidden /> Upload files
+                  <UploadIcon aria-hidden /> <Copy k="code-repo.files.upload-files">Upload files</Copy>
                 </Button>
               </div>
             ) : undefined
@@ -206,7 +207,7 @@ function Browser({ refName, path, home = false }: { refName: string; path: strin
           <Skeleton className="h-40 w-full rounded-xl" />
         ) : (
           <Panel>
-            <EmptyState icon={FolderIcon} title="This folder does not exist here">
+            <EmptyState icon={FolderIcon} title={<Copy k="code-repo.files.this-folder-does-not-exist">This folder does not exist here</Copy>}>
               It may only exist on another branch.
             </EmptyState>
           </Panel>
@@ -271,7 +272,7 @@ function LastCommit({ commit, refName, path }: { commit: Commit; refName: string
       </Link>
       <TimeAgo date={commit.createdAt} className="text-xs text-muted-foreground" />
       <Link href={href(`${base}/commits/${encPath(refName)}${path ? `/${encPath(path)}` : ""}`)} className="inline-flex items-center gap-1 text-xs text-foreground/80 hover:text-ion">
-        <HistoryIcon aria-hidden className="size-3.5" /> History
+        <HistoryIcon aria-hidden className="size-3.5" /> <Copy k="code-repo.files.history">History</Copy>
       </Link>
     </PanelHead>
   )
@@ -371,7 +372,7 @@ function About({ tree, commit }: { tree: Tree; commit: Commit | null }) {
   return (
     <aside className="flex min-w-0 flex-col gap-5" aria-label="About this repository">
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium">About</h2>
+        <h2 className="text-sm font-medium"><Copy k="code-repo.files.about">About</Copy></h2>
         {repo.description ? <p className="text-sm text-foreground/90">{repo.description}</p> : <p className="text-sm text-muted-foreground italic">{admin ? "No description yet. Add one in Settings." : "No description."}</p>}
         {repo.homepage && (
           <a href={repo.homepage} target="_blank" rel="noopener noreferrer nofollow ugc" className="inline-flex min-w-0 items-center gap-1.5 text-sm text-ion hover:underline">
@@ -420,7 +421,7 @@ function About({ tree, commit }: { tree: Tree; commit: Commit | null }) {
 
       {langs.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium">Languages</h2>
+          <h2 className="text-sm font-medium"><Copy k="code-repo.files.languages">Languages</Copy></h2>
           <LanguageBar languages={langs} />
         </section>
       )}
@@ -428,7 +429,7 @@ function About({ tree, commit }: { tree: Tree; commit: Commit | null }) {
       <RepoSummaryCard repo={name} description={repo.description} readme={readme} files={files} />
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">On Nexverse</h2>
+        <h2 className="text-sm font-medium"><Copy k="code-repo.files.on-nexverse">On Nexverse</Copy></h2>
         <ul className="flex flex-col gap-1.5 text-sm">
           {resolved.map((r) => {
             const Icon = LINK_ICON[r.target.split(":")[0]] ?? LinkIcon
@@ -445,7 +446,7 @@ function About({ tree, commit }: { tree: Tree; commit: Commit | null }) {
           {!thread && (
             <li>
               <Link href={href(discuss)} className="flex items-center gap-2 text-foreground/90 hover:text-ion">
-                <MessagesSquareIcon aria-hidden className="size-4 text-muted-foreground" /> Start a discussion in the forum
+                <MessagesSquareIcon aria-hidden className="size-4 text-muted-foreground" /> <Copy k="code-repo.files.start-a-discussion-in-the">Start a discussion in the forum</Copy>
               </Link>
             </li>
           )}
@@ -523,7 +524,7 @@ export function BlobPage({ refName, path }: { refName: string; path: string }) {
         )
       ) : !entry ? (
         <Panel>
-          <EmptyState icon={FileIcon} title="This file does not exist here">
+          <EmptyState icon={FileIcon} title={<Copy k="code-repo.files.this-file-does-not-exist">This file does not exist here</Copy>}>
             It may have been moved or deleted, or it only exists on another branch.{" "}
             <Link href={href(`${base}/commits/${encPath(refName)}/${encPath(path)}`)} className="text-ion hover:underline">
               See its history
@@ -553,7 +554,7 @@ export function BlobPage({ refName, path }: { refName: string; path: string }) {
               <div className="ml-auto flex flex-wrap items-center gap-1">
                 <ExplainButton onClick={explain.run} busy={explain.busy} />
                 <Button size="sm" variant="ghost" className="h-7 rounded-full" onClick={() => open(false)}>
-                  Raw
+                  <Copy k="code-repo.files.raw">Raw</Copy>
                 </Button>
                 {text !== null && (
                   <Button
@@ -588,7 +589,7 @@ export function BlobPage({ refName, path }: { refName: string; path: string }) {
             {blob.data && !blob.data.verified && (
               <p role="alert" className="flex items-start gap-2 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-sm">
                 <ShieldAlertIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-destructive" />
-                The stored bytes do not match this file&apos;s fingerprint. Do not trust this copy; tell the repository owner.
+                <Copy k="code-repo.files.the-stored-bytes-do-not" multiline>The stored bytes do not match this file&apos;s fingerprint. Do not trust this copy; tell the repository owner.</Copy>
               </p>
             )}
             {blob.error ? (
@@ -603,7 +604,7 @@ export function BlobPage({ refName, path }: { refName: string; path: string }) {
                 )}
               </div>
             ) : text === null ? (
-              <p className="p-6 text-sm text-muted-foreground">This is a binary file. Download it to open it.</p>
+              <p className="p-6 text-sm text-muted-foreground"><Copy k="code-repo.files.this-is-a-binary-file">This is a binary file. Download it to open it.</Copy></p>
             ) : md && preview ? (
               <div className="bg-background px-5 py-6 md:px-8">
                 <Markdown source={text} ctx={{ source: "none" }} />
@@ -629,7 +630,7 @@ function LastCommitFor({ refName, path, head }: { refName: string; path: string;
         {head.message.split("\n")[0]}
       </Link>
       <Link href={href(`${base}/commits/${encPath(refName)}/${encPath(path)}`)} className="inline-flex items-center gap-1 text-xs text-foreground/80 hover:text-ion">
-        <HistoryIcon aria-hidden className="size-3.5" /> History of this file
+        <HistoryIcon aria-hidden className="size-3.5" /> <Copy k="code-repo.files.history-of-this-file">History of this file</Copy>
       </Link>
     </div>
   )
@@ -678,7 +679,7 @@ export function EditPage({ refName, path, mode }: { refName: string; path: strin
   if (!writable) {
     return (
       <Panel>
-        <EmptyState icon={PencilIcon} title="You cannot edit this repository">
+        <EmptyState icon={PencilIcon} title={<Copy k="code-repo.files.you-cannot-edit-this-repository">You cannot edit this repository</Copy>}>
           Fork it to make changes in your own copy, then open a pull request.
         </EmptyState>
       </Panel>
@@ -688,7 +689,7 @@ export function EditPage({ refName, path, mode }: { refName: string; path: strin
   if (!empty && (!snap.data || snap.kind !== "branch")) {
     return (
       <Panel>
-        <EmptyState icon={PencilIcon} title="Pick a branch to edit">
+        <EmptyState icon={PencilIcon} title={<Copy k="code-repo.files.pick-a-branch-to-edit">Pick a branch to edit</Copy>}>
           Files can be changed on branches, not on tags or single commits.
         </EmptyState>
       </Panel>
@@ -697,7 +698,7 @@ export function EditPage({ refName, path, mode }: { refName: string; path: strin
   if (mode === "edit" && snap.data && !entry) {
     return (
       <Panel>
-        <EmptyState icon={FileIcon} title="This file does not exist on this branch" />
+        <EmptyState icon={FileIcon} title={<Copy k="code-repo.files.this-file-does-not-exist">This file does not exist on this branch</Copy>} />
       </Panel>
     )
   }
@@ -748,7 +749,7 @@ export function EditPage({ refName, path, mode }: { refName: string; path: strin
                 {t === "edit" ? (mode === "new" ? "Edit new file" : "Edit file") : "Preview"}
               </button>
             ))}
-            {original.loading && mode === "edit" && <span className="ml-auto text-xs text-muted-foreground">Loading…</span>}
+            {original.loading && mode === "edit" && <span className="ml-auto text-xs text-muted-foreground"><Copy k="code-repo.files.loading">Loading…</Copy></span>}
           </div>
           {tab === "edit" ? (
             <textarea
@@ -835,7 +836,7 @@ export function UploadPage({ refName, path }: { refName: string; path: string })
   if (!writable) {
     return (
       <Panel>
-        <EmptyState icon={UploadIcon} title="You cannot upload to this repository">
+        <EmptyState icon={UploadIcon} title={<Copy k="code-repo.files.you-cannot-upload-to-this">You cannot upload to this repository</Copy>}>
           Fork it to make changes in your own copy, then open a pull request.
         </EmptyState>
       </Panel>
@@ -845,7 +846,7 @@ export function UploadPage({ refName, path }: { refName: string; path: string })
   if (!empty && (!snap.data || snap.kind !== "branch")) {
     return (
       <Panel>
-        <EmptyState icon={UploadIcon} title="Pick a branch to upload to" />
+        <EmptyState icon={UploadIcon} title={<Copy k="code-repo.files.pick-a-branch-to-upload">Pick a branch to upload to</Copy>} />
       </Panel>
     )
   }
@@ -912,18 +913,18 @@ export function UploadPage({ refName, path }: { refName: string; path: string })
         >
           <div aria-hidden className={cn("pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40%_60%_at_50%_100%,rgb(143_180_255/0.14),transparent_70%)] transition-opacity", over ? "opacity-100" : "opacity-40")} />
           <UploadIcon aria-hidden className={cn("size-8 transition-transform duration-300", over ? "-translate-y-1 text-ion" : "text-muted-foreground")} />
-          <p className="font-medium">Drag files or folders here</p>
+          <p className="font-medium"><Copy k="code-repo.files.drag-files-or-folders-here">Drag files or folders here</Copy></p>
           <div className="flex flex-wrap justify-center gap-2">
             <Button size="sm" variant="outline" onClick={() => fileInput.current?.click()}>
-              Choose files
+              <Copy k="code-repo.files.choose-files">Choose files</Copy>
             </Button>
             <Button size="sm" variant="outline" onClick={() => dirInput.current?.click()}>
-              Choose a folder
+              <Copy k="code-repo.files.choose-a-folder">Choose a folder</Copy>
             </Button>
           </div>
           <input ref={fileInput} type="file" multiple hidden onChange={(e) => add([...(e.target.files ?? [])].map((f) => ({ path: f.name, file: f })))} />
           <input ref={dirInput} type="file" multiple hidden onChange={(e) => add([...(e.target.files ?? [])].map((f) => ({ path: f.webkitRelativePath || f.name, file: f })))} />
-          <p className="text-xs text-muted-foreground">Up to 25 MB per file. .git, node_modules and __pycache__ folders are skipped.</p>
+          <p className="text-xs text-muted-foreground"><Copy k="code-repo.files.up-to-25-mb-per">Up to 25 MB per file. .git, node_modules and __pycache__ folders are skipped.</Copy></p>
         </div>
         {files.length > 0 && (
           <Panel>
@@ -931,7 +932,7 @@ export function UploadPage({ refName, path }: { refName: string; path: string })
               <span className="font-medium">{plural(files.length, "file")}</span>
               <span className="text-muted-foreground">{bytes(total)}</span>
               <button onClick={() => setFiles([])} className="ml-auto text-xs text-muted-foreground hover:text-foreground">
-                Clear
+                <Copy k="code-repo.files.clear">Clear</Copy>
               </button>
             </PanelHead>
             <ul className="max-h-80 overflow-y-auto">

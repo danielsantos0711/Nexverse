@@ -8,6 +8,7 @@ import { ReproPanel } from "@/components/benchmarks/repro-panel"
 import { TimeAgo } from "@/components/live/time"
 import { better, formatScore, reproSummary, type Benchmark, type BenchmarkResult, type Repro } from "@/lib/benchmarks"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 type SortKey = "score" | "model" | "date" | "repro"
 const SORTS: { key: SortKey; label: string }[] = [
@@ -101,7 +102,7 @@ export function ResultsTable({
       {/* Phone: a sort menu above the cards. */}
       <div className="flex items-center gap-2 md:hidden">
         <label htmlFor="result-sort" className="text-sm text-muted-foreground">
-          Sort by
+          <Copy k="benchmarks.results-table.sort-by">Sort by</Copy>
         </label>
         <select
           id="result-sort"
@@ -164,15 +165,15 @@ export function ResultsTable({
               <SortHeader k="model" label="Model" sort={sort} flip={flip} onSort={choose} ariaSort={ariaSort("model")} className="pl-4" />
               <SortHeader k="score" label={bench.metric[0].toUpperCase() + bench.metric.slice(1)} sort={sort} flip={flip} onSort={choose} ariaSort={ariaSort("score")} align="right" />
               <th scope="col" className="py-2.5 pr-3 font-medium">
-                Settings
+                <Copy k="benchmarks.results-table.settings">Settings</Copy>
               </th>
               <th scope="col" className="hidden py-2.5 pr-3 font-medium lg:table-cell">
-                Hardware
+                <Copy k="benchmarks.results-table.hardware">Hardware</Copy>
               </th>
               <SortHeader k="repro" label="Reproduced" sort={sort} flip={flip} onSort={choose} ariaSort={ariaSort("repro")} />
               <SortHeader k="date" label="Submitted" sort={sort} flip={flip} onSort={choose} ariaSort={ariaSort("date")} />
               <th scope="col" className="w-10 py-2.5 pr-3">
-                <span className="sr-only">Details</span>
+                <span className="sr-only"><Copy k="benchmarks.results-table.details">Details</Copy></span>
               </th>
             </tr>
           </thead>
@@ -183,7 +184,7 @@ export function ResultsTable({
                   <td className="w-[30%] py-3 pr-3 pl-4">
                     <span className="flex min-w-0 items-center gap-1.5">
                       <span className="max-w-60 truncate font-medium">{r.model}</span>
-                      {r.local && <span className="text-xs text-muted-foreground">this browser</span>}
+                      {r.local && <span className="text-xs text-muted-foreground"><Copy k="benchmarks.results-table.this-browser">this browser</Copy></span>}
                     </span>
                   </td>
                   <td className="py-3 pr-3 text-right text-base font-semibold tabular">{formatScore(bench, r.score)}</td>

@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getPrompt, type LabPrompt } from "@/lib/lab/prompts"
 import { live } from "@/lib/supabase"
 import { CopyAction, Panel } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /** Read-only view of a shared prompt, for anyone with the link. "Open in playground" loads it there to run or edit. */
 export function SharedPrompt({ id }: { id: string }) {
@@ -45,7 +46,7 @@ export function SharedPrompt({ id }: { id: string }) {
           {state.status === "missing" ? "It may have been deleted, or its owner made it private again." : state.message}
         </p>
         <Button nativeButton={false} className="mt-5" render={<Link href="/lab/prompts" />}>
-          Open the playground
+          <Copy k="lab-prompt.shared-prompt.open-the-playground">Open the playground</Copy>
         </Button>
       </div>
     )
@@ -67,7 +68,7 @@ export function SharedPrompt({ id }: { id: string }) {
           <CopyAction text={full} label="Copy prompt" />
           <Button nativeButton={false} render={<Link href={`/lab/prompts?p=${p.id}`} />}>
             <PlayIcon aria-hidden />
-            Open in playground
+            <Copy k="lab-prompt.shared-prompt.open-in-playground">Open in playground</Copy>
           </Button>
         </div>
       </header>
@@ -89,7 +90,7 @@ export function SharedPrompt({ id }: { id: string }) {
                 {vars.map(([k, v]) => (
                   <div key={k} className="flex flex-col gap-0.5">
                     <dt className="font-mono text-[13px] text-ion">{`{{${k}}}`}</dt>
-                    <dd className="break-words whitespace-pre-wrap text-foreground/85">{v || <span className="text-muted-foreground">empty</span>}</dd>
+                    <dd className="break-words whitespace-pre-wrap text-foreground/85">{v || <span className="text-muted-foreground"><Copy k="lab-prompt.shared-prompt.empty">empty</Copy></span>}</dd>
                   </div>
                 ))}
               </dl>

@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { deleteDuel, getDuel, isMine, type Duel } from "@/lib/arena"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
+import { Copy } from "@/components/content/copy"
 
 /** One duel on its own page, loaded in the browser. */
 export function DuelDetail({ id }: { id: string }) {
@@ -64,9 +65,9 @@ export function DuelDetail({ id }: { id: string }) {
   if (duel === null) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 px-6 py-14 text-center">
-        <p className="text-sm text-muted-foreground">This duel does not exist, or its author deleted it.</p>
+        <p className="text-sm text-muted-foreground"><Copy k="duel.duel-detail.this-duel-does-not-exist">This duel does not exist, or its author deleted it.</Copy></p>
         <Link href="/arena" className={primaryButton}>
-          Back to the arena
+          <Copy k="duel.duel-detail.back-to-the-arena">Back to the arena</Copy>
         </Link>
       </div>
     )
@@ -88,7 +89,7 @@ export function DuelDetail({ id }: { id: string }) {
           href="/arena/ratings"
           className="pressable inline-flex h-9 items-center gap-2 rounded-full border border-border px-4 text-sm hover:bg-white/[0.05] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
-          <BarChart3Icon aria-hidden className="size-4" /> Ratings
+          <BarChart3Icon aria-hidden className="size-4" /> <Copy k="duel.duel-detail.ratings">Ratings</Copy>
         </Link>
         {isMine(duel, member?.id) && (
           <button
@@ -109,10 +110,10 @@ export function DuelDetail({ id }: { id: string }) {
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirming(false)}>
-              Cancel
+              <Copy k="duel.duel-detail.cancel">Cancel</Copy>
             </Button>
             <Button variant="destructive" onClick={remove}>
-              Delete duel
+              <Copy k="duel.duel-detail.delete-duel">Delete duel</Copy>
             </Button>
           </DialogFooter>
         </DialogContent>

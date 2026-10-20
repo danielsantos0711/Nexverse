@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { getIssueById, getPullById, getRepoById, repoPath } from "@/lib/code/api"
 import { EmptyState, ErrorNote, href, useLoad } from "./ui"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Copy } from "@/components/content/copy"
 
 /** Resolves "repo-<uuid>", "issue-<uuid>" or "pull-<uuid>" to the current address and moves there. */
 export function GoTo({ id }: { id: string }) {
@@ -35,7 +36,7 @@ export function GoTo({ id }: { id: string }) {
   if (target.loading || target.data) return <Skeleton className="mt-10 h-40 w-full rounded-xl" />
   return (
     <div className="pt-10">
-      <EmptyState icon={FolderGit2Icon} title="This is no longer here" action={<Button size="sm" variant="outline" nativeButton={false} render={<Link href="/code" />}>Explore repositories</Button>}>
+      <EmptyState icon={FolderGit2Icon} title={<Copy k="code-repo.go-to.this-is-no-longer-here">This is no longer here</Copy>} action={<Button size="sm" variant="outline" nativeButton={false} render={<Link href="/code" />}><Copy k="code.go-to.explore-repositories">Explore repositories</Copy></Button>}>
         It was deleted, made private, or the link is wrong.
       </EmptyState>
     </div>

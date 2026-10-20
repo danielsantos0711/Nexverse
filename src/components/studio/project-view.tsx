@@ -1,9 +1,12 @@
 "use client"
 
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { motion, useReducedMotion } from "motion/react"
 import { useEffect, useState } from "react"
-import { ExternalLinkIcon, FileTextIcon, FolderGit2Icon, MonitorPlayIcon, PencilIcon, TagIcon } from "lucide-react"
+import { CalendarClockIcon, ExternalLinkIcon, FileTextIcon, FolderGit2Icon, LinkIcon, LockIcon, MonitorPlayIcon, PencilIcon, ScaleIcon, StarIcon, TagIcon, UsersIcon } from "lucide-react"
+import { DownloadsPanel } from "@/components/downloads/downloads-panel"
+import { Gallery } from "@/components/studio/gallery"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { ThreadDiscussion } from "@/components/forum/discussion"
 import { Chip, Cover, KIND_ICONS, KindTag, LangTag } from "@/components/hub/bits"
@@ -19,7 +22,8 @@ import { SaveButton } from "@/components/social/save-button"
 import { StatusPill } from "@/components/studio/ui"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { formatDate, KINDS, LANGUAGES } from "@/lib/data"
-import { getProject, licenseLabel, projectPath, projectTarget, projectThreadId, type Project } from "@/lib/projects"
+import { canEditProject, getProject, isScheduled, licenseLabel, projectPath, projectTarget, projectThreadId, pub, type Project } from "@/lib/projects"
+import { findLicense } from "@/lib/publish/licenses"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 
@@ -48,11 +52,25 @@ export function ProjectView({ id }: { id: string }) {
 
   if (!state) return <PageSkeleton />
   if (state.error) return <Missing title="This project could not be loaded" detail={state.error} />
-  if (!state.project) return <Missing title="This project is not here" detail="It may have been deleted or unpublished by its owner, or the address is wrong." />
-  return <Page p={state.project} mine={state.project.local || Boolean(user && state.project.ownerId === user.id)} />
+  if (!state.project)
+    return (
+      <Missing
+        title="This project is not here"
+        detail={
+          user
+            ? "It may have been deleted or unpublished by its owner, or the address is wrong."
+            : "It may be for signed-in members only, not published yet, or deleted. Sign in to check."
+        }
+        signIn={!user && live}
+      />
+    )
+  return <Page p={state.project} mine={canEditProject(state.project, user?.id)} owner={state.project.local || Boolean(user && state.project.ownerId === user.id)} />
 }
 
-function Page({ p, mine }: { p: Project; mine: boolean }) {
+function Page({ p, mine, owner }: { p: Project; mine: boolean; owner: boolean }) {
+  const o = pub(p)
+  const scheduled = isScheduled(p)
+  const licence = findLicense(p.license)
   const reduce = useReducedMotion()
   const KindIcon = KIND_ICONS[p.kind]
   const href = projectPath(p.id)
@@ -66,7 +84,12 @@ function Page({ p, mine }: { p: Project; mine: boolean }) {
     <>
       <div className="relative isolate overflow-hidden border-b border-border">
         <div className="absolute inset-0 -z-10 opacity-60">
-          <Cover seed={p.slug + "banner"} kind={p.kind} />
+          {o.coverUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- member cover picture
+            <img src={o.coverUrl} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
+          ) : (
+            <Cover seed={p.slug + "banner"} kind={p.kind} />
+          )}
         </div>
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background/30 via-background/70 to-background" />
         <div className="shell flex flex-col gap-5 pt-8 pb-7 md:pt-10">
@@ -78,6 +101,19 @@ function Page({ p, mine }: { p: Project; mine: boolean }) {
             <span aria-hidden>/</span>
             <span className="truncate">{ownerName}</span>
           </nav>
+
+          {!draft && !p.local && (scheduled || o.visibility !== "public") && (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card/70 px-4 py-2.5 text-sm">
+              {scheduled ? <CalendarClockIcon aria-hidden className="size-4 text-gold" /> : o.visibility === "members" ? <LockIcon aria-hidden className="size-4 text-ion" /> : <LinkIcon aria-hidden className="size-4 text-ion" />}
+              <span className="text-muted-foreground">
+                {scheduled
+                  ? `Scheduled: goes live on ${new Date(o.publishAt!).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}. Until then only its editors see it.`
+                  : o.visibility === "members"
+                    ? "Members only: visitors who are not signed in cannot open this page."
+                    : "Unlisted: it opens from its link but is not shown in lists or search."}
+              </span>
+            </div>
+          )}
 
           {(draft || p.local) && (
             <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card/70 px-4 py-2.5 text-sm">
@@ -93,6 +129,11 @@ function Page({ p, mine }: { p: Project; mine: boolean }) {
               <Cover seed={p.slug} kind={p.kind} />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
+              {o.featuredAt && (
+                <span className="inline-flex items-center gap-1 self-start rounded-full bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">
+                  <StarIcon aria-hidden className="size-3" /> Featured
+                </span>
+              )}
               <h1 className="text-2xl font-semibold tracking-[-0.02em] break-words md:text-3xl">{p.name}</h1>
               <p className="text-muted-foreground">{p.summary}</p>
             </div>
@@ -115,7 +156,7 @@ function Page({ p, mine }: { p: Project; mine: boolean }) {
             )}
             <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
             <KindTag kind={p.kind} />
-            {p.license !== "unspecified" && <Chip>{p.license}</Chip>}
+            {p.license !== "unspecified" && <Chip className="font-mono">{p.license}</Chip>}
             {p.versions[0] && <Chip className="font-mono">v{p.versions[0].version.replace(/^v/i, "")}</Chip>}
           </motion.div>
         </div>
@@ -129,7 +170,7 @@ function Page({ p, mine }: { p: Project; mine: boolean }) {
             </h2>
             {p.readme.trim() ? (
               <div className="rounded-2xl border border-border bg-card/40 p-5 md:p-7">
-                <Markdown source={p.readme} ctx={{ source: "none" }} />
+                <Markdown source={p.readme} ctx={{ source: "none" }} embeds />
               </div>
             ) : (
               <p className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
@@ -143,6 +184,18 @@ function Page({ p, mine }: { p: Project; mine: boolean }) {
               </p>
             )}
           </section>
+
+          {o.gallery.length > 0 && <Gallery items={o.gallery} name={p.name} />}
+
+          {!p.local && (
+            <DownloadsPanel
+              kind="project"
+              targetId={p.id}
+              canEdit={mine}
+              zipName={`${p.slug}${p.versions[0] ? `-${p.versions[0].version}` : ""}`}
+              versions={p.versions.map((v) => v.version)}
+            />
+          )}
 
           {p.versions.length > 0 && (
             <section aria-labelledby="changelog-h" className="flex flex-col gap-4">
@@ -167,13 +220,31 @@ function Page({ p, mine }: { p: Project; mine: boolean }) {
             </section>
           )}
 
-          {!draft && <ThreadDiscussion threadId={projectThreadId(p.id)} heading="Discussion" />}
+          {!draft && (
+            <ThreadDiscussion
+              threadId={projectThreadId(p.id)}
+              heading="Discussion"
+              locked={!o.commentsEnabled}
+              lockedNote={o.commentsEnabled ? undefined : "The authors closed comments on this project."}
+            />
+          )}
         </div>
 
         <aside aria-label="About this project" className="flex flex-col gap-6 lg:sticky lg:top-20 lg:self-start">
           <section aria-label="Details" className="glass flex flex-col gap-3 rounded-2xl p-5 text-sm">
             <Row label="Kind" value={KINDS[p.kind].label} />
-            <Row label="Licence" value={licenseLabel(p.license)} />
+            <Row
+              label="Licence"
+              value={
+                licence?.url ? (
+                  <a href={licence.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-ion" title={licence.short}>
+                    <ScaleIcon aria-hidden className="size-3.5" /> {licenseLabel(p.license)}
+                  </a>
+                ) : (
+                  licenseLabel(p.license)
+                )
+              }
+            />
             {p.versions[0] && <Row label="Latest" value={<span className="font-mono">{p.versions[0].version}</span>} />}
             <Row label="Updated" value={<TimeAgo date={p.updatedAt} />} />
             {p.publishedAt && <Row label="Published" value={<time dateTime={p.publishedAt}>{formatDate(p.publishedAt)}</time>} />}
@@ -205,7 +276,7 @@ function Page({ p, mine }: { p: Project; mine: boolean }) {
             )}
           </section>
 
-          {(p.links.repo || p.links.paper || p.links.demo) && (
+          {(p.links.repo || p.links.paper || p.links.demo || o.extraLinks.length > 0) && (
             <section aria-labelledby="links-h" className="flex flex-col gap-2 rounded-2xl border border-border bg-card/60 p-5 text-sm">
               <h2 id="links-h" className="mb-1 text-xs font-medium text-muted-foreground">
                 Links
@@ -225,6 +296,9 @@ function Page({ p, mine }: { p: Project; mine: boolean }) {
               )}
               {p.links.paper && <External href={p.links.paper} icon={FileTextIcon} label="Paper" />}
               {p.links.demo && <External href={p.links.demo} icon={MonitorPlayIcon} label="Demo" />}
+              {o.extraLinks.map((l) => (
+                <External key={l.url} href={l.url} icon={LinkIcon} label={l.label} />
+              ))}
             </section>
           )}
 
@@ -234,8 +308,26 @@ function Page({ p, mine }: { p: Project; mine: boolean }) {
               <span className="truncate font-medium">{ownerName}</span>
               {p.owner?.handle && <span className="truncate text-xs text-muted-foreground">@{p.owner.handle}</span>}
             </div>
-            {p.owner && !mine && <FollowButton followee={`member:${p.owner.id}`} name={p.owner.name} showCount={false} />}
+            {p.owner && !owner && <FollowButton followee={`member:${p.owner.id}`} name={p.owner.name} showCount={false} />}
           </section>
+
+          {o.coauthors.length > 0 && (
+            <section aria-labelledby="coauthors-h" className="flex flex-col gap-3 rounded-2xl border border-border bg-card/60 p-5">
+              <h2 id="coauthors-h" className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <UsersIcon aria-hidden className="size-3.5" /> Co-authors
+              </h2>
+              <ul className="flex flex-col gap-2">
+                {o.coauthors.map((c) => (
+                  <li key={c.id}>
+                    <Link href={`/people/${c.handle ?? c.id}`} className="flex items-center gap-2.5 rounded-lg hover:text-ion">
+                      <ProfileAvatar name={c.name} seed={c.id} url={c.avatarUrl} size={28} />
+                      <span className="min-w-0 truncate text-sm">{c.name}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </aside>
       </div>
     </>
@@ -266,7 +358,8 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-function Missing({ title, detail }: { title: string; detail: string }) {
+function Missing({ title, detail, signIn }: { title: string; detail: string; signIn?: boolean }) {
+  const path = usePathname()
   return (
     <Empty className="mx-auto max-w-xl py-24">
       <EmptyHeader>
@@ -274,6 +367,11 @@ function Missing({ title, detail }: { title: string; detail: string }) {
         <EmptyDescription>{detail}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
+        {signIn && (
+          <Link href={`/sign-in?next=${encodeURIComponent(path)}` as "/sign-in"} className="text-ion hover:underline">
+            Sign in
+          </Link>
+        )}
         <Link href="/explore" className="text-ion hover:underline">
           Explore projects
         </Link>

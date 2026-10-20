@@ -7,6 +7,7 @@ import { chunk, SPLITTERS, stats, type Chunk, type Splitter } from "@/lib/lab/ch
 import { fmtMoney } from "@/lib/lab/cost"
 import { cn } from "@/lib/utils"
 import { ActionButton, CopyAction, downloadText, fmtInt, NumberInput, Panel, Segmented } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 const SAMPLE = `# Retrieval-augmented generation
 
@@ -97,7 +98,7 @@ export function RagChunker() {
           }
         >
           <label htmlFor="rag-text" className="sr-only">
-            Document text
+            <Copy k="lab-tool.rag-chunker.document-text">Document text</Copy>
           </label>
           <Textarea id="rag-text" value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste a document, Markdown works best…" className="max-h-[45vh] min-h-48 resize-y font-mono text-[13px] leading-relaxed md:text-[13px]" />
           <p className="mt-2 text-xs text-muted-foreground tabular">{fmtInt(text.length)} characters</p>
@@ -115,7 +116,7 @@ export function RagChunker() {
             <p className="-mt-2 text-xs text-muted-foreground">
               Starts at OpenAI text-embedding-3-small&rsquo;s list price, $0.02 per million tokens (
               <a href="https://developers.openai.com/api/docs/pricing" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-foreground">
-                checked 2026-10-19
+                <Copy k="lab-tool.rag-chunker.checked-2026-10-19">checked 2026-10-19</Copy>
               </a>
               ).
             </p>
@@ -155,7 +156,7 @@ export function RagChunker() {
             {segs.length === 0 && deferred.length > 60000 ? (
               <span className="text-muted-foreground">The document is too long to colour in place; the chunk list still shows every chunk.</span>
             ) : segs.length === 0 ? (
-              <span className="text-muted-foreground">Paste a document to see its chunks.</span>
+              <span className="text-muted-foreground"><Copy k="lab-tool.rag-chunker.paste-a-document-to-see">Paste a document to see its chunks.</Copy></span>
             ) : (
               segs.map((s, k) => {
                 const t = deferred.slice(s.start, s.end)
@@ -206,7 +207,7 @@ export function RagChunker() {
             {chunks.length > 500 && <li className="px-1 text-xs text-muted-foreground">Showing 500 of {fmtInt(chunks.length)} chunks; download for all.</li>}
           </ol>
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">Token counts are estimates with the o200k family rates from the token counter. Your embedding model&rsquo;s tokenizer may count differently.</p>
+        <p className="mt-3 text-xs text-muted-foreground"><Copy k="lab-tool.rag-chunker.token-counts-are-estimates-with" multiline>Token counts are estimates with the o200k family rates from the token counter. Your embedding model&rsquo;s tokenizer may count differently.</Copy></p>
       </Panel>
     </div>
   )

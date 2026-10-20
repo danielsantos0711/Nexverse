@@ -13,9 +13,11 @@ import { useUnreadMessages } from "@/lib/messages"
 import { Lockup } from "@/components/brand"
 import { useOpenCommandMenu } from "@/components/site/command-menu"
 import { Button } from "@/components/ui/button"
-import { Kbd } from "@/components/ui/kbd"
+import { Glass, GlassDefs } from "@/components/glass/glass"
+import { GlassKeys } from "@/components/glass/glass-keys"
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useRole } from "@/lib/roles"
+import { useCopy } from "@/lib/content"
 import { iconFor } from "@/components/site/icons"
 import { useMenus as useMenuData, type MenuLink } from "@/lib/menus"
 import { FEATURES, useSiteSettings, type SiteSettings } from "@/lib/site-settings"
@@ -64,6 +66,8 @@ export function SiteHeader() {
   const { menus, mobile, direct, hide, name } = useMenus()
   const { isStaff } = useRole()
   const [scrolled, setScrolled] = useState(false)
+  const searchLabel = useCopy("header.search", "Search")
+  const shareLabel = useCopy("header.share", "Share")
 
   // A passive listener that only re-renders when the header crosses the 8px line, never per scroll event.
   useEffect(() => {
@@ -74,18 +78,24 @@ export function SiteHeader() {
   }, [])
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-40 h-16 border-b transition-[background-color,border-color] duration-300",
-        // a thin strip of glass: the blur covers 64px, never the page
-        scrolled ? "border-border bg-background/90 backdrop-blur-md" : "border-transparent bg-transparent"
-      )}
-    >
-      <div className="shell flex h-full items-center gap-3 lg:gap-6">
+    <header className="sticky top-0 z-40 h-16">
+      <GlassDefs />
+      <div className="shell relative flex h-full items-center gap-3 lg:gap-6">
+        {/* Once the page moves, the bar becomes a floating pane of Liquid Glass (refracting at its rim on
+            Chromium). It fades in by opacity; the blur covers this 52px strip, never the page. */}
+        <Glass
+          aria-hidden
+          sheen={false}
+          refract
+          className={cn(
+            "pointer-events-none absolute inset-x-[max(0.25rem,calc(var(--gutter)-0.9rem))] inset-y-1.5 rounded-[1.4rem] transition-opacity duration-300",
+            scrolled ? "opacity-100" : "opacity-0"
+          )}
+        />
         <Link
           href="/"
           aria-label={`${name} home`}
-          className="pressable -mx-1.5 flex shrink-0 items-center rounded-lg px-1.5 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="pressable relative -mx-1.5 flex shrink-0 items-center rounded-lg px-1.5 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <Lockup size="sm" priority alt="" className="sm:hidden" />
           <Lockup size="md" priority alt="" className="hidden sm:block" />
@@ -93,16 +103,16 @@ export function SiteHeader() {
 
         <MainNav pathname={pathname} menus={menus} direct={direct} />
 
-        <div className="ml-auto flex items-center gap-1.5 sm:gap-2 lg:ml-0">
+        <div className="relative ml-auto flex items-center gap-1.5 sm:gap-2 lg:ml-0">
           <button
             type="button"
             onClick={openSearch}
-            className="pressable flex h-9 items-center gap-2 rounded-full border border-border bg-white/[0.03] px-3 text-sm text-muted-foreground transition-colors hover:border-white/15 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="liquid-glass-pill flex h-9 items-center gap-2 px-3 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <SearchIcon aria-hidden className="size-4" />
-            <span className="hidden xl:inline">Search</span>
-            <Kbd className="hidden xl:inline-flex">⌘K</Kbd>
-            <span className="sr-only xl:hidden">Search</span>
+            <span className="hidden xl:inline">{searchLabel}</span>
+            <GlassKeys keys={["mod", "K"]} className="hidden xl:inline-flex" />
+            <span className="sr-only xl:hidden">{searchLabel}</span>
           </button>
           <OnlineNow className="hidden xl:flex" />
           {!hide("/messages") && <MessagesLink />}
@@ -118,13 +128,13 @@ export function SiteHeader() {
             </Link>
           )}
           <AccountButton />
-          <Link
-            href="/share"
-            className="pressable hidden h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:inline-flex"
-          >
-            <PlusIcon aria-hidden className="size-4" />
-            Share
-          </Link>
+          {/* the halo button sets its own display, so the phone rule sits on a wrapper (the tab bar has Share) */}
+          <span className="contents max-sm:hidden">
+            <Link href="/share" className="halo-btn">
+              <PlusIcon aria-hidden className="size-4" />
+              {shareLabel}
+            </Link>
+          </span>
           <MobileMenu pathname={pathname} menus={mobile} direct={direct} isStaff={isStaff} name={name} />
         </div>
       </div>
@@ -140,7 +150,7 @@ function MobileMenu({ pathname, menus, direct, isStaff, name }: { pathname: stri
       <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu" />}>
         <MenuIcon />
       </SheetTrigger>
-      <SheetContent side="right" className="w-[min(22rem,88vw)] bg-background">
+      <SheetContent side="right" className="liquid-glass-strong w-[min(22rem,88vw)] rounded-l-3xl border-y-0 border-r-0">
         <SheetTitle className="sr-only">{name} menu</SheetTitle>
         <div className="flex h-16 shrink-0 items-center border-b border-border px-5">
           <Lockup size="sm" alt={name} />
@@ -283,7 +293,7 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
 
   return (
     <nav aria-label="Main" className="relative hidden flex-1 justify-center lg:flex" onPointerLeave={hide} onPointerEnter={() => clearTimeout(closeTimer.current)}>
-      <ul className="flex items-center gap-1 rounded-full border border-white/[0.06] bg-white/[0.02] p-1">
+      <ul className="liquid-glass flex items-center gap-1 rounded-full p-1">
         {menus.map((m) => {
           const current = m.links.some((l) => isOn(l.href))
           return (
@@ -346,8 +356,8 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
             exit={reduce ? { opacity: 0 } : { opacity: 0, transform: "translateY(-6px) scale(0.98)" }}
             transition={{ type: "spring", duration: 0.35, bounce: 0.1 }}
             style={{ transformOrigin: "top center" }}
-            // solid panel, no backdrop blur: it sits over the hero's canvas and must stay cheap to draw
-            className="absolute top-[calc(100%+12px)] left-1/2 w-[36rem] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-popover p-2 shadow-[0_30px_80px_-20px_rgb(0_0_0/0.85),0_0_0_1px_rgb(143_180_255/0.06)]"
+            // Liquid Glass with a dense fill: readable over anything, and at the low quality tiers it turns solid
+            className="liquid-glass-strong absolute top-[calc(100%+12px)] left-1/2 w-[36rem] -translate-x-1/2 overflow-hidden rounded-3xl p-2"
           >
             <AnimatePresence mode="popLayout" initial={false} custom={dir}>
               <motion.ul

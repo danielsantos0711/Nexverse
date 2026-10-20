@@ -24,7 +24,7 @@ export function highlightMentions(source: string, names: string[] = []): string 
 export function PostBody({ source, names, lang, className }: { source: string; names?: string[]; lang?: string; className?: string }) {
   return (
     <div lang={lang} className={cn("[&>div>:first-child]:mt-0 [&>div>:last-child]:mb-0", className)}>
-      <Markdown source={highlightMentions(source, names)} ctx={{ source: "none" }} className="max-w-[72ch]" />
+      <Markdown source={highlightMentions(source, names)} ctx={{ source: "none" }} className="max-w-[72ch]" embeds />
     </div>
   )
 }

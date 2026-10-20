@@ -30,6 +30,7 @@ import { categoryPath } from "@/lib/data"
 import { accentChip, findCategory, postBlockText, useForumMap } from "@/lib/forum-categories"
 import { deleteQuestion, useSession } from "@/lib/store"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const replyPoster = (a: ForumReply): Poster => ({ name: a.local ? "You" : (a.author?.name ?? "A member") })
 
@@ -79,15 +80,15 @@ export function MemberThread({ id }: { id: string }) {
     return (
       <Empty className="mx-auto max-w-xl py-24">
         <EmptyHeader>
-          <EmptyTitle>This thread could not be loaded</EmptyTitle>
+          <EmptyTitle><Copy k="thread.member-thread.this-thread-could-not-be">This thread could not be loaded</Copy></EmptyTitle>
           <EmptyDescription>{loadError}</EmptyDescription>
         </EmptyHeader>
         <EmptyContent className="flex-row justify-center">
           <Button variant="secondary" onClick={() => setAttempt((n) => n + 1)}>
-            <RotateCwIcon aria-hidden /> Try again
+            <RotateCwIcon aria-hidden /> <Copy k="thread.member-thread.try-again">Try again</Copy>
           </Button>
           <Button variant="ghost" nativeButton={false} render={<Link href="/forum" />}>
-            Back to the forum
+            <Copy k="thread.member-thread.back-to-the-forum">Back to the forum</Copy>
           </Button>
         </EmptyContent>
       </Empty>
@@ -100,12 +101,12 @@ export function MemberThread({ id }: { id: string }) {
     return (
       <Empty className="mx-auto max-w-xl py-24">
         <EmptyHeader>
-          <EmptyTitle>This thread is not here</EmptyTitle>
-          <EmptyDescription>It may have been deleted, or the link is wrong.</EmptyDescription>
+          <EmptyTitle><Copy k="thread.member-thread.this-thread-is-not-here">This thread is not here</Copy></EmptyTitle>
+          <EmptyDescription><Copy k="thread.member-thread.it-may-have-been-deleted">It may have been deleted, or the link is wrong.</Copy></EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <Button variant="secondary" nativeButton={false} render={<Link href="/forum" />}>
-            Back to the forum
+            <Copy k="thread.member-thread.back-to-the-forum">Back to the forum</Copy>
           </Button>
         </EmptyContent>
       </Empty>
@@ -153,7 +154,7 @@ export function MemberThread({ id }: { id: string }) {
             {editing ? (
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="edit-title" className="text-sm font-medium">
-                  Title
+                  <Copy k="thread.member-thread.title">Title</Copy>
                 </label>
                 <Input id="edit-title" value={editing.title} maxLength={300} onChange={(e) => setEditing({ ...editing, title: e.target.value })} className="h-11 bg-background/60 text-base" />
               </div>
@@ -183,7 +184,7 @@ export function MemberThread({ id }: { id: string }) {
                 {isAuthor ? "Moderators hid this thread. Only you and the moderators can see it." : "Hidden from members. Only its author and the moderators can see it."}
               </p>
             )}
-            {q.local && <p className="text-sm text-muted-foreground">Saved on this device only. This copy of Nexverse has no database, so nobody else can see it.</p>}
+            {q.local && <p className="text-sm text-muted-foreground"><Copy k="thread.member-thread.saved-on-this-device-only" multiline>Saved on this device only. This copy of Nexverse has no database, so nobody else can see it.</Copy></p>}
             {error && (
               <p role="alert" className="text-sm text-destructive">
                 {error}
@@ -204,19 +205,19 @@ export function MemberThread({ id }: { id: string }) {
                   <PostReactions target={`thread:${q.id}`} />
                   {!q.locked && (
                     <Button variant="ghost" size="sm" onClick={() => setQuote({ key: Date.now(), name: author.name, body: selectionIn("post-1") ?? q.body ?? q.title, author: q.author })}>
-                      <QuoteIcon aria-hidden /> Quote
+                      <QuoteIcon aria-hidden /> <Copy k="thread.member-thread.quote">Quote</Copy>
                     </Button>
                   )}
                   {!q.local && <SaveButton target={`thread:${q.id}`} />}
                   {!q.local && <AddToCollection target={`thread:${q.id}`} />}
                   {isAuthor && (
                     <Button variant="ghost" size="sm" onClick={() => setEditing({ title: q.title, body: q.body, tags: q.tags, picked: [], error: "", busy: false })}>
-                      <PencilIcon aria-hidden /> Edit
+                      <PencilIcon aria-hidden /> <Copy k="thread.member-thread.edit">Edit</Copy>
                     </Button>
                   )}
                   {isAuthor && (
                     <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)}>
-                      <Trash2Icon aria-hidden /> Delete thread
+                      <Trash2Icon aria-hidden /> <Copy k="thread.member-thread.delete-thread">Delete thread</Copy>
                     </Button>
                   )}
                   {!q.local && (
@@ -251,7 +252,7 @@ export function MemberThread({ id }: { id: string }) {
                 />
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="edit-tags" className="text-sm font-medium">
-                    Tags
+                    <Copy k="thread.member-thread.tags">Tags</Copy>
                   </label>
                   <TagInput id="edit-tags" value={editing.tags} onChange={(tags) => setEditing((x) => x && { ...x, tags })} />
                 </div>
@@ -261,14 +262,14 @@ export function MemberThread({ id }: { id: string }) {
                     {editing.busy ? "Saving…" : "Save changes"}
                   </Button>
                   <Button variant="ghost" onClick={() => setEditing(null)}>
-                    Cancel
+                    <Copy k="thread.member-thread.cancel">Cancel</Copy>
                   </Button>
                 </div>
               </div>
             ) : q.body ? (
               <PostBody source={q.body} names={names} lang={q.lang} />
             ) : (
-              <p className="text-sm text-muted-foreground">No details, just the title.</p>
+              <p className="text-sm text-muted-foreground"><Copy k="thread.member-thread.no-details-just-the-title">No details, just the title.</Copy></p>
             )}
           </Post>
 
@@ -311,10 +312,10 @@ export function MemberThread({ id }: { id: string }) {
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-              Cancel
+              <Copy k="thread.member-thread.cancel">Cancel</Copy>
             </Button>
             <Button variant="destructive" onClick={remove}>
-              Delete thread
+              <Copy k="thread.member-thread.delete-thread">Delete thread</Copy>
             </Button>
           </DialogFooter>
         </DialogContent>

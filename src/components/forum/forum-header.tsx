@@ -1,7 +1,11 @@
+import { Copy } from "@/components/content/copy"
 import { Breadcrumbs, type Crumb } from "@/components/forum/forum-ui"
 
-/** A quiet page header for the forum: optional breadcrumb, a normal-sized title and one line of context. */
-export function ForumHeader({ title, lead, crumbs, icon, children }: { title: string; lead?: string; crumbs?: Crumb[]; icon?: React.ReactNode; children?: React.ReactNode }) {
+/**
+ * A quiet page header: optional breadcrumb, a normal-sized title and one line of context. With `k` (a content
+ * key prefix such as "events.header") the title and lead are editable by the admins: "<k>.title", "<k>.lead".
+ */
+export function ForumHeader({ title, lead, crumbs, icon, children, k }: { title: string; lead?: string; crumbs?: Crumb[]; icon?: React.ReactNode; children?: React.ReactNode; k?: string }) {
   return (
     <header className="relative isolate flex flex-col gap-3 pt-8 pb-6 md:pt-10">
       <div
@@ -13,8 +17,18 @@ export function ForumHeader({ title, lead, crumbs, icon, children }: { title: st
         <div className="flex min-w-0 items-start gap-3">
           {icon}
           <div className="flex min-w-0 flex-col gap-1">
-            <h1 className="text-2xl font-semibold tracking-[-0.02em]">{title}</h1>
-            {lead && <p className="max-w-[68ch] text-sm text-muted-foreground md:text-[15px]">{lead}</p>}
+            <h1 className="text-2xl font-semibold tracking-[-0.02em]">{k ? <Copy k={`${k}.title`}>{title}</Copy> : title}</h1>
+            {lead && (
+              <p className="max-w-[68ch] text-sm text-muted-foreground md:text-[15px]">
+                {k ? (
+                  <Copy k={`${k}.lead`} multiline>
+                    {lead}
+                  </Copy>
+                ) : (
+                  lead
+                )}
+              </p>
+            )}
           </div>
         </div>
         {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}

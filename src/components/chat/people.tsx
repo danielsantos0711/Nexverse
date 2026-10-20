@@ -131,7 +131,7 @@ export function PeoplePanel({ room, crowd, me }: { room: Room | undefined; crowd
           Good to know
         </h2>
         <ul className="flex list-disc flex-col gap-1.5 pl-4 text-sm text-muted-foreground marker:text-white/20">
-          <li>{live ? "Rooms are public. Anyone can read them, so leave out secrets and keys." : "This copy has no database: messages stay in this browser."}</li>
+          <li>{live ? "Every signed-in member can read these rooms, so leave out secrets and keys." : "This copy has no database: messages stay in this browser."}</li>
           <li>Write in whichever language you think in.</li>
           <li>
             Wrap code in <code className="font-mono text-foreground">```</code> and mention people with{" "}

@@ -9,6 +9,7 @@ import { computeContext, DEFAULT_CONTEXT, WINDOW_PRESETS, type ContextInput } fr
 import { quickTokens } from "@/lib/lab/tokenizers"
 import { cn } from "@/lib/utils"
 import { ActionButton, AnimatedNumber, CopyAction, fmtCompact, fmtInt, NativeSelect, NumberInput, Panel, RangeSlider, readStored, ToolSkeleton, useHydrated, writeStored } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 const KEY = "nexverse:lab:context"
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -83,7 +84,7 @@ function Inner() {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="cx-window" className="text-sm font-medium text-foreground/90">
-                Context window
+                <Copy k="lab-tool.context-calculator.context-window">Context window</Copy>
               </label>
               <NativeSelect
                 id="cx-window"
@@ -117,11 +118,11 @@ function Inner() {
             <NumberInput label="Reserved for the answer" value={i.output} onChange={(v) => set("output", Math.max(0, Math.round(v)))} min={0} step={500} suffix="tokens" />
             <div className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between text-sm">
-                <span className="font-medium text-foreground/90">Safety margin</span>
+                <span className="font-medium text-foreground/90"><Copy k="lab-tool.context-calculator.safety-margin">Safety margin</Copy></span>
                 <span className="text-xs text-muted-foreground tabular">{i.margin}%</span>
               </div>
               <RangeSlider label="Safety margin" value={i.margin} onChange={(v) => set("margin", v)} min={0} max={30} step={1} valueText={(v) => `${v} percent`} />
-              <p className="text-xs text-muted-foreground">Covers chat-template tokens and the gap between estimated and real token counts.</p>
+              <p className="text-xs text-muted-foreground"><Copy k="lab-tool.context-calculator.covers-chat-template-tokens-and">Covers chat-template tokens and the gap between estimated and real token counts.</Copy></p>
             </div>
           </div>
         </Panel>
@@ -135,7 +136,7 @@ function Inner() {
               <NumberInput label="Tokens per turn" value={i.perTurn} onChange={(v) => set("perTurn", Math.max(0, Math.round(v)))} min={0} step={50} />
             </div>
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-foreground/90">Documents</span>
+              <span className="text-sm font-medium text-foreground/90"><Copy k="lab-tool.context-calculator.documents">Documents</Copy></span>
               {i.docs.map((d) => (
                 <div key={d.id} className="flex flex-col gap-2 rounded-xl border border-border bg-black/20 p-2.5">
                   <div className="flex items-center gap-2">

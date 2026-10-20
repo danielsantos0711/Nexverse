@@ -13,6 +13,7 @@ import { quickTokens } from "@/lib/lab/tokenizers"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { ActionButton, CopyAction, EASE, fmtInt, Panel, RangeSlider, SwitchRow } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /* ------------------------------------------------------------- templates */
 
@@ -311,20 +312,20 @@ export function PromptPlayground({ initial }: { initial?: LabPrompt | null }) {
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="pg-title" className="text-sm font-medium text-foreground/90">
-                Name
+                <Copy k="lab-tool.prompt-playground.name">Name</Copy>
               </label>
               <Input id="pg-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Untitled prompt" maxLength={120} className="h-9" />
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="pg-system" className="text-sm font-medium text-foreground/90">
-                System prompt <span className="font-normal text-muted-foreground">(optional)</span>
+                System prompt <span className="font-normal text-muted-foreground"><Copy k="lab-tool.prompt-playground.optional">(optional)</Copy></span>
               </label>
               <Textarea id="pg-system" value={system} onChange={(e) => setSystem(e.target.value)} maxLength={LIMITS.system} placeholder="How the model should behave…" spellCheck={false} className="max-h-[30vh] min-h-20 resize-y font-mono text-[13px] leading-relaxed md:text-[13px]" />
             </div>
             <div className="flex flex-col gap-1.5">
               <div className="flex items-baseline justify-between gap-3">
                 <label htmlFor="pg-prompt" className="text-sm font-medium text-foreground/90">
-                  User prompt
+                  <Copy k="lab-tool.prompt-playground.user-prompt">User prompt</Copy>
                 </label>
                 <span className="text-xs text-muted-foreground">
                   <code className="rounded bg-white/[0.06] px-1 font-mono">{"{{variable}}"}</code> adds a field
@@ -341,7 +342,7 @@ export function PromptPlayground({ initial }: { initial?: LabPrompt | null }) {
               ))}
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-foreground/90">Starters</span>
+              <span className="text-sm font-medium text-foreground/90"><Copy k="lab-tool.prompt-playground.starters">Starters</Copy></span>
               <div className="flex flex-wrap gap-1.5">
                 {STARTERS.map((s) => (
                   <button key={s.title} type="button" onClick={() => load(s)} className="pressable h-8 rounded-full border border-border px-3 text-[13px] text-muted-foreground transition-colors outline-none hover:border-white/20 hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50">
@@ -388,7 +389,7 @@ export function PromptPlayground({ initial }: { initial?: LabPrompt | null }) {
               <div className="flex gap-3 rounded-xl border border-border bg-white/[0.02] p-3 text-sm">
                 <CloudOffIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <p className="text-muted-foreground">
-                  <span className="font-medium text-foreground/90">AI is not switched on for this site yet.</span> You can still write and fill prompts here, and copy them into any model you use.
+                  <span className="font-medium text-foreground/90"><Copy k="lab-tool.prompt-playground.ai-is-not-switched-on">AI is not switched on for this site yet.</Copy></span> You can still write and fill prompts here, and copy them into any model you use.
                 </p>
               </div>
             ) : (
@@ -400,11 +401,11 @@ export function PromptPlayground({ initial }: { initial?: LabPrompt | null }) {
                 </ul>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-baseline justify-between text-sm">
-                    <span className="font-medium text-foreground/90">Temperature</span>
+                    <span className="font-medium text-foreground/90"><Copy k="lab-tool.prompt-playground.temperature">Temperature</Copy></span>
                     <span className="text-xs text-muted-foreground tabular">{temperature.toFixed(1)}</span>
                   </div>
                   <RangeSlider label="Temperature" value={temperature} onChange={setTemperature} min={0} max={LIMITS.temperatureMax} step={0.1} valueText={(v) => v.toFixed(1)} />
-                  <p className="text-xs text-muted-foreground">Lower is more predictable, higher more varied.</p>
+                  <p className="text-xs text-muted-foreground"><Copy k="lab-tool.prompt-playground.lower-is-more-predictable-higher">Lower is more predictable, higher more varied.</Copy></p>
                 </div>
               </div>
             )}
@@ -436,7 +437,7 @@ export function PromptPlayground({ initial }: { initial?: LabPrompt | null }) {
                     Stop
                   </ActionButton>
                 )}
-                {!picked.length && <span className="text-sm text-muted-foreground">Pick a model above.</span>}
+                {!picked.length && <span className="text-sm text-muted-foreground"><Copy k="lab-tool.prompt-playground.pick-a-model-above">Pick a model above.</Copy></span>}
                 {tooLong && (
                   <span className="text-sm text-gold">
                     With the variables filled, the {tooLong} prompt is over {fmtInt(tooLong === "system" ? LIMITS.system : LIMITS.prompt)} characters. Shorten it to run.
@@ -450,7 +451,7 @@ export function PromptPlayground({ initial }: { initial?: LabPrompt | null }) {
                   ))}
                 </div>
               )}
-              {results.some((r) => r.text) && <p className="text-xs text-muted-foreground">AI-generated. Check facts before relying on them. Output token counts are estimates.</p>}
+              {results.some((r) => r.text) && <p className="text-xs text-muted-foreground"><Copy k="lab-tool.prompt-playground.ai-generated-check-facts-before">AI-generated. Check facts before relying on them. Output token counts are estimates.</Copy></p>}
             </div>
           </Gate>
         ) : (
@@ -461,13 +462,13 @@ export function PromptPlayground({ initial }: { initial?: LabPrompt | null }) {
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <Panel title="Save and share" description="Saved prompts belong to your account. Shared ones open for anyone with the link.">
           {!live ? (
-            <p className="text-sm text-muted-foreground">Accounts are not available on this copy of the site, so prompts cannot be saved online. Run history needs the site&rsquo;s AI, which is off here too.</p>
+            <p className="text-sm text-muted-foreground"><Copy k="lab-tool.prompt-playground.accounts-are-not-available-on" multiline>Accounts are not available on this copy of the site, so prompts cannot be saved online. Run history needs the site&rsquo;s AI, which is off here too.</Copy></p>
           ) : me === undefined ? (
-            <p className="text-sm text-muted-foreground">Checking your account…</p>
+            <p className="text-sm text-muted-foreground"><Copy k="lab-tool.prompt-playground.checking-your-account">Checking your account…</Copy></p>
           ) : me === null ? (
             <p className="text-sm text-muted-foreground">
               <Link href="/sign-in?next=/lab/prompts" className="text-ion underline-offset-2 hover:underline">
-                Sign in
+                <Copy k="lab-tool.prompt-playground.sign-in">Sign in</Copy>
               </Link>{" "}
               to save prompts to your account and share them with a link.
             </p>
@@ -503,11 +504,11 @@ export function PromptPlayground({ initial }: { initial?: LabPrompt | null }) {
                 </div>
               )}
               <div>
-                <h3 className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">Your prompts</h3>
+                <h3 className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase"><Copy k="lab-tool.prompt-playground.your-prompts">Your prompts</Copy></h3>
                 {mine === null ? (
-                  <p className="text-sm text-muted-foreground">Saving prompts is not switched on for this site yet.</p>
+                  <p className="text-sm text-muted-foreground"><Copy k="lab-tool.prompt-playground.saving-prompts-is-not-switched">Saving prompts is not switched on for this site yet.</Copy></p>
                 ) : mine.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Nothing saved yet.</p>
+                  <p className="text-sm text-muted-foreground"><Copy k="lab-tool.prompt-playground.nothing-saved-yet">Nothing saved yet.</Copy></p>
                 ) : (
                   <ul className="flex flex-col divide-y divide-border">
                     {mine.map((p) => (
@@ -544,7 +545,7 @@ export function PromptPlayground({ initial }: { initial?: LabPrompt | null }) {
           }
         >
           {history.length === 0 && oldTemplates.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Runs appear here after the first one.</p>
+            <p className="text-sm text-muted-foreground"><Copy k="lab-tool.prompt-playground.runs-appear-here-after-the">Runs appear here after the first one.</Copy></p>
           ) : (
             <ul className="flex max-h-[50vh] flex-col divide-y divide-border overflow-auto">
               {history.map((h) => (
@@ -574,7 +575,7 @@ export function PromptPlayground({ initial }: { initial?: LabPrompt | null }) {
                 <li key={t.id}>
                   <button type="button" onClick={() => load({ title: t.name, system: "", prompt: fromOldSyntax(t.template), values: t.values })} className="flex w-full flex-col gap-0.5 rounded-lg px-2 py-2 text-left outline-none hover:bg-white/[0.04] focus-visible:ring-3 focus-visible:ring-ring/50">
                     <span className="truncate text-sm">{t.name}</span>
-                    <span className="text-xs text-muted-foreground">Template saved in this browser</span>
+                    <span className="text-xs text-muted-foreground"><Copy k="lab-tool.prompt-playground.template-saved-in-this-browser">Template saved in this browser</Copy></span>
                   </button>
                 </li>
               ))}

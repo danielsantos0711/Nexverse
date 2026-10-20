@@ -69,6 +69,7 @@ const ANTHROPIC = "https://claude.com/pricing"
 const GOOGLE = "https://ai.google.dev/gemini-api/docs/pricing"
 const OPENAI = "https://developers.openai.com/api/docs/pricing"
 
+/** The defaults; admins keep the live list up to date in /admin/lists (usePricePresets() in lib/lists/hooks.ts). */
 export const PRICE_PRESETS: Omit<PriceRow, "id">[] = [
   { name: "Claude Opus 5.5", inPrice: 4, outPrice: 20, cachedPrice: 0, tps: 50, ttft: 1, source: { url: ANTHROPIC, checked: CHECKED } },
   { name: "Claude Sonnet 5.5", inPrice: 2, outPrice: 10, cachedPrice: 0, tps: 50, ttft: 1, source: { url: ANTHROPIC, checked: CHECKED } },

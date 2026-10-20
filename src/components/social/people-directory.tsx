@@ -13,6 +13,7 @@ import { countMembers, listMembers, memberHref, type MemberSort, type PublicMemb
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const PAGE = 48
 
@@ -80,8 +81,8 @@ export function PeopleDirectory() {
           <EmptyMedia variant="icon">
             <UsersIcon />
           </EmptyMedia>
-          <EmptyTitle>Accounts are not switched on in this copy</EmptyTitle>
-          <EmptyDescription>This copy of Nexverse runs without a database, so there are no member profiles to list. Everything you do here stays in this browser.</EmptyDescription>
+          <EmptyTitle><Copy k="people.people-directory.accounts-are-not-switched-on">Accounts are not switched on in this copy</Copy></EmptyTitle>
+          <EmptyDescription><Copy k="people.people-directory.this-copy-of-nexverse-runs" multiline>This copy of Nexverse runs without a database, so there are no member profiles to list. Everything you do here stays in this browser.</Copy></EmptyDescription>
         </EmptyHeader>
       </Empty>
     )
@@ -92,7 +93,7 @@ export function PeopleDirectory() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className="glass flex h-11 flex-1 items-center gap-2.5 rounded-xl px-3.5 focus-within:border-ion/50 focus-within:ring-2 focus-within:ring-ring/40">
           <SearchIcon aria-hidden className="size-4 text-muted-foreground" />
-          <span className="sr-only">Search members by name or handle</span>
+          <span className="sr-only"><Copy k="people.people-directory.search-members-by-name-or">Search members by name or handle</Copy></span>
           <input value={q} onChange={(e) => setQ(e.target.value)} type="search" placeholder="Search by name or @handle" className="h-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground/80" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -129,11 +130,11 @@ export function PeopleDirectory() {
         <Empty className="rounded-2xl border border-dashed border-border py-14">
           <EmptyHeader>
             <EmptyTitle>{query ? `Nobody called “${query}” yet` : "No members yet"}</EmptyTitle>
-            <EmptyDescription>{query ? "Check the spelling, or search for part of the name." : "Be the first: an account takes an email address and nothing else."}</EmptyDescription>
+            <EmptyDescription>{query ? <Copy k="people.people-directory.check-the-spelling-or-search">Check the spelling, or search for part of the name.</Copy> : <Copy k="people.people-directory.be-the-first-an-account">Be the first: an account takes an email address and nothing else.</Copy>}</EmptyDescription>
           </EmptyHeader>
           {!query && !user && (
             <EmptyContent>
-              <Button nativeButton={false} render={<Link href="/sign-in?next=/welcome" />}>Join Nexverse</Button>
+              <Button nativeButton={false} render={<Link href="/sign-in?next=/welcome" />}><Copy k="people.people-directory.join-nexverse">Join Nexverse</Copy></Button>
             </EmptyContent>
           )}
         </Empty>
@@ -148,7 +149,7 @@ export function PeopleDirectory() {
           </ul>
           {more && (
             <Button variant="secondary" className="self-center" onClick={loadMore} disabled={loadingMore}>
-              {loadingMore ? "Loading…" : "Show more members"}
+              {loadingMore ? "Loading…" : <Copy k="people.people-directory.show-more-members">Show more members</Copy>}
             </Button>
           )}
         </>
@@ -165,7 +166,7 @@ function MemberCard({ m, you }: { m: PublicMember; you: boolean }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <Link href={memberHref(m) as `/people/${string}`} className="truncate font-medium after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
             {m.name}
-            {you && <span className="ml-1.5 rounded-full bg-ion/15 px-1.5 text-[11px] text-ion">You</span>}
+            {you && <span className="ml-1.5 rounded-full bg-ion/15 px-1.5 text-[11px] text-ion"><Copy k="people.people-directory.you">You</Copy></span>}
           </Link>
           <span className="truncate text-xs text-muted-foreground">{m.handle ? `@${m.handle}` : <TimeAgo date={m.joinedAt} prefix="Joined" />}</span>
         </div>

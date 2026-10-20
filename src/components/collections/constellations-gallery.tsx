@@ -61,7 +61,7 @@ export function ConstellationsGallery() {
 
   if (skies.length === 0) {
     return (
-      <Empty className="spotlight glass rounded-2xl px-6 py-16">
+      <Empty className="liquid-glass-flat rounded-2xl px-6 py-16">
         <EmptyHeader className="max-w-lg">
           <EmptyMedia variant="icon" className="size-12 rounded-full bg-ion/10 text-ion">
             <SparklesIcon className="size-6" />
@@ -87,7 +87,7 @@ export function ConstellationsGallery() {
     <ul className="grid gap-4 md:grid-cols-2">
       {skies.map(({ c, stars }) => (
         <li key={c.id}>
-          <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card/60 transition-colors hover:bg-card">
+          <article className="liquid-glass-flat group relative flex h-full flex-col overflow-hidden rounded-2xl transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:transform-none">
             <div className="bg-[#05060a]">
               <StarMap id={c.id} name={c.title} stars={stars} labels={false} />
             </div>

@@ -27,7 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { TimeAgo } from "@/components/live/time"
 import { compact, KINDS, type ResourceKind } from "@/lib/data"
 import { useProfile } from "@/lib/profile"
-import { deleteProject, getProjectStats, listMyProjects, projectPath, setProjectStatus, type Project, type ProjectStats } from "@/lib/projects"
+import { deleteProject, isScheduled, getProjectStats, listMyProjects, projectPath, setProjectStatus, type Project, type ProjectStats } from "@/lib/projects"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -255,14 +255,22 @@ function ProjectRow({ p, stats, onToggle, onDelete }: { p: Project; stats: Proje
     <article className="flex flex-col gap-3 rounded-xl border border-border bg-card/70 p-3.5 sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 gap-3.5">
         <div className="size-14 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/10">
-          <Cover seed={p.slug} kind={p.kind} />
+          {p.coverUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- member cover picture
+            <img src={p.coverUrl} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
+          ) : (
+            <Cover seed={p.slug} kind={p.kind} />
+          )}
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Link href={isLive || p.local ? projectPath(p.id) : `${projectPath(p.id)}/edit`} className="truncate text-[15px] font-medium hover:underline">
               {p.name}
             </Link>
-            {isLive ? <StatusPill tone="live">Published</StatusPill> : <StatusPill tone="draft">Draft</StatusPill>}
+            {isLive && isScheduled(p) ? <StatusPill tone="draft">Scheduled</StatusPill> : isLive ? <StatusPill tone="live">Published</StatusPill> : <StatusPill tone="draft">Draft</StatusPill>}
+            {isLive && p.visibility === "members" && <StatusPill tone="local">Members only</StatusPill>}
+            {isLive && p.visibility === "unlisted" && <StatusPill tone="local">Unlisted</StatusPill>}
+            {p.featuredAt && <StatusPill tone="live">Featured</StatusPill>}
           </div>
           <p className="line-clamp-1 text-[13px] text-muted-foreground">{p.summary}</p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">

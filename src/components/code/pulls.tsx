@@ -18,6 +18,7 @@ import { DiffList } from "./diff-view"
 import { CommentCard, EditTitle, IssueRow } from "./issues"
 import { resolveRef, useRepo } from "./repo-context"
 import { EmptyState, ErrorNote, FormError, href, inputCls, Panel, PanelHead, PersonName, plural, StaffHide, StateBadge, useLoad } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /* Pull requests: the list, and one pull request with its conversation, changed files and commits. */
 
@@ -44,10 +45,10 @@ export function PullsPage() {
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <p className="min-w-0 flex-1 text-sm text-muted-foreground">Propose changes from a branch or a fork, review them line by line, and merge.</p>
+        <p className="min-w-0 flex-1 text-sm text-muted-foreground"><Copy k="code-repo.pulls.propose-changes-from-a-branch">Propose changes from a branch or a fork, review them line by line, and merge.</Copy></p>
         {!repo.archivedAt && (
           <Button nativeButton={false} render={<Link href={href(`${base}/compare`)} />}>
-            <PlusIcon aria-hidden /> New pull request
+            <PlusIcon aria-hidden /> <Copy k="code-repo.pulls.new-pull-request">New pull request</Copy>
           </Button>
         )}
       </div>
@@ -184,7 +185,7 @@ export function PullPage({ number, tab }: { number: number; tab: "conversation" 
             <span className="ml-auto flex items-center gap-1">
               {(mine || writable) && pull.state !== "merged" && (
                 <Button size="sm" variant="ghost" className="h-7 rounded-full" onClick={() => setEditing(true)}>
-                  <PencilIcon aria-hidden /> Edit
+                  <PencilIcon aria-hidden /> <Copy k="code-repo.pulls.edit">Edit</Copy>
                 </Button>
               )}
               <ReportButton targetKind="code_pull" targetId={pull.id} targetUrl={`${base}/pulls/${pull.number}`} iconOnly />
@@ -193,7 +194,7 @@ export function PullPage({ number, tab }: { number: number; tab: "conversation" 
           </div>
         </header>
       )}
-      {pull.hiddenAt && <p className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm">Moderators hid this pull request. Only its author, the repository&apos;s writers and staff can see it.</p>}
+      {pull.hiddenAt && <p className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm"><Copy k="code-repo.pulls.moderators-hid-this-pull-request" multiline>Moderators hid this pull request. Only its author, the repository&apos;s writers and staff can see it.</Copy></p>}
 
       <nav aria-label="Pull request" className="-mx-4 flex gap-1 overflow-x-auto border-b border-border px-4 sm:mx-0 sm:px-0">
         {tabs.map((t) => (
@@ -262,18 +263,18 @@ export function PullPage({ number, tab }: { number: number; tab: "conversation" 
           </div>
           <aside className="flex flex-col gap-4 text-sm" aria-label="Pull request details">
             <section className="flex flex-col gap-1.5 border-b border-border pb-4">
-              <h3 className="font-medium">Into</h3>
+              <h3 className="font-medium"><Copy k="code-repo.pulls.into">Into</Copy></h3>
               <span className="font-mono text-xs">
                 {ownerKey(repo.owner)}/{repo.slug}:{pull.toBranch}
               </span>
             </section>
             <section className="flex flex-col gap-1.5 border-b border-border pb-4">
-              <h3 className="font-medium">From</h3>
+              <h3 className="font-medium"><Copy k="code-repo.pulls.from">From</Copy></h3>
               <span className="font-mono text-xs break-all">{fromRepo ? `${ownerKey(fromRepo.owner)}/${fromRepo.slug}:${pull.fromBranch}` : pull.fromBranch}</span>
             </section>
             {cmp && (
               <section className="flex flex-col gap-1.5">
-                <h3 className="font-medium">Changes</h3>
+                <h3 className="font-medium"><Copy k="code-repo.pulls.changes">Changes</Copy></h3>
                 <span className="text-muted-foreground">
                   {plural(cmp.changes.length, "file")} · {plural(cmp.commits.length, "commit")}
                 </span>
@@ -400,7 +401,7 @@ function MergeBox({ pull, cmp, headId, onMerged }: { pull: Pull; cmp: Comparison
           {nothing ? (
             <p className="font-medium">{pull.toBranch} already has everything in this branch.</p>
           ) : unrelated ? (
-            <p className="font-medium">These branches share no history, so they cannot be merged.</p>
+            <p className="font-medium"><Copy k="code-repo.pulls.these-branches-share-no-history">These branches share no history, so they cannot be merged.</Copy></p>
           ) : conflicts.length ? (
             <>
               <p className="font-medium">{plural(conflicts.length, "file")} changed on both branches</p>
@@ -418,9 +419,9 @@ function MergeBox({ pull, cmp, headId, onMerged }: { pull: Pull; cmp: Comparison
           ) : cmp.fastForward ? (
             <p className="font-medium">No conflicts. {pull.toBranch} can move straight to the latest commit of this branch.</p>
           ) : (
-            <p className="font-medium">No conflicts. Every file changed on only one side, so a merge commit can combine them.</p>
+            <p className="font-medium"><Copy k="code-repo.pulls.no-conflicts-every-file-changed">No conflicts. Every file changed on only one side, so a merge commit can combine them.</Copy></p>
           )}
-          {!writable && ok && <p className="text-muted-foreground">Only people who can write to this repository can merge.</p>}
+          {!writable && ok && <p className="text-muted-foreground"><Copy k="code-repo.pulls.only-people-who-can-write">Only people who can write to this repository can merge.</Copy></p>}
         </div>
       </div>
       {writable && ok && (

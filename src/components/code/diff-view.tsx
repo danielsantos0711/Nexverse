@@ -14,6 +14,7 @@ import type { FileChange } from "@/lib/code/tree"
 import { cn } from "@/lib/utils"
 import { Tokens } from "./code-view"
 import { FormError, href, PersonName, plural, textareaCls } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /*
  * Diffs between two trees: one collapsible card per changed file, unified or side by side, with syntax colours.
@@ -68,7 +69,7 @@ export function DiffList({
   review?: LineComments
 }) {
   const [mode, setMode] = useDiffMode()
-  if (!changes.length) return <p className="rounded-xl border border-border bg-card/40 p-6 text-center text-sm text-muted-foreground">No files changed.</p>
+  if (!changes.length) return <p className="rounded-xl border border-border bg-card/40 p-6 text-center text-sm text-muted-foreground"><Copy k="code-repo.diff-view.no-files-changed">No files changed.</Copy></p>
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -174,7 +175,7 @@ function FileDiff({ change, oldRepo, newRepo, mode, viewHref, review }: { change
         {fileComments.length > 0 && <span className="text-xs text-muted-foreground">{plural(fileComments.length, "comment")}</span>}
         {viewHref && (
           <Link href={href(viewHref)} className="text-xs text-ion hover:underline">
-            View file
+            <Copy k="code-repo.diff-view.view-file">View file</Copy>
           </Link>
         )}
       </div>
@@ -185,11 +186,11 @@ function FileDiff({ change, oldRepo, newRepo, mode, viewHref, review }: { change
           ) : !data ? (
             <div className="h-24 animate-pulse bg-white/[0.02]" aria-label="Loading diff" />
           ) : data.kind === "binary" ? (
-            <p className="p-4 text-sm text-muted-foreground">Binary file, not shown.</p>
+            <p className="p-4 text-sm text-muted-foreground"><Copy k="code-repo.diff-view.binary-file-not-shown">Binary file, not shown.</Copy></p>
           ) : data.kind === "image" ? (
             <p className="p-4 text-sm text-muted-foreground">Image {change.status === "removed" ? "removed" : change.status === "added" ? "added" : "changed"}. Open the file to see it.</p>
           ) : data.kind === "big" ? (
-            <p className="p-4 text-sm text-muted-foreground">This file is too large to show a diff here.</p>
+            <p className="p-4 text-sm text-muted-foreground"><Copy k="code-repo.diff-view.this-file-is-too-large">This file is too large to show a diff here.</Copy></p>
           ) : data.kind !== "text" ? null : data.hunks.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground">{change.status === "renamed" ? "Moved without changes." : "Only the file mode changed."}</p>
           ) : mode === "split" ? (
@@ -354,7 +355,7 @@ function Thread({ comments, composing, onSend, onCancel }: { comments: Comment[]
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <PersonName person={c.author} avatar={16} /> <TimeAgo date={c.createdAt} />
           </div>
-          {c.hiddenAt ? <p className="text-muted-foreground italic">Hidden by moderators.</p> : <PostBody source={c.body} />}
+          {c.hiddenAt ? <p className="text-muted-foreground italic"><Copy k="code-repo.diff-view.hidden-by-moderators">Hidden by moderators.</Copy></p> : <PostBody source={c.body} />}
         </div>
       ))}
       {composing && onSend && (
@@ -379,10 +380,10 @@ function Thread({ comments, composing, onSend, onCancel }: { comments: Comment[]
           <FormError message={error} />
           <div className="flex gap-2">
             <Button size="sm" type="submit" disabled={busy || !body.trim()}>
-              Comment
+              <Copy k="code-repo.diff-view.comment">Comment</Copy>
             </Button>
             <Button size="sm" type="button" variant="ghost" onClick={onCancel}>
-              Cancel
+              <Copy k="code-repo.diff-view.cancel">Cancel</Copy>
             </Button>
           </div>
         </form>

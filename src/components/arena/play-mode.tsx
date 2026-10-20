@@ -13,6 +13,7 @@ import { isMine, listDuels, myVotes, type Duel } from "@/lib/arena"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 const STREAK_KEY = "nexverse-arena-streak"
 const BEST_KEY = "nexverse-arena-best"
@@ -198,7 +199,7 @@ export function PlayMode() {
                     onClick={skip}
                     className="pressable inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm text-muted-foreground hover:bg-white/[0.05] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
-                    <SkipForwardIcon aria-hidden className="size-4" /> Skip
+                    <SkipForwardIcon aria-hidden className="size-4" /> <Copy k="arena.play-mode.skip">Skip</Copy>
                   </button>
                 </div>
               )}
@@ -220,13 +221,13 @@ export function PlayMode() {
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 <Link href="/arena/new" className={primaryButton}>
-                  Post a duel
+                  <Copy k="arena.play-mode.post-a-duel">Post a duel</Copy>
                 </Link>
                 <Link
                   href="/arena/ratings"
                   className="pressable inline-flex h-9 items-center rounded-full border border-border px-4 text-sm hover:bg-white/[0.05] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
-                  See ratings
+                  <Copy k="arena.play-mode.see-ratings">See ratings</Copy>
                 </Link>
               </div>
             </motion.div>

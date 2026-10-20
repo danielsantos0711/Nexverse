@@ -24,6 +24,7 @@ import {
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 type Sort = "newest" | "ending" | "reward"
 const SORTS: { value: Sort; label: string }[] = [
@@ -128,13 +129,13 @@ export function MissionsView() {
                   )}
                 >
                   {d !== "all" && <Insignia difficulty={d} className={cn("hidden sm:block", on && "text-primary-foreground")} />}
-                  {d === "all" ? "Any rank" : DIFFICULTIES[d].label}
+                  {d === "all" ? <Copy k="missions.missions-view.any-rank">Any rank</Copy> : DIFFICULTIES[d].label}
                 </button>
               )
             })}
           </div>
           <label htmlFor="mission-sort" className="sr-only">
-            Sort missions
+            <Copy k="missions.missions-view.sort-missions">Sort missions</Copy>
           </label>
           <select
             id="mission-sort"
@@ -150,7 +151,7 @@ export function MissionsView() {
           </select>
         </div>
         <Link href="/missions/new" className={cn(primaryButton, "w-fit")}>
-          <PlusIcon aria-hidden className="size-4" /> Post a mission
+          <PlusIcon aria-hidden className="size-4" /> <Copy k="missions.missions-view.post-a-mission">Post a mission</Copy>
         </Link>
       </div>
 
@@ -181,7 +182,7 @@ export function MissionsView() {
         <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           Missions could not be loaded ({error}).{" "}
           <button type="button" onClick={() => void load()} className="underline underline-offset-2">
-            Try again
+            <Copy k="missions.missions-view.try-again">Try again</Copy>
           </button>
         </p>
       )}
@@ -210,14 +211,14 @@ export function MissionsView() {
             <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
               <TargetIcon aria-hidden className="size-5" />
             </span>
-            <p className="text-sm text-muted-foreground">{filtered ? "No missions match these filters." : "No missions yet."}</p>
+            <p className="text-sm text-muted-foreground">{filtered ? <Copy k="missions.missions-view.no-missions-match-these-filters">No missions match these filters.</Copy> : <Copy k="missions.missions-view.no-missions-yet">No missions yet.</Copy>}</p>
             {filtered ? (
               <button type="button" onClick={clearFilters} className="text-sm text-ion hover:underline">
-                Clear filters
+                <Copy k="missions.missions-view.clear-filters">Clear filters</Copy>
               </button>
             ) : (
               <Link href="/missions/new" className={primaryButton}>
-                Post a mission
+                <Copy k="missions.missions-view.post-a-mission">Post a mission</Copy>
               </Link>
             )}
           </div>
@@ -241,14 +242,14 @@ function FirstMission() {
         <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
           <TargetIcon aria-hidden className="size-5" />
         </span>
-        <h2 className="font-sans text-base font-semibold tracking-normal">No missions yet</h2>
+        <h2 className="font-sans text-base font-semibold tracking-normal"><Copy k="missions.missions-view.no-missions-yet">No missions yet</Copy></h2>
         <p className="max-w-md text-sm text-muted-foreground">
           {live
-            ? "Be the first to post one: a model, dataset or tool you wish existed, with points for whoever builds it."
-            : "Missions you post in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can see them yet."}
+            ? <Copy k="missions.missions-view.be-the-first-to-post" multiline>Be the first to post one: a model, dataset or tool you wish existed, with points for whoever builds it.</Copy>
+            : <Copy k="missions.missions-view.missions-you-post-in-this" multiline>Missions you post in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can see them yet.</Copy>}
         </p>
         <Link href="/missions/new" className={primaryButton}>
-          <PlusIcon aria-hidden className="size-4" /> Post the first mission
+          <PlusIcon aria-hidden className="size-4" /> <Copy k="missions.missions-view.post-the-first-mission">Post the first mission</Copy>
         </Link>
       </div>
       <ol className="mx-auto grid w-full max-w-3xl gap-3 pt-2 sm:grid-cols-3">
@@ -282,7 +283,7 @@ export function MissionCard({ m, now }: { m: Mission; now: number }) {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={state} />
           <DifficultyBadge difficulty={m.difficulty} />
-          {m.local && <span className="text-xs text-muted-foreground">Saved in this browser</span>}
+          {m.local && <span className="text-xs text-muted-foreground"><Copy k="missions.missions-view.saved-in-this-browser">Saved in this browser</Copy></span>}
         </div>
         <h2 className="font-sans text-base leading-snug font-semibold tracking-normal">
           <Link

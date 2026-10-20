@@ -4,7 +4,8 @@
 // fills its parent (keep the box square), decorative (aria-hidden, no error box), devicePixelRatio capped at 1.5,
 // one still frame under reduced motion or `still`, paused offscreen and in hidden tabs, settings as a prop,
 // cleans up on unmount.
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import { frameInterval, pixelRatio, useFx } from '@/lib/perf';
 
 const SETTINGS = {
   colorA: '#0c0e14', colorB: '#8fb4ff', colorC: '#e9ebf1',
@@ -15,10 +16,18 @@ const SETTINGS = {
 /** A ring printed as a halftone screen, breathing gently, on a transparent ground. A small focal accent. */
 export default function HalftoneOrbit({ className = '', settings = {}, still = false }) {
   const __root = useRef(null);
+  const api = useRef(null);
+  // perf (src/lib/perf.ts): pixel ratio and frame rate follow the quality tier; "off" or another heavy
+  // effect's turn on screen holds one still frame
+  const { quality, run } = useFx(__root, { minimum: 'medium' });
+  const live = run && !still;
+  useEffect(() => {
+    api.current?.set(quality, live);
+  }, [quality, live]);
 
   useLayoutEffect(() => {
     const canvas = __root.current.querySelector('canvas');
-    const state = { ...SETTINGS, ...settings, animate: !still };
+    const state = { ...SETTINGS, ...settings, animate: true };
     const numeric = ['scale', 'radius', 'width', 'density', 'angle', 'distortion', 'grain', 'intensity'];
     const colours = ['colorA', 'colorB', 'colorC'];
     const rgb = (hex) => [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255);
@@ -72,6 +81,7 @@ export default function HalftoneOrbit({ className = '', settings = {}, still = f
     `;
 
     let gl, program, buffer, shaders = [], uniforms = {};
+    let quality = 'high', live = false, drawnAt = 0;
     let frame = 0, last = 0, time = 0, visible = true, destroyed = false, lost = false;
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -108,7 +118,7 @@ export default function HalftoneOrbit({ className = '', settings = {}, still = f
     function draw() {
       if (destroyed || lost || !program) return;
       const box = canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const dpr = Math.min(pixelRatio(quality));
       const width = Math.max(1, Math.round(box.width * dpr));
       const height = Math.max(1, Math.round(box.height * dpr));
       if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
@@ -121,12 +131,14 @@ export default function HalftoneOrbit({ className = '', settings = {}, still = f
     }
     function tick(now) {
       frame = 0;
+      if (now - drawnAt < frameInterval(quality)) { schedule(); return; }
+      drawnAt = now;
       const delta = last ? Math.min((now - last) / 1000, 0.05) : 1 / 60;
       time += delta * state.speed;
       last = now; draw(); schedule();
     }
     function schedule() {
-      if (!frame && !destroyed && !lost && program && visible && !document.hidden && state.animate && state.speed > 0 && !motion.matches) {
+      if (!frame && !destroyed && !lost && program && live && visible && !document.hidden && state.animate && state.speed > 0 && !motion.matches) {
         frame = requestAnimationFrame(tick);
       }
     }
@@ -149,14 +161,16 @@ export default function HalftoneOrbit({ className = '', settings = {}, still = f
     canvas.addEventListener('webglcontextlost', contextLost);
     canvas.addEventListener('webglcontextrestored', contextRestored);
     refresh();
+    api.current = { set(q, l) { quality = q; live = l; refresh(); } };
     return () => {
+      api.current = null;
       destroyed = true; cancelAnimationFrame(frame); resize.disconnect(); intersection.disconnect();
       motion.removeEventListener('change', refresh); document.removeEventListener('visibilitychange', refresh);
       canvas.removeEventListener('webglcontextlost', contextLost); canvas.removeEventListener('webglcontextrestored', contextRestored);
       release();
     };
     // settings are read once at mount, like the original export
-  }, [still]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div ref={__root} aria-hidden="true" className={className} style={{ position: 'relative', overflow: 'hidden' }}>

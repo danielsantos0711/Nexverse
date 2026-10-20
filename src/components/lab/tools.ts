@@ -65,7 +65,18 @@ export type LabTool = {
   isNew?: boolean
   /** Needs the site's AI (sign-in to run); everything else runs only in the browser. */
   usesAi?: boolean
+  /** Set by admins in /admin/lists: shown first on the index with a star. */
+  featured?: boolean
+  /** Set by admins in /admin/lists: false hides the tool and its page. Missing means shown. */
+  enabled?: boolean
 }
+
+/*
+ * LAB_TOOLS and CATEGORIES below are the defaults. Admins rename, reorder, feature and switch off tools, and
+ * rename the shelves, in /admin/lists (site_content "lists.lab.tools" and "lists.lab.categories"): pages read
+ * that live version with useLabTools() / useLabShelves() (lib/lists/hooks.ts) or, on the server,
+ * getLabTools() / getLabShelves() (lib/lists/server.ts). Icons, tints and keywords always come from here.
+ */
 
 export const LAB_TOOLS: LabTool[] = [
   {

@@ -4,6 +4,7 @@ import { ArrowUpRightIcon, BookmarkIcon, HeartIcon, XIcon } from "lucide-react"
 import { STAR_KINDS, type Star } from "@/components/cosmos/model"
 import { primaryButton } from "@/components/forum/forum-ui"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 /** What the Open button says: most stars open their page; your own star opens your profile or asks you to sign in. */
 function openLabel(star: Star) {
@@ -38,12 +39,12 @@ export function StarCard({ star, liked, saved, onClose, className }: { star: Sta
         <p className="flex flex-wrap gap-1.5 text-xs text-gold">
           {liked && (
             <span className="inline-flex items-center gap-1 rounded-full border border-gold/25 bg-gold/10 px-2 py-0.5">
-              <HeartIcon aria-hidden className="size-3" /> You liked this
+              <HeartIcon aria-hidden className="size-3" /> <Copy k="cosmos.star-card.you-liked-this">You liked this</Copy>
             </span>
           )}
           {saved && (
             <span className="inline-flex items-center gap-1 rounded-full border border-gold/25 bg-gold/10 px-2 py-0.5">
-              <BookmarkIcon aria-hidden className="size-3" /> Saved
+              <BookmarkIcon aria-hidden className="size-3" /> <Copy k="cosmos.star-card.saved">Saved</Copy>
             </span>
           )}
         </p>

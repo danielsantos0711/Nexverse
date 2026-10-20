@@ -168,8 +168,8 @@ export async function Signal({ launch }: { launch?: React.ReactNode }) {
 
   return (
     <section aria-labelledby="signal-h" className="relative isolate">
-      {/* comets falling through the band: what arrived today */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[38rem] opacity-80 [mask-image:radial-gradient(ellipse_70%_60%_at_78%_32%,#000_15%,transparent_72%)] max-lg:[mask-image:radial-gradient(ellipse_90%_45%_at_70%_18%,#000_10%,transparent_70%)]">
+      {/* comets falling through the band: what arrived today (the fade at its edges is drawn by the shader) */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[38rem] opacity-80">
         <CometStreaks className="size-full" settings={{ coverage: 0.3 }} />
       </div>
 

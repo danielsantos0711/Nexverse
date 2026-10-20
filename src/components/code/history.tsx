@@ -18,6 +18,7 @@ import { DiffList } from "./diff-view"
 import { RefPicker } from "./ref-picker"
 import { resolveRef, useRepo } from "./repo-context"
 import { Avatar, EmptyState, ErrorNote, FormError, href, inputCls, Panel, PanelHead, PersonName, plural, useLoad } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /* History, one commit with its diff, and comparing two refs (where pull requests start). */
 
@@ -53,7 +54,7 @@ export function CommitRows({ commits, base }: { commits: CommitMeta[]; base: str
                     <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                       <Avatar person={c.author} size={16} />
                       <span className="text-foreground/80">{c.author?.handle ?? c.authorName}</span> committed <TimeAgo date={c.createdAt} />
-                      {c.parents.length > 1 && <span className="rounded-full border border-border px-1.5">merge</span>}
+                      {c.parents.length > 1 && <span className="rounded-full border border-border px-1.5"><Copy k="code-repo.history.merge">merge</Copy></span>}
                       {c.stats.added !== undefined && (
                         <span className="tabular">
                           · {[c.stats.added && `${c.stats.added} added`, c.stats.modified && `${c.stats.modified} changed`, c.stats.removed && `${c.stats.removed} removed`].filter(Boolean).join(", ") || "no file changes"}
@@ -122,7 +123,7 @@ export function HistoryPage({ refName, path }: { refName: string; path: string }
         <Skeleton className="h-96 w-full rounded-xl" />
       ) : !list.data || !list.data.commits.length ? (
         <Panel>
-          <EmptyState icon={HistoryIcon} title="No commits here">
+          <EmptyState icon={HistoryIcon} title={<Copy k="code-repo.history.no-commits-here">No commits here</Copy>}>
             {head ? "Nothing on this branch changed this path." : "There is no branch, tag or commit with that name."}
           </EmptyState>
         </Panel>
@@ -152,7 +153,7 @@ export function CommitPage({ sha }: { sha: string }) {
     return { c, parent, changes: compareTrees(parent?.tree ?? null, c.tree) }
   }, [repo.id, sha])
   if (data.error) return <ErrorNote error={data.error} onRetry={data.reload} />
-  if (!data.data) return data.loading ? <Skeleton className="h-96 w-full rounded-xl" /> : <Panel><EmptyState icon={GitCommitHorizontalIcon} title="There is no commit with that id in this repository" /></Panel>
+  if (!data.data) return data.loading ? <Skeleton className="h-96 w-full rounded-xl" /> : <Panel><EmptyState icon={GitCommitHorizontalIcon} title={<Copy k="code-repo.history.there-is-no-commit-with">There is no commit with that id in this repository</Copy>} /></Panel>
   const { c, changes } = data.data
   const [title, ...rest] = c.message.split("\n")
   return (
@@ -180,7 +181,7 @@ export function CommitPage({ sha }: { sha: string }) {
           </span>
         </PanelHead>
       </Panel>
-      {c.parents.length > 1 && <p className="text-sm text-muted-foreground">A merge commit: the diff below is against its first parent.</p>}
+      {c.parents.length > 1 && <p className="text-sm text-muted-foreground"><Copy k="code-repo.history.a-merge-commit-the-diff">A merge commit: the diff below is against its first parent.</Copy></p>}
       <DiffList changes={changes} oldRepo={repo.id} newRepo={repo.id} base={base} newRef={c.id} />
     </div>
   )
@@ -227,13 +228,13 @@ export function ComparePage() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <GitCompareIcon aria-hidden className="size-5 text-ion" /> Compare changes
+          <GitCompareIcon aria-hidden className="size-5 text-ion" /> <Copy k="code-repo.history.compare-changes">Compare changes</Copy>
         </h2>
-        <p className="text-sm text-muted-foreground">Pick a branch to merge into, and the branch (here or in a fork) with the changes. The diff shows what the second one would bring in.</p>
+        <p className="text-sm text-muted-foreground"><Copy k="code-repo.history.pick-a-branch-to-merge" multiline>Pick a branch to merge into, and the branch (here or in a fork) with the changes. The diff shows what the second one would bring in.</Copy></p>
       </div>
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card/40 p-3 text-sm">
         <label className="flex items-center gap-1.5">
-          <span className="text-muted-foreground">into</span>
+          <span className="text-muted-foreground"><Copy k="code-repo.history.into">into</Copy></span>
           <select value={baseRef} onChange={(e) => set({ base: e.target.value })} className={cn(inputCls, "h-8 w-auto font-mono")}>
             {branches.map((b) => (
               <option key={b.name}>{b.name}</option>
@@ -242,7 +243,7 @@ export function ComparePage() {
         </label>
         <ArrowLeftRightIcon aria-hidden className="size-4 text-muted-foreground" />
         <label className="flex items-center gap-1.5">
-          <span className="text-muted-foreground">from</span>
+          <span className="text-muted-foreground"><Copy k="code-repo.history.from">from</Copy></span>
           <select value={headRepo.id} onChange={(e) => set({ fork: e.target.value === repo.id ? null : e.target.value, head: null })} className={cn(inputCls, "h-8 w-auto")} aria-label="Repository with the changes">
             <option value={repo.id}>{ownerKey(repo.owner)}/{repo.slug}</option>
             {(repos.data?.forks ?? []).map((f) => (
@@ -267,17 +268,17 @@ export function ComparePage() {
 
       {!headRef ? (
         <Panel>
-          <EmptyState icon={GitCompareIcon} title="Choose a branch to compare">
+          <EmptyState icon={GitCompareIcon} title={<Copy k="code-repo.history.choose-a-branch-to-compare">Choose a branch to compare</Copy>}>
             Branches you create while editing, or branches in your fork, can be compared here and turned into a pull request.
           </EmptyState>
         </Panel>
       ) : cmp.error ? (
         <ErrorNote error={cmp.error} onRetry={cmp.reload} />
       ) : !cmp.data ? (
-        cmp.loading ? <Skeleton className="h-72 w-full rounded-xl" /> : <Panel><EmptyState icon={GitCompareIcon} title="One of those branches does not exist" /></Panel>
+        cmp.loading ? <Skeleton className="h-72 w-full rounded-xl" /> : <Panel><EmptyState icon={GitCompareIcon} title={<Copy k="code-repo.history.one-of-those-branches-does">One of those branches does not exist</Copy>} /></Panel>
       ) : cmp.data.base.id === cmp.data.head.id || (!cmp.data.commits.length && !cmp.data.changes.length) ? (
         <Panel>
-          <EmptyState icon={GitCompareIcon} title="There is nothing to compare">
+          <EmptyState icon={GitCompareIcon} title={<Copy k="code-repo.history.there-is-nothing-to-compare">There is nothing to compare</Copy>}>
             {baseRef} already has everything in {headRef}.
           </EmptyState>
         </Panel>
@@ -290,14 +291,14 @@ export function ComparePage() {
               </span>
             ) : cmp.data.merge && !cmp.data.merge.conflicts.length ? (
               <span className="flex items-center gap-2 text-ok">
-                <GitMergeIcon aria-hidden className="size-4" /> Able to merge with a merge commit. No file changed on both sides.
+                <GitMergeIcon aria-hidden className="size-4" /> <Copy k="code-repo.history.able-to-merge-with-a">Able to merge with a merge commit. No file changed on both sides.</Copy>
               </span>
             ) : cmp.data.merge ? (
               <span className="flex items-center gap-2 text-gold">
                 <GitMergeIcon aria-hidden className="size-4" /> {plural(cmp.data.merge.conflicts.length, "file")} changed on both branches. You can still open a pull request; it can be merged once they are reconciled.
               </span>
             ) : (
-              <span className="text-gold">These branches share no history, so they cannot be merged.</span>
+              <span className="text-gold"><Copy k="code-repo.history.these-branches-share-no-history">These branches share no history, so they cannot be merged.</Copy></span>
             )}
             <span className="ml-auto text-muted-foreground">
               {plural(cmp.data.commits.length, "commit")} · {plural(cmp.data.changes.length, "file")}
@@ -313,11 +314,11 @@ export function ComparePage() {
             </p>
           )}
           <section className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Commits</h3>
+            <h3 className="text-sm font-medium"><Copy k="code-repo.history.commits">Commits</Copy></h3>
             <CommitRows commits={cmp.data.commits} base={repoPath(headRepo)} />
           </section>
           <section className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Files changed</h3>
+            <h3 className="text-sm font-medium"><Copy k="code-repo.history.files-changed">Files changed</Copy></h3>
             <DiffList changes={cmp.data.changes} oldRepo={cmp.data.baseBlobsRepo} newRepo={headRepo.id} base={repoPath(headRepo)} newRef={headRef} />
           </section>
         </>
@@ -352,7 +353,7 @@ function NewPullForm({ headRepo, headRef, baseRef, firstMessage }: { headRepo: R
       className="flex flex-col gap-3 rounded-xl border border-ion/25 bg-ion/[0.04] p-4"
     >
       <h3 className="flex items-center gap-2 text-sm font-medium">
-        <GitPullRequestIcon aria-hidden className="size-4 text-ion" /> Open a pull request
+        <GitPullRequestIcon aria-hidden className="size-4 text-ion" /> <Copy k="code-repo.history.open-a-pull-request">Open a pull request</Copy>
       </h3>
       <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} aria-label="Title" className={inputCls} />
       <MarkdownComposer id="pull-body" value={body} onChange={setBody} label="Description" placeholder="What does this change, and why?" rows={5} maxLength={30000} />

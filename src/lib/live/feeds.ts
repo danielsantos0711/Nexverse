@@ -5,7 +5,7 @@
  * and is cached only briefly, so the page still renders and a later visitor triggers a retry.
  */
 import { cacheLife, cacheTag } from "next/cache"
-import { GH_TOPICS, RELEASE_REPOS } from "./catalog"
+import { getGhTopics, getReleaseRepos } from "@/lib/lists/server"
 import { asArray, fetchSafe, getJson, isRecord } from "./http"
 import { normalizeGh, parseReleasesAtom } from "./parse"
 import type { Feed, GhReleaseItem, GhRepo } from "./types"
@@ -62,11 +62,12 @@ export async function githubTopicRepos(topic: string, mode: "new" | "active" = "
 }
 
 /**
- * New and rising open-source AI repositories across the topics Nexverse follows: created in the last 30 days,
+ * New and rising open-source AI repositories across the topics Nexverse follows (the admins' featured topics): created in the last 30 days,
  * most starred first. Built from the per-topic feeds, so it shares their cache entries.
  */
 export async function githubTrendingAi(limit = 9): Promise<Feed<GhRepo>> {
-  const feeds = await Promise.all(GH_TOPICS.map((t) => githubTopicRepos(t.id, "new", 12)))
+  const topics = await getGhTopics()
+  const feeds = await Promise.all(topics.map((t) => githubTopicRepos(t.id, "new", 12)))
   const seen = new Set<string>()
   const items = feeds
     .flatMap((f) => f.items)
@@ -91,7 +92,8 @@ export async function githubRepoReleases(owner: string, name: string): Promise<F
 
 /** Recent releases of popular open-source AI projects, newest first. */
 export async function githubReleases(limit = 8): Promise<Feed<GhReleaseItem>> {
-  const feeds = await Promise.all(RELEASE_REPOS.map(([o, n]) => githubRepoReleases(o, n)))
+  const repos = await getReleaseRepos()
+  const feeds = await Promise.all(repos.map(([o, n]) => githubRepoReleases(o, n)))
   const items = feeds
     .flatMap((f) => f.items)
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))

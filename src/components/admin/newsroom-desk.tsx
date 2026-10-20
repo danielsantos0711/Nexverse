@@ -11,7 +11,7 @@ import { NewsroomSettingsPanel } from "@/components/admin/newsroom-settings"
 import { NewsroomSources } from "@/components/admin/newsroom-sources"
 import { NewsroomTips } from "@/components/admin/newsroom-tips"
 import { Gate } from "@/components/moderation/gate"
-import { CategoryTag, UnconfirmedBadge } from "@/components/news/bits"
+import { CategoryTag, GeneratedCoverPreview, StoryCover, UnconfirmedBadge } from "@/components/news/bits"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { useCaps } from "@/lib/caps"
-import { collectNow, deleteStory, listStories, refreshPublicNews, setFeatured, setStoryStatus, storyHref, type QueueFilter, type RunSummary, type Story } from "@/lib/newsroom"
+import { collectNow, DEPTHS, deleteStory, listStories, refreshPublicNews, setFeatured, setStoryStatus, storyHref, type QueueFilter, type RunSummary, type Story } from "@/lib/newsroom"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
@@ -63,7 +63,10 @@ function Desk() {
   return (
     <section aria-labelledby="nr-title" className="flex flex-col gap-5">
       <div id="nr-title">
-        <AdminHeading title="Newsroom" lead="Stories the free AI drafted from official sources, and the ones editors write. Nothing reaches /news until an editor publishes it, unless auto-publish is on for its category.">
+        <AdminHeading
+          title="Newsroom"
+          lead="Stories the free AI researched from official sources, and the ones editors write. Nothing reaches /news until an editor publishes it, unless auto-publish is on for its category. Depth, length, sections, tone, categories, schedule and covers are under Settings."
+        >
           <CollectNow />
         </AdminHeading>
       </div>
@@ -126,13 +129,13 @@ function CollectNow() {
     }
   }
   const line = result
-    ? `Checked ${result.sourcesChecked} sources, ${result.signalsNew} new signals, ${result.drafts} draft${result.drafts === 1 ? "" : "s"}${result.published ? `, ${result.published} published` : ""}${result.rejected ? `, ${result.rejected} not saved` : ""}.${result.note ? ` ${result.note}` : ""}`
+    ? `Checked ${result.sourcesChecked} sources, ${result.signalsNew} new signals, ${result.drafts} draft${result.drafts === 1 ? "" : "s"}${result.published ? `, ${result.published} published` : ""}${result.deep ? ` (${result.deep} researched in depth)` : ""}${result.rejected ? `, ${result.rejected} not saved` : ""}.${result.note ? ` ${result.note}` : ""}`
     : null
   return (
     <div className="flex max-w-md flex-col items-end gap-1.5">
       <Button onClick={run} disabled={busy || !live}>
         <RadarIcon aria-hidden className={cn(busy && "motion-safe:animate-spin")} />
-        {busy ? "Collecting… (up to a few minutes)" : "Collect now"}
+        {busy ? "Collecting and researching… (up to five minutes)" : "Collect now"}
       </Button>
       <StatusLine status={error ? { ok: false, text: error } : line ? { ok: true, text: line } : null} className="text-right" />
     </div>
@@ -196,9 +199,7 @@ function Queue() {
           </button>
         ))}
       </div>
-      {!canPublish && (
-        <Notice title="You can write and edit drafts">An editor with publishing rights (news.publish) publishes, schedules and features stories.</Notice>
-      )}
+      {!canPublish && <Notice title="You can write and edit drafts">An editor with publishing rights (news.publish) publishes, schedules and features stories.</Notice>}
       <StatusLine status={status} />
 
       {loading ? (
@@ -224,114 +225,135 @@ function Queue() {
       ) : (
         <ul className="flex flex-col gap-3">
           {data.stories.map((s) => (
-            <li key={s.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card/50 p-4">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <CategoryTag category={s.category} />
-                {s.unconfirmed && <UnconfirmedBadge />}
-                {s.aiGenerated ? (
-                  <Badge variant="outline" className="gap-1">
-                    <SparklesIcon aria-hidden className="size-3" /> AI draft{s.model ? ` · ${s.model}` : ""}
+            <li key={s.id} className="flex flex-col gap-3 rounded-xl border border-border bg-card/50 p-4 sm:flex-row">
+              <div className="relative aspect-[16/9] w-full shrink-0 overflow-hidden rounded-lg ring-1 ring-white/10 sm:w-40">
+                {s.cover || s.status === "published" ? <StoryCover story={s} /> : <GeneratedCoverPreview title={s.title} category={s.category} />}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <CategoryTag category={s.category} />
+                  {s.unconfirmed && <UnconfirmedBadge />}
+                  {s.aiGenerated ? (
+                    <Badge variant="outline" className="gap-1">
+                      <SparklesIcon aria-hidden className="size-3" /> AI draft{s.model ? ` · ${s.model}` : ""}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">By {s.writer?.name ?? "an editor"}</Badge>
+                  )}
+                  {s.featured && <Badge className="bg-gold/15 text-gold">Exclusive</Badge>}
+                  <Badge variant="outline">
+                    {DEPTHS.find((x) => x.id === s.depth)?.label ?? "Short"}
+                    {s.wordCount ? ` · ${s.wordCount} words` : ""}
+                    {s.sources.length > 1 ? ` · ${s.sources.length} sources` : ""}
                   </Badge>
-                ) : (
-                  <Badge variant="outline">By {s.writer?.name ?? "an editor"}</Badge>
+                  <span>
+                    {filter === "scheduled" && s.publishedAt
+                      ? `Goes out ${new Date(s.publishedAt).toLocaleString()}`
+                      : filter === "published" && s.publishedAt
+                        ? `Published ${when(s.publishedAt)}`
+                        : `Created ${when(s.createdAt)}`}
+                  </span>
+                  {s.editor && <span>· edited by {s.editor.name}</span>}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <h3 className="font-semibold">{s.title}</h3>
+                  {s.dek && <p className="text-sm text-muted-foreground">{s.dek}</p>}
+                  {s.rejectNote && <p className="text-sm text-destructive">Rejected: {s.rejectNote}</p>}
+                </div>
+                {s.sources.length > 0 && (
+                  <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                    {s.sources.map((src) => (
+                      <li key={src.url} className="min-w-0">
+                        <a href={src.url} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex max-w-[22rem] items-center gap-1 text-ion hover:underline">
+                          <ExternalLinkIcon aria-hidden className="size-3 shrink-0" />
+                          <span className="truncate">
+                            {src.publisher ? `${src.publisher}: ` : ""}
+                            {src.title || src.url}
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-                {s.featured && <Badge className="bg-gold/15 text-gold">Exclusive</Badge>}
-                <span>
-                  {filter === "scheduled" && s.publishedAt
-                    ? `Goes out ${new Date(s.publishedAt).toLocaleString()}`
-                    : filter === "published" && s.publishedAt
-                      ? `Published ${when(s.publishedAt)}`
-                      : `Created ${when(s.createdAt)}`}
-                </span>
-                {s.editor && <span>· edited by {s.editor.name}</span>}
-              </div>
-              <div className="flex flex-col gap-1">
-                <h3 className="font-semibold">{s.title}</h3>
-                {s.dek && <p className="text-sm text-muted-foreground">{s.dek}</p>}
-                {s.rejectNote && <p className="text-sm text-destructive">Rejected: {s.rejectNote}</p>}
-              </div>
-              {s.sources.length > 0 && (
-                <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                  {s.sources.map((src) => (
-                    <li key={src.url} className="min-w-0">
-                      <a href={src.url} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex max-w-[22rem] items-center gap-1 text-ion hover:underline">
-                        <ExternalLinkIcon aria-hidden className="size-3 shrink-0" />
-                        <span className="truncate">{src.publisher ? `${src.publisher}: ` : ""}{src.title || src.url}</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {(filter !== "published" && filter !== "scheduled") || canPublish ? (
-                  <Button size="sm" variant="outline" nativeButton={false} render={<Link href={`/admin/newsroom?tab=write&story=${s.id}` as Route} />}>
-                    <PencilIcon aria-hidden /> Edit
-                  </Button>
-                ) : null}
-                {canPublish && filter !== "published" && (
-                  <Button size="sm" disabled={busy === s.id} onClick={() => act(s, () => setStoryStatus(s.id, "published"), "Published. It is on /news now.")}>
-                    <CheckIcon aria-hidden /> Publish
-                  </Button>
-                )}
-                {canPublish && filter !== "published" && (
-                  <Button size="sm" variant="outline" disabled={busy === s.id} onClick={() => setScheduling(s)}>
-                    <CalendarClockIcon aria-hidden /> Schedule
-                  </Button>
-                )}
-                {canPublish && (filter === "published" || filter === "scheduled") && (
-                  <Button size="sm" variant="outline" disabled={busy === s.id} onClick={() => act(s, () => setStoryStatus(s.id, "draft"), "Back in the drafts.")}>
-                    <Undo2Icon aria-hidden /> Unpublish
-                  </Button>
-                )}
-                {canPublish && filter === "published" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busy === s.id}
-                    onClick={() =>
-                      act(
-                        s,
-                        async () => {
-                          await setFeatured(s.id, !s.featured)
-                          setData((d) => (d ? { ...d, stories: d.stories.map((x) => (x.id === s.id ? { ...x, featured: !s.featured } : x)) } : d))
-                        },
-                        s.featured ? "No longer the Nexverse Exclusive." : "Now leads /news as the Nexverse Exclusive.",
-                        { drop: false }
-                      )
-                    }
-                  >
-                    {s.featured ? <StarOffIcon aria-hidden /> : <StarIcon aria-hidden />}
-                    {s.featured ? "Unfeature" : "Make it the Exclusive"}
-                  </Button>
-                )}
-                {filter === "published" && (
-                  <Button size="sm" variant="ghost" nativeButton={false} render={<Link href={storyHref(s)} />}>
-                    View
-                  </Button>
-                )}
-                {filter === "draft" && (
-                  <Button size="sm" variant="ghost" disabled={busy === s.id} onClick={() => setRejecting(s)}>
-                    <XIcon aria-hidden /> Reject
-                  </Button>
-                )}
-                {filter === "rejected" && (
-                  <Button size="sm" variant="outline" disabled={busy === s.id} onClick={() => act(s, () => setStoryStatus(s.id, "draft"), "Back in the drafts.")}>
-                    <Undo2Icon aria-hidden /> Back to drafts
-                  </Button>
-                )}
-                {canPublish && (
-                  <Button size="sm" variant="ghost" className="ml-auto text-destructive hover:text-destructive" disabled={busy === s.id} onClick={() => setRemoving(s)}>
-                    <Trash2Icon aria-hidden /> Delete
-                  </Button>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  {(filter !== "published" && filter !== "scheduled") || canPublish ? (
+                    <Button size="sm" variant="outline" nativeButton={false} render={<Link href={`/admin/newsroom?tab=write&story=${s.id}` as Route} />}>
+                      <PencilIcon aria-hidden /> Edit
+                    </Button>
+                  ) : null}
+                  {canPublish && filter !== "published" && (
+                    <Button size="sm" disabled={busy === s.id} onClick={() => act(s, () => setStoryStatus(s.id, "published"), "Published. It is on /news now.")}>
+                      <CheckIcon aria-hidden /> Publish
+                    </Button>
+                  )}
+                  {canPublish && filter !== "published" && (
+                    <Button size="sm" variant="outline" disabled={busy === s.id} onClick={() => setScheduling(s)}>
+                      <CalendarClockIcon aria-hidden /> Schedule
+                    </Button>
+                  )}
+                  {canPublish && (filter === "published" || filter === "scheduled") && (
+                    <Button size="sm" variant="outline" disabled={busy === s.id} onClick={() => act(s, () => setStoryStatus(s.id, "draft"), "Back in the drafts.")}>
+                      <Undo2Icon aria-hidden /> Unpublish
+                    </Button>
+                  )}
+                  {canPublish && filter === "published" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy === s.id}
+                      onClick={() =>
+                        act(
+                          s,
+                          async () => {
+                            await setFeatured(s.id, !s.featured)
+                            setData((d) => (d ? { ...d, stories: d.stories.map((x) => (x.id === s.id ? { ...x, featured: !s.featured } : x)) } : d))
+                          },
+                          s.featured ? "No longer the Nexverse Exclusive." : "Now leads /news as the Nexverse Exclusive.",
+                          { drop: false }
+                        )
+                      }
+                    >
+                      {s.featured ? <StarOffIcon aria-hidden /> : <StarIcon aria-hidden />}
+                      {s.featured ? "Unfeature" : "Make it the Exclusive"}
+                    </Button>
+                  )}
+                  {filter === "published" && (
+                    <Button size="sm" variant="ghost" nativeButton={false} render={<Link href={storyHref(s)} />}>
+                      View
+                    </Button>
+                  )}
+                  {filter === "draft" && (
+                    <Button size="sm" variant="ghost" disabled={busy === s.id} onClick={() => setRejecting(s)}>
+                      <XIcon aria-hidden /> Reject
+                    </Button>
+                  )}
+                  {filter === "rejected" && (
+                    <Button size="sm" variant="outline" disabled={busy === s.id} onClick={() => act(s, () => setStoryStatus(s.id, "draft"), "Back in the drafts.")}>
+                      <Undo2Icon aria-hidden /> Back to drafts
+                    </Button>
+                  )}
+                  {canPublish && (
+                    <Button size="sm" variant="ghost" className="ml-auto text-destructive hover:text-destructive" disabled={busy === s.id} onClick={() => setRemoving(s)}>
+                      <Trash2Icon aria-hidden /> Delete
+                    </Button>
+                  )}
+                </div>
               </div>
             </li>
           ))}
         </ul>
       )}
 
-      <ScheduleDialog story={scheduling} onClose={() => setScheduling(null)} onConfirm={(s, at) => act(s, () => setStoryStatus(s.id, "scheduled", { at }), `Scheduled for ${new Date(at).toLocaleString()}.`).then((ok) => ok && setScheduling(null))} />
-      <RejectDialog story={rejecting} onClose={() => setRejecting(null)} onConfirm={(s, note) => act(s, () => setStoryStatus(s.id, "rejected", { note }), "Rejected.").then((ok) => ok && setRejecting(null))} />
+      <ScheduleDialog
+        story={scheduling}
+        onClose={() => setScheduling(null)}
+        onConfirm={(s, at) => act(s, () => setStoryStatus(s.id, "scheduled", { at }), `Scheduled for ${new Date(at).toLocaleString()}.`).then((ok) => ok && setScheduling(null))}
+      />
+      <RejectDialog
+        story={rejecting}
+        onClose={() => setRejecting(null)}
+        onConfirm={(s, note) => act(s, () => setStoryStatus(s.id, "rejected", { note }), "Rejected.").then((ok) => ok && setRejecting(null))}
+      />
       <Dialog open={Boolean(removing)} onOpenChange={(o) => !o && setRemoving(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

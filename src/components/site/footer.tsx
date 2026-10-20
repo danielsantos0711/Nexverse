@@ -5,6 +5,8 @@ import type { Route } from "next"
 import { Lockup } from "@/components/brand"
 import { useMenus } from "@/lib/menus"
 import { useSiteSettings } from "@/lib/site-settings"
+import { Copy } from "@/components/content/copy"
+import { MobileTabBar } from "@/components/site/mobile-tab-bar"
 
 export function SiteFooter() {
   const { settings } = useSiteSettings()
@@ -15,7 +17,8 @@ export function SiteFooter() {
   const extra = settings.footer.links.filter((l) => l.label && l.href.startsWith("/") && !l.href.startsWith("//"))
 
   return (
-    <footer className="relative mt-24 border-t border-border">
+    // Bottom padding on phones keeps the last line clear of the floating tab bar.
+    <footer className="relative mt-24 border-t border-border pb-24 lg:pb-0">
       {/* a faint horizon of light along the top edge */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-ion/40 to-transparent" />
       <div className="shell grid gap-12 py-14 md:py-16 lg:grid-cols-[1.3fr_2fr]">
@@ -25,11 +28,11 @@ export function SiteFooter() {
           </Link>
           <p className="max-w-[40ch] text-sm leading-relaxed text-muted-foreground">{settings.brand.tagline ? `${settings.brand.tagline}. ` : ""}{settings.brand.description}</p>
           <div className="flex flex-wrap gap-2">
-            <Link href="/share" className="pressable inline-flex h-9 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground">
-              Share something
+            <Link href="/share" className="halo-btn">
+              <Copy k="footer.cta.share">Launch something</Copy>
             </Link>
-            <Link href="/explore" className="pressable inline-flex h-9 items-center rounded-full border border-border px-4 text-sm text-foreground/85 hover:border-white/20 hover:text-foreground">
-              Explore
+            <Link href="/explore" className="liquid-glass-pill inline-flex h-9 items-center px-4 text-sm text-foreground/85 hover:text-foreground">
+              <Copy k="footer.cta.explore">Explore the galaxy</Copy>
             </Link>
           </div>
         </div>
@@ -67,8 +70,11 @@ export function SiteFooter() {
             ))}
           </nav>
         )}
-        <p>Space imagery: NASA, ESA, CSA, STScI and NASA/JPL-Caltech (public domain), graded for this site.</p>
+        <p>
+          <Copy k="footer.credit">Space imagery: NASA, ESA, CSA, STScI and NASA/JPL-Caltech (public domain), graded for this site.</Copy>
+        </p>
       </div>
+      <MobileTabBar />
     </footer>
   )
 }

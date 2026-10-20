@@ -9,6 +9,7 @@ import { getPerson, listRepos } from "@/lib/code/api"
 import { useSession } from "@/lib/store"
 import { RepoCard } from "./repo-card"
 import { Avatar, EmptyState, ErrorNote, personHref, useLoad } from "./ui"
+import { Copy } from "@/components/content/copy"
 
 /** /code/<owner>: a member's repositories (their private ones too, when it is you). */
 export function OwnerRepos({ owner }: { owner: string }) {
@@ -30,7 +31,7 @@ export function OwnerRepos({ owner }: { owner: string }) {
   if (!data.data)
     return (
       <div className="pt-10">
-        <EmptyState icon={FolderGit2Icon} title="No member has that name" action={<Button size="sm" variant="outline" nativeButton={false} render={<Link href="/code" />}>Explore repositories</Button>}>
+        <EmptyState icon={FolderGit2Icon} title={<Copy k="code.owner-repos.no-member-has-that-name">No member has that name</Copy>} action={<Button size="sm" variant="outline" nativeButton={false} render={<Link href="/code" />}><Copy k="code.owner-repos.explore-repositories">Explore repositories</Copy></Button>}>
           Check the address; members are found by their handle.
         </EmptyState>
       </div>
@@ -51,7 +52,7 @@ export function OwnerRepos({ owner }: { owner: string }) {
           </div>
           {mine && (
             <Button className="ml-auto" nativeButton={false} render={<Link href="/code/new" />}>
-              New repository
+              <Copy k="code.owner-repos.new-repository">New repository</Copy>
             </Button>
           )}
         </div>

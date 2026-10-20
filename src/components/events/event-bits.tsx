@@ -1,7 +1,9 @@
 import { BookOpenIcon, MapPinIcon, MessageCircleQuestionIcon, MonitorIcon, UsersIcon, type LucideIcon } from "lucide-react"
 import { PosterAvatar } from "@/components/forum/forum-ui"
-import { EVENT_KINDS, type EventKind, type EventMode, type Who } from "@/lib/community"
+import { type EventKind, type EventMode, type Who } from "@/lib/community"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
+import { useEventKinds } from "@/lib/lists/hooks"
 
 export const KIND_ICON: Record<EventKind, LucideIcon> = {
   "paper-club": BookOpenIcon,
@@ -18,6 +20,7 @@ const KIND_TONE: Record<EventKind, string> = {
 }
 
 export function KindBadge({ kind, className }: { kind: EventKind; className?: string }) {
+  const EVENT_KINDS = useEventKinds()
   const Icon = KIND_ICON[kind]
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium", KIND_TONE[kind], className)}>
@@ -52,7 +55,7 @@ export function AvatarStack({ people, max = 6, size = 26, label, className }: { 
       {people.length > shown.length && (
         <li className="grid place-items-center rounded-full bg-secondary text-[11px] text-muted-foreground tabular ring-2 ring-background" style={{ width: size, height: size }}>
           +{people.length - shown.length}
-          <span className="sr-only"> more</span>
+          <span className="sr-only"> <Copy k="events.event-bits.more">more</Copy></span>
         </li>
       )}
     </ul>

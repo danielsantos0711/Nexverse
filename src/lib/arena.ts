@@ -59,6 +59,10 @@ async function requireMe() {
 
 export type DuelTask = "code" | "writing" | "reasoning" | "translation" | "other"
 
+/**
+ * The five tasks the database accepts (duels.task). Admins rename them, reorder them and choose which ones new
+ * duels can use in /admin/lists; useDuelTasks() in lib/lists/hooks.ts returns that live version.
+ */
 export const DUEL_TASKS: Record<DuelTask, { label: string; blurb: string }> = {
   code: { label: "Code", blurb: "Write, fix or explain code." },
   writing: { label: "Writing", blurb: "Emails, stories, summaries, tone." },
@@ -294,7 +298,8 @@ export function validateDuel(d: NewDuel): Partial<Record<"prompt" | "outputA" | 
   else if (na && na.toLowerCase() === nb.toLowerCase()) e.modelB = "A duel needs two different models."
   if (!d.langs.length) e.langs = "Pick at least one language."
   else if (d.langs.length > DUEL_LIMITS.langs) e.langs = `Pick up to ${DUEL_LIMITS.langs} languages.`
-  else if (d.langs.some((l) => !(l in LANGUAGES))) e.langs = "Pick languages from the list."
+  // Any two-letter code the database accepts: admins can add languages beyond the built-in ones.
+  else if (d.langs.some((l) => !(l in LANGUAGES) && !/^[a-z]{2}$/.test(l))) e.langs = "Pick languages from the list."
   return e
 }
 

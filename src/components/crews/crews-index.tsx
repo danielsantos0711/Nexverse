@@ -11,6 +11,7 @@ import { listCrews, myStandings, type Crew, type Standing } from "@/lib/crews"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
 
 type View = "discover" | "yours"
 const VIEWS: { value: View; label: string }[] = [
@@ -100,7 +101,7 @@ export function CrewsIndex() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label className="relative flex-1 md:w-64 md:flex-none">
-            <span className="sr-only">Search crews</span>
+            <span className="sr-only"><Copy k="crews.crews-index.search-crews">Search crews</Copy></span>
             <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
@@ -112,7 +113,7 @@ export function CrewsIndex() {
             />
           </label>
           <Link href="/crews/new" className={primaryButton}>
-            <PlusIcon aria-hidden className="size-4" /> Start a crew
+            <PlusIcon aria-hidden className="size-4" /> <Copy k="crews.crews-index.start-a-crew">Start a crew</Copy>
           </Link>
         </div>
       </div>
@@ -171,18 +172,18 @@ export function CrewsIndex() {
             </span>
             <p className="max-w-sm text-sm text-muted-foreground">
               {query || tag
-                ? "No crew matches that. Try another word or topic."
+                ? <Copy k="crews.crews-index.no-crew-matches-that-try">No crew matches that. Try another word or topic.</Copy>
                 : view === "yours"
                   ? live && !user
-                    ? "Sign in to see the crews you are in."
-                    : "You are not in a crew yet. Join one from Discover, or start your own."
+                    ? <Copy k="crews.crews-index.sign-in-to-see-the">Sign in to see the crews you are in.</Copy>
+                    : <Copy k="crews.crews-index.you-are-not-in-a">You are not in a crew yet. Join one from Discover, or start your own.</Copy>
                   : live
-                    ? "No crews yet. Start the first one: a lab, a study group or a project team, with a wall, a chat room and shared collections."
-                    : "Crews you start in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can join them yet."}
+                    ? <Copy k="crews.crews-index.no-crews-yet-start-the" multiline>No crews yet. Start the first one: a lab, a study group or a project team, with a wall, a chat room and shared collections.</Copy>
+                    : <Copy k="crews.crews-index.crews-you-start-in-this" multiline>Crews you start in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can join them yet.</Copy>}
             </p>
             {live && !user && view === "yours" ? (
               <Link href="/sign-in?next=%2Fcrews" className={primaryButton}>
-                Sign in
+                <Copy k="crews.crews-index.sign-in">Sign in</Copy>
               </Link>
             ) : (
               !query &&
