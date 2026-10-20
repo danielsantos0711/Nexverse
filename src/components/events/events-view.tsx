@@ -9,12 +9,13 @@ import { DateTile, EventWhen } from "@/components/events/event-time"
 import { primaryButton, rise, riseDelay } from "@/components/forum/forum-ui"
 import { useNow } from "@/components/live/time"
 import { Skeleton } from "@/components/ui/skeleton"
-import { EVENT_KINDS, type Attendees, type CommunityEvent, type EventKind } from "@/lib/community"
+import { type Attendees, type CommunityEvent, type EventKind } from "@/lib/community"
 import { getAttendeesMany, listEvents } from "@/lib/events"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
+import { useEventKinds } from "@/lib/lists/hooks"
 
 type View = "upcoming" | "past" | "mine"
 const VIEWS: { value: View; label: string }[] = [
@@ -25,6 +26,7 @@ const VIEWS: { value: View; label: string }[] = [
 
 /** Every event: upcoming soonest first, past most recent first, and the ones you RSVP'd to. */
 export function EventsView() {
+  const EVENT_KINDS = useEventKinds()
   const { ready, user } = useSession()
   const now = useNow()
   const reduce = useReducedMotion()

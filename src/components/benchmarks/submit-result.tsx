@@ -9,11 +9,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { BENCHMARKS, getBenchmark, submitResult, validateResult, type BenchmarkResult, type NewResult, type ResultErrors } from "@/lib/benchmarks"
+import { getBenchmark, submitResult, validateResult, type BenchmarkResult, type NewResult, type ResultErrors } from "@/lib/benchmarks"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
+import { useBenchmarks } from "@/lib/lists/hooks"
 
 const select = "h-10 w-full rounded-lg border border-input bg-background/60 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
 
@@ -32,6 +33,8 @@ const empty = (benchmark: string): NewResult => ({
 
 /** "Submit a result" and the dialog behind it. Anyone can open it; the form inside is for members. */
 export function SubmitResult({ benchmark, onSubmitted, className }: { benchmark?: string; onSubmitted: (r: BenchmarkResult) => void; className?: string }) {
+  // Retired benchmarks keep their results but take no new ones.
+  const BENCHMARKS = useBenchmarks().filter((b) => !b.retired)
   const { ready } = useSession()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<NewResult>(() => empty(benchmark ?? BENCHMARKS[0].slug))

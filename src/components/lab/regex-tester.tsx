@@ -4,7 +4,8 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
 import { TriangleAlertIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { createRegexRunner, LIBRARY, type RegexOutcome } from "@/lib/lab/regex"
+import { createRegexRunner, type RegexOutcome } from "@/lib/lab/regex"
+import { useRegexLibrary } from "@/lib/lists/hooks"
 import { cn } from "@/lib/utils"
 import { ActionButton, CopyAction, fmtInt, Panel, useHydrated } from "./ui"
 import { Copy } from "@/components/content/copy"
@@ -22,6 +23,7 @@ const EMPTY: RegexOutcome = { result: { ok: true, matches: [], groupNames: [], g
 const HUES = ["143 180 255", "127 224 176", "216 197 158", "211 180 255"]
 
 export function RegexTester() {
+  const LIBRARY = useRegexLibrary()
   const first = LIBRARY[0]
   const [pattern, setPattern] = useState(first.pattern)
   const [flags, setFlags] = useState(first.flags)

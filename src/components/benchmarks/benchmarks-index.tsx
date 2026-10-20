@@ -8,13 +8,15 @@ import { SubmitResult } from "@/components/benchmarks/submit-result"
 import { rise, riseDelay } from "@/components/forum/forum-ui"
 import { TimeAgo } from "@/components/live/time"
 import { Skeleton } from "@/components/ui/skeleton"
-import { BENCHMARKS, better, formatScore, getBenchmark, listResults, reproSummary, type BenchmarkResult } from "@/lib/benchmarks"
+import { better, formatScore, getBenchmark, listResults, reproSummary, type BenchmarkResult } from "@/lib/benchmarks"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { Copy } from "@/components/content/copy"
+import { useBenchmarks } from "@/lib/lists/hooks"
 
 /** Every curated benchmark with its leader and how many results it has, then the latest submissions. */
 export function BenchmarksIndex() {
+  const BENCHMARKS = useBenchmarks()
   const { ready, user } = useSession()
   const [results, setResults] = useState<BenchmarkResult[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -49,7 +51,7 @@ export function BenchmarksIndex() {
       if (!s.best || better(b, r.score, s.best.score)) s.best = r
     }
     return out
-  }, [results])
+  }, [results, BENCHMARKS])
 
   const recent = useMemo(() => [...results].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 6), [results])
 

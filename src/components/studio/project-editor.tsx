@@ -20,7 +20,8 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { KINDS, LANGUAGES, type LanguageCode, type ResourceKind } from "@/lib/data"
+import { KINDS, LANGUAGES as BUILT_IN_LANGUAGES, type LanguageCode, type ResourceKind } from "@/lib/data"
+import { useLanguages } from "@/lib/lists/hooks"
 import {
   canEditProject,
   createProject,
@@ -169,6 +170,9 @@ function Editor({
     return { ...base, versions: toRows(base.versions) }
   }, [project, initialKind, prefill])
   const [form, setForm] = useState<Form>(initial)
+  // The admins' languages first, then any this project already uses that they removed (so its tag stays editable).
+  const pickable = useLanguages()
+  const LANGUAGES = { ...pickable, ...Object.fromEntries(form.langs.filter((l) => !(l in pickable)).map((l) => [l, BUILT_IN_LANGUAGES[l] ?? { name: l, native: l }])) } as typeof pickable
   const [saved, setSaved] = useState<{ form: Form; project: Project | null }>({ form: initial, project: project ?? null })
   const [slugTouched, setSlugTouched] = useState(Boolean(project))
   const [errors, setErrors] = useState<ProjectErrors>({})

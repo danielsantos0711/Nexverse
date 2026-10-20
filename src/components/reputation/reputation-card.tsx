@@ -5,7 +5,8 @@ import { useEffect, useState } from "react"
 import { BadgeCheckIcon, CalendarHeartIcon, FlameIcon, HandHelpingIcon, LibraryIcon, SunriseIcon, TelescopeIcon, type LucideIcon } from "lucide-react"
 import { LevelRing } from "@/components/reputation/level-ring"
 import { Skeleton } from "@/components/ui/skeleton"
-import { BADGES, getMemberReputation, POINTS, type RepStats } from "@/lib/community"
+import { getMemberReputation, type RepStats } from "@/lib/community"
+import { useBadges, usePoints } from "@/lib/lists/hooks"
 import { compact } from "@/lib/data"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
@@ -24,6 +25,7 @@ const BADGE_ICONS: Record<string, LucideIcon> = {
 
 /** Earned badges first, then the ones still to earn (dimmed, described for screen readers). */
 export function Badges({ stats, showLocked = true, className }: { stats: RepStats; showLocked?: boolean; className?: string }) {
+  const BADGES = useBadges()
   const list = BADGES.map((b) => ({ ...b, has: b.earned(stats) })).filter((b) => showLocked || b.has)
   const earned = list.filter((b) => b.has).length
   if (!list.length) return null
@@ -57,6 +59,7 @@ export function Badges({ stats, showLocked = true, className }: { stats: RepStat
  * it shows the signed-in member, or, without a database, what this browser holds.
  */
 export function ReputationCard({ memberId, className }: { memberId?: string; className?: string }) {
+  const POINTS = usePoints()
   const { ready, user } = useSession()
   const subject = memberId ?? user?.id ?? null
   const [loaded, setLoaded] = useState<{ key: string; stats: RepStats } | null>(null)

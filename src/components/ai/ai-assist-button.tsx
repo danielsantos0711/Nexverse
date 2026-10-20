@@ -16,7 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ai, AiRequestError, type ImproveGoal } from "@/lib/ai-client"
-import { LANGUAGES, type LanguageCode } from "@/lib/data"
+import { type LanguageCode } from "@/lib/data"
+import { useLanguages } from "@/lib/lists/hooks"
 import { cn } from "@/lib/utils"
 
 /*
@@ -51,6 +52,7 @@ export function AiAssistButton({
   label?: string
   className?: string
 }) {
+  const LANGUAGES = useLanguages()
   const { usable } = useAiReady("rewrite")
   const [job, setJob] = useState<Job | null>(null)
   const [result, setResult] = useState<{ text: string; before: string; note?: string } | null>(null)

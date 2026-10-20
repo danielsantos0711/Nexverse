@@ -4,7 +4,7 @@ import dynamic from "next/dynamic"
 import { useEffect, useRef, useState, type ComponentType } from "react"
 import { LEVEL_COLORS, LEVEL_ICONS } from "@/components/reputation/level-ring"
 import { AmberSphere } from "@/components/reputation/fx/amber-sphere"
-import { LEVELS } from "@/lib/community"
+import { useLevels } from "@/lib/lists/hooks"
 import { Copy } from "@/components/content/copy"
 import { compact } from "@/lib/data"
 import { useQuality } from "@/lib/perf"
@@ -24,6 +24,7 @@ const LumenRise = dynamic<LumenProps>(() => import("@/components/reputation/fx/l
 const PALETTE: Record<string, number> = { Stardust: 5, Comet: 0, Planet: 2, Star: 3, Nebula: 1, Galaxy: 4 }
 
 export function LevelsShowcase() {
+  const LEVELS = useLevels()
   const quality = useQuality()
   const host = useRef<HTMLDivElement>(null)
   const [near, setNear] = useState(false)

@@ -16,7 +16,8 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegen
 import { Input } from "@/components/ui/input"
 import { createThread, mentionedMemberIds, normalizeTag, validatePoll, validateThread, type MentionCandidate, type NewPoll } from "@/lib/community"
 import { useCaps } from "@/lib/caps"
-import { LANGUAGES, type LanguageCode } from "@/lib/data"
+import { type LanguageCode } from "@/lib/data"
+import { useLanguages } from "@/lib/lists/hooks"
 import { findCategory, myReputation, postBlock, postBlockText, useForumMap, visibleGroups } from "@/lib/forum-categories"
 import { useRole } from "@/lib/roles"
 import { useSession } from "@/lib/store"
@@ -35,6 +36,7 @@ export function NewThread() {
 }
 
 function NewThreadForm() {
+  const LANGUAGES = useLanguages()
   const params = useSearchParams()
   const router = useRouter()
   const reduce = useReducedMotion()

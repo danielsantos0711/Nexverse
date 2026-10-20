@@ -6,6 +6,7 @@ import { computeRow, DEFAULT_WORKLOAD, fmtMoney, fmtSeconds, PRICE_PRESETS, type
 import { cn } from "@/lib/utils"
 import { ActionButton, AnimatedNumber, CopyAction, downloadText, fmtCompact, NativeSelect, NumberInput, Panel, RangeSlider, readStored, ToolSkeleton, useHydrated, writeStored } from "./ui"
 import { Copy } from "@/components/content/copy"
+import { usePricePresets } from "@/lib/lists/hooks"
 
 const KEY = "nexverse:lab:inference-cost"
 const uid = () => Math.random().toString(36).slice(2, 10)
@@ -26,6 +27,7 @@ function Num({ value, onChange, label, step = 0.01 }: { value: number; onChange:
 }
 
 function Inner() {
+  const PRICE_PRESETS = usePricePresets()
   const [state, setState] = useState<Saved>(() => {
     const s = readStored<Partial<Saved>>(KEY, {})
     return { rows: Array.isArray(s.rows) && s.rows.length ? s.rows : START, w: { ...DEFAULT_WORKLOAD, ...s.w } }

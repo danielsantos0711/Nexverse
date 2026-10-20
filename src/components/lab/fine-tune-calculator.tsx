@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { CheckIcon, ExternalLinkIcon, RotateCcwIcon, TriangleAlertIcon } from "lucide-react"
-import { computeFineTune, DEFAULT_FT, fmtDuration, GPUS, SOURCES, type FineTuneInput } from "@/lib/lab/finetune"
+import { computeFineTune, DEFAULT_FT, fmtDuration, SOURCES, type FineTuneInput } from "@/lib/lab/finetune"
 import { cn } from "@/lib/utils"
 import { ActionButton, AnimatedNumber, CopyAction, fmtCompact, fmtGB, NativeSelect, NumberInput, Panel, RangeSlider, readStored, Segmented, SwitchRow, ToolSkeleton, useHydrated, writeStored } from "./ui"
 import { fmtParams, OPTIMIZERS, type Method, type Optimizer } from "./vram"
 import { Copy } from "@/components/content/copy"
+import { useGpus } from "@/lib/lists/hooks"
 
 const KEY = "nexverse:lab:fine-tuning"
 
@@ -17,6 +18,7 @@ export function FineTuneCalculator() {
 }
 
 function Inner() {
+  const GPUS = useGpus()
   const [i, setI] = useState<FineTuneInput>(() => ({ ...DEFAULT_FT, ...readStored<Partial<FineTuneInput>>(KEY, {}) }))
   const set = <K extends keyof FineTuneInput>(k: K, v: FineTuneInput[K]) => setI((p) => ({ ...p, [k]: v }))
   useEffect(() => {

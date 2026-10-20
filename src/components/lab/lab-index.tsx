@@ -8,7 +8,8 @@ import { GlowCard } from "@/components/hub/glow-card"
 import { Kbd } from "@/components/ui/kbd"
 import { cn } from "@/lib/utils"
 import { ToolPreview } from "./previews"
-import { CATEGORIES, LAB_TOOLS, labPath, type LabCategory, type LabTool } from "./tools"
+import { labPath, type LabCategory, type LabTool } from "./tools"
+import { useLabShelves, useLabTools } from "@/lib/lists/hooks"
 import { Copy } from "@/components/content/copy"
 
 /** HorizonX "Particle Veil", decorative, browser-only, paused offscreen and under reduced motion. */
@@ -25,6 +26,10 @@ export function LabHeroFx() {
 }
 
 export function LabIndex() {
+  // The admins' tools (switched-on ones, featured first) and shelves, from /admin/lists.
+  const tools = useLabTools()
+  const LAB_TOOLS = useMemo(() => [...tools.filter((t) => t.featured), ...tools.filter((t) => !t.featured)], [tools])
+  const CATEGORIES = useLabShelves()
   const [q, setQ] = useState("")
   const [cat, setCat] = useState<LabCategory | "all">("all")
   const search = useRef<HTMLInputElement>(null)
@@ -46,7 +51,7 @@ export function LabIndex() {
   const results = useMemo(() => {
     const words = norm(q).split(/\s+/).filter(Boolean)
     return LAB_TOOLS.filter((t) => (cat === "all" || t.group === cat) && words.every((w) => norm(`${t.name} ${t.tagline} ${t.keywords}`).includes(w)))
-  }, [q, cat])
+  }, [q, cat, LAB_TOOLS])
 
   const grouped = !q.trim() && cat === "all"
 

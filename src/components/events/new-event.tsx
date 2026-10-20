@@ -11,11 +11,12 @@ import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { createEvent, EVENT_KINDS, isTimeZone, validateEvent, zonedToUtc, type EventKind, type EventMode, type NewEvent } from "@/lib/community"
+import { createEvent, isTimeZone, validateEvent, zonedToUtc, type EventKind, type EventMode, type NewEvent } from "@/lib/community"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
+import { useEventKinds } from "@/lib/lists/hooks"
 
 const DURATIONS = [
   { minutes: 30, label: "30 minutes" },
@@ -52,6 +53,7 @@ export function NewEventForm() {
 const pad = (n: number) => String(n).padStart(2, "0")
 
 function Form() {
+  const EVENT_KINDS = useEventKinds()
   const router = useRouter()
   const viewerZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", [])
   const zones = useMemo(() => {
@@ -120,7 +122,7 @@ function Form() {
         <FieldSet>
           <FieldLegend variant="label">Kind of event</FieldLegend>
           <div role="radiogroup" aria-label="Kind of event" className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            {(Object.keys(EVENT_KINDS) as EventKind[]).map((k) => {
+            {(Object.keys(EVENT_KINDS) as EventKind[]).filter((k) => EVENT_KINDS[k].enabled).map((k) => {
               const Icon = KIND_ICON[k]
               const on = kind === k
               return (

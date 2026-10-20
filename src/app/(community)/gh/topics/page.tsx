@@ -6,7 +6,8 @@ import { PageTitle, SectionHead } from "@/components/hub/bits"
 import { Item, Spotlight, Stagger } from "@/components/hub/motion"
 import { Skeleton } from "@/components/ui/skeleton"
 import { compact } from "@/lib/data"
-import { GH_TOPICS, ghHref, ghTopicHref, githubTopicRepos, MORE_GH_TOPICS } from "@/lib/live"
+import { ghHref, ghTopicHref, githubTopicRepos } from "@/lib/live"
+import { getGhTopics, getMoreGhTopics } from "@/lib/lists/server"
 import { seoMetadata } from "@/lib/content-server"
 import { Copy } from "@/components/content/copy"
 
@@ -51,7 +52,9 @@ function RisingSkeleton() {
   )
 }
 
-export default function TopicsPage() {
+export default async function TopicsPage() {
+  // The admins' lists (/admin/lists), cached with the rest of the site content.
+  const [GH_TOPICS, MORE_GH_TOPICS] = await Promise.all([getGhTopics(), getMoreGhTopics()])
   return (
     <div className="shell pb-16">
       <PageTitle k="gh-topics.header"

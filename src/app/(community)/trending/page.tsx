@@ -13,9 +13,10 @@ import { ReleaseList } from "@/components/live/release-list"
 import { CardsSkeleton, RowsSkeleton, StripSkeleton } from "@/components/live/skeletons"
 import { latestStories } from "@/lib/newsroom/public"
 import { TrendingNowLive } from "@/components/live/trending-now"
-import { GH_TOPICS, ghTopicHref, githubReleases, githubTopicRepos, githubTrendingAi, type Feed, type GhRepo } from "@/lib/live"
+import { ghTopicHref, githubReleases, githubTopicRepos, githubTrendingAi, type Feed, type GhRepo } from "@/lib/live"
 import { seoMetadata } from "@/lib/content-server"
 import { Copy } from "@/components/content/copy"
+import { getGhTopics } from "@/lib/lists/server"
 
 export async function generateMetadata(): Promise<Metadata> {
   return seoMetadata("/trending", {
@@ -69,6 +70,7 @@ function RepoGrid({ feed, limit = 9, more }: { feed: Feed<GhRepo>; limit?: numbe
 }
 
 async function Repos() {
+  const GH_TOPICS = await getGhTopics()
   const [all, ...byTopic] = await Promise.all([githubTrendingAi(9), ...GH_TOPICS.map((t) => githubTopicRepos(t.id, "new", 12))])
   return (
     <PillTabs

@@ -7,11 +7,12 @@ import { Sparkline } from "@/components/arena/arena-bits"
 import { ReproBadge } from "@/components/benchmarks/bench-bits"
 import { Skeleton } from "@/components/ui/skeleton"
 import { confidence, getModelRating, type Rating, type RatingSource } from "@/lib/arena"
-import { BENCHMARKS, better, formatScore, getBenchmark, listResults, type BenchmarkResult } from "@/lib/benchmarks"
+import { better, formatScore, getBenchmark, listResults, type BenchmarkResult } from "@/lib/benchmarks"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
+import { useBenchmarks } from "@/lib/lists/hooks"
 
 type Arena = {
   rating: Rating | null
@@ -25,6 +26,7 @@ type Arena = {
  * each benchmark, with whether members reproduced it. Matched by the model's hub slug.
  */
 export function ModelScores({ slug, className }: { slug: string; className?: string }) {
+  const BENCHMARKS = useBenchmarks()
   const { ready, user } = useSession()
   const [arena, setArena] = useState<Arena | null>(null)
   const [results, setResults] = useState<BenchmarkResult[] | null>(null)
@@ -57,7 +59,7 @@ export function ModelScores({ slug, className }: { slug: string; className?: str
       })
     }
     return out
-  }, [results])
+  }, [results, BENCHMARKS])
 
   const loading = !arena || !results
   const r = arena?.rating

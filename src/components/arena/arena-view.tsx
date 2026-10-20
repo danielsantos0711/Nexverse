@@ -9,11 +9,12 @@ import { PlayMode } from "@/components/arena/play-mode"
 import { primaryButton, rise, riseDelay } from "@/components/forum/forum-ui"
 import { TimeAgo } from "@/components/live/time"
 import { Skeleton } from "@/components/ui/skeleton"
-import { DUEL_TASKS, isMine, listDuels, myVotes, type Choice, type Duel, type DuelTask } from "@/lib/arena"
+import { isMine, listDuels, myVotes, type Choice, type Duel, type DuelTask } from "@/lib/arena"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
+import { useDuelTasks } from "@/lib/lists/hooks"
 
 type Mode = "play" | "browse"
 const MODES: { value: Mode; label: string }[] = [
@@ -58,6 +59,7 @@ export function ArenaView() {
 }
 
 function DuelList() {
+  const DUEL_TASKS = useDuelTasks()
   const { ready, user, member } = useSession()
   const [duels, setDuels] = useState<Duel[] | null>(null)
   const [votes, setVotes] = useState<Record<string, Choice>>({})

@@ -17,7 +17,8 @@ import { RagChunker } from "@/components/lab/rag-chunker"
 import { RegexTester } from "@/components/lab/regex-tester"
 import { TokenCost } from "@/components/lab/token-cost"
 import { TokenCounter } from "@/components/lab/token-counter"
-import { CATEGORIES, getLabTool, LAB_TOOLS, labPath, type LabToolSlug } from "@/components/lab/tools"
+import { LAB_TOOLS, labPath, type LabToolSlug } from "@/components/lab/tools"
+import { getLabShelves, getLabTools } from "@/lib/lists/server"
 import { VramCalculator } from "@/components/lab/vram-calculator"
 import { DiscussButton } from "@/components/social/discuss-button"
 import { SaveButton } from "@/components/social/save-button"
@@ -47,7 +48,8 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ tool: string }> }): Promise<Metadata> {
-  const t = getLabTool((await params).tool)
+  const tool = (await params).tool
+  const t = (await getLabTools()).find((x) => x.slug === tool)
   return t ? { title: `${t.name} · Lab`, description: t.tagline } : { title: "Lab" }
 }
 
@@ -60,12 +62,15 @@ export default function Page({ params }: { params: Promise<{ tool: string }> }) 
 }
 
 async function Tool({ params }: { params: Promise<{ tool: string }> }) {
-  const t = getLabTool((await params).tool)
+  const slug = (await params).tool
+  // Switched off by an admin (/admin/lists): the page answers "not found", like the Lab index hides it.
+  const [tools, shelves] = await Promise.all([getLabTools(), getLabShelves()])
+  const t = tools.find((x) => x.slug === slug)
   if (!t) notFound()
   const Icon = t.icon
   // Same category first, then the rest.
-  const others = [...LAB_TOOLS.filter((x) => x.slug !== t.slug && x.group === t.group), ...LAB_TOOLS.filter((x) => x.group !== t.group)]
-  const group = CATEGORIES.find((c) => c.id === t.group)
+  const others = [...tools.filter((x) => x.slug !== t.slug && x.group === t.group), ...tools.filter((x) => x.group !== t.group)]
+  const group = shelves.find((c) => c.id === t.group)
   return (
     <div className="shell pb-16">
       <header className="relative isolate flex flex-col gap-4 pt-8 pb-6 md:pt-10">

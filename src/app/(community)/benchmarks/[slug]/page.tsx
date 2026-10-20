@@ -5,7 +5,8 @@ import { ArrowDownIcon, ArrowUpIcon, FileTextIcon } from "lucide-react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { BenchmarkDetail } from "@/components/benchmarks/benchmark-detail"
 import { ForumHeader } from "@/components/forum/forum-header"
-import { BENCHMARKS, getBenchmark } from "@/lib/benchmarks"
+import { BENCHMARKS } from "@/lib/benchmarks"
+import { getBenchmarks } from "@/lib/lists/server"
 import { Copy } from "@/components/content/copy"
 
 export function generateStaticParams() {
@@ -13,7 +14,8 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: PageProps<"/benchmarks/[slug]">): Promise<Metadata> {
-  const b = getBenchmark((await params).slug)
+  const slug = (await params).slug
+  const b = (await getBenchmarks()).find((x) => x.slug === slug)
   return b ? { title: `${b.name} results`, description: b.description } : { title: "Benchmark" }
 }
 
@@ -26,7 +28,9 @@ export default function BenchmarkPage({ params }: PageProps<"/benchmarks/[slug]"
 }
 
 async function Benchmark({ params }: { params: PageProps<"/benchmarks/[slug]">["params"] }) {
-  const b = getBenchmark((await params).slug)
+  const slug = (await params).slug
+  // The admins' list (/admin/lists): renamed, retuned and newly added benchmarks included.
+  const b = (await getBenchmarks()).find((x) => x.slug === slug)
   if (!b) notFound()
   return (
     <div className="shell max-w-5xl pb-16">

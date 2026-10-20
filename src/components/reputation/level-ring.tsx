@@ -3,7 +3,8 @@
 import { motion, useReducedMotion } from "motion/react"
 import { useId } from "react"
 import { EarthIcon, FlameIcon, GalaxyIcon, OrbitIcon, SparklesIcon, StarIcon, type LucideIcon } from "lucide-react"
-import { levelFor, LEVELS } from "@/lib/community"
+import { levelFor } from "@/lib/community"
+import { useLevels } from "@/lib/lists/hooks"
 import { compact } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
@@ -31,9 +32,10 @@ export const LEVEL_COLORS: Record<string, [string, string]> = {
  * the centre shows the level's mark. With `label`, the level name and points sit beside it.
  */
 export function LevelRing({ points, size = 88, stroke = 6, label = true, className }: { points: number; size?: number; stroke?: number; label?: boolean; className?: string }) {
+  const LEVELS = useLevels()
   const uid = useId().replace(/:/g, "")
   const reduce = useReducedMotion()
-  const info = levelFor(points)
+  const info = levelFor(points, LEVELS)
   const Icon = LEVEL_ICONS[info.level.name] ?? SparklesIcon
   const [from, to] = LEVEL_COLORS[info.level.name] ?? LEVEL_COLORS.Stardust
   const r = (size - stroke) / 2
@@ -90,7 +92,8 @@ export function LevelRing({ points, size = 88, stroke = 6, label = true, classNa
 
 /** A small level chip for lists: icon and name. */
 export function LevelChip({ points, className }: { points: number; className?: string }) {
-  const { level } = levelFor(points)
+  const levels = useLevels()
+  const { level } = levelFor(points, levels)
   const Icon = LEVEL_ICONS[level.name] ?? SparklesIcon
   const [, to] = LEVEL_COLORS[level.name] ?? LEVEL_COLORS.Stardust
   return (

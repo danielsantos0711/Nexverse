@@ -11,7 +11,8 @@ import { AmberSphere } from "@/components/reputation/fx/amber-sphere"
 import { LEVEL_COLORS, LevelChip, LevelRing } from "@/components/reputation/level-ring"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CAP_INFO, isCap, useCaps } from "@/lib/caps"
-import { getLeaderboard, levelFor, PERIODS, POINTS, type LeaderRow, type Period } from "@/lib/community"
+import { getLeaderboard, levelFor, PERIODS, type LeaderRow, type Period } from "@/lib/community"
+import { useLevels, usePoints } from "@/lib/lists/hooks"
 import { compact } from "@/lib/data"
 import { useSession } from "@/lib/store"
 import { Copy } from "@/components/content/copy"
@@ -23,6 +24,7 @@ const MEDALS = ["text-gold", "text-[#c9cfdb]", "text-[#e0a77a]"]
 
 /** Who helped most this week, this month and of all time, from the same points as everyone's level. */
 export function LeaderboardView() {
+  const POINTS = usePoints()
   const { ready, user } = useSession()
   const reduce = useReducedMotion()
   const [period, setPeriod] = useState<Period>("week")
@@ -153,7 +155,8 @@ export function LeaderboardView() {
 
 /** Your level as an Amber Sphere in the corner of your card, brighter as you near the next level. */
 function YourStar({ points }: { points: number }) {
-  const info = levelFor(points)
+  const levels = useLevels()
+  const info = levelFor(points, levels)
   const [amber, gold] = LEVEL_COLORS[info.level.name] ?? LEVEL_COLORS.Stardust
   return <AmberSphere amber={amber} gold={gold} energy={info.progress} size={88} className="pointer-events-none absolute -top-3 -right-3 opacity-90" />
 }

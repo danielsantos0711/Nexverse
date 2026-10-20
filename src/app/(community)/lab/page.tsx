@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { LockIcon, SparklesIcon } from "lucide-react"
 import { PageTitle } from "@/components/hub/bits"
 import { LabHeroFx, LabIndex } from "@/components/lab/lab-index"
-import { LAB_TOOLS } from "@/components/lab/tools"
+import { getLabTools } from "@/lib/lists/server"
 import { seoMetadata } from "@/lib/content-server"
 import { Copy } from "@/components/content/copy"
 
@@ -14,7 +14,9 @@ export async function generateMetadata(): Promise<Metadata> {
   })
 }
 
-export default function Page() {
+export default async function Page() {
+  // The tools admins left switched on (/admin/lists).
+  const LAB_TOOLS = await getLabTools()
   const local = LAB_TOOLS.filter((t) => !t.usesAi).length
   return (
     <div className="shell pb-16">

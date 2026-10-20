@@ -3,7 +3,8 @@
 import { Fragment, useSyncExternalStore } from "react"
 import { BrainIcon, Code2Icon, LanguagesIcon, MessageSquareIcon, PenLineIcon, type LucideIcon } from "lucide-react"
 import { LANGUAGES, type LanguageCode } from "@/lib/data"
-import { DUEL_TASKS, type DuelTask } from "@/lib/arena"
+import { type DuelTask } from "@/lib/arena"
+import { useDuelTasks, useLanguages } from "@/lib/lists/hooks"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
 
@@ -24,6 +25,7 @@ export const TASK_ICON: Record<DuelTask, LucideIcon> = {
 }
 
 export function TaskBadge({ task, className }: { task: DuelTask; className?: string }) {
+  const DUEL_TASKS = useDuelTasks()
   const Icon = TASK_ICON[task]
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full border border-border bg-white/[0.03] px-2 py-0.5 text-xs text-muted-foreground", className)}>
@@ -34,9 +36,10 @@ export function TaskBadge({ task, className }: { task: DuelTask; className?: str
 }
 
 export function LangList({ langs, className }: { langs: LanguageCode[]; className?: string }) {
+  const langNames = useLanguages()
   return (
-    <span className={cn("text-xs text-muted-foreground", className)} title={langs.map((l) => LANGUAGES[l]?.name ?? l).join(", ")}>
-      {langs.map((l) => LANGUAGES[l]?.name ?? l).join(" · ")}
+    <span className={cn("text-xs text-muted-foreground", className)} title={langs.map((l) => langNames[l]?.name ?? LANGUAGES[l]?.name ?? l).join(", ")}>
+      {langs.map((l) => langNames[l]?.name ?? LANGUAGES[l]?.name ?? l).join(" · ")}
     </span>
   )
 }

@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { Gate } from "@/components/moderation/gate"
-import { createDuel, DUEL_LIMITS, DUEL_TASKS, validateDuel, type DuelModel, type DuelTask, type NewDuel } from "@/lib/arena"
-import { LANGUAGES, type LanguageCode } from "@/lib/data"
+import { createDuel, DUEL_LIMITS, validateDuel, type DuelModel, type DuelTask, type NewDuel } from "@/lib/arena"
+import { type LanguageCode } from "@/lib/data"
+import { useDuelTasks, useLanguages } from "@/lib/lists/hooks"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
@@ -40,6 +41,9 @@ export function NewDuelForm() {
 const field = "bg-background/60"
 
 function Form() {
+  // The admins' tasks (only those open for new duels) and languages, from /admin/lists.
+  const DUEL_TASKS = useDuelTasks()
+  const LANGUAGES = useLanguages()
   const router = useRouter()
   const [prompt, setPrompt] = useState("")
   const [outputA, setOutputA] = useState("")
@@ -106,7 +110,7 @@ function Form() {
         <FieldSet>
           <FieldLegend variant="label">Task</FieldLegend>
           <div role="radiogroup" aria-label="Task" className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
-            {(Object.keys(DUEL_TASKS) as DuelTask[]).map((t) => {
+            {(Object.keys(DUEL_TASKS) as DuelTask[]).filter((t) => DUEL_TASKS[t].enabled).map((t) => {
               const Icon = TASK_ICON[t]
               const on = task === t
               return (

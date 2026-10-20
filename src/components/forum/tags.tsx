@@ -3,11 +3,13 @@
 import Link from "next/link"
 import { useId, useState } from "react"
 import { HashIcon, XIcon } from "lucide-react"
-import { KNOWN_TAGS, MAX_TAGS, normalizeTag } from "@/lib/community"
+import { MAX_TAGS, normalizeTag } from "@/lib/community"
+import { useKnownTags } from "@/lib/lists/hooks"
 import { cn } from "@/lib/utils"
 
 /** Up to five tags: type and press Enter or comma, Backspace removes the last one; known tags are suggested. */
 export function TagInput({ id, value, onChange, describedBy }: { id: string; value: string[]; onChange: (tags: string[]) => void; describedBy?: string }) {
+  const KNOWN_TAGS = useKnownTags()
   const uid = useId()
   const [draft, setDraft] = useState("")
   const [active, setActive] = useState(0)

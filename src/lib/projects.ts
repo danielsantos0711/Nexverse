@@ -181,7 +181,8 @@ function clean(p: ProjectInput): ProjectInput {
     name: p.name.trim(),
     summary: p.summary.trim().replace(/\s+/g, " "),
     tags: [...new Set(p.tags)].slice(0, LIMITS.tags),
-    langs: [...new Set(p.langs)].filter((l) => l in LANGUAGES).slice(0, 12),
+    // Any two-letter code: admins can add languages beyond the built-in ones (/admin/lists).
+    langs: [...new Set(p.langs)].filter((l) => l in LANGUAGES || /^[a-z]{2}$/.test(l)).slice(0, 12),
     links: { repo: link(p.links.repo).replace(/\/$/, ""), paper: link(p.links.paper), demo: link(p.links.demo) },
     license: normalizeLicense(p.license.trim()),
     coverUrl: p.coverUrl.trim(),
@@ -320,7 +321,7 @@ function fromRow(r: Row): Project {
     readme: r.readme ?? "",
     tags: r.tags ?? [],
     license: normalizeLicense(r.license_id ?? r.license),
-    langs: (r.langs ?? []).filter((l): l is LanguageCode => l in LANGUAGES),
+    langs: (r.langs ?? []).filter((l): l is LanguageCode => l in LANGUAGES || /^[a-z]{2}$/.test(l)),
     links: { repo: r.repo_url ?? "", paper: r.paper_url ?? "", demo: r.demo_url ?? "" },
     status: r.status,
     versions: (r.versions ?? []).map((v) => ({ id: v.id, version: v.version, notes: v.notes, releasedOn: v.released_on })).sort(byRelease),

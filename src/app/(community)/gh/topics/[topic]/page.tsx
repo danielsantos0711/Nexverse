@@ -9,7 +9,8 @@ import { FeedMeta, FeedUnavailable } from "@/components/live/bits"
 import { DetailBanner, DiscussButton, SourceLink } from "@/components/live/detail"
 import { GitHubRepoCard } from "@/components/live/github-repo-card"
 import { CardsSkeleton } from "@/components/live/skeletons"
-import { GH_TOPICS, ghTopicHref, githubTopicRepos, MORE_GH_TOPICS, topicInfo } from "@/lib/live"
+import { ghTopicHref, githubTopicRepos } from "@/lib/live"
+import { getGhTopics, getMoreGhTopics, getTopicInfo } from "@/lib/lists/server"
 import { discussItemHref, isGhTopic, segment } from "@/lib/live/ids"
 import { Copy } from "@/components/content/copy"
 
@@ -29,7 +30,7 @@ async function read(params: Params) {
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const topic = await read(params)
   if (!topic) return { title: "Topic not found" }
-  const info = topicInfo(topic)
+  const info = await getTopicInfo(topic)
   return {
     title: `#${topic} on GitHub`,
     description: info?.blurb ?? `Open-source repositories tagged ${topic} on GitHub: the most starred active projects and the new ones rising, on Nexverse.`,
@@ -71,8 +72,9 @@ async function RepoSection({ topic, mode }: { topic: string; mode: "active" | "n
   )
 }
 
-function Related({ topic }: { topic: string }) {
-  const list = [...GH_TOPICS.map((t) => t.id), ...MORE_GH_TOPICS].filter((t) => t !== topic)
+async function Related({ topic }: { topic: string }) {
+  const [featured, more] = await Promise.all([getGhTopics(), getMoreGhTopics()])
+  const list = [...new Set([...featured.map((t) => t.id), ...more])].filter((t) => t !== topic)
   return (
     <section aria-labelledby="related-topics" className="border-t border-border pt-10">
       <SectionHead id="related-topics" title="Related topics" />
@@ -93,7 +95,7 @@ function Related({ topic }: { topic: string }) {
 async function Topic({ params }: { params: Params }) {
   const topic = await read(params)
   if (!topic) notFound()
-  const info = topicInfo(topic)
+  const info = await getTopicInfo(topic)
   const discuss = discussItemHref(`#${topic}: what are you using?`, `Open-source ${info?.label ?? topic} projects worth knowing.\n\n${ghTopicHref(topic)}`)
   return (
     <>

@@ -7,8 +7,9 @@ import { InfoIcon, SwordsIcon } from "lucide-react"
 import { Sparkline } from "@/components/arena/arena-bits"
 import { primaryButton } from "@/components/forum/forum-ui"
 import { Skeleton } from "@/components/ui/skeleton"
-import { confidence, DUEL_TASKS, ELO, getRatings, type DuelTask, type Rating, type RatingSource } from "@/lib/arena"
-import { LANGUAGES, type LanguageCode } from "@/lib/data"
+import { confidence, ELO, getRatings, type DuelTask, type Rating, type RatingSource } from "@/lib/arena"
+import { type LanguageCode } from "@/lib/data"
+import { useDuelTasks, useLanguages } from "@/lib/lists/hooks"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -18,6 +19,8 @@ type State = { rows: Rating[]; source: RatingSource; anyMemberVotes: boolean; ke
 
 /** The arena leaderboard: Elo per model, filterable by task and language, with how many votes each rests on. */
 export function RatingsView() {
+  const DUEL_TASKS = useDuelTasks()
+  const LANGUAGES = useLanguages()
   const reduce = useReducedMotion()
   const { ready } = useSession()
   const [task, setTask] = useState<DuelTask | null>(null)

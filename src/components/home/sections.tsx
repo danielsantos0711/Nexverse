@@ -15,7 +15,7 @@ import { Copy } from "@/components/content/copy"
 import { GlowCard } from "@/components/hub/glow-card"
 import { HalftoneOrbit } from "@/components/fx"
 import { useQuality } from "@/lib/perf"
-import { GravityWell, PlasmaOrb } from "./fx"
+import { PlasmaOrb } from "./fx"
 import { loadBuilders, loadCollections, loadHotThreads, since, useLoad, type HotThread } from "./hub-data"
 import { Slot } from "./slot"
 
@@ -220,13 +220,8 @@ export function Constellations() {
   const by = useCopy("home.constellations.by", "by")
   return (
     <section aria-labelledby="const-h" className="relative isolate overflow-hidden">
-      {/* a crisp night sky drawn as vectors (sharp on any screen), and HorizonX Gravity Well on the right: the
-          pull that gathers separate pieces into one constellation. The pointer dimples it; a click sends a ripple. */}
-      <SkyField className="absolute inset-0 -z-20 [mask-image:linear-gradient(180deg,transparent,#000_18%,#000_82%,transparent)]" />
-      <div aria-hidden className="absolute inset-y-0 right-0 -z-10 w-[min(60rem,72%)] max-md:inset-x-0 max-md:top-0 max-md:bottom-auto max-md:h-80 max-md:w-full">
-        {/* its edges fade inside the canvas itself (no CSS mask over a moving canvas, no opaque overlay) */}
-        <GravityWell className="size-full opacity-80" />
-      </div>
+      {/* a crisp night sky drawn as vectors: round, sharp stars on any screen, and one faint figure */}
+      <SkyField className="absolute inset-0 -z-10 [mask-image:linear-gradient(180deg,transparent,#000_18%,#000_82%,transparent)]" />
       <div className="shell py-16 md:py-24">
         <Head
           id="const-h"
@@ -235,7 +230,6 @@ export function Constellations() {
           lead="A model alone is a star. Members connect the models, data, tools and code that make something work, and save it as a collection anyone can follow."
           href="/collections"
           action="All collections"
-          className="max-md:pt-40"
         />
         {list === undefined ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

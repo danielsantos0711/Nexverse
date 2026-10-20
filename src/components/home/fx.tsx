@@ -16,8 +16,5 @@ export const TextRing = dynamic(() => import("./fx/text-ring"), { ssr: false })
 /** A field of pixels that grows from the pointer on the card it sits in. */
 export const PixelField = dynamic(() => import("./fx/pixel-field"), { ssr: false })
 
-/** HorizonX "Gravity Well": space bent into a funnel, behind the constellations. */
-export const GravityWell = dynamic(() => import("./fx/gravity-well"), { ssr: false })
-
 /** HorizonX "Plasma Orb": a glass orb with a plasma core, the world waiting in the closing band. Keep square. */
 export const PlasmaOrb = dynamic(() => import("./fx/plasma-orb"), { ssr: false })
