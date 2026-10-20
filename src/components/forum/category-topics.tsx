@@ -190,7 +190,7 @@ function TopicRow({ t }: { t: Topic }) {
         <PosterAvatar poster={t.author} size={32} className="mt-0.5 hidden transition-transform duration-200 group-hover:-translate-y-0.5 motion-reduce:transform-none sm:inline-flex" />
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Link
+            <Link data-nav-item
               href={t.href}
               lang={t.lang}
               className="rounded-sm text-[15px] leading-snug font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset group-hover:text-ion"

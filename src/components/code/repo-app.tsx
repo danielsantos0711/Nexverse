@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Skeleton } from "@/components/ui/skeleton"
 import { canAdmin, canWrite, forkRepo, getMarks, getRepo, getRepoById, listRefs, myId, myRole, ownerKey, repoPath, setMark, type Ref, type Repo, type Role } from "@/lib/code/api"
 import { useCaps } from "@/lib/caps"
+import { projectForRepo, projectHref } from "@/lib/projects"
 import { parseView, type RepoView } from "@/lib/code/route"
 import { slugify, VALID_SLUG } from "@/lib/code/tree"
 import { useSession } from "@/lib/store"
@@ -56,16 +57,36 @@ export function RepoSkeleton() {
   )
 }
 
-type Loaded = { repo: Repo; role: Role; refs: Ref[]; me: string | null; parent: Repo | null }
+type Loaded = { repo: Repo; role: Role; refs: Ref[]; me: string | null; parent: Repo | null; project?: string | null }
+
+/** Where a repository page lives inside its project: /code/o/r/tree/x → <project>/tree/x, the home → <project>/code. */
+export function projectCodePath(projectBase: string, rest: string[]) {
+  if (!rest.length) return `${projectBase}/code`
+  if (rest[0] === "activity" || rest[0] === "settings") return `${projectBase}/${rest[0]}`
+  return `${projectBase}/${rest.map(encodeURIComponent).join("/")}`
+}
 
 export function RepoApp({ owner, slug, rest }: { owner: string; slug: string; rest: string[] }) {
   const session = useSession()
+  const router = useRouter()
   const data = useLoad<Loaded | null>(async () => {
     const repo = await getRepo(owner, slug)
     if (!repo) return null
-    const [role, refs, me, parent] = await Promise.all([myRole(repo), listRefs(repo.id), myId(), repo.forkedFrom ? getRepoById(repo.forkedFrom).catch(() => null) : Promise.resolve(null)])
-    return { repo, role, refs, me, parent }
+    const [role, refs, me, parent, link] = await Promise.all([
+      myRole(repo),
+      listRefs(repo.id),
+      myId(),
+      repo.forkedFrom ? getRepoById(repo.forkedFrom).catch(() => null) : Promise.resolve(null),
+      projectForRepo(repo.id).catch(() => null),
+    ])
+    return { repo, role, refs, me, parent, project: link ? projectHref({ id: link.projectId, kind: link.kind }) : null }
   }, [owner, slug, session.user?.id])
+
+  // A repository that belongs to a project lives on the project's page (old /code links keep working).
+  const target = data.data?.project ? projectCodePath(data.data.project, rest) : null
+  useEffect(() => {
+    if (target) router.replace(href(target))
+  }, [target, router])
 
   const [repo, setRepo] = useState<Repo | null>(null)
   const [refs, setRefs] = useState<Ref[]>([])
@@ -95,7 +116,7 @@ export function RepoApp({ owner, slug, rest }: { owner: string; slug: string; re
       </div>
     )
   }
-  if (data.loading && !state) return <RepoSkeleton />
+  if ((data.loading && !state) || target) return <RepoSkeleton />
   if (!data.data || !state) {
     return (
       <div className="shell max-w-7xl pt-10 pb-16">
@@ -133,6 +154,105 @@ export function RepoApp({ owner, slug, rest }: { owner: string; slug: string; re
         </main>
       </div>
     </RepoContext.Provider>
+  )
+}
+
+/**
+ * A repository inside a project's page (round 10: projects and code are one thing). Same pages and the same
+ * context, but every link is built from the project's address, so /models/<id>/tree/main/src stays inside the
+ * project. `rest` is what follows that address ([] for the code home).
+ */
+export function RepoEmbed({ repoId, base, rest, compact = false }: { repoId: string; base: string; rest: string[]; compact?: boolean }) {
+  const session = useSession()
+  const data = useLoad<Loaded | null>(async () => {
+    const repo = await getRepoById(repoId)
+    if (!repo) return null
+    const [role, refs, me, parent] = await Promise.all([myRole(repo), listRefs(repo.id), myId(), repo.forkedFrom ? getRepoById(repo.forkedFrom).catch(() => null) : Promise.resolve(null)])
+    return { repo, role, refs, me, parent }
+  }, [repoId, session.user?.id])
+  const [repo, setRepo] = useState<Repo | null>(null)
+  const [refs, setRefs] = useState<Ref[]>([])
+  useEffect(() => {
+    if (data.data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- local copies that pages can update optimistically
+      setRepo(data.data.repo)
+      setRefs(data.data.refs)
+    }
+  }, [data.data])
+  const reloadRefs = useCallback(async () => {
+    if (!repo) return
+    setRefs(await listRefs(repo.id))
+  }, [repo])
+  const state = useMemo<RepoState | null>(() => {
+    if (!repo || !data.data) return null
+    const role = data.data.role
+    return { repo, setRepo, role, me: data.data.me, refs, reloadRefs, base, writable: canWrite(role, repo), admin: canAdmin(role) }
+  }, [repo, refs, data.data, reloadRefs, base])
+
+  if (data.error) return <ErrorNote error={data.error} onRetry={data.reload} />
+  if (data.loading && !state) return <Skeleton className="h-96 w-full rounded-xl" />
+  if (!data.data || !state) {
+    return (
+      <div className="rounded-xl border border-dashed border-border">
+        <EmptyState icon={FolderGit2Icon} title={<Copy k="project.code.private">The code is not visible to you</Copy>}>
+          This project&apos;s repository is private, hidden or gone. Sign in with an account that has access to see it.
+        </EmptyState>
+      </div>
+    )
+  }
+  const view = parseView(rest, state.refs, state.repo.defaultBranch)
+  return (
+    <RepoContext.Provider value={state}>
+      {!compact && <EmbedBar parent={data.data.parent} view={view} />}
+      <Page view={view} />
+    </RepoContext.Provider>
+  )
+}
+
+const EMBED_LINKS = [
+  { label: "Files", path: "/code", match: ["home", "tree", "blob", "edit", "new", "upload"] },
+  { label: "Commits", path: null, match: ["commits", "commit"] },
+  { label: "Branches", path: "/branches", match: ["branches"] },
+  { label: "Tags", path: "/tags", match: ["tags"] },
+  { label: "Compare", path: "/compare", match: ["compare"] },
+] as const
+
+function EmbedBar({ parent, view }: { parent: Repo | null; view: RepoView }) {
+  const { repo, base } = useRepo()
+  return (
+    <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-3">
+      <div className="flex min-w-0 items-center gap-2 text-sm">
+        <FolderGit2Icon aria-hidden className="size-4 shrink-0 text-repo" />
+        <span className="truncate font-mono text-muted-foreground">
+          {ownerKey(repo.owner)}/<span className="text-foreground">{repo.slug}</span>
+        </span>
+        <VisibilityBadge visibility={repo.visibility} />
+        {parent && (
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            forked from {ownerKey(parent.owner)}/{parent.slug}
+          </span>
+        )}
+      </div>
+      <nav aria-label="Code" className="flex flex-wrap gap-1">
+        {EMBED_LINKS.map((l) => {
+          const on = (l.match as readonly string[]).includes(view.view)
+          const to = l.path ?? `/commits/${encodeURIComponent(repo.defaultBranch)}`
+          return (
+            <Link
+              key={l.label}
+              href={href(`${base}${to}`)}
+              aria-current={on ? "page" : undefined}
+              className={cn("pressable rounded-full px-3 py-1 text-[13px] transition-colors", on ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground")}
+            >
+              {l.label}
+            </Link>
+          )
+        })}
+      </nav>
+      <div className="ml-auto">
+        <RepoActions />
+      </div>
+    </div>
   )
 }
 

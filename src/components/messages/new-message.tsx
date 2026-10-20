@@ -2,17 +2,21 @@
 
 import { useRouter } from "next/navigation"
 import { useEffect, useId, useState } from "react"
-import { Loader2Icon, SearchIcon } from "lucide-react"
+import { CheckIcon, Loader2Icon, SearchIcon, UsersIcon, XIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { ChatAvatar } from "@/components/chat/glyphs"
 import { Gate } from "@/components/moderation/gate"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { searchMembers, type MentionCandidate } from "@/lib/community"
-import { startConversation } from "@/lib/messages"
+import { dmExtras, startConversation, startGroup } from "@/lib/messages"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 
-/** Find a member by name and open a conversation with them. Needs a database: without one there are no members. */
+/**
+ * Find a member by name and open a conversation with them, or pick several and start a group (3 to 20 people).
+ * Needs a database: without one there are no members.
+ */
 export function NewMessageDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const router = useRouter()
   const { user } = useSession()
@@ -21,6 +25,9 @@ export function NewMessageDialog({ open, onOpenChange }: { open: boolean; onOpen
   const [found, setFound] = useState<{ q: string; list: MentionCandidate[] }>({ q: "", list: [] })
   const [opening, setOpening] = useState<string | null>(null)
   const [error, setError] = useState("")
+  const [groupMode, setGroupMode] = useState(false)
+  const [picked, setPicked] = useState<MentionCandidate[]>([])
+  const [title, setTitle] = useState("")
   const q = query.trim()
 
   useEffect(() => {
@@ -41,9 +48,32 @@ export function NewMessageDialog({ open, onOpenChange }: { open: boolean; onOpen
   const results = live && found.q === q ? found.list : []
   const searching = live && q.length > 0 && found.q !== q
 
+  async function createGroup() {
+    if (picked.length < 2) return setError("Pick at least two people for a group.")
+    setOpening("group")
+    setError("")
+    try {
+      const g = await startGroup(title || picked.map((p) => p.name.split(/\s+/)[0]).join(", "), picked.map((p) => p.memberId!).filter(Boolean))
+      onOpenChange(false)
+      setPicked([])
+      setTitle("")
+      setGroupMode(false)
+      router.push(`/messages/${g}`)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setOpening(null)
+    }
+  }
+
   async function pick(c: MentionCandidate) {
     const id = c.memberId
     if (!id) return
+    if (groupMode) {
+      setPicked((list) => (list.some((x) => x.key === c.key) ? list.filter((x) => x.key !== c.key) : list.length >= 19 ? list : [...list, c]))
+      setQuery("")
+      return
+    }
     setOpening(c.key)
     setError("")
     try {
@@ -62,13 +92,55 @@ export function NewMessageDialog({ open, onOpenChange }: { open: boolean; onOpen
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-4 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New message</DialogTitle>
-          <DialogDescription>{live ? "Search members by name." : "Direct messages need member accounts."}</DialogDescription>
+          <DialogTitle>{groupMode ? "New group" : "New message"}</DialogTitle>
+          <DialogDescription>{!live ? "Direct messages need member accounts." : groupMode ? "Pick 2 to 19 members and give the group a name." : "Search members by name."}</DialogDescription>
         </DialogHeader>
         {!live ? (
           <p className="text-sm text-muted-foreground">This copy of Nexverse is not connected to its database, so there are no other members to write to yet.</p>
         ) : (
           <Gate cap="message.send" action="write a message">
+            {dmExtras() && (
+              <div role="tablist" aria-label="Kind of conversation" className="grid grid-cols-2 gap-1 rounded-lg bg-white/[0.03] p-0.5">
+                {[
+                  { on: false, label: "One person" },
+                  { on: true, label: "A group" },
+                ].map((t) => (
+                  <button
+                    key={t.label}
+                    type="button"
+                    role="tab"
+                    aria-selected={groupMode === t.on}
+                    onClick={() => setGroupMode(t.on)}
+                    className={`pressable h-8 rounded-md text-sm transition-colors ${groupMode === t.on ? "bg-white/[0.08] text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {groupMode && (
+              <>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={60} placeholder="Group name (optional)" aria-label="Group name" />
+                {picked.length > 0 && (
+                  <ul className="flex flex-wrap gap-1.5" aria-label="In the group">
+                    {picked.map((p) => (
+                      <li key={p.key}>
+                        <button
+                          type="button"
+                          onClick={() => setPicked((l) => l.filter((x) => x.key !== p.key))}
+                          className="inline-flex h-7 items-center gap-1.5 rounded-full border border-ion/30 bg-ion/10 pr-2 pl-1 text-xs"
+                          aria-label={`Remove ${p.name}`}
+                        >
+                          <ChatAvatar id={p.memberId ?? p.key} name={p.name} size={20} />
+                          {p.name}
+                          <XIcon aria-hidden className="size-3" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
             <div className="relative">
               <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -97,6 +169,7 @@ export function NewMessageDialog({ open, onOpenChange }: { open: boolean; onOpen
                       <span className="truncate text-xs text-muted-foreground">{c.hint}</span>
                     </span>
                     {opening === c.key && <Loader2Icon aria-hidden className="size-4 animate-spin text-muted-foreground" />}
+                    {groupMode && picked.some((x) => x.key === c.key) && <CheckIcon aria-label="Picked" className="size-4 text-ion" />}
                   </button>
                 </li>
               ))}
@@ -108,6 +181,12 @@ export function NewMessageDialog({ open, onOpenChange }: { open: boolean; onOpen
               <p role="alert" className="text-sm text-destructive">
                 {error}
               </p>
+            )}
+            {groupMode && (
+              <Button onClick={createGroup} disabled={picked.length < 2 || opening !== null}>
+                {opening === "group" ? <Loader2Icon aria-hidden className="animate-spin" /> : <UsersIcon aria-hidden />}
+                Start the group{picked.length ? ` with ${picked.length + 1}` : ""}
+              </Button>
             )}
           </Gate>
         )}

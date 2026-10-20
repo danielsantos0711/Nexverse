@@ -192,7 +192,7 @@ function EventRow({ e, attendees, past, live: happening }: { e: CommunityEvent; 
           {e.local && <span className="text-xs text-muted-foreground"><Copy k="events.events-view.saved-in-this-browser">Saved in this browser</Copy></span>}
         </div>
         <h2 className="font-sans text-base leading-snug font-semibold tracking-normal">
-          <Link
+          <Link data-nav-item
             href={`/events/${e.id}`}
             className="rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring group-hover:text-ion"
           >

@@ -153,7 +153,7 @@ function DuelRow({ d, voted, mine }: { d: Duel; voted: boolean; mine: boolean })
         {mine && <span className="rounded-full bg-ion/10 px-2 py-0.5 text-xs text-ion"><Copy k="arena.arena-view.your-duel">Your duel</Copy></span>}
       </div>
       <h2 className="line-clamp-2 font-sans text-[15px] leading-snug font-medium tracking-normal">
-        <Link
+        <Link data-nav-item
           href={`/arena/${d.id}`}
           className="rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring group-hover:text-ion"
         >

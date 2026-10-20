@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useState } from "react"
 import { BookmarkIcon } from "lucide-react"
+import { toast } from "@/components/site/toaster"
 import { toggleBookmark, useBookmarks } from "@/lib/social"
 import { cn } from "@/lib/utils"
 
@@ -45,9 +46,13 @@ export function SaveButton({
     try {
       await toggleBookmark(target, next)
       setStatus(next ? "Saved" : "Removed from saved")
+      toast(next ? "Saved. Find it any time in Saved." : "Removed from saved.", {
+        action: { label: "Undo", run: () => void toggleBookmark(target, !next).then(() => onChange?.(!next)) },
+      })
       onChange?.(next)
     } catch {
       setStatus("Could not save. Try again.")
+      toast("Could not save. Try again.", { tone: "error" })
     } finally {
       setBusy(false)
     }

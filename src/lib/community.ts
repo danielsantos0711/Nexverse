@@ -1157,14 +1157,103 @@ export async function listFollowedCollectionIds(): Promise<string[]> {
 
 // ─── Reputation ─────────────────────────────────────────────────────────────────────────────────────────────
 
+/** Where a kind of contribution belongs on the "how to rise" panel. */
+export type PointGroup = "forum" | "build" | "people" | "missions" | "rhythm"
+
+export const POINT_GROUPS: { id: PointGroup; label: string; blurb: string }[] = [
+  { id: "forum", label: "Forum and chat", blurb: "Asking, answering and helping in the open." },
+  { id: "build", label: "Building", blurb: "Shipping projects, code, releases and results others can use." },
+  { id: "people", label: "Community", blurb: "Bringing people together and being followed for it." },
+  { id: "missions", label: "Missions and arena", blurb: "Taking on challenges and posting ones worth solving." },
+  { id: "rhythm", label: "Milestones", blurb: "Showing up, again and again." },
+]
+
 /**
- * Points per thing: the defaults of the database's reputation_ledger(). Admins change them in /admin/lists
- * (site_content "lists.rep.points", read by public.rep_award() in the database); usePoints() in
- * lib/lists/hooks.ts returns the live values for pages.
+ * Every kind of contribution that earns reputation: its built-in points and daily cap (how many times a day it
+ * can earn; 0 means no cap). These mirror public.rep_rule_defaults() in the database
+ * (supabase/migrations/…_engage.sql), which counts the points; admins change points and caps in /admin/lists
+ * (site_content "lists.rep.points"). Nothing you do to your own work counts.
  */
-export const POINTS = { thread: 5, answer: 2, accepted: 15, like: 2, reaction: 1 } as const
-export type PointKind = keyof typeof POINTS
+export const POINT_RULES = [
+  { id: "thread", label: "Start a thread", points: 5, cap: 10, group: "forum", hint: "A new thread in the forum." },
+  { id: "answer", label: "Reply", points: 2, cap: 30, group: "forum", hint: "A reply to someone's thread." },
+  { id: "accepted", label: "Your reply marked as the solution", points: 15, cap: 0, group: "forum", hint: "By the member who asked." },
+  { id: "like", label: "A like on your thread", points: 2, cap: 50, group: "forum", hint: "From another member." },
+  { id: "reaction", label: "A reaction to your post", points: 1, cap: 50, group: "forum", hint: "On your thread or reply." },
+  { id: "chat-helpful", label: "A chat reply others react to", points: 1, cap: 10, group: "forum", hint: "Answering someone in a public room." },
+  { id: "project", label: "Publish a project", points: 10, cap: 3, group: "build", hint: "A public model, dataset, tool or repository page." },
+  { id: "release", label: "Ship a release or new version", points: 5, cap: 5, group: "build", hint: "On a project or a code repository." },
+  { id: "project-like", label: "A like on your project", points: 2, cap: 25, group: "build", hint: "From another member." },
+  { id: "star", label: "A star on your repository", points: 2, cap: 25, group: "build", hint: "On a public repository in Code." },
+  { id: "fork", label: "Someone forks your repository", points: 3, cap: 10, group: "build", hint: "A public fork by another member." },
+  { id: "download", label: "Someone downloads your files", points: 1, cap: 25, group: "build", hint: "Weights, data or files on your projects; once a day per member." },
+  { id: "benchmark", label: "Post a benchmark result", points: 3, cap: 5, group: "build", hint: "A score with its setup on Benchmarks." },
+  { id: "reproduced", label: "Reproduce someone's benchmark", points: 5, cap: 5, group: "build", hint: "Run it yourself and report what you got." },
+  { id: "confirmed", label: "Your benchmark is reproduced", points: 5, cap: 10, group: "build", hint: "Another member got the same score." },
+  { id: "follower", label: "A new follower", points: 1, cap: 20, group: "people", hint: "Someone follows you." },
+  { id: "event-hosted", label: "Host an event", points: 10, cap: 2, group: "people", hint: "Counted once it happened, with someone else going." },
+  { id: "event-attended", label: "Go to an event", points: 2, cap: 3, group: "people", hint: "RSVP going to someone else's event." },
+  { id: "crew-milestone", label: "Your crew grows", points: 10, cap: 0, group: "people", hint: "At 5, 10, 25, 50 and 100 members." },
+  { id: "collection-follow", label: "Someone follows your collection", points: 2, cap: 20, group: "people", hint: "On a public collection." },
+  { id: "launch-boost", label: "A boost on your launch", points: 1, cap: 25, group: "people", hint: "On the Launchpad." },
+  { id: "mission-entry", label: "Submit a mission entry", points: 3, cap: 3, group: "missions", hint: "Your build for someone's mission." },
+  { id: "mission-won", label: "Win a mission", points: 20, cap: 0, group: "missions", hint: "On top of the mission's reward; teammates too." },
+  { id: "mission-hosted", label: "Post a mission that finds a winner", points: 5, cap: 0, group: "missions", hint: "When you pick the winning entry." },
+  { id: "duel", label: "Post a duel others vote on", points: 3, cap: 5, group: "missions", hint: "Counted at the third vote in the Arena." },
+  { id: "first", label: "Your first contribution", points: 10, cap: 0, group: "rhythm", hint: "Once: the first thread, reply, project or entry." },
+  { id: "streak", label: "Seven days in a row", points: 10, cap: 0, group: "rhythm", hint: "Every 7th day in a row you contribute something." },
+  { id: "badge", label: "Collect a badge", points: 5, cap: 0, group: "rhythm", hint: "Each badge, the moment you earn it." },
+] as const satisfies readonly { id: string; label: string; points: number; cap: number; group: PointGroup; hint: string }[]
+
+export type PointKind = (typeof POINT_RULES)[number]["id"]
 export type Points = Record<PointKind, number>
+export type PointRule = (typeof POINT_RULES)[number]
+
+/** Points per thing (built-in). usePoints() in lib/lists/hooks.ts returns the admins' values for pages. */
+export const POINTS = Object.fromEntries(POINT_RULES.map((r) => [r.id, r.points])) as Points
+
+/** Daily caps per thing (built-in); 0 means no cap. */
+export const POINT_CAPS = Object.fromEntries(POINT_RULES.map((r) => [r.id, r.cap])) as Points
+
+export const isPointKind = (s: string): s is PointKind => POINT_RULES.some((r) => r.id === s)
+
+/** Ledger kinds that are not contributions: a mission's pledge (held, negative) and its reward. */
+export const LEDGER_LABELS: Record<string, string> = {
+  ...Object.fromEntries(POINT_RULES.map((r) => [r.id, r.label])),
+  "mission-pledge": "Points pledged to a mission",
+  "mission-reward": "A mission's reward",
+}
+
+export type PointEvent = { kind: string; points: number; at: string }
+export type PointTally = { kind: string; times: number; points: number; today: number; week: number }
+
+/** A member's points, newest first; pass the last `at` as `olderThan` for the next page. Empty without a database. */
+export async function getPointsHistory(memberId: string, limit = 60, olderThan?: string): Promise<PointEvent[]> {
+  const client = db()
+  if (!client || !memberId) return []
+  const { data, error } = await client.rpc("points_history", { member: memberId, max_rows: limit, older_than: olderThan ?? null })
+  if (error) {
+    // Not switched on yet (the engage migration): no history rather than an error.
+    if (/does not exist|schema cache|Could not find/i.test(error.message)) return []
+    fail(error)
+  }
+  return ((data ?? []) as { kind: string; points: number; at: string }[]).map((r) => ({ kind: r.kind, points: Number(r.points), at: r.at }))
+}
+
+/** A member's points per kind, with today's count for the daily caps. Null when the database cannot say. */
+export async function getPointsBreakdown(memberId: string): Promise<PointTally[] | null> {
+  const client = db()
+  if (!client || !memberId) return null
+  const { data, error } = await client.rpc("points_breakdown", { member: memberId })
+  if (error) return null
+  return ((data ?? []) as Record<keyof PointTally, string | number>[]).map((r) => ({
+    kind: String(r.kind),
+    times: Number(r.times),
+    points: Number(r.points),
+    today: Number(r.today),
+    week: Number(r.week),
+  }))
+}
 
 export type Level = { name: string; min: number; blurb: string }
 

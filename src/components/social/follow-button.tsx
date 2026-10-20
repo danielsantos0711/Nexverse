@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "@/components/site/toaster"
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -63,6 +64,9 @@ export function FollowButton({
     setState((s) => ({ ...s, followers: s.followers + (on ? 1 : -1), mine: on }))
     try {
       await toggleFollow(followee, on)
+      toast(on ? `Following${name ? ` ${name}` : ""}. Their news lands in For you.` : `Unfollowed${name ? ` ${name}` : ""}.`, {
+        action: { label: "Undo", run: () => void toggleFollow(followee, !on).then(() => setState((s) => ({ ...s, followers: s.followers + (on ? -1 : 1), mine: !on }))) },
+      })
     } catch (e) {
       setState((s) => ({ ...s, followers: s.followers + (on ? -1 : 1), mine: !on }))
       setError((e as Error).message)

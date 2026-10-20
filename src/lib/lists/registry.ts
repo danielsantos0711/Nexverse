@@ -1,6 +1,6 @@
 import { DUEL_TASKS, type DuelTask } from "@/lib/arena"
 import { BENCHMARKS, type Benchmark, type BenchmarkArea } from "@/lib/benchmarks"
-import { BADGE_RULES, BADGE_STATS, badgeFromRule, EVENT_KINDS, KNOWN_TAGS, LEVELS, POINTS, type Badge, type BadgeRule, type BadgeStat, type EventKind, type Level, type Points } from "@/lib/community"
+import { BADGE_RULES, BADGE_STATS, badgeFromRule, EVENT_KINDS, KNOWN_TAGS, LEVELS, POINT_CAPS, POINT_RULES, POINTS, type Badge, type BadgeRule, type BadgeStat, type EventKind, type Level, type Points } from "@/lib/community"
 import { KINDS, LANGUAGES, type LanguageCode, type ResourceKind } from "@/lib/data"
 import { PRICE_PRESETS, type PriceRow } from "@/lib/lab/cost"
 import { GPUS } from "@/lib/lab/finetune"
@@ -117,13 +117,7 @@ const benchRow = (b: Benchmark): Row => ({
   retired: Boolean(b.retired),
 })
 
-const POINT_LABELS: Record<keyof Points, string> = {
-  thread: "Start a thread",
-  answer: "Reply",
-  accepted: "Your reply marked as the solution",
-  like: "A like on your thread",
-  reaction: "A reaction to your post",
-}
+const POINT_LABELS = Object.fromEntries(POINT_RULES.map((r) => [r.id, r.label])) as Record<keyof Points, string>
 
 // Nothing from or about community sites Nexverse does not link to (see lib/live/http.ts).
 const topicsAllowed = (rows: Row[]) => rows.map((r) => (isGhTopic(String(r.id)) ? null : `#${r.id} is not a topic Nexverse can follow.`)).find(Boolean) ?? null
@@ -292,21 +286,22 @@ export const LISTS: ListDef[] = [
     key: "lists.rep.points",
     group: "community",
     title: "Reputation points",
-    blurb: "How many points each kind of contribution is worth. Points light up a member's orbit on the leaderboard.",
+    blurb: "How many points each kind of contribution is worth, and how many times a day it can earn. Points light up a member's orbit on the leaderboard.",
     noun: "rule",
     idField: "id",
     mode: "fixed",
-    max: 5,
+    max: POINT_RULES.length,
     preview: "table",
     where: "The leaderboard, profiles and every reputation tier. Totals are worked out by the database from these values.",
-    note: "Changing a value recounts everyone's points, past contributions included, so tiers can move. Mission rewards are set per mission and are not affected.",
+    note: "Changing a value recounts everyone's points, past contributions included, so tiers can move. A daily cap of 0 means no cap. Nothing members do to their own work earns points. Mission rewards are set per mission and are not affected.",
     link: { href: "/admin/roles", label: "Tier thresholds and the powers they unlock live in Roles and powers" },
     fields: [
       id("id", "Rule", SLUG, SLUG_HELP, { locked: true, width: "xs" }),
       text("label", "Contribution", 60, { locked: true, width: "lg" }),
       num("points", "Points", 0, 100),
+      num("cap", "Daily cap", 0, 1000, { hint: "How many times a day this can earn points for one member. 0 means no cap." }),
     ],
-    fallback: (Object.keys(POINTS) as (keyof Points)[]).map((k) => ({ id: k, label: POINT_LABELS[k], points: POINTS[k] })),
+    fallback: POINT_RULES.map((r) => ({ id: r.id, label: POINT_LABELS[r.id], points: POINTS[r.id], cap: POINT_CAPS[r.id] })),
   },
   {
     slug: "levels",

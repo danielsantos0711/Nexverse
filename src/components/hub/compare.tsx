@@ -12,6 +12,8 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { compact, formatDate, KINDS, type ResourceKind } from "@/lib/data"
 import { fromProject, getProjects, isHubId, listHub, type HubEntry } from "@/lib/hub"
 import { getProjectStats, type Project, type ProjectStats } from "@/lib/projects"
+import { modalities, pricingLine, tokens } from "@/components/studio/model-panels"
+import { formatBytes } from "@/lib/editor/media"
 import { cn } from "@/lib/utils"
 
 /**
@@ -170,6 +172,22 @@ const METRICS: Metric[] = [
   { label: "Replies", get: (r) => r.s.replies, fmt: (n) => compact(n) },
   { label: "Versions", get: (r) => r.p.versions.length, fmt: (n) => String(n) },
 ]
+
+type SpecRow = readonly [string, (r: Row) => React.ReactNode]
+
+/** Model and dataset facts, only the rows at least one pick has. */
+function specRows(items: Row[]): SpecRow[] {
+  const all: [string, (r: Row) => React.ReactNode | null][] = [
+    ["Provider", (r) => r.p.specs?.model?.provider ?? null],
+    ["Context", (r) => tokens(r.p.specs?.model?.contextLength)],
+    ["Pricing", (r) => pricingLine(r.p.specs?.model?.pricing)],
+    ["Parameters", (r) => r.p.specs?.model?.parameters ?? null],
+    ["Modalities", (r) => modalities(r.p.specs?.model)],
+    ["Rows", (r) => (r.p.specs?.dataset?.rows ? compact(r.p.specs.dataset.rows) : null)],
+    ["Size", (r) => (r.p.specs?.dataset?.bytes ? formatBytes(r.p.specs.dataset.bytes) : null)],
+  ]
+  return all.filter(([, get]) => items.some((r) => get(r) !== null)).map(([label, get]) => [label, (r: Row) => get(r) ?? <span className="text-muted-foreground">Not stated</span>] as const)
+}
 
 /** The comparison page itself: picks come from the URL (shareable) or the tray, then read across. */
 export function CompareView() {
@@ -382,6 +400,7 @@ export function CompareView() {
               })}
               {(
                 [
+                  ...specRows(items),
                   ["Published", (r: Row) => (r.p.publishedAt ? formatDate(r.p.publishedAt) : "Not published")],
                   ["Latest version", (r: Row) => (r.p.versions[0] ? <span className="font-mono">{r.p.versions[0].version}</span> : "None yet")],
                   ["Licence", (r: Row) => r.e.license ?? "Not stated"],
@@ -400,7 +419,7 @@ export function CompareView() {
                   ],
                   ["Tags", (r: Row) => (r.e.tags.length ? r.e.tags.map((t) => `#${t}`).join("  ") : "None")],
                   ["Summary", (r: Row) => <span className="text-muted-foreground">{r.e.summary}</span>],
-                ] as const
+                ] as SpecRow[]
               ).map(([label, get]) => (
                 <tr key={label} className="border-t border-border">
                   <th scope="row" className="p-4 text-left font-normal text-muted-foreground">

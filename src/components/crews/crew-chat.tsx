@@ -1,26 +1,27 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { PeoplePanel, people } from "@/components/chat/people"
+import { people } from "@/components/chat/people"
 import { RoomView } from "@/components/chat/room-view"
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
-import type { Presence } from "@/lib/chat"
+import type { Presence, Room } from "@/lib/chat"
 import { crewRoom, type Crew } from "@/lib/crews"
 import type { Member } from "@/lib/store"
 
 /**
- * The crew's own chat room. It is the ordinary chat (same messages, reactions, replies, typing and presence),
- * pointed at the room "crew-<slug>" that the database opens for every crew and keeps to its members.
+ * The crew's own chat room. It is the ordinary chat (threads, polls, stickers, pins, reactions, typing and
+ * presence), pointed at the room "crew-<slug>" that the database opens for every crew and keeps to its members.
+ * The captain and officers set its look and pin messages.
  */
-export function CrewChat({ crew, me, canWrite, ready }: { crew: Crew; me: Member | null; canWrite: boolean; ready: boolean }) {
-  const room = useMemo(() => crewRoom(crew), [crew])
+export function CrewChat({ crew, me, canWrite, ready, officer }: { crew: Crew; me: Member | null; canWrite: boolean; ready: boolean; officer?: boolean }) {
+  const base = useMemo(() => crewRoom(crew), [crew])
+  const [look, setLook] = useState<Room | null>(null)
+  const room = look ?? base
   const [here, setHere] = useState<Presence[]>([])
-  const [peopleOpen, setPeopleOpen] = useState(false)
   const crowd = people(here)
 
   return (
     // The chat's "show rooms" button belongs to the full chat page, so it is hidden here.
-    <div className="flex h-[min(72dvh,42rem)] min-h-[26rem] overflow-hidden rounded-xl border border-border bg-card/30 [&_button[aria-label='Show_rooms']]:hidden">
+    <div className="flex h-[min(76dvh,46rem)] min-h-[28rem] overflow-hidden rounded-xl border border-border bg-card [&_button[aria-label='Show_rooms']]:hidden">
       <RoomView
         key={room.slug}
         slug={room.slug}
@@ -34,17 +35,9 @@ export function CrewChat({ crew, me, canWrite, ready }: { crew: Crew; me: Member
         onPresence={setHere}
         onRead={() => {}}
         onOpenRooms={() => {}}
-        onOpenPeople={() => setPeopleOpen(true)}
+        onRoomChange={setLook}
+        canStyle={officer}
       />
-      <aside aria-label="Who's in the crew chat" className="hidden w-64 shrink-0 flex-col border-l border-border bg-card/40 xl:flex">
-        <PeoplePanel room={room} crowd={crowd} me={me} />
-      </aside>
-      <Sheet open={peopleOpen} onOpenChange={setPeopleOpen}>
-        <SheetContent side="right" className="w-[85%] max-w-xs gap-0 p-0">
-          <SheetTitle className="sr-only">Who&apos;s in the crew chat</SheetTitle>
-          <PeoplePanel room={room} crowd={crowd} me={me} />
-        </SheetContent>
-      </Sheet>
     </div>
   )
 }

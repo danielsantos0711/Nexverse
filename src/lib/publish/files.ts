@@ -2,6 +2,8 @@
 
 import { saveBytes } from "@/lib/code/download"
 import { sha256Hex } from "@/lib/code/hash"
+import { hashFile } from "@/lib/publish/sha256"
+import { savedUpload, TusUpload, type TusState } from "@/lib/publish/tus"
 import { zipStore } from "@/lib/code/zip"
 import { db, live } from "@/lib/supabase"
 
@@ -11,7 +13,10 @@ import { db, live } from "@/lib/supabase"
  * signed-in members can fetch the bytes, through short-lived signed URLs the database grants per file. Each
  * member's download is counted once a day per file by count_download().
  *
- * Limits (also enforced by the database and the bucket): 50 MB per file, 100 files per page, 1 GB per member.
+ * Limits (also enforced by the database and the bucket, see uploadLimits()): 5 GB per file by the bucket, capped by
+ * the project-wide limit set in the Supabase dashboard (NEXT_PUBLIC_STORAGE_MAX_FILE_MB, 50 on the Free plan),
+ * 1,000 files per page and 20 GB per member. Files over 6 MB go up as resumable uploads (lib/publish/tus.ts) with
+ * progress, pause, resume and retries; smaller ones in one request.
  */
 
 export type FileTargetKind = "project" | "share"
@@ -30,7 +35,44 @@ export type HostedFile = {
   createdAt: string
 }
 
+/** Round 9 defaults, used until the database says otherwise (uploadLimits). */
 export const FILE_LIMITS = { fileBytes: 50 * 1024 * 1024, perPage: 100, memberBytes: 1024 * 1024 * 1024, zipBytes: 300 * 1024 * 1024 } as const
+
+export type UploadLimits = { fileBytes: number; perPage: number; memberBytes: number; perHour: number; resumable: boolean }
+
+/** Files over this size use the resumable endpoint. */
+export const RESUMABLE_FROM = 6 * 1024 * 1024
+
+/**
+ * The project-wide upload limit set in the Supabase dashboard (Storage settings). The database cannot read it,
+ * so the site is told through this public setting; 50 MB is the most the Free plan allows.
+ */
+const GLOBAL_MAX = (() => {
+  const mb = Number(process.env.NEXT_PUBLIC_STORAGE_MAX_FILE_MB)
+  return Number.isFinite(mb) && mb > 0 ? Math.round(mb * 1024 * 1024) : 50 * 1024 * 1024
+})()
+
+let limitsCache: Promise<UploadLimits> | null = null
+
+/** What one file and one account may hold here: the bucket's limit, the dashboard's limit and the quotas. */
+export function uploadLimits(): Promise<UploadLimits> {
+  limitsCache ??= (async () => {
+    const fallback: UploadLimits = { fileBytes: Math.min(FILE_LIMITS.fileBytes, GLOBAL_MAX), perPage: FILE_LIMITS.perPage, memberBytes: FILE_LIMITS.memberBytes, perHour: 100, resumable: true }
+    const client = db()
+    if (!client) return fallback
+    const { data, error } = await client.rpc("upload_limits")
+    if (error || !data) return fallback
+    const d = data as Partial<UploadLimits>
+    return {
+      fileBytes: Math.min(Number(d.fileBytes) || FILE_LIMITS.fileBytes, GLOBAL_MAX),
+      perPage: Number(d.perPage) || FILE_LIMITS.perPage,
+      memberBytes: Number(d.memberBytes) || FILE_LIMITS.memberBytes,
+      perHour: Number(d.perHour) || 100,
+      resumable: true,
+    }
+  })()
+  return limitsCache
+}
 
 const VERSION = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,39}$/
 
@@ -80,41 +122,42 @@ export async function myUsage(): Promise<number | null> {
   return error ? null : Number(data ?? 0)
 }
 
-/** Storage keys allow a narrow alphabet; the real name is kept in the table. */
-export function storageName(name: string) {
-  const dot = name.lastIndexOf(".")
-  const ext = dot > 0 ? name.slice(dot).toLowerCase().replace(/[^a-z0-9.]/g, "").slice(0, 12) : ""
-  const base = (dot > 0 ? name.slice(0, dot) : name)
-    .normalize("NFKD")
-    .replace(/\p{M}/gu, "")
-    .replace(/[^A-Za-z0-9._-]+/g, "-")
-    .replace(/^[-.]+|[-.]+$/g, "")
-    .slice(0, 120)
-  return (base || "file") + ext
-}
+import { storageName } from "@/lib/publish/storage-name"
+export { storageName }
 
-export function fileProblem(file: File): string | null {
+const mb = (n: number) => (n >= 1024 ** 3 ? `${+(n / 1024 ** 3).toFixed(1)} GB` : `${Math.round(n / 1024 ** 2)} MB`)
+
+export function fileProblem(file: File, limits: Pick<UploadLimits, "fileBytes"> = FILE_LIMITS): string | null {
   if (!file.size) return `${file.name} is empty.`
-  if (file.size > FILE_LIMITS.fileBytes) return `${file.name} is over 50 MB, the limit for one file.`
+  if (file.size > limits.fileBytes) return `${file.name} is over ${mb(limits.fileBytes)}, the limit for one file on this site.`
   if (file.name.length > 200) return "File names can be up to 200 characters."
   return null
 }
 
 function friendly(message: string) {
   if (/bucket not found/i.test(message)) return "Downloads are not switched on yet. Ask an admin to run the latest database update."
-  if (/row-level security|policy|violates/i.test(message)) return "You cannot add files here, or you are over your 1 GB of files, or you have uploaded 100 files in the last hour."
-  if (/exceeded the maximum allowed size|payload too large|413/i.test(message)) return "That file is over 50 MB, the limit for one file."
+  if (/row-level security|policy|violates/i.test(message)) return "You cannot add files here, or you are over your storage for files, or you uploaded too many files in the last hour."
+  if (/exceeded the maximum allowed size|payload too large|413/i.test(message)) return "That file is over the limit for one file on this site."
   return message
 }
 
-/** Uploads a file to a page you can edit and lists it. `onStage` reports "hashing" and "uploading". */
+export type UploadStage = "hashing" | "uploading" | "paused" | "retrying" | "saving"
+
+/** Pause, resume or cancel an upload in progress (resumable uploads only; small files finish in one go). */
+export type UploadControl = { pause: () => void; resume: () => void; cancel: () => Promise<void> }
+
+/**
+ * Uploads a file to a page you can edit and lists it. `onStage` reports each step, `onProgress` the share done
+ * (0–1) of the current step, and `onControl` hands over pause/resume/cancel for resumable uploads.
+ */
 export async function uploadFile(
   kind: FileTargetKind,
   targetId: string,
   file: File,
-  opts: { version?: string; note?: string; onStage?: (s: "hashing" | "uploading" | "saving") => void } = {}
+  opts: { version?: string; note?: string; onStage?: (s: UploadStage, detail?: string) => void; onProgress?: (share: number) => void; onControl?: (c: UploadControl) => void } = {}
 ): Promise<HostedFile> {
-  const problem = fileProblem(file)
+  const limits = await uploadLimits()
+  const problem = fileProblem(file, limits)
   if (problem) throw new Error(problem)
   const version = opts.version?.trim() || null
   if (version && !VERSION.test(version)) throw new Error(`"${version}" is not a version name. Use something like 1.0.0 or v2-beta.`)
@@ -123,11 +166,41 @@ export async function uploadFile(
   const { data: s } = await client.auth.getSession()
   if (!s.session) throw new Error("Sign in to add files.")
   opts.onStage?.("hashing")
-  const sha256 = await sha256Hex(await file.arrayBuffer())
-  const path = `${kind}/${targetId}/${crypto.randomUUID()}/${storageName(file.name)}`
+  const sha256 = await hashFile(file, opts.onProgress)
+  const contentType = file.type || "application/octet-stream"
+  const fingerprint = `${kind}/${targetId}/${file.name}/${file.size}/${file.lastModified}`
+  // A half-finished upload of the same file from an earlier visit carries on where it stopped.
+  const resumed = file.size > RESUMABLE_FROM ? savedUpload(fingerprint) : null
+  const path = resumed?.objectName ?? `${kind}/${targetId}/${crypto.randomUUID()}/${storageName(file.name)}`
   opts.onStage?.("uploading")
-  const up = await client.storage.from("downloads").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false })
-  if (up.error) throw new Error(friendly(up.error.message))
+  opts.onProgress?.(0)
+  if (file.size > RESUMABLE_FROM) {
+    const env = { url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "", key: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" }
+    const up = new TusUpload({
+      supabaseUrl: env.url,
+      apiKey: env.key,
+      token: async () => (await client.auth.getSession()).data.session?.access_token ?? null,
+      bucket: "downloads",
+      objectName: path,
+      file,
+      contentType,
+      fingerprint,
+      onProgress: (sent, total) => opts.onProgress?.(total ? sent / total : 0),
+      onState: (st: TusState, detail?: string) => {
+        if (st === "paused" || st === "retrying" || st === "uploading") opts.onStage?.(st, detail)
+      },
+    })
+    opts.onControl?.({ pause: () => up.pause(), resume: () => up.resume(), cancel: () => up.cancel() })
+    try {
+      await up.start()
+    } catch (e) {
+      throw new Error(friendly((e as Error).message))
+    }
+  } else {
+    const up = await client.storage.from("downloads").upload(path, file, { contentType, upsert: false })
+    if (up.error) throw new Error(friendly(up.error.message))
+  }
+  opts.onProgress?.(1)
   opts.onStage?.("saving")
   const { data, error } = await client
     .from("files")
@@ -140,6 +213,16 @@ export async function uploadFile(
     throw new Error(friendly(error.message))
   }
   return fromRow(data as Row)
+}
+
+/** Reads a file's bytes for a preview (the dataset viewer). Signed-in members only; at most `maxBytes`. */
+export async function readFileText(f: HostedFile, maxBytes = 20 * 1024 * 1024): Promise<{ text: string; truncated: boolean }> {
+  const url = await signedUrl(f, false)
+  const res = await fetch(url, { headers: f.size > maxBytes ? { range: `bytes=0-${maxBytes - 1}` } : undefined })
+  if (!res.ok && res.status !== 206) throw new Error(`The file could not be read (${res.status}).`)
+  const buf = await res.arrayBuffer()
+  const truncated = f.size > buf.byteLength
+  return { text: new TextDecoder().decode(buf.byteLength > maxBytes ? buf.slice(0, maxBytes) : buf), truncated }
 }
 
 export async function updateFile(id: string, patch: { name?: string; version?: string | null; note?: string }) {

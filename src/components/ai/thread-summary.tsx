@@ -1,8 +1,10 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
-import { ListCollapseIcon, SparklesIcon, XIcon } from "lucide-react"
-import { AiErrorText, AiLabel, AiLoading, useAiReady } from "@/components/ai/ai-bits"
+import dynamic from "next/dynamic"
+import { SparklesIcon, XIcon } from "lucide-react"
+import { AiErrorText, AiLabel, useAiReady } from "@/components/ai/ai-bits"
+import { AiPill } from "@/components/ai/inline-ai"
 import { Button } from "@/components/ui/button"
 import { ai, type ThreadSummaryResult } from "@/lib/ai-client"
 import { cn } from "@/lib/utils"
@@ -14,6 +16,7 @@ import { cn } from "@/lib/utils"
  */
 
 const KEY = "nexverse.ai.summary."
+const SiriWave = dynamic(() => import("@/components/assistant/siri-wave"), { ssr: false })
 
 const cacheListeners = new Set<() => void>()
 
@@ -100,16 +103,12 @@ export function ThreadSummary({
   }
 
   if (!open) {
-    return (
-      <Button type="button" variant="outline" size="sm" onClick={summary ? () => setDismissed(null) : run} className={className}>
-        <ListCollapseIcon aria-hidden data-icon="inline-start" className="text-ion" />
-        {summary ? "Show the summary" : "Summarize this thread"}
-      </Button>
-    )
+    return <AiPill label={summary ? "Show the summary" : "Summarise this thread"} onClick={summary ? () => setDismissed(null) : run} className={cn("self-start", className)} />
   }
 
   return (
-    <section aria-label="Thread summary" className={cn("flex flex-col gap-3 rounded-xl border border-ion/25 bg-ion/5 p-4", className)}>
+    <section aria-label="Thread summary" data-busy={busy ? "" : undefined} className={cn("ai-card nx-enter flex flex-col gap-3 p-4", className)}>
+      <span aria-hidden className="ai-pill-wave">{busy && <SiriWave active speed={1} scale={1.1} exposure={0.6} />}</span>
       <div className="flex items-center justify-between gap-2">
         <h2 className="inline-flex items-center gap-2 text-sm font-medium">
           <SparklesIcon aria-hidden className="size-4 text-ion" />
@@ -122,7 +121,14 @@ export function ThreadSummary({
           <XIcon aria-hidden />
         </Button>
       </div>
-      {busy && <AiLoading label="Reading the thread…" />}
+      {busy && (
+        <div role="status" className="flex flex-col gap-2">
+          <span className="sr-only">Reading the thread…</span>
+          {[92, 74, 50].map((w) => (
+            <span key={w} style={{ width: `${w}%` }} className="nx-skeleton h-3" />
+          ))}
+        </div>
+      )}
       {error && !busy && (
         <div className="flex flex-wrap items-center gap-3">
           <AiErrorText error={error} />

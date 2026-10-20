@@ -362,3 +362,145 @@ export function clearLocalData() {
   } catch {}
   if (loadedFor !== undefined) void load(loadedFor)
 }
+
+// ─── A member's space ───────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What a member chose for their profile page (public.member_spaces, supabase/migrations/…_engage.sql): a cover,
+ * an accent colour, which world their planet is, a tagline and a status line, up to six pinned things, up to six
+ * badges on display, and how their work is laid out. Everyone can read it; only the member writes it. Before the
+ * migration (or without a database) every profile uses the defaults and saving explains why it cannot.
+ */
+export type SpaceLayout = "grid" | "list" | "orbit"
+export type PlanetWorld = "ion" | "tide" | "champagne" | "violet" | "ice" | "ember" | "moss"
+
+/** The seven worlds, in the order MemberPlanet's palette lists them. */
+export const PLANET_WORLDS: { id: PlanetWorld; label: string }[] = [
+  { id: "ion", label: "Ion bands" },
+  { id: "tide", label: "Tide marble" },
+  { id: "champagne", label: "Champagne bands" },
+  { id: "violet", label: "Violet bands" },
+  { id: "ice", label: "Ice marble" },
+  { id: "ember", label: "Ember bands" },
+  { id: "moss", label: "Moss marble" },
+]
+
+export type MemberSpace = {
+  cover: string | null
+  accent: string
+  planet: PlanetWorld | null
+  tagline: string
+  status: string
+  pinned: string[]
+  badges: string[]
+  layout: SpaceLayout
+}
+
+export const DEFAULT_SPACE: MemberSpace = { cover: null, accent: "ion", planet: null, tagline: "", status: "", pinned: [], badges: [], layout: "grid" }
+export const SPACE_LIMITS = { tagline: 80, status: 60, pinned: 6, badges: 6 } as const
+const PIN = /^[a-z]{2,16}:[a-z0-9-]{1,80}$/
+const BADGE_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
+
+type SpaceRow = { cover: string | null; accent: string; planet: string | null; tagline: string; status: string; pinned: string[] | null; badges: string[] | null; layout: string }
+
+const fromSpaceRow = (r: SpaceRow): MemberSpace => ({
+  cover: r.cover,
+  accent: r.accent || "ion",
+  planet: PLANET_WORLDS.some((w) => w.id === r.planet) ? (r.planet as PlanetWorld) : null,
+  tagline: r.tagline ?? "",
+  status: r.status ?? "",
+  pinned: (r.pinned ?? []).filter((p) => PIN.test(p)),
+  badges: (r.badges ?? []).filter((b) => BADGE_ID.test(b)),
+  layout: r.layout === "list" || r.layout === "orbit" ? r.layout : "grid",
+})
+
+/** A member's space, or the defaults (also when the table is not there yet). */
+export async function getMemberSpace(memberId: string): Promise<MemberSpace> {
+  const client = db()
+  if (!client) {
+    try {
+      const v = JSON.parse(localStorage.getItem("nexverse-space") ?? "null")
+      return v ? { ...DEFAULT_SPACE, ...v } : DEFAULT_SPACE
+    } catch {
+      return DEFAULT_SPACE
+    }
+  }
+  const { data, error } = await client.from("member_spaces").select("cover, accent, planet, tagline, status, pinned, badges, layout").eq("member_id", memberId).maybeSingle()
+  if (error || !data) return DEFAULT_SPACE
+  return fromSpaceRow(data as SpaceRow)
+}
+
+export function validateSpace(s: MemberSpace): string | null {
+  if (s.tagline.length > SPACE_LIMITS.tagline) return "Keep the tagline to 80 characters."
+  if (s.status.length > SPACE_LIMITS.status) return "Keep the status to 60 characters."
+  if (s.pinned.length > SPACE_LIMITS.pinned) return "Pin up to six things."
+  if (s.badges.length > SPACE_LIMITS.badges) return "Show up to six badges."
+  if (s.cover && !s.cover.startsWith("pattern:") && !/^https:\/\/[^\s]+$/.test(s.cover)) return "Use a full https:// link to an image for the cover."
+  return null
+}
+
+/** Saves your space (you, signed in). */
+export async function saveMemberSpace(s: MemberSpace): Promise<void> {
+  const problem = validateSpace(s)
+  if (problem) throw new Error(problem)
+  const clean = { ...s, tagline: s.tagline.trim(), status: s.status.trim(), pinned: [...new Set(s.pinned)].filter((p) => PIN.test(p)), badges: [...new Set(s.badges)].filter((b) => BADGE_ID.test(b)) }
+  const client = db()
+  if (!client) {
+    try {
+      localStorage.setItem("nexverse-space", JSON.stringify(clean))
+    } catch {
+      throw new Error("This browser would not save that.")
+    }
+    return
+  }
+  const who = await me()
+  if (!who) throw new Error("Sign in first.")
+  const { error } = await client.from("member_spaces").upsert({ member_id: who.id, ...clean }, { onConflict: "member_id" })
+  if (error) {
+    if (/does not exist|schema cache|Could not find/i.test(error.message)) throw new Error("Profile customisation is still being switched on for this site. Try again soon.")
+    if (/row-level security/.test(error.message)) throw new Error("You are not allowed to change this profile. Paused accounts cannot until the pause ends.")
+    throw new Error(error.message)
+  }
+}
+
+// ─── Feed tuning ────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * How a member tuned their "For you" feed (public.feed_tuning, private to them): kinds of card they hid, members
+ * or categories they see less of, and single items they marked "not interested". Kept in this browser without a
+ * database, or while the table is not there yet.
+ */
+export type FeedTuning = { hiddenKinds: string[]; muted: string[]; hidden: string[] }
+export const EMPTY_TUNING: FeedTuning = { hiddenKinds: [], muted: [], hidden: [] }
+const TUNING_KEY = "nexverse-feed-tuning"
+
+function readLocalTuning(): FeedTuning {
+  try {
+    const v = JSON.parse(localStorage.getItem(TUNING_KEY) ?? "null")
+    return v ? { ...EMPTY_TUNING, ...v } : EMPTY_TUNING
+  } catch {
+    return EMPTY_TUNING
+  }
+}
+
+export async function getFeedTuning(): Promise<FeedTuning> {
+  const who = await me()
+  if (!who) return readLocalTuning()
+  const { data, error } = await who.client.from("feed_tuning").select("hidden_kinds, muted, hidden").eq("member_id", who.id).maybeSingle()
+  if (error) return readLocalTuning()
+  if (!data) return EMPTY_TUNING
+  const r = data as { hidden_kinds: string[]; muted: string[]; hidden: string[] }
+  return { hiddenKinds: r.hidden_kinds ?? [], muted: r.muted ?? [], hidden: r.hidden ?? [] }
+}
+
+export async function saveFeedTuning(t: FeedTuning): Promise<void> {
+  const clean = { hiddenKinds: [...new Set(t.hiddenKinds)].slice(0, 12), muted: [...new Set(t.muted)].slice(-200), hidden: [...new Set(t.hidden)].slice(-500) }
+  try {
+    localStorage.setItem(TUNING_KEY, JSON.stringify(clean))
+  } catch {}
+  const who = await me()
+  if (!who) return
+  const { error } = await who.client.from("feed_tuning").upsert({ member_id: who.id, hidden_kinds: clean.hiddenKinds, muted: clean.muted, hidden: clean.hidden }, { onConflict: "member_id" })
+  // Before the table exists the browser copy above is what counts.
+  if (error && !/does not exist|schema cache|Could not find/i.test(error.message)) throw new Error(error.message)
+}

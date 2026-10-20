@@ -145,7 +145,7 @@ export function BenchmarksIndex() {
               const b = getBenchmark(r.benchmark)!
               return (
                 <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-sm">
-                  <Link href={`/benchmarks/${b.slug}`} className="min-w-0 flex-1 truncate hover:text-ion focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+                  <Link data-nav-item href={`/benchmarks/${b.slug}`} className="min-w-0 flex-1 truncate hover:text-ion focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
                     <span className="font-medium">{r.model}</span> <span className="text-muted-foreground">on {b.name}</span>
                   </Link>
                   <span className="font-semibold tabular">{formatScore(b, r.score)}</span>

@@ -93,7 +93,7 @@ export function ConstellationsGallery() {
             </div>
             <div className="flex flex-1 flex-col gap-1.5 p-4">
               <h2 className="text-lg leading-tight font-semibold">
-                <Link href={`/collections/${c.id}`} className="rounded-sm hover:text-ion focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+                <Link data-nav-item href={`/collections/${c.id}`} className="rounded-sm hover:text-ion focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
                   {c.title}
                 </Link>
               </h2>

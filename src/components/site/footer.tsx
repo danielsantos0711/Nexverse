@@ -7,6 +7,9 @@ import { useMenus } from "@/lib/menus"
 import { useSiteSettings } from "@/lib/site-settings"
 import { Copy } from "@/components/content/copy"
 import { MobileTabBar } from "@/components/site/mobile-tab-bar"
+import { openCreate } from "@/components/site/create-sheet"
+import { iconFor } from "@/components/site/icons"
+import { ArrowRightIcon, PlusIcon } from "lucide-react"
 
 export function SiteFooter() {
   const { settings } = useSiteSettings()
@@ -28,11 +31,19 @@ export function SiteFooter() {
           </Link>
           <p className="max-w-[40ch] text-sm leading-relaxed text-muted-foreground">{settings.brand.tagline ? `${settings.brand.tagline}. ` : ""}{settings.brand.description}</p>
           <div className="flex flex-wrap gap-2">
-            <Link href="/share" className="halo-btn">
-              <Copy k="footer.cta.share">Launch something</Copy>
-            </Link>
-            <Link href="/explore" className="liquid-glass-pill inline-flex h-9 items-center px-4 text-sm text-foreground/85 hover:text-foreground">
-              <Copy k="footer.cta.explore">Explore the galaxy</Copy>
+            <button type="button" onClick={openCreate} className="halo-btn">
+              <PlusIcon aria-hidden className="size-4" />
+              <Copy k="footer.cta.share">Create something</Copy>
+            </button>
+            {/* HorizonX Interactive Hover Button (see .hx-hover-btn) */}
+            <Link href="/explore" className="hx-hover-btn">
+              <span aria-hidden className="hx-dot" />
+              <span className="hx-label">
+                <Copy k="footer.cta.explore">Explore the map</Copy>
+              </span>
+              <span aria-hidden className="hx-label-hover">
+                Explore the map <ArrowRightIcon className="size-4" />
+              </span>
             </Link>
           </div>
         </div>
@@ -42,7 +53,11 @@ export function SiteFooter() {
               {c.label && <h2 className="mb-1 font-sans text-xs font-medium tracking-wide text-muted-foreground uppercase">{c.label}</h2>}
               {c.links.map((l, i) =>
                 l.href.startsWith("/") ? (
-                  <Link key={`${l.href}-${i}`} href={l.href as Route} className="self-start rounded-sm text-foreground/80 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                  <Link key={`${l.href}-${i}`} href={l.href as Route} className="group inline-flex items-center gap-2 self-start rounded-sm text-foreground/80 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                    {(() => {
+                      const Icon = iconFor(l.icon)
+                      return <Icon aria-hidden className="size-3.5 text-muted-foreground transition-[color,transform] duration-(--dur-base) group-hover:-translate-y-px group-hover:text-ion" />
+                    })()}
                     {l.label}
                   </Link>
                 ) : (

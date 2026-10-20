@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "@/components/site/toaster"
 import { useState } from "react"
 import { CheckIcon, Share2Icon } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ export function ShareStory({ title, path }: { title: string; path: string }) {
       }
       await navigator.clipboard.writeText(url)
       setCopied(true)
+      toast("Link copied. Paste it anywhere.")
       setTimeout(() => setCopied(false), 2000)
     } catch {
       // The reader closed the share sheet, or the clipboard is not available: nothing to report.

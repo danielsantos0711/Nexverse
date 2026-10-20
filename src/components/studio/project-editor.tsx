@@ -4,16 +4,19 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowLeftIcon, CalendarClockIcon, CheckCircle2Icon, ExternalLinkIcon, EyeOffIcon, HistoryIcon, RocketIcon, SaveIcon, StarIcon, Trash2Icon } from "lucide-react"
+import { ArrowLeftIcon, CalendarClockIcon, CheckCircle2Icon, DownloadCloudIcon, ExternalLinkIcon, EyeOffIcon, HistoryIcon, RocketIcon, SaveIcon, StarIcon, Trash2Icon } from "lucide-react"
 import { DownloadsPanel } from "@/components/downloads/downloads-panel"
 import { AudiencePicker, CoauthorsInput, CoverPicker, GalleryEditor, LicensePicker, LinksEditor, ScheduleField, Switch } from "@/components/editor/publish-fields"
 import { RevisionsDialog } from "@/components/editor/revisions"
 import { PageSkeleton } from "@/components/app/page-skeleton"
-import { Cover, KIND_ICONS, KindTag } from "@/components/hub/bits"
+import { Cover, KindTag } from "@/components/hub/bits"
 import { MarkdownEditor } from "@/components/studio/markdown-editor"
 import { TagInput } from "@/components/studio/tag-input"
 import { Gate } from "@/components/moderation/gate"
 import { ConfirmDialog, StatusPill, StudioHead } from "@/components/studio/ui"
+import { createProjectRepo } from "@/components/studio/code-link"
+import { AppearancePicker, RelatedPicker, SpecsEditor, TypePicker } from "@/components/studio/project-fields"
+import { useCaps } from "@/lib/caps"
 import { fromRows, toRows, VersionsEditor, type VersionRow } from "@/components/studio/versions-editor"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
@@ -30,8 +33,10 @@ import {
   featureProject,
   getProject,
   isScheduled,
+  kindForType,
   LIMITS,
-  projectPath,
+  PROJECT_TYPES,
+  projectHref,
   slugify,
   slugTaken,
   toInput,
@@ -41,6 +46,7 @@ import {
   type ProjectErrors,
   type ProjectInput,
   type ProjectStatus,
+  type ProjectType,
 } from "@/lib/projects"
 import { useRole } from "@/lib/roles"
 import { useSession } from "@/lib/store"
@@ -89,7 +95,7 @@ const FIELD_IDS: [keyof ProjectErrors, string][] = [
 const KIND_LIST = Object.keys(KINDS) as ResourceKind[]
 
 /** Create a project (no id) or edit one of yours. Members only when a database is connected. */
-export function ProjectEditor({ id }: { id?: string }) {
+export function ProjectEditor({ id, embedded = false, onSaved }: { id?: string; embedded?: boolean; onSaved?: (p: Project) => void }) {
   const { ready, user } = useSession()
   const role = useRole()
   const params = useSearchParams()
@@ -121,14 +127,22 @@ export function ProjectEditor({ id }: { id?: string }) {
     if (loaded.error) return <Problem title="This project could not be loaded" detail={loaded.error} />
     const p = loaded.project
     if (!p) return <Problem title="This project is not here" detail="It may have been deleted, or the address is wrong." />
-    if (!canEditProject(p, user?.id)) return <Problem title="You can only edit your own projects" detail="This project belongs to someone else." href={projectPath(p.id)} action="View the project" />
-    return <Editor key={p.id} project={p} initialNotice={params.get("saved") === "draft" ? "Draft saved. Only you can see it." : ""} />
+    if (!canEditProject(p, user?.id)) return <Problem title="You can only edit your own projects" detail="This project belongs to someone else." href={projectHref(p)} action="View the project" />
+    return <Editor key={p.id} project={p} embedded={embedded} onSaved={onSaved} initialNotice={
+          params.get("code")
+            ? `Saved, but the code repository was not created: ${params.get("code")} You can add one below.`
+            : params.get("saved") === "draft"
+              ? "Draft saved. Only you can see it."
+              : params.get("saved") === "live"
+                ? "Published."
+                : ""
+        } />
   }
-  const k = params.get("kind")
-  const kind = KIND_LIST.includes(k as ResourceKind) ? (k as ResourceKind) : "model"
+  const k = params.get("type") ?? params.get("kind")
+  const kind: ProjectType = PROJECT_TYPES.some((t) => t.id === k) ? (k as ProjectType) : KIND_LIST.includes(k as ResourceKind) ? (k === "repo" ? "other" : (k as ProjectType)) : "model"
   // The Lab's card builders hand over a name, a summary and a finished README.
   const prefill = { name: params.get("name") ?? "", summary: params.get("summary") ?? "", readme: params.get("readme") ?? "" }
-  return <Editor key={kind} initialKind={kind} prefill={prefill} />
+  return <Editor key={kind} initialKind={kind} prefill={prefill} wantCode={params.get("code") === "1"} />
 }
 
 function Problem({ title, detail, href = "/studio", action = "Back to your studio" }: { title: string; detail: string; href?: string; action?: string }) {
@@ -152,11 +166,17 @@ function Editor({
   initialKind = "model",
   initialNotice = "",
   prefill,
+  embedded = false,
+  wantCode = false,
+  onSaved,
 }: {
   project?: Project
-  initialKind?: ResourceKind
+  initialKind?: ProjectType
   initialNotice?: string
   prefill?: { name: string; summary: string; readme: string }
+  embedded?: boolean
+  wantCode?: boolean
+  onSaved?: (p: Project) => void
 }) {
   const router = useRouter()
   const reduce = useReducedMotion()
@@ -185,6 +205,9 @@ function Editor({
   const { user } = useSession()
   const { isStaff } = useRole()
   const summaryRef = useRef<HTMLDivElement>(null)
+  const caps = useCaps()
+  // New projects can start with a code repository (Nexverse Code) in the same step.
+  const [withCode, setWithCode] = useState(wantCode || ["tool", "app", "other"].includes(initialKind))
 
   const current = saved.project
   const dirty = JSON.stringify(form) !== JSON.stringify(saved.form)
@@ -249,6 +272,7 @@ function Editor({
         const nextForm: Form = { ...toInput(next), versions: toRows(next.versions) }
         setForm(nextForm)
         setSaved({ form: nextForm, project: next })
+        onSaved?.(next)
         setNotice(
           status === "published" && isScheduled(next)
             ? `Scheduled. It goes live on ${new Date(next.publishAt!).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.`
@@ -270,7 +294,15 @@ function Editor({
         // Marks the form clean before leaving, so the unsaved-changes guard stays quiet.
         setSaved({ form: nextForm, project: next })
         setForm(nextForm)
-        router.push(status === "published" ? projectPath(next.id) : `${projectPath(next.id)}/edit?saved=draft`)
+        let codeNote = ""
+        if (withCode && !next.local && caps.can("repo.create")) {
+          try {
+            await createProjectRepo(next)
+          } catch (e) {
+            codeNote = `&code=${encodeURIComponent((e as Error).message.slice(0, 160))}`
+          }
+        }
+        router.push((status === "published" && !codeNote ? projectHref(next) : `${projectHref(next, "settings")}?saved=${status === "published" ? "live" : "draft"}${codeNote}`) as "/")
       }
     } catch (e) {
       const message = (e as Error).message
@@ -298,7 +330,8 @@ function Editor({
   const coverSeed = form.slug || "new-project"
 
   return (
-    <div className="shell pb-24">
+    <div className={embedded ? "pb-8" : "shell pb-24"}>
+      {!embedded && (
       <StudioHead
         eyebrow={
           <Link href="/studio" className="inline-flex items-center gap-1.5 rounded-sm hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
@@ -306,19 +339,25 @@ function Editor({
           </Link>
         }
         title={current ? `Edit ${current.name}` : "New project"}
-        lead={current ? undefined : "Give your model, dataset, tool or repo a home: a README, links, a changelog and a place to talk about it."}
+        lead={current ? undefined : "Give your model, dataset, tool or app a home on Nexverse: a card, files and versions, an optional code repository, and a place to talk about it."}
       >
+        {!current && (
+          <Link href="/new/project?import=1" className="pressable inline-flex h-9 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm hover:border-white/20">
+            <DownloadCloudIcon aria-hidden className="size-4" /> Import from Hugging Face or OpenRouter
+          </Link>
+        )}
         {current && (
           <>
             {current.local ? <StatusPill tone="local">On this device</StatusPill> : published ? <StatusPill tone="live">Published</StatusPill> : <StatusPill tone="draft">Draft</StatusPill>}
             {(published || current.local) && (
-              <Link href={projectPath(current.id)} className="inline-flex items-center gap-1.5 text-sm text-ion hover:underline">
+              <Link href={projectHref(current) as "/"} className="inline-flex items-center gap-1.5 text-sm text-ion hover:underline">
                 View page <ExternalLinkIcon aria-hidden className="size-3.5" />
               </Link>
             )}
           </>
         )}
       </StudioHead>
+      )}
 
       {!live && (
         <p className="mb-6 rounded-xl border border-border bg-card/50 px-4 py-3 text-sm text-muted-foreground">
@@ -368,29 +407,13 @@ function Editor({
 
           <Section title="Basics">
             <FieldGroup>
-              <FieldSet>
-                <FieldLegend variant="label">What is it?</FieldLegend>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {KIND_LIST.map((k) => {
-                    const Icon = KIND_ICONS[k]
-                    const on = form.kind === k
-                    return (
-                      <label
-                        key={k}
-                        className={cn(
-                          "pressable relative flex cursor-pointer flex-col gap-1.5 rounded-xl border p-3 text-sm transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring",
-                          on ? "border-ion/60 bg-ion/10" : "border-border bg-card/50 hover:bg-card"
-                        )}
-                      >
-                        <input type="radio" name="kind" value={k} checked={on} onChange={() => set("kind", k)} className="sr-only" />
-                        <Icon aria-hidden className={cn("size-5", on ? "text-ion" : "text-muted-foreground")} />
-                        <span className="font-medium">{KINDS[k].label}</span>
-                      </label>
-                    )
-                  })}
-                </div>
-                <FieldDescription>{KINDS[form.kind].blurb}</FieldDescription>
-              </FieldSet>
+              <TypePicker
+                value={form.type}
+                onChange={(t) => {
+                  setForm((f) => ({ ...f, type: t, kind: kindForType(t) }))
+                  setNotice("")
+                }}
+              />
 
               <div className="grid gap-6 md:grid-cols-2">
                 <Field data-invalid={errors.name ? true : undefined}>
@@ -556,6 +579,39 @@ function Editor({
               </FieldSet>
             </FieldGroup>
           </Section>
+
+          {(form.type === "model" || form.type === "dataset") && (
+            <Section title={form.type === "model" ? "Model specs" : "Dataset facts"}>
+              <SpecsEditor type={form.type} value={form.specs} onChange={(v) => set("specs", v)} />
+            </Section>
+          )}
+
+          <Section title="Built with">
+            <p className="-mt-2 text-sm text-muted-foreground">
+              {form.type === "model" ? "Datasets or models it was trained or tuned on." : form.type === "dataset" ? "Datasets it was built from." : "The models, datasets and tools it uses."} Each one lists this project on its page.
+            </p>
+            <RelatedPicker value={form.related} onChange={(v) => set("related", v)} self={current?.id} />
+          </Section>
+
+          <Section title="Look of the page">
+            <AppearancePicker value={form.appearance} onChange={(v) => set("appearance", v)} />
+          </Section>
+
+          {!current && live && (
+            <Section title="Code repository">
+              <label className="flex cursor-pointer items-start justify-between gap-4 text-sm">
+                <span className="flex flex-col gap-0.5">
+                  <span className="font-medium">Start a code repository with it</span>
+                  <span className="text-muted-foreground">
+                    {caps.can("repo.create")
+                      ? "Files with full history, commits, branches, issues, pull requests and releases, as tabs of this project. You can add or connect one later in its settings."
+                      : "Your account cannot create repositories yet. You can add one later from the project's settings."}
+                  </span>
+                </span>
+                <Switch checked={withCode && caps.can("repo.create")} disabled={!caps.can("repo.create")} onChange={setWithCode} label="Start a code repository" />
+              </label>
+            </Section>
+          )}
 
           <Section title="Links">
             <FieldGroup>
@@ -741,7 +797,7 @@ function Editor({
       </form>
 
       {/* Outside the form: the uploader has its own fields and buttons. */}
-      {current && !current.local && (
+      {current && !current.local && !embedded && (
         <div className="mt-8 lg:mr-[22rem]">
           <DownloadsPanel kind="project" targetId={current.id} canEdit zipName={`${current.slug}${current.versions[0] ? `-${current.versions[0].version}` : ""}`} versions={current.versions.map((v) => v.version)} />
         </div>

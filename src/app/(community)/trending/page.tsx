@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { AreaCrumbs } from "@/components/site/area-crumbs"
 import Link from "next/link"
 import { Suspense } from "react"
 import { HashIcon, LayersIcon, NewspaperIcon } from "lucide-react"
@@ -127,7 +128,7 @@ export default function TrendingPage() {
   return (
     <div className="shell pb-16">
       <PageTitle k="trending.header"
-        eyebrow={<Copy k="trending.header.eyebrow">Live from GitHub, the newsroom and the hub itself</Copy>}
+        eyebrow={<span className="flex flex-wrap items-center gap-x-2.5 gap-y-1"><AreaCrumbs /><span aria-hidden className="opacity-40">·</span><Copy k="trending.header.eyebrow">Live from GitHub, the newsroom and the hub itself</Copy></span>}
         title="Trending"
         lead="The open-source AI projects gathering stars, the releases that just shipped, the newsroom’s latest stories and what people here are talking about. Repositories open on Nexverse with their READMEs and files, refreshed through the day."
       >

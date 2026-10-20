@@ -73,7 +73,7 @@ function Row({ star, liked, saved, onShow, i }: { star: Star; liked: boolean; sa
       <span aria-hidden className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: kind.color, boxShadow: `0 0 10px ${kind.color}` }} />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         {star.href ? (
-          <Link href={star.href as Route} className="truncate text-sm font-medium hover:underline focus-visible:underline focus-visible:outline-none">
+          <Link data-nav-item href={star.href as Route} className="truncate text-sm font-medium hover:underline focus-visible:underline focus-visible:outline-none">
             {star.name}
           </Link>
         ) : (

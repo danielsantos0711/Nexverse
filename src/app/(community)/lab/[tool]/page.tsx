@@ -21,6 +21,7 @@ import { LAB_TOOLS, labPath, type LabToolSlug } from "@/components/lab/tools"
 import { getLabShelves, getLabTools } from "@/lib/lists/server"
 import { VramCalculator } from "@/components/lab/vram-calculator"
 import { DiscussButton } from "@/components/social/discuss-button"
+import { ExplainTool } from "@/components/lab/explain-tool"
 import { SaveButton } from "@/components/social/save-button"
 import { Copy } from "@/components/content/copy"
 
@@ -42,6 +43,8 @@ const TOOLS: Record<LabToolSlug, () => React.ReactNode> = {
   regex: () => <RegexTester />,
   "licence-compare": () => <LicenceCompare />,
 }
+
+const EXPLAINED = new Set<LabToolSlug>(["vram", "tokens", "licences", "token-counter", "context", "inference-cost", "fine-tuning", "quantization", "rag-chunks", "embeddings", "regex", "licence-compare", "json-schema"])
 
 export function generateStaticParams() {
   return LAB_TOOLS.map((t) => ({ tool: t.slug }))
@@ -113,7 +116,8 @@ async function Tool({ params }: { params: Promise<{ tool: string }> }) {
         </div>
       </header>
 
-      {TOOLS[t.slug]()}
+      {/* calculators get "Explain this result"; builders and the playground make text, not numbers to explain */}
+      {EXPLAINED.has(t.slug) ? <ExplainTool tool={t.name}>{TOOLS[t.slug]()}</ExplainTool> : TOOLS[t.slug]()}
 
       <nav aria-label="More Lab tools" className="mt-14 border-t border-border pt-6">
         <h2 className="mb-3 text-sm font-medium text-muted-foreground"><Copy k="lab-tool.page.more-in-the-lab">More in the Lab</Copy></h2>

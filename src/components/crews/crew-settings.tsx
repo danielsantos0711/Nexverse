@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { CheckIcon, CopyIcon, Link2Icon, Trash2Icon, UserCheckIcon, XIcon } from "lucide-react"
 import { ChatAvatar } from "@/components/chat/glyphs"
 import { CrewForm } from "@/components/crews/crew-form"
+import { CrewIdentity } from "@/components/crews/crew-identity"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { answerRequest, createInvite, deleteCrew, inviteHref, listInvites, listRequests, revokeInvite, type Crew, type CrewInvite, type CrewRequest, type CrewRole } from "@/lib/crews"
@@ -13,12 +14,13 @@ import { Copy } from "@/components/content/copy"
 
 const when = new Intl.DateTimeFormat("en", { month: "short", day: "numeric" })
 
-/** For the crew's owner and admins: requests to join, invite links, the crew's details and (owner) deleting it. */
+/** For the crew's captain and officers: its look and home, requests to join, invite links, the crew's details and (owner) deleting it. */
 export function CrewSettings({ crew, role, onSaved, onMembersChanged }: { crew: Crew; role: CrewRole; onSaved: (c: Crew) => void; onMembersChanged: () => void }) {
   return (
     <div className="flex flex-col gap-8">
       {live && <Requests crew={crew} onAnswered={onMembersChanged} />}
       <Invites crew={crew} />
+      <CrewIdentity crew={crew} onSaved={onSaved} />
       <section aria-labelledby="crew-edit-h" className="flex flex-col gap-3">
         <h2 id="crew-edit-h" className="font-sans text-base font-semibold tracking-normal">
           <Copy k="crew.crew-settings.crew-details">Crew details</Copy>

@@ -4,31 +4,35 @@ import Link from "next/link"
 import type { Route } from "next"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
-import { CompassIcon, HomeIcon, MessageSquareIcon, PlusIcon, SearchIcon, type LucideIcon } from "lucide-react"
-import { Glass } from "@/components/glass/glass"
-import { useOpenCommandMenu } from "@/components/site/command-menu"
+import { motion, useReducedMotion } from "motion/react"
+import { CompassIcon, HomeIcon, MessageSquareIcon, PlusIcon, UserIcon, type LucideIcon } from "lucide-react"
+import { openCreate } from "@/components/site/create-sheet"
 import { useCopy } from "@/lib/content"
+import { useSession } from "@/lib/store"
 import { isLinkVisible, useSiteSettings } from "@/lib/site-settings"
 import { cn } from "@/lib/utils"
 
 /*
- * The phone's tab bar: a floating capsule of Liquid Glass at the bottom of the screen, with the four places
- * people go most and Share in the middle. It slides away while you scroll down to read and comes back when you
- * scroll up (transform only). Phones and tablets; the desktop has the header.
+ * The phone's tab bar: a floating capsule of plain blur at the bottom of the screen, with the four places people
+ * go most and Create in the middle (the same sheet as the header's Create button). The current tab carries a
+ * light that glides between tabs, like the highlight in the desktop menu. It slides away while you scroll down
+ * to read and comes back when you scroll up (transform only). Phones and tablets; the desktop has the header.
  */
 
 const isOn = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/"))
 
 export function MobileTabBar() {
   const pathname = usePathname()
-  const openSearch = useOpenCommandMenu()
   const { settings } = useSiteSettings()
+  const { user } = useSession()
+  const reduce = useReducedMotion()
   const [hidden, setHidden] = useState(false)
   const home = useCopy("tabbar.home", "Home")
   const explore = useCopy("tabbar.explore", "Explore")
-  const share = useCopy("tabbar.share", "Share")
+  const create = useCopy("tabbar.create", "Create")
   const forum = useCopy("tabbar.forum", "Forum")
-  const search = useCopy("tabbar.search", "Search")
+  const you = useCopy("tabbar.you", "You")
+  const signIn = useCopy("tabbar.sign-in", "Sign in")
 
   // One passive listener; state changes only when the direction flips.
   useEffect(() => {
@@ -47,8 +51,9 @@ export function MobileTabBar() {
     { href: "/", label: home, icon: HomeIcon },
     { href: "/explore", label: explore, icon: CompassIcon },
     { href: "/forum", label: forum, icon: MessageSquareIcon },
+    user ? { href: "/you", label: you, icon: UserIcon } : { href: "/sign-in", label: signIn, icon: UserIcon },
   ].filter((l) => isLinkVisible(settings, l.href))
-  const [first, second, third] = links
+  const [first, second, third, fourth] = links
 
   const item = (l: (typeof links)[number]) => {
     const on = isOn(pathname, l.href)
@@ -58,12 +63,13 @@ export function MobileTabBar() {
         href={l.href as Route}
         aria-current={on ? "page" : undefined}
         className={cn(
-          "flex h-12 min-w-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] transition-colors focus-visible:outline-2 focus-visible:outline-ring",
+          "relative flex h-12 min-w-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] transition-[color,transform] duration-(--dur-fast) focus-visible:outline-2 focus-visible:outline-ring active:scale-95",
           on ? "text-foreground" : "text-muted-foreground"
         )}
       >
-        <l.icon aria-hidden className={cn("size-5", on && "text-ion drop-shadow-[0_0_6px_rgb(143_180_255/0.7)]")} />
-        {l.label}
+        {on && <motion.span layoutId="tab-on" aria-hidden transition={reduce ? { duration: 0 } : { type: "spring", duration: 0.4, bounce: 0.2 }} className="absolute inset-0 rounded-full bg-white/[0.07]" />}
+        <l.icon aria-hidden className={cn("relative size-5", on && "text-ion drop-shadow-[0_0_6px_rgb(143_180_255/0.7)]")} />
+        <span className="relative">{l.label}</span>
       </Link>
     )
   }
@@ -76,22 +82,15 @@ export function MobileTabBar() {
         hidden && "translate-y-[calc(100%+1.5rem)]"
       )}
     >
-      <Glass variant="panel" refract className="flex w-full max-w-md items-center gap-1 rounded-full p-1.5">
+      <div className="liquid-glass flex w-full max-w-md items-center gap-1 rounded-full p-1.5">
         {first && item(first)}
         {second && item(second)}
-        <Link href="/share" aria-label={share} className="halo-btn mx-1 size-12 shrink-0 px-0">
+        <button type="button" onClick={openCreate} aria-label={create} className="halo-btn mx-1 size-12 shrink-0 px-0">
           <PlusIcon aria-hidden className="size-5" />
-        </Link>
-        {third && item(third)}
-        <button
-          type="button"
-          onClick={openSearch}
-          className="flex h-12 min-w-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          <SearchIcon aria-hidden className="size-5" />
-          {search}
         </button>
-      </Glass>
+        {third && item(third)}
+        {fourth && item(fourth)}
+      </div>
     </nav>
   )
 }

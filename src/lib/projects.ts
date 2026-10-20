@@ -1,5 +1,5 @@
 import type { LanguageCode, ResourceKind } from "@/lib/data"
-import { LANGUAGES } from "@/lib/data"
+import { KINDS, LANGUAGES } from "@/lib/data"
 import type { Member } from "@/lib/store"
 import { db } from "@/lib/supabase"
 import { LICENSE_ID, LICENSE_LIST, legacyLicense, licenseName, normalizeLicense } from "@/lib/publish/licenses"
@@ -16,6 +16,90 @@ import { LICENSE_ID, LICENSE_LIST, legacyLicense, licenseName, normalizeLicense 
 
 export type ProjectKind = ResourceKind
 export type ProjectStatus = "draft" | "published"
+
+/**
+ * What a project is (round 10). The kind is the hub list it sits in (/models, /datasets, /tools, /repos); the
+ * type is finer: apps sit next to tools, papers and everything else next to repos. Older rows have no type and
+ * read it from their kind.
+ */
+export type ProjectType = "model" | "dataset" | "tool" | "app" | "paper" | "other"
+
+export const PROJECT_TYPES: { id: ProjectType; label: string; blurb: string }[] = [
+  { id: "model", label: "Model", blurb: "Weights or an API model: a model card, specs, pricing, providers and quick-start code." },
+  { id: "dataset", label: "Dataset", blurb: "Data with a card, a viewer for CSV and JSON files, splits and a snippet to load it." },
+  { id: "tool", label: "Tool", blurb: "A library, CLI or utility people install and use." },
+  { id: "app", label: "App", blurb: "Something people open and use: a web app, a bot, a demo." },
+  { id: "paper", label: "Paper", blurb: "Research with its write-up, code and results in one place." },
+  { id: "other", label: "Other", blurb: "Anything else worth a page: a project, a guide, a collection of code." },
+]
+
+export const kindForType = (t: ProjectType): ProjectKind => (t === "model" || t === "dataset" || t === "tool" ? t : t === "app" ? "tool" : "repo")
+export const typeLabel = (t: ProjectType) => PROJECT_TYPES.find((x) => x.id === t)?.label ?? "Project"
+const isType = (t: unknown): t is ProjectType => typeof t === "string" && PROJECT_TYPES.some((x) => x.id === t)
+/** The type a row stands for: its own, or the one its kind implies. */
+export const typeOf = (p: { type?: ProjectType | null; kind: ProjectKind }): ProjectType => p.type ?? (p.kind === "repo" ? "other" : p.kind)
+
+/** Prices are US dollars per million tokens, as API providers quote them. */
+export type Pricing = { free?: boolean; prompt?: number; completion?: number; request?: number; image?: number }
+
+export type Endpoint = { provider: string; contextLength?: number; maxOutput?: number; pricing?: Pricing; quantization?: string; status?: string }
+
+/** What a model page shows next to its card. Everything is optional; members fill what applies. */
+export type ModelSpecs = {
+  provider?: string
+  contextLength?: number
+  maxOutput?: number
+  pricing?: Pricing
+  inputModalities?: string[]
+  outputModalities?: string[]
+  /** "7B", "70.6B", "MoE 8x22B". */
+  parameters?: string
+  architecture?: string
+  tokenizer?: string
+  library?: string
+  pipeline?: string
+  baseModel?: string
+  quantizations?: string[]
+  supportedParameters?: string[]
+  knowledgeCutoff?: string
+  endpoints?: Endpoint[]
+}
+
+export type DatasetSplit = { name: string; config?: string; rows?: number; bytes?: number }
+export type DatasetFeature = { name: string; type: string }
+
+export type DatasetSpecs = {
+  rows?: number
+  bytes?: number
+  splits?: DatasetSplit[]
+  features?: DatasetFeature[]
+  tasks?: string[]
+  modalities?: string[]
+  formats?: string[]
+  sizeCategory?: string
+}
+
+export type ProjectSpecs = { model?: ModelSpecs; dataset?: DatasetSpecs }
+
+/** The "imported from" credit, written once when an import creates the project. */
+export type ProjectSource = { site: "huggingface" | "openrouter"; ref: string; type: "model" | "dataset"; importedAt: string; revision?: string }
+
+export const SOURCE_SITES = { huggingface: "Hugging Face", openrouter: "OpenRouter" } as const
+
+export type Accent = "ion" | "gold" | "rose" | "mint" | "violet"
+export const ACCENTS: { id: Accent; label: string; hex: string }[] = [
+  { id: "ion", label: "Ion blue", hex: "#8fb4ff" },
+  { id: "violet", label: "Nebula violet", hex: "#b9a7ff" },
+  { id: "rose", label: "Red giant", hex: "#ff8fa8" },
+  { id: "gold", label: "Sun gold", hex: "#f3d58a" },
+  { id: "mint", label: "Aurora green", hex: "#7fe0b0" },
+]
+
+/** The owner's choices for their page. */
+export type Appearance = { accent?: Accent; emoji?: string; openOn?: string }
+
+/** Round 10 fields, with defaults filled in when a row or a form lacks them. */
+export type ProjectHub = { type: ProjectType; specs: ProjectSpecs; related: string[]; appearance: Appearance }
 
 /** Licence choices, by SPDX id (see lib/publish/licenses.ts). */
 export const LICENSES = LICENSE_LIST.map((l) => ({ id: l.id, label: l.name }))
@@ -55,7 +139,8 @@ export const PUBLISHING_DEFAULTS: ProjectPublishing = { visibility: "public", co
 /** A project's publishing options with defaults filled in. */
 export const pub = (p: Partial<ProjectPublishing>): ProjectPublishing => ({ ...PUBLISHING_DEFAULTS, ...Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined)) })
 
-export type Project = Partial<ProjectPublishing> & {
+export type Project = Partial<ProjectPublishing> &
+  Partial<ProjectHub> & {
   id: string
   kind: ProjectKind
   name: string
@@ -75,16 +160,23 @@ export type Project = Partial<ProjectPublishing> & {
   ownerId: string | null
   /** Saved in this browser only (no database). */
   local: boolean
+  source?: ProjectSource | null
+  /** Its Nexverse Code repository, when it has one. */
+  codeRepoId?: string | null
 }
 
 export type ProjectInput = Pick<Project, "kind" | "name" | "slug" | "summary" | "readme" | "tags" | "license" | "langs" | "links" | "status" | "versions"> &
-  Omit<ProjectPublishing, "featuredAt">
+  Omit<ProjectPublishing, "featuredAt"> &
+  ProjectHub
 
 export type ProjectStats = { likes: number; saves: number; replies: number }
 
 export const LIMITS = { name: [2, 80], summary: [10, 160], readme: 50000, tags: 8, tag: 30, versions: 50, notes: 5000, gallery: 12, links: 10, coauthors: 10 } as const
 
+/** The old short address; it forwards to projectHref(). Kept because links all over the site use it. */
 export const projectPath = (id: string) => `/p/${id}`
+/** A project's page: /models/<id>, /datasets/<id>, /tools/<id> or /repos/<id>, with its tabs below it. */
+export const projectHref = (p: { id: string; kind: ProjectKind }, tab = "") => `${KINDS[p.kind].path}/${p.id}${tab ? `/${tab}` : ""}`
 export const projectTarget = (id: string) => `project:${id}`
 export const projectThreadId = (id: string) => `project-${id}`
 
@@ -190,7 +282,86 @@ function clean(p: ProjectInput): ProjectInput {
     extraLinks: p.extraLinks.map((l) => ({ label: l.label.trim(), url: l.url.trim() })).filter((l) => l.url || l.label),
     publishAt: p.publishAt && Date.parse(p.publishAt) > Date.now() ? new Date(p.publishAt).toISOString() : null,
     versions: p.versions.map((v) => ({ ...v, version: v.version.trim(), notes: v.notes.trim() })),
+    kind: kindForType(p.type),
+    specs: cleanSpecs(p.specs, p.type),
+    related: [...new Set(p.related.filter(isProjectId))].slice(0, 12),
+    appearance: cleanAppearance(p.appearance),
   }
+}
+
+// ─── Specs ──────────────────────────────────────────────────────────────────────────────────────────────────
+
+const num = (v: unknown, max = 1e15) => (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= max ? v : undefined)
+const str = (v: unknown, max = 120) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : undefined)
+const strs = (v: unknown, n = 24, max = 60) => (Array.isArray(v) ? [...new Set(v.map((x) => str(x, max)).filter((x): x is string => Boolean(x)))].slice(0, n) : undefined)
+const drop = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && !(Array.isArray(v) && !v.length))) as T
+
+function cleanPricing(v: unknown): Pricing | undefined {
+  if (!v || typeof v !== "object") return undefined
+  const x = v as Pricing
+  const out = drop({ free: x.free === true ? true : undefined, prompt: num(x.prompt, 1e6), completion: num(x.completion, 1e6), request: num(x.request, 1e6), image: num(x.image, 1e6) })
+  return Object.keys(out).length ? out : undefined
+}
+
+/** Keeps only the known fields, with sane sizes, so a page never renders something odd. */
+export function cleanSpecs(v: unknown, type: ProjectType): ProjectSpecs {
+  const s = (v && typeof v === "object" ? v : {}) as ProjectSpecs
+  const out: ProjectSpecs = {}
+  if (type === "model" && s.model) {
+    const m = s.model
+    out.model = drop({
+      provider: str(m.provider, 80),
+      contextLength: num(m.contextLength, 1e9),
+      maxOutput: num(m.maxOutput, 1e9),
+      pricing: cleanPricing(m.pricing),
+      inputModalities: strs(m.inputModalities, 8, 20),
+      outputModalities: strs(m.outputModalities, 8, 20),
+      parameters: str(m.parameters, 40),
+      architecture: str(m.architecture, 80),
+      tokenizer: str(m.tokenizer, 60),
+      library: str(m.library, 60),
+      pipeline: str(m.pipeline, 60),
+      baseModel: str(m.baseModel, 120),
+      quantizations: strs(m.quantizations, 12, 30),
+      supportedParameters: strs(m.supportedParameters, 40, 40),
+      knowledgeCutoff: str(m.knowledgeCutoff, 30),
+      endpoints: Array.isArray(m.endpoints)
+        ? m.endpoints
+            .slice(0, 30)
+            .map((e) => drop({ provider: str(e?.provider, 80) ?? "", contextLength: num(e?.contextLength, 1e9), maxOutput: num(e?.maxOutput, 1e9), pricing: cleanPricing(e?.pricing), quantization: str(e?.quantization, 30), status: str(e?.status, 30) }))
+            .filter((e) => e.provider)
+        : undefined,
+    })
+  }
+  if (type === "dataset" && s.dataset) {
+    const d = s.dataset
+    out.dataset = drop({
+      rows: num(d.rows),
+      bytes: num(d.bytes),
+      splits: Array.isArray(d.splits) ? d.splits.slice(0, 40).map((x) => drop({ name: str(x?.name, 60) ?? "", config: str(x?.config, 60), rows: num(x?.rows), bytes: num(x?.bytes) })).filter((x) => x.name) : undefined,
+      features: Array.isArray(d.features) ? d.features.slice(0, 80).map((x) => ({ name: str(x?.name, 80) ?? "", type: str(x?.type, 80) ?? "unknown" })).filter((x) => x.name) : undefined,
+      tasks: strs(d.tasks, 12, 60),
+      modalities: strs(d.modalities, 8, 30),
+      formats: strs(d.formats, 8, 30),
+      sizeCategory: str(d.sizeCategory, 30),
+    })
+  }
+  return out
+}
+
+function cleanAppearance(v: unknown): Appearance {
+  const a = (v && typeof v === "object" ? v : {}) as Appearance
+  const emoji = typeof a.emoji === "string" ? [...a.emoji.trim()].slice(0, 2).join("") : ""
+  return drop({
+    accent: ACCENTS.some((x) => x.id === a.accent) ? a.accent : undefined,
+    emoji: emoji && !/[\p{L}\p{N}<>]/u.test(emoji) ? emoji : undefined,
+    openOn: typeof a.openOn === "string" && /^[a-z]{2,20}$/.test(a.openOn) ? a.openOn : undefined,
+  })
+}
+
+const asSource = (v: unknown): ProjectSource | null => {
+  const x = v as ProjectSource | null
+  return x && typeof x === "object" && (x.site === "huggingface" || x.site === "openrouter") && typeof x.ref === "string" ? x : null
 }
 
 function fail(error: { message: string; code?: string } | null): asserts error is null {
@@ -236,6 +407,12 @@ const fromLocal = (p: LocalProject): Project => ({
   extraLinks: p.extraLinks ?? [],
   coauthors: [],
   featuredAt: null,
+  type: isType(p.type) ? p.type : p.kind === "repo" ? "other" : p.kind,
+  specs: p.specs ?? {},
+  related: p.related ?? [],
+  appearance: p.appearance ?? {},
+  source: null,
+  codeRepoId: null,
   owner: null,
   ownerId: null,
   local: true,
@@ -247,29 +424,51 @@ const OWNER = "owner:profiles!projects_owner_id_fkey(id, name, handle, avatar_ur
 const BASE = "id, owner_id, kind, name, slug, summary, tags, license, langs, repo_url, paper_url, demo_url, status, created_at, updated_at, published_at"
 // Publishing options from the round 9 update (cover, gallery, visibility, …). Older databases lack them.
 const EXT = "visibility, comments_enabled, publish_at, cover_url, gallery, extra_links, license_id, featured_at"
+// Round 10: type, specs, import credit, "built with", code repository and the owner's page choices.
+const HUB = "project_type, specs, source, related, code_repo_id, appearance"
 const COAUTHORS = "coauthors:project_coauthors(member:profiles!project_coauthors_member_id_fkey(id, name, handle, avatar_url))"
 const VERSIONS = "versions:project_versions(id, version, notes, released_on)"
 
 /** Whether the database has the publishing columns; null until the first query tells. */
 let extended: boolean | null = null
+/** Whether it has the round 10 hub columns. */
+let hub: boolean | null = null
 
-const columns = (full: boolean, ext = extended !== false) =>
-  [BASE, full ? "readme" : null, ext ? EXT : null, OWNER, full ? VERSIONS : null, full && ext ? COAUTHORS : null].filter(Boolean).join(", ")
+const columns = (full: boolean, ext = extended !== false, h = hub !== false && ext) =>
+  [BASE, full ? "readme" : null, ext ? EXT : null, h ? HUB : null, OWNER, full ? VERSIONS : null, full && ext ? COAUTHORS : null].filter(Boolean).join(", ")
 
 const isMissingColumn = (e: { code?: string; message: string } | null) =>
   Boolean(e && (e.code === "42703" || e.code === "PGRST200" || e.code === "PGRST204" || /column .* does not exist|could not find a relationship|project_coauthors/i.test(e.message)))
 
-/** Runs a select with the publishing columns, and once more without them on an older database. */
+/** Runs a select with the newest columns, then without the round 10 ones, then without the round 9 ones. */
 async function selectWithFallback<T>(run: (cols: (full: boolean) => string) => PromiseLike<{ data: T | null; error: { message: string; code?: string } | null }>) {
+  if (extended !== false && hub !== false) {
+    const res = await run((full) => columns(full, true, true))
+    if (!isMissingColumn(res.error)) {
+      if (!res.error) extended = hub = true
+      return res
+    }
+    hub = false
+  }
   if (extended !== false) {
-    const res = await run((full) => columns(full, true))
+    const res = await run((full) => columns(full, true, false))
     if (!isMissingColumn(res.error)) {
       if (!res.error) extended = true
       return res
     }
     extended = false
   }
-  return run((full) => columns(full, false))
+  return run((full) => columns(full, false, false))
+}
+
+/** True once the round 10 columns (type, specs, code repository…) are known to be in the database. */
+export async function hubColumnsAvailable() {
+  const client = db()
+  if (!client) return true
+  if (hub !== null) return hub
+  const { error } = await client.from("projects").select("project_type").limit(1)
+  hub = !isMissingColumn(error)
+  return hub
 }
 
 type Person = { id: string; name: string; handle: string | null; avatar_url: string | null }
@@ -300,6 +499,12 @@ type Row = {
   extra_links?: ExtraLink[] | null
   license_id?: string | null
   featured_at?: string | null
+  project_type?: ProjectType | null
+  specs?: ProjectSpecs | null
+  source?: ProjectSource | null
+  related?: string[] | null
+  code_repo_id?: string | null
+  appearance?: Appearance | null
   owner: Person | null
   versions?: { id: string; version: string; notes: string; released_on: string }[]
   coauthors?: { member: Person | null }[]
@@ -333,6 +538,12 @@ function fromRow(r: Row): Project {
     extraLinks: asList<ExtraLink>(r.extra_links).map((l) => ({ label: String(l?.label ?? ""), url: String(l?.url ?? "") })).filter((l) => l.url),
     coauthors: (r.coauthors ?? []).flatMap((c) => (c.member ? [person(c.member)] : [])),
     featuredAt: r.featured_at ?? null,
+    type: isType(r.project_type) ? r.project_type : r.kind === "repo" ? "other" : r.kind,
+    specs: r.specs && typeof r.specs === "object" ? r.specs : {},
+    source: asSource(r.source),
+    related: r.related ?? [],
+    codeRepoId: r.code_repo_id ?? null,
+    appearance: r.appearance && typeof r.appearance === "object" ? r.appearance : {},
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     publishedAt: r.published_at,
@@ -358,7 +569,7 @@ function toRow(p: ProjectInput) {
     status: p.status,
   }
   if (extended === false) return base
-  return {
+  const ext = {
     ...base,
     license_id: p.license === "unspecified" ? null : p.license,
     visibility: p.visibility,
@@ -368,6 +579,8 @@ function toRow(p: ProjectInput) {
     gallery: p.gallery,
     extra_links: p.extraLinks,
   }
+  if (hub === false) return ext
+  return { ...ext, project_type: p.type, specs: p.specs, related: p.related, appearance: p.appearance }
 }
 
 /** True when this database can store the round 9 publishing options (visibility, cover, gallery, …). */
@@ -633,7 +846,9 @@ export async function deleteProject(id: string) {
 }
 
 /** A blank project for the editor. */
-export function emptyProject(kind: ProjectKind = "model"): ProjectInput {
+export function emptyProject(what: ProjectKind | ProjectType = "model"): ProjectInput {
+  const type: ProjectType = isType(what) ? what : what === "repo" ? "other" : what
+  const kind = kindForType(type)
   return {
     kind,
     name: "",
@@ -653,6 +868,10 @@ export function emptyProject(kind: ProjectKind = "model"): ProjectInput {
     gallery: [],
     extraLinks: [],
     coauthors: [],
+    type,
+    specs: {},
+    related: [],
+    appearance: {},
   }
 }
 
@@ -677,6 +896,10 @@ export function toInput(p: Project): ProjectInput {
     gallery,
     extraLinks,
     coauthors,
+    type: typeOf(p),
+    specs: p.specs ?? {},
+    related: p.related ?? [],
+    appearance: p.appearance ?? {},
   }
 }
 
@@ -720,4 +943,102 @@ export async function listRevisions(projectId: string, limit = 50): Promise<Proj
     createdAt: r.created_at,
     editor: r.editor ? person(r.editor) : null,
   }))
+}
+
+// ─── Round 10: code repository, activity, "built with" ─────────────────────────────────────────────────────
+
+/** Connects one of your repositories to a project you own, or disconnects it (null). The database checks both. */
+export async function linkProjectRepo(projectId: string, repoId: string | null) {
+  const client = db()
+  if (!client) throw new Error("Code repositories need the site's database.")
+  const { error } = await client.from("projects").update({ code_repo_id: repoId }).eq("id", projectId)
+  if (error && isMissingColumn(error)) throw new Error("Projects and code are still being joined on this site. Ask an admin to run the latest database update.")
+  if (error?.code === "23505") throw new Error("That repository already belongs to another project.")
+  fail(error)
+}
+
+export type CodeLink = { projectId: string; kind: ProjectKind; type: ProjectType; repoId: string; repoSlug: string; ownerHandle: string | null; ownerId: string }
+
+type CodeRow = { project_id: string; kind: ProjectKind; project_type: ProjectType | null; repo_id: string; repo_slug: string; repo_owner_id: string; repo_owner_handle: string | null }
+const fromCode = (r: CodeRow): CodeLink => ({ projectId: r.project_id, kind: r.kind, type: isType(r.project_type) ? r.project_type : r.kind === "repo" ? "other" : r.kind, repoId: r.repo_id, repoSlug: r.repo_slug, ownerHandle: r.repo_owner_handle, ownerId: r.repo_owner_id })
+
+/** The project a repository belongs to, if you can see both. Null when there is none (or no view yet). */
+export async function projectForRepo(repoId: string): Promise<CodeLink | null> {
+  const client = db()
+  if (!client) return null
+  const { data, error } = await client.from("project_code").select("project_id, kind, project_type, repo_id, repo_slug, repo_owner_id, repo_owner_handle").eq("repo_id", repoId).maybeSingle()
+  if (error || !data) return null
+  return fromCode(data as CodeRow)
+}
+
+/** A project's repository with its owner and slug, if you can see both. */
+export async function repoForProject(projectId: string): Promise<CodeLink | null> {
+  const client = db()
+  if (!client) return null
+  const { data, error } = await client.from("project_code").select("project_id, kind, project_type, repo_id, repo_slug, repo_owner_id, repo_owner_handle").eq("project_id", projectId).maybeSingle()
+  if (error || !data) return null
+  return fromCode(data as CodeRow)
+}
+
+export type ActivityDay = { day: string; views: number; downloads: number; likes: number }
+
+/** Views, downloads and new likes per day. Null when the activity function is not in the database yet. */
+export async function getProjectActivity(id: string, days = 90): Promise<ActivityDay[] | null> {
+  const client = db()
+  if (!client) return null
+  const { data, error } = await client.rpc("project_activity", { pid: id, days })
+  if (error) return null
+  return ((data ?? []) as { day: string; views: number; downloads: number; likes: number }[]).map((r) => ({ day: r.day, views: Number(r.views), downloads: Number(r.downloads), likes: Number(r.likes) }))
+}
+
+/** Counts one view of a project's page, once a day per browser. Quiet when it cannot. */
+export async function recordProjectView(id: string) {
+  const client = db()
+  if (!client) return
+  const key = `nexverse-viewed:${id}`
+  const today = new Date().toISOString().slice(0, 10)
+  try {
+    if (localStorage.getItem(key) === today) return
+    localStorage.setItem(key, today)
+  } catch {}
+  await client.rpc("record_project_view", { pid: id }).then(
+    () => undefined,
+    () => undefined
+  )
+}
+
+/** Published projects that list this one under "built with": the apps using a model, the models on a dataset. */
+export async function listUsing(id: string, limit = 24): Promise<Project[]> {
+  const client = db()
+  if (!client || hub === false) return []
+  const { data, error } = await selectWithFallback<Row[]>((cols) =>
+    client.from("projects").select(cols(false)).eq("status", "published").contains("related", [id]).order("published_at", { ascending: false }).limit(limit).overrideTypes<Row[], { merge: false }>()
+  )
+  if (error) return []
+  return (data ?? []).map(fromRow)
+}
+
+/** Published projects whose name matches, for pickers ("built with"). */
+export async function searchProjects(q: string, limit = 8): Promise<Project[]> {
+  const words = q.trim().replace(/[%_,()]/g, " ").trim()
+  if (words.length < 2) return []
+  const client = db()
+  if (!client) return readLocal().filter((p) => p.name.toLowerCase().includes(words.toLowerCase())).slice(0, limit).map(fromLocal)
+  const { data, error } = await selectWithFallback<Row[]>((cols) =>
+    client.from("projects").select(cols(false)).eq("status", "published").ilike("name", `%${words}%`).order("published_at", { ascending: false }).limit(limit).overrideTypes<Row[], { merge: false }>()
+  )
+  if (error) return []
+  return (data ?? []).map(fromRow)
+}
+
+/** Several projects by id, in the order asked, leaving out ones you cannot see. */
+export async function getProjectsById(ids: string[]): Promise<Project[]> {
+  const list = [...new Set(ids.filter(isProjectId))].slice(0, 50)
+  if (!list.length) return []
+  const client = db()
+  if (!client) return readLocal().filter((p) => list.includes(p.id)).map(fromLocal)
+  const { data, error } = await selectWithFallback<Row[]>((cols) => client.from("projects").select(cols(false)).in("id", list).overrideTypes<Row[], { merge: false }>())
+  if (error) return []
+  const byId = new Map((data ?? []).map((r) => [r.id, fromRow(r)]))
+  return list.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : []))
 }

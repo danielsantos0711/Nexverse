@@ -11,6 +11,8 @@ import { CrewCollections } from "@/components/crews/crew-collections"
 import { CrewMembers, RoleBadge } from "@/components/crews/crew-members"
 import { CrewSettings } from "@/components/crews/crew-settings"
 import { CrewWall } from "@/components/crews/crew-wall"
+import { CrewBanner } from "@/components/crews/crew-banner"
+import { CrewHome } from "@/components/crews/crew-home"
 import { CrewBadges, CrewEmblem, WhoAvatar } from "@/components/crews/emblem"
 import { Breadcrumbs } from "@/components/forum/forum-ui"
 import { PageVisitors } from "@/components/presence/page-visitors"
@@ -21,8 +23,8 @@ import { localMember } from "@/lib/chat"
 import {
   acceptInvite,
   canManage,
-  CREW_COLORS,
   CREW_LIMITS,
+  crewTint,
   getCrew,
   getStanding,
   INVITE_TOKEN,
@@ -30,6 +32,7 @@ import {
   leaveCrew,
   listMembers,
   requestToJoin,
+  ROLE_LABEL,
   subscribeCrew,
   withdrawRequest,
   type Crew,
@@ -41,13 +44,14 @@ import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
 
-type Tab = "wall" | "chat" | "collections" | "members" | "settings"
+type Tab = "home" | "wall" | "chat" | "collections" | "members" | "settings"
 const created = new Intl.DateTimeFormat("en", { month: "long", year: "numeric", timeZone: "UTC" })
 const noop = () => () => {}
 
 /**
- * One crew: who they are, a join button that fits (join, ask to join, accept an invite, leave), and tabs for
- * the wall, the crew chat, shared collections, members and, for its owner and admins, settings.
+ * One crew: its banner, sigil and motto, a join button that fits (join, ask to join, accept an invite, leave), and
+ * tabs for its home (galaxy, launches, project board, top crew, mission log), the wall, the crew chat, shared
+ * collections, members and, for its captain and officers, settings.
  */
 export function CrewPage({ slug }: { slug: string }) {
   const session = useSession()
@@ -70,7 +74,7 @@ export function CrewPage({ slug }: { slug: string }) {
   const [standing, setStanding] = useState<Standing>({ role: null, requested: false })
   const [members, setMembers] = useState<CrewMember[] | null>(null)
   const [error, setError] = useState("")
-  const [tab, setTab] = useState<Tab>("wall")
+  const [tab, setTab] = useState<Tab>("home")
   const [busy, setBusy] = useState(false)
   const [asking, setAsking] = useState(false)
   const [note, setNote] = useState("")
@@ -139,6 +143,7 @@ export function CrewPage({ slug }: { slug: string }) {
   // Settings are for the owner and admins; anything else falls back to the wall.
   const tabs = useMemo(() => {
     const t: { id: Tab; label: string; count?: number; locked?: boolean }[] = [
+      { id: "home", label: "Home", locked: !readable },
       { id: "wall", label: "Wall", locked: !readable },
       { id: "chat", label: "Chat", locked: !standing.role },
       { id: "collections", label: "Collections", locked: !readable },
@@ -147,7 +152,7 @@ export function CrewPage({ slug }: { slug: string }) {
     if (canManage(standing.role)) t.push({ id: "settings", label: "Settings" })
     return t
   }, [readable, standing.role, crew?.memberCount])
-  const current = tabs.some((t) => t.id === tab) ? tab : "wall"
+  const current = tabs.some((t) => t.id === tab) ? tab : "home"
 
   async function run(fn: () => Promise<void>) {
     setBusy(true)
@@ -205,6 +210,7 @@ export function CrewPage({ slug }: { slug: string }) {
     )
   }
 
+  const tint = crewTint(crew)
   const validInvite = invite && INVITE_TOKEN.test(invite) ? invite : null
   const showInvite = validInvite && !standing.role && ready
 
@@ -234,41 +240,51 @@ export function CrewPage({ slug }: { slug: string }) {
     </Button>
   )
 
-  const fullWidth = current === "chat" || current === "settings"
+  const fullWidth = current === "chat" || current === "settings" || current === "home"
+  const officer = canManage(standing.role)
 
   return (
     <div className="shell max-w-6xl pb-16">
-      <header className="relative isolate flex flex-col gap-4 pt-8 pb-6 md:pt-10">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-16 left-1/2 -z-10 h-64 w-screen -translate-x-1/2 opacity-80"
-          style={{ background: `radial-gradient(40% 70% at 18% 0%, color-mix(in oklab, ${crewTint(crew)} 22%, transparent), transparent 70%)` }}
-        />
+      <header className="relative isolate flex flex-col gap-4 pt-6 pb-6 md:pt-8">
         <Breadcrumbs items={[{ label: "Crews", href: "/crews" }, { label: crew.name }]} />
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="flex min-w-0 items-start gap-4">
+        <CrewBanner banner={crew.banner} tint={tint} seed={crew.slug} className="h-36 rounded-2xl border border-border sm:h-48 md:h-56" />
+        <div className="-mt-14 flex flex-col gap-4 px-2 sm:-mt-16 md:flex-row md:items-end md:justify-between md:px-4">
+          <div className="flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-end">
             <motion.span
               initial={reduce ? false : { rotate: -18, scale: 0.85, opacity: 0 }}
               animate={{ rotate: 0, scale: 1, opacity: 1 }}
               transition={{ type: "spring", duration: 0.7, bounce: 0.35 }}
+              className="relative z-[1] rounded-[1.25rem] bg-background p-1"
+              style={{ boxShadow: `0 10px 40px -10px ${tint}` }}
             >
-              <CrewEmblem icon={crew.icon} color={crew.color} size={64} />
+              {crew.sigil ? (
+                <span aria-hidden className="grid size-20 place-items-center rounded-2xl text-4xl" style={{ background: `radial-gradient(circle at 35% 30%, color-mix(in oklab, ${tint} 45%, transparent), color-mix(in oklab, ${tint} 12%, var(--card)) 75%)` }}>
+                  {crew.sigil}
+                </span>
+              ) : (
+                <CrewEmblem icon={crew.icon} color={crew.color} size={80} />
+              )}
             </motion.span>
             <div className="flex min-w-0 flex-col gap-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-[-0.02em]">{crew.name}</h1>
+                <h1 className="text-2xl font-semibold tracking-[-0.02em] md:text-3xl">{crew.name}</h1>
                 <CrewBadges crew={crew} />
               </div>
+              {crew.motto && (
+                <p className="text-sm italic" style={{ color: `color-mix(in oklab, ${tint} 75%, white)` }}>
+                  {crew.motto}
+                </p>
+              )}
               {crew.blurb && <p className="max-w-[64ch] text-sm text-muted-foreground md:text-[15px]">{crew.blurb}</p>}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5 tabular">
-                  <UsersIcon aria-hidden className="size-3.5" /> {crew.memberCount} {crew.memberCount === 1 ? "member" : "members"}
+                  <UsersIcon aria-hidden className="size-3.5" /> {crew.memberCount} aboard
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <CalendarIcon aria-hidden className="size-3.5" /> Since {created.format(new Date(crew.createdAt))}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <WhoAvatar who={crew.owner} size={16} /> Started by {crew.owner.name}
+                  <WhoAvatar who={crew.owner} size={16} /> Captained by {crew.owner.name}
                 </span>
                 <PageVisitors />
               </div>
@@ -384,7 +400,8 @@ export function CrewPage({ slug }: { slug: string }) {
               {on && (
                 <motion.span
                   layoutId={`${uid}-bar`}
-                  className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-ion"
+                  className="absolute inset-x-2 -bottom-px h-0.5 rounded-full"
+                  style={{ background: tint }}
                   transition={reduce ? { duration: 0 } : { type: "spring", bounce: 0.2, duration: 0.45 }}
                 />
               )}
@@ -397,10 +414,12 @@ export function CrewPage({ slug }: { slug: string }) {
         <div id={`${uid}-panel`} role="tabpanel" aria-labelledby={`${uid}-tab-${current}`} className="min-w-0">
           {tabs.find((t) => t.id === current)?.locked ? (
             <Locked crew={crew} chat={current === "chat"} readable={readable} />
+          ) : current === "home" ? (
+            <CrewHome crew={crew} role={standing.role} meId={meId} members={members ?? []} onTab={setTab} />
           ) : current === "wall" ? (
             <CrewWall crew={crew} role={standing.role} meId={meId} members={members ?? []} onActivity={() => setActivityKey((k) => k + 1)} />
           ) : current === "chat" ? (
-            <CrewChat crew={crew} me={me} canWrite={Boolean(me && standing.role && (!live || session.user))} ready={ready} />
+            <CrewChat crew={crew} me={me} canWrite={Boolean(me && standing.role && (!live || session.user))} ready={ready} officer={officer} />
           ) : current === "collections" ? (
             <CrewCollections crew={crew} role={standing.role} />
           ) : current === "members" ? (
@@ -411,7 +430,7 @@ export function CrewPage({ slug }: { slug: string }) {
               role={standing.role}
               onSaved={(c) => {
                 setCrew(c)
-                setTab("wall")
+                setTab("home")
               }}
               onMembersChanged={loadMembers}
             />
@@ -440,12 +459,12 @@ export function CrewPage({ slug }: { slug: string }) {
                 </div>
                 <ul className="flex flex-wrap gap-1.5">
                   {members.slice(0, 12).map((m) => (
-                    <li key={m.key} title={`${m.name}${m.role !== "member" ? ` · ${m.role}` : ""}`} className="relative">
+                    <li key={m.key} title={`${m.name}${m.role !== "member" ? ` · ${ROLE_LABEL[m.role]}` : ""}`} className="relative">
                       <WhoAvatar who={m} size={32} />
                       {m.role !== "member" && <span aria-hidden className={cn("absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-background", m.role === "owner" ? "bg-gold" : "bg-ion")} />}
                       <span className="sr-only">
                         {m.name}
-                        {m.role !== "member" ? `, ${m.role}` : ""}
+                        {m.role !== "member" ? `, ${ROLE_LABEL[m.role]}` : ""}
                       </span>
                     </li>
                   ))}
@@ -480,4 +499,3 @@ function Locked({ crew, chat, readable }: { crew: Crew; chat: boolean; readable:
   )
 }
 
-const crewTint = (c: Crew) => CREW_COLORS[c.color]?.value ?? CREW_COLORS.ion.value

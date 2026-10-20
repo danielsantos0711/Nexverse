@@ -21,6 +21,10 @@ import {
   Trash2Icon,
   TrophyIcon,
   UsersIcon,
+  PaletteIcon,
+  GiftIcon,
+  LinkIcon,
+  UsersRoundIcon,
 } from "lucide-react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
 import { AvatarStack } from "@/components/events/event-bits"
@@ -28,6 +32,10 @@ import { Breadcrumbs, PosterAvatar } from "@/components/forum/forum-ui"
 import { PostBody } from "@/components/forum/post-body"
 import { TimeAgo, useNow } from "@/components/live/time"
 import { Deadline, deadlineText, DifficultyBadge, Reward, StatusBadge } from "@/components/missions/mission-bits"
+import { SpaceCover } from "@/components/missions/mission-cover"
+import { Countdown, CustomiseMission, Discussion, EntryReview, FollowMission, Milestones, TimeBar, Updates } from "@/components/missions/mission-extras"
+import { accentRgb, MISSION_KINDS } from "@/lib/missions-look"
+import { EMPTY_SOCIAL, getMissionSocial, subscribeMissionSocial, type MissionSocial } from "@/lib/missions-social"
 import { Gate } from "@/components/moderation/gate"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -77,8 +85,15 @@ export function MissionDetail({ id }: { id: string }) {
   const { ready, user } = useSession()
   const [mission, setMission] = useState<Mission | null | undefined>(undefined)
   const [crew, setCrew] = useState<MissionCrew | null>(null)
+  const [social, setSocial] = useState<MissionSocial>(EMPTY_SOCIAL)
   const [error, setError] = useState("")
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const loadSocial = useCallback(() => {
+    getMissionSocial(id)
+      .then(setSocial)
+      .catch(() => setSocial(EMPTY_SOCIAL))
+  }, [id])
 
   const load = useCallback(async () => {
     try {
@@ -102,23 +117,41 @@ export function MissionDetail({ id }: { id: string }) {
       if (timer.current) clearTimeout(timer.current)
       timer.current = setTimeout(() => void load(), 300)
     }, id)
+    loadSocial()
+    const stopSocial = subscribeMissionSocial(id, loadSocial)
     return () => {
       stop()
+      stopSocial()
       if (timer.current) clearTimeout(timer.current)
     }
-  }, [id, load, ready, user?.id])
+  }, [id, load, loadSocial, ready, user?.id])
 
   if (error && !mission) return <Missing title="This mission could not be loaded" detail={error} />
   if (mission === undefined) return <PageSkeleton />
   if (mission === null) return <Missing title="This mission is not here" detail="It may have been called off by the member who posted it." />
-  return <MissionPage m={mission} crew={crew} reload={load} />
+  return <MissionPage m={mission} crew={crew} reload={load} social={social} setSocial={(p) => setSocial((s) => ({ ...s, ...p }))} reloadSocial={loadSocial} />
 }
 
-function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null; reload: () => Promise<void> }) {
+function MissionPage({
+  m,
+  crew,
+  reload,
+  social,
+  setSocial,
+  reloadSocial,
+}: {
+  m: Mission
+  crew: MissionCrew | null
+  reload: () => Promise<void>
+  social: MissionSocial
+  setSocial: (p: Partial<MissionSocial>) => void
+  reloadSocial: () => void
+}) {
   const router = useRouter()
   const now = useNow()
   const { user } = useSession()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [customise, setCustomise] = useState(false)
   const [error, setError] = useState("")
   const state = now === null ? null : missionState(m, now)
   const isPoster = m.local || Boolean(user && m.poster.memberId === user.id)
@@ -135,8 +168,23 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
   }
 
   return (
-    <div className="shell pt-6 pb-16 lg:pt-8">
+    <div className="shell pt-6 pb-16 lg:pt-8" style={{ "--accent-rgb": accentRgb(m.accent) } as React.CSSProperties}>
       <Breadcrumbs items={[{ label: "Missions", href: "/missions" }, { label: m.title }]} />
+      <motion.div initial={{ opacity: 0, transform: "translateY(8px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ duration: 0.35, ease: EASE }}>
+        <SpaceCover seed={m.id} cover={m.cover} accent={m.accent} className="mt-4 h-40 rounded-2xl border border-border sm:h-56">
+          <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-white/20 bg-black/40 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">{MISSION_KINDS[m.kind].label}</span>
+              {m.team && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/40 px-2.5 py-0.5 text-xs text-white backdrop-blur-sm">
+                  <UsersRoundIcon aria-hidden className="size-3" /> Team mission
+                </span>
+              )}
+            </div>
+            {state && ["open", "in-progress", "review"].includes(state) && Date.parse(m.deadline) > (now ?? 0) && <Countdown deadline={m.deadline} className="text-white" />}
+          </div>
+        </SpaceCover>
+      </motion.div>
 
       <div className="mt-5 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_21rem]">
         <div className="flex min-w-0 flex-col gap-7">
@@ -147,10 +195,25 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
               {m.local && <span className="text-xs text-muted-foreground"><Copy k="mission.mission-detail.saved-in-this-browser-only">Saved in this browser only</Copy></span>}
             </div>
             <h1 className="text-xl leading-snug font-semibold tracking-[-0.015em] md:text-2xl">{m.title}</h1>
-            <WhoLine who={m.poster} prefix="Posted by" date={m.createdAt} />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <WhoLine who={m.poster} prefix="Posted by" date={m.createdAt} />
+              <div className="flex flex-wrap items-center gap-2">
+                <FollowMission m={m} social={social} onChange={setSocial} />
+                {isPoster && m.status !== "completed" && (
+                  <Button variant="outline" size="sm" onClick={() => setCustomise(true)}>
+                    <PaletteIcon aria-hidden /> Customise
+                  </Button>
+                )}
+              </div>
+            </div>
+            {m.chainPrev && (
+              <Link href={`/missions/${m.chainPrev}`} className="inline-flex w-fit items-center gap-1.5 text-sm text-[rgb(var(--accent-rgb))] hover:underline">
+                <LinkIcon aria-hidden className="size-3.5" /> Continues an earlier mission in this quest
+              </Link>
+            )}
           </header>
 
-          <dl className="glass grid grid-cols-2 gap-4 rounded-xl p-4 sm:grid-cols-4 md:p-5">
+          <dl className="grid grid-cols-2 gap-4 rounded-xl border border-border bg-card p-4 sm:grid-cols-4 md:p-5">
             <div className="flex flex-col gap-1">
               <dt className="text-xs text-muted-foreground"><Copy k="mission.mission-detail.reward">Reward</Copy></dt>
               <dd>
@@ -163,15 +226,12 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
                 {now === null ? (
                   <Skeleton className="h-5 w-24" />
                 ) : (
-                  <span className="flex flex-col">
-                    <span className="font-medium tabular">{deadlineText(m.deadline, now)}</span>
+                  <span className="flex flex-col gap-1">
+                    <Deadline deadline={m.deadline} now={now} className="text-sm font-medium text-foreground" />
                     <time dateTime={m.deadline} className="text-xs text-muted-foreground">
-                      {new Date(m.deadline).toLocaleDateString(undefined, {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      {new Date(m.deadline).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
                     </time>
+                    <TimeBar m={m} now={now} className="mt-1" />
                   </span>
                 )}
               </dd>
@@ -184,6 +244,14 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
               <dt className="text-xs text-muted-foreground"><Copy k="mission.mission-detail.entries">Entries</Copy></dt>
               <dd className="text-lg font-semibold tabular">{m.entryCount}</dd>
             </div>
+            {m.prize && (
+              <div className="col-span-2 flex items-start gap-2 border-t border-border pt-3 text-sm sm:col-span-4">
+                <GiftIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-[rgb(var(--accent-rgb))]" />
+                <span>
+                  <span className="text-muted-foreground">Also for the winner:</span> {m.prize}
+                </span>
+              </div>
+            )}
           </dl>
 
           {!isPoster && now !== null && isTakingEntries(m, now) && (
@@ -231,7 +299,11 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
             </ul>
           </section>
 
-          <EntriesSection m={m} crew={crew} isPoster={isPoster} now={now} reload={reload} />
+          <Milestones m={m} crew={crew} social={social} reload={reloadSocial} />
+
+          <Updates m={m} isPoster={isPoster} social={social} reload={reloadSocial} />
+
+          <EntriesSection m={m} crew={crew} isPoster={isPoster} now={now} reload={reload} social={social} reloadSocial={reloadSocial} />
 
           <section aria-labelledby="timeline-h" className="flex flex-col gap-3">
             <h2 id="timeline-h" className="font-sans text-base font-semibold tracking-normal">
@@ -239,6 +311,8 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
             </h2>
             {crew && now !== null ? <Timeline events={missionTimeline(m, crew, now)} now={now} /> : <Skeleton className="h-32 w-full rounded-xl" />}
           </section>
+
+          <Discussion m={m} social={social} reload={reloadSocial} />
 
           {isPoster && m.status !== "completed" && m.entryCount === 0 && (
             <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
@@ -263,6 +337,8 @@ function MissionPage({ m, crew, reload }: { m: Mission; crew: MissionCrew | null
           )}
         </aside>
       </div>
+
+      {isPoster && <CustomiseMission key={customise ? "open" : "closed"} m={m} open={customise} onOpenChange={setCustomise} onSaved={() => void reload()} />}
 
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent>
@@ -387,7 +463,23 @@ function EntryLink({ entry, className }: { entry: Pick<MissionEntry, "kind" | "u
   )
 }
 
-function EntriesSection({ m, crew, isPoster, now, reload }: { m: Mission; crew: MissionCrew | null; isPoster: boolean; now: number | null; reload: () => Promise<void> }) {
+function EntriesSection({
+  m,
+  crew,
+  isPoster,
+  now,
+  reload,
+  social,
+  reloadSocial,
+}: {
+  m: Mission
+  crew: MissionCrew | null
+  isPoster: boolean
+  now: number | null
+  reload: () => Promise<void>
+  social: MissionSocial
+  reloadSocial: () => void
+}) {
   const [picking, setPicking] = useState<MissionEntry | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
@@ -448,6 +540,13 @@ function EntriesSection({ m, crew, isPoster, now, reload }: { m: Mission; crew: 
                 </div>
                 <EntryLink entry={e} />
                 {e.notes && <p className="text-sm whitespace-pre-line text-muted-foreground">{e.notes}</p>}
+                {e.teammates.length > 0 && (
+                  <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                    <UsersRoundIcon aria-hidden className="size-3.5" /> With{" "}
+                    {e.teammates.map((t) => crew.crew.find((c) => c.who.memberId === t)?.who.name ?? "a crew member").join(", ")}
+                  </p>
+                )}
+                {(isPoster || e.mine) && <EntryReview missionId={m.id} entryId={e.id} social={social} isPoster={isPoster} canReview={canPick} reload={reloadSocial} />}
                 {canPick && (
                   <div>
                     <Button size="sm" variant="secondary" onClick={() => setPicking(e)}>
@@ -523,7 +622,7 @@ function CrewPanel({ m, crew, isPoster, now, reload }: { m: Mission; crew: Missi
   }
 
   return (
-    <section aria-labelledby="crew-h" className="glass flex flex-col gap-4 rounded-xl p-4">
+    <section aria-labelledby="crew-h" className="border border-border bg-card flex flex-col gap-4 rounded-xl p-4">
       <div className="flex items-center justify-between gap-2">
         <h2 id="crew-h" className="flex items-center gap-2 font-sans text-sm font-semibold tracking-normal">
           <UsersIcon aria-hidden className="size-4 text-ion" /> <Copy k="mission.mission-detail.crew">Crew</Copy>
@@ -600,6 +699,7 @@ function EntryForm({ m, crew, now, reload }: { m: Mission; crew: MissionCrew; no
   const [kind, setKind] = useState<EntryKind>(mine?.kind ?? "repo")
   const [url, setUrl] = useState(mine?.url ?? "")
   const [notes, setNotes] = useState(mine?.notes ?? "")
+  const [team, setTeam] = useState<string[]>(mine?.teammates ?? [])
   const [projects, setProjects] = useState<Project[] | null>(null)
   const [errors, setErrors] = useState<Partial<Record<"url" | "notes" | "form", string>>>({})
   const [busy, setBusy] = useState(false)
@@ -633,7 +733,7 @@ function EntryForm({ m, crew, now, reload }: { m: Mission; crew: MissionCrew; no
     }
     setBusy(true)
     try {
-      await submitEntry(m.id, { kind, url, notes })
+      await submitEntry(m.id, { kind, url, notes, teammates: m.team ? team : [] })
       setDone(mine ? "Entry updated." : "Entry submitted. The poster has been told.")
       setEditing(false)
       await reload()
@@ -686,7 +786,7 @@ function EntryForm({ m, crew, now, reload }: { m: Mission; crew: MissionCrew; no
   }
 
   return (
-    <form onSubmit={submit} noValidate aria-labelledby="entry-h" className="glass flex flex-col gap-4 rounded-xl p-4">
+    <form onSubmit={submit} noValidate aria-labelledby="entry-h" className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
       <h2 id="entry-h" className="flex items-center gap-2 font-sans text-sm font-semibold tracking-normal">
         <FlagIcon aria-hidden className="size-4 text-ion" /> {mine ? "Edit your entry" : "Submit an entry"}
       </h2>
@@ -781,6 +881,37 @@ function EntryForm({ m, crew, now, reload }: { m: Mission; crew: MissionCrew; no
         />
         {errors.notes && <FieldError>{errors.notes}</FieldError>}
       </Field>
+      {m.team && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium">Teammates</legend>
+          {crew.crew.filter((c) => !c.mine && c.who.memberId).length === 0 ? (
+            <p className="text-xs text-muted-foreground">Nobody else is on the crew yet. Teammates join the crew first, then you can add them here.</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {crew.crew
+                .filter((c) => !c.mine && c.who.memberId)
+                .map((c) => {
+                  const id = c.who.memberId!
+                  const on = team.includes(id)
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={on}
+                      disabled={!on && team.length >= 5}
+                      onClick={() => setTeam(on ? team.filter((t) => t !== id) : [...team, id])}
+                      className={cn("pressable inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors", on ? "border-[rgb(var(--accent-rgb)/0.5)] bg-[rgb(var(--accent-rgb)/0.12)]" : "border-border text-muted-foreground hover:text-foreground")}
+                    >
+                      <PosterAvatar poster={c.who} size={16} /> {c.who.name}
+                      {on && <CheckIcon aria-hidden className="size-3" />}
+                    </button>
+                  )
+                })}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">Up to five. Teammates share the win points.</p>
+        </fieldset>
+      )}
       {errors.form && (
         <p role="alert" className="text-sm text-destructive">
           {errors.form}

@@ -83,6 +83,15 @@
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  /* Round 10 motion system: every transition on the site picks one of these. Only transform and opacity move. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: linear(0, 0.18 7%, 0.6 18%, 0.92 30%, 1.03 42%, 1.01 58%, 1);
+  --dur-press: 120ms;
+  --dur-fast: 160ms;
+  --dur-base: 220ms;
+  --dur-slow: 320ms;
+  --stagger: 35ms;
+  --lift: -2px;
   --gutter: clamp(1rem, 2.4vw, 2rem);
   color-scheme: dark;
 }
@@ -1080,4 +1089,296 @@ html[data-fx="off"] .sky-twinkle {
     background: radial-gradient(50% 100% at 50% 100%, rgb(143 180 255 / 0.12), transparent);
     pointer-events: none;
   }
+}
+
+/* ─── Round 10: the motion system ───────────────────────────────────────────────────────────────────────────
+   Tokens live on :root (--ease-*, --dur-*, --stagger, --lift). The classes below are the only moving parts most
+   pages need: an entrance for lists, a lift on hover, a bump for counters that change, and the HorizonX
+   Interactive Hover Button and Fluid Orbit loader rebuilt in CSS. Reduced motion turns all of them into plain
+   fades or nothing. */
+@keyframes nx-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes nx-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes nx-bump {
+  40% {
+    transform: scale(1.18);
+  }
+}
+@keyframes nx-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@keyframes nx-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@layer components {
+  /* List items rise in, one after another: style={{ "--i": index }} sets the place in the queue. */
+  .nx-enter {
+    animation: nx-enter var(--dur-slow) var(--ease-out) both;
+    animation-delay: calc(min(var(--i, 0), 12) * var(--stagger));
+  }
+  .nx-fade {
+    animation: nx-fade var(--dur-base) var(--ease-out) both;
+  }
+  /* Cards that answer the pointer: a two-pixel lift and a brighter hairline, pressed back down on click. */
+  .nx-lift {
+    transition:
+      transform var(--dur-base) var(--ease-out),
+      border-color var(--dur-base) ease,
+      background-color var(--dur-base) ease;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .nx-lift:hover {
+      transform: translateY(var(--lift));
+      border-color: rgb(255 255 255 / 0.16);
+    }
+  }
+  .nx-lift:active {
+    transform: scale(0.985);
+    transition-duration: var(--dur-press);
+  }
+  .nx-lift:focus-visible {
+    border-color: var(--ring);
+  }
+  /* A number that just changed (a like, a vote, a new reply) gives a small bump. Re-key the element to replay. */
+  .nx-bump {
+    display: inline-block;
+    animation: nx-bump var(--dur-slow) var(--ease-out);
+  }
+  /* Skeleton shimmer: an opacity pulse, never a moving gradient across a wide area. */
+  .nx-skeleton {
+    border-radius: 0.5rem;
+    background: rgb(255 255 255 / 0.05);
+    animation: nx-pulse 1.6s var(--ease-in-out) infinite;
+  }
+
+  /* HorizonX "Interactive Hover Button", rebuilt in CSS for the site's palette: a small ion dot rests left of the
+     label; on hover it blooms to fill the button while the label slides out and a second one with an arrow
+     slides in. Touch screens see the resting state with the arrow, and get the same bloom while pressed. */
+  .hx-hover-btn {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    height: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 0.14);
+    background: var(--card);
+    padding-inline: 1.25rem 1.1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--foreground);
+    transition: transform var(--dur-press) var(--ease-out);
+  }
+  .hx-hover-btn > .hx-dot {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    z-index: -1;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-top: -0.25rem;
+    border-radius: 999px;
+    background: var(--ion);
+    transition: transform var(--dur-slow) var(--ease-out);
+  }
+  .hx-hover-btn > .hx-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding-left: 0.9rem;
+    transition:
+      transform var(--dur-slow) var(--ease-out),
+      opacity var(--dur-base) ease;
+  }
+  .hx-hover-btn > .hx-label-hover {
+    position: absolute;
+    inset: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    color: var(--ion-foreground);
+    opacity: 0;
+    transform: translateX(2.5rem);
+    transition:
+      transform var(--dur-slow) var(--ease-out),
+      opacity var(--dur-base) ease;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .hx-hover-btn:hover > .hx-dot,
+    .hx-hover-btn:focus-visible > .hx-dot {
+      transform: scale(60);
+    }
+    .hx-hover-btn:hover > .hx-label,
+    .hx-hover-btn:focus-visible > .hx-label {
+      transform: translateX(3rem);
+      opacity: 0;
+    }
+    .hx-hover-btn:hover > .hx-label-hover,
+    .hx-hover-btn:focus-visible > .hx-label-hover {
+      transform: none;
+      opacity: 1;
+    }
+  }
+  .hx-hover-btn:active {
+    transform: scale(0.97);
+  }
+  @media (hover: none) {
+    .hx-hover-btn:active > .hx-dot {
+      transform: scale(60);
+    }
+  }
+
+  /* HorizonX "Fluid Orbit" loader: one dot at the centre, a smaller one circling it. For short waits. */
+  .hx-orbit {
+    position: relative;
+    display: inline-block;
+    width: var(--size, 1.25rem);
+    height: var(--size, 1.25rem);
+    flex-shrink: 0;
+  }
+  .hx-orbit::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 26%;
+    height: 26%;
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+    background: currentColor;
+  }
+  .hx-orbit::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: radial-gradient(circle at 50% 12%, currentColor 0 10%, transparent 11%);
+    opacity: 0.75;
+    animation: nx-orbit 1.4s linear infinite;
+  }
+
+  /* The inline AI moment: a slim pill with the plasma orb on its left (HorizonX Assistant Pill) and, while the
+     model thinks, a band of Siri Wave behind its label. Plain blur, never glass. */
+  .ai-pill,
+  .ai-card {
+    --apl-deep: #2b4fd6;
+    --apl-body: #8fb4ff;
+    --apl-glow: #c9d9ff;
+    --apl-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .ai-pill {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    height: 2.25rem;
+    align-items: center;
+    gap: 0.5rem;
+    overflow: hidden;
+    border-radius: 999px;
+    border: 1px solid rgb(143 180 255 / 0.28);
+    background: rgb(12 16 26 / 0.7);
+    padding: 0 0.9rem 0 0.25rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--foreground);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    transition:
+      transform var(--dur-press) var(--ease-out),
+      border-color var(--dur-base) ease;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .ai-pill:hover:not(:disabled) {
+      border-color: rgb(143 180 255 / 0.55);
+    }
+  }
+  .ai-pill:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .ai-pill:disabled {
+    cursor: default;
+  }
+  .ai-pill .apl-orb {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+  .ai-pill-wave {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity var(--dur-slow) ease;
+  }
+  .ai-pill[data-busy] .ai-pill-wave,
+  .ai-card[data-busy] .ai-pill-wave {
+    opacity: 0.9;
+  }
+  .ai-card {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid rgb(143 180 255 / 0.22);
+    background: linear-gradient(180deg, rgb(143 180 255 / 0.07), rgb(143 180 255 / 0.02));
+  }
+}
+/* /explore: each galaxy's rings turn slowly; planets turn back so their icons stay upright. */
+.explore-ring {
+  animation: nx-orbit var(--secs, 80s) linear infinite var(--ring-dir, normal);
+}
+.explore-planet {
+  animation: nx-orbit var(--secs, 80s) linear infinite var(--planet-dir, reverse);
+}
+html[data-fx="off"] .explore-ring,
+html[data-fx="off"] .explore-planet {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .explore-ring,
+  .explore-planet {
+    animation: none;
+  }
+  .nx-enter,
+  .nx-bump {
+    animation: nx-fade var(--dur-fast) ease both;
+  }
+  .nx-lift:hover,
+  .nx-lift:active {
+    transform: none;
+  }
+  .hx-hover-btn > .hx-dot,
+  .hx-hover-btn > .hx-label,
+  .hx-hover-btn > .hx-label-hover {
+    transition-property: opacity;
+  }
+  .hx-orbit::after,
+  .nx-skeleton {
+    animation: none;
+  }
+}
+
+/* A member's "Calm motion" (Settings › Your experience): every animation becomes an instant change, like the
+   system's reduce-motion setting, for this member only. */
+html[data-calm] *,
+html[data-calm] *::before,
+html[data-calm] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }

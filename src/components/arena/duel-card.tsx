@@ -255,7 +255,7 @@ export function DuelCard({
                 </button>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground max-md:hidden">
+            <p className="text-xs text-muted-foreground">
               <Copy k="arena.duel-card.judge-the-answers-not-the">Judge the answers, not the style you expect from a model. Names appear after you vote.</Copy>
             </p>
           </motion.div>

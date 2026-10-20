@@ -2,7 +2,13 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { FileTextIcon, PlusIcon, TargetIcon, UsersIcon, XIcon } from "lucide-react"
+import { BellRingIcon, FileTextIcon, GiftIcon, LayoutGridIcon, ListIcon, PlusIcon, SearchIcon, TargetIcon, UserIcon, UsersIcon, UsersRoundIcon, XIcon } from "lucide-react"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
+import { GlowCard } from "@/components/hub/glow-card"
+import { SpaceCover } from "@/components/missions/mission-cover"
+import { TimeBar } from "@/components/missions/mission-extras"
+import { accentRgb, MISSION_KIND_ORDER, MISSION_KINDS, type MissionKind } from "@/lib/missions-look"
+import { listFollowedMissions } from "@/lib/missions-social"
 import { primaryButton, rise, riseDelay, PosterAvatar } from "@/components/forum/forum-ui"
 import { useNow } from "@/components/live/time"
 import { Deadline, DifficultyBadge, Insignia, Reward, StatusBadge } from "@/components/missions/mission-bits"
@@ -45,6 +51,46 @@ export function MissionsView() {
   const [difficulty, setDifficulty] = useState<Difficulty | "all">("all")
   const [tag, setTag] = useState<string>("")
   const [sort, setSort] = useState<Sort>("newest")
+  const [kind, setKind] = useState<MissionKind | "all">("all")
+  const [query, setQuery] = useState("")
+  const [only, setOnly] = useState<"" | "following" | "mine" | "team">("")
+  const [followed, setFollowed] = useState<string[]>([])
+  const [view, setView] = useState<"board" | "list">("board")
+  const reduce = useReducedMotion()
+  const search = useRef<HTMLInputElement>(null)
+
+  // The board or list view is remembered in this browser; "/" jumps to the search box.
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reads a per-browser preference once mounted
+      if (localStorage.getItem("nexverse-missions-view") === "list") setView("list")
+    } catch {}
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement
+      if (e.key === "/" && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && !t.isContentEditable) {
+        e.preventDefault()
+        search.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
+  function pickView(v: "board" | "list") {
+    setView(v)
+    try {
+      localStorage.setItem("nexverse-missions-view", v)
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (!live || !ready || !user) return
+    let stale = false
+    listFollowedMissions().then((ids) => !stale && setFollowed(ids))
+    return () => {
+      stale = true
+    }
+  }, [ready, user])
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Filters can come in the address (?status=open&difficulty=pilot&tag=speech), from tag links and the home page.
@@ -90,15 +136,26 @@ export function MissionsView() {
 
   const shown = useMemo(() => {
     if (!missions || now === null) return []
-    const list = missions.filter((m) => (status === "all" || missionState(m, now) === status) && (difficulty === "all" || m.difficulty === difficulty) && (!tag || m.tags.includes(tag)))
+    const q = query.trim().toLowerCase()
+    const list = missions.filter(
+      (m) =>
+        (status === "all" || missionState(m, now) === status) &&
+        (difficulty === "all" || m.difficulty === difficulty) &&
+        (kind === "all" || m.kind === kind) &&
+        (!tag || m.tags.includes(tag)) &&
+        (!q || m.title.toLowerCase().includes(q) || m.brief.toLowerCase().includes(q) || m.tags.some((t) => t.includes(q))) &&
+        (only !== "following" || followed.includes(m.id)) &&
+        (only !== "mine" || m.local || (user && m.poster.memberId === user.id)) &&
+        (only !== "team" || m.team),
+    )
     const running = (m: Mission) => ["open", "in-progress", "review"].includes(missionState(m, now))
     if (sort === "ending") return list.sort((a, b) => Number(running(b)) - Number(running(a)) || a.deadline.localeCompare(b.deadline))
     if (sort === "reward") return list.sort((a, b) => b.reward - a.reward || b.createdAt.localeCompare(a.createdAt))
     // Newest first, but running missions before finished ones.
     return list.sort((a, b) => Number(running(b)) - Number(running(a)) || b.createdAt.localeCompare(a.createdAt))
-  }, [missions, now, status, difficulty, tag, sort])
+  }, [missions, now, status, difficulty, tag, sort, kind, query, only, followed, user])
 
-  const filtered = status !== "all" || difficulty !== "all" || Boolean(tag)
+  const filtered = status !== "all" || difficulty !== "all" || Boolean(tag) || kind !== "all" || Boolean(query.trim()) || Boolean(only)
   const loading = missions === null || now === null
   const noneAtAll = !loading && !error && missions.length === 0
 
@@ -106,15 +163,87 @@ export function MissionsView() {
     setStatus("all")
     setDifficulty("all")
     setTag("")
+    setKind("all")
+    setQuery("")
+    setOnly("")
   }
+
+  // The running mission with the biggest reward leads the board.
+  const featured = view === "board" && !filtered && now !== null ? shown.find((m) => ["open", "in-progress", "review"].includes(missionState(m, now)) && m.reward > 0)?.id : undefined
 
   return (
     <div className="flex flex-col gap-5">
       <MissionControl counts={counts} status={status} onStatus={setStatus} live={!loading && !error} />
 
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <label className="relative flex min-w-0 flex-1 items-center">
+          <SearchIcon aria-hidden className="pointer-events-none absolute left-3 size-4 text-muted-foreground" />
+          <span className="sr-only">Search missions</span>
+          <input
+            ref={search}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+            placeholder="Search missions"
+            className="h-10 w-full rounded-full border border-input bg-background/60 pr-10 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <kbd className="pointer-events-none absolute right-3 hidden rounded border border-border px-1.5 text-[11px] text-muted-foreground sm:block">/</kbd>
+        </label>
+        <div role="radiogroup" aria-label="Type" className="flex w-full gap-1 overflow-x-auto rounded-full border border-border bg-card p-1 sm:w-fit">
+          {(["all", ...MISSION_KIND_ORDER] as const).map((k) => {
+            const on = kind === k
+            return (
+              <button key={k} type="button" role="radio" aria-checked={on} onClick={() => setKind(k)} className={cn("pressable relative flex-1 shrink-0 rounded-full px-3 py-1.5 text-sm whitespace-nowrap transition-colors sm:flex-none", on ? "text-background" : "text-muted-foreground hover:text-foreground")}>
+                {on && <motion.span layoutId="mission-kind" className="absolute inset-0 rounded-full bg-foreground" transition={reduce ? { duration: 0 } : { type: "spring", bounce: 0.15, duration: 0.4 }} />}
+                <span className="relative">{k === "all" ? "All types" : MISSION_KINDS[k].label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        {(
+          [
+            ["following", "Following", BellRingIcon],
+            ["mine", "Posted by me", UserIcon],
+            ["team", "Team missions", UsersRoundIcon],
+          ] as const
+        ).map(([id, label, Icon]) => {
+          const on = only === id
+          const disabled = id !== "team" && live && !user
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={on}
+              disabled={disabled}
+              title={disabled ? "Sign in first" : undefined}
+              onClick={() => setOnly(on ? "" : id)}
+              className={cn("pressable inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors disabled:opacity-50", on ? "border-ion/50 bg-ion/15 text-ion" : "border-border text-muted-foreground hover:text-foreground")}
+            >
+              <Icon aria-hidden className="size-3.5" /> {label}
+              {id === "following" && followed.length > 0 && <span className="tabular opacity-70">{followed.length}</span>}
+            </button>
+          )
+        })}
+        <div role="radiogroup" aria-label="View" className="ml-auto flex rounded-full border border-border bg-card p-0.5">
+          {(
+            [
+              ["board", "Board", LayoutGridIcon],
+              ["list", "List", ListIcon],
+            ] as const
+          ).map(([v, label, Icon]) => (
+            <button key={v} type="button" role="radio" aria-checked={view === v} aria-label={label} title={label} onClick={() => pickView(v)} className={cn("pressable grid size-8 place-items-center rounded-full transition-colors", view === v ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
+              <Icon aria-hidden className="size-4" />
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <div role="group" aria-label="Difficulty" className="glass flex w-full max-w-full rounded-full p-1 sm:w-fit">
+          <div role="group" aria-label="Difficulty" className="border border-border bg-card flex w-full max-w-full rounded-full p-1 sm:w-fit">
             {(["all", "cadet", "pilot", "commander"] as const).map((d) => {
               const on = difficulty === d
               return (
@@ -189,21 +318,47 @@ export function MissionsView() {
 
       <div aria-busy={loading} aria-live="polite">
         {loading ? (
-          <ul className="flex flex-col gap-3" aria-hidden>
-            {[0, 1, 2, 3].map((i) => (
-              <li key={i}>
-                <Skeleton className="h-32 w-full rounded-xl" />
+          <ul className={cn(view === "board" ? "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-3")} aria-hidden>
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <li key={i} className={cn(view === "board" && i === 0 && "sm:col-span-2")}>
+                <Skeleton className={cn("w-full rounded-2xl", view === "board" ? "h-64" : "h-32")} />
               </li>
             ))}
           </ul>
         ) : shown.length ? (
-          <ol className="flex flex-col gap-3">
-            {shown.map((m, i) => (
-              <li key={m.id} className={rise} style={riseDelay(i)}>
-                <MissionCard m={m} now={now} />
-              </li>
-            ))}
-          </ol>
+          view === "board" ? (
+            <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <AnimatePresence initial={false} mode="popLayout">
+                {shown.map((m, i) => (
+                  <motion.li
+                    key={m.id}
+                    layout={!reduce}
+                    initial={reduce ? false : { opacity: 0, transform: "translateY(10px) scale(0.98)" }}
+                    animate={{ opacity: 1, transform: "translateY(0px) scale(1)" }}
+                    exit={{ opacity: 0, transform: "scale(0.97)", transition: { duration: 0.15 } }}
+                    transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1], delay: reduce ? 0 : Math.min(i, 9) * 0.03 }}
+                    className={cn(m.id === featured && "sm:col-span-2")}
+                  >
+                    {m.id === featured ? (
+                      <GlowCard className="h-full rounded-2xl">
+                        <MissionTile m={m} now={now} big />
+                      </GlowCard>
+                    ) : (
+                      <MissionTile m={m} now={now} />
+                    )}
+                  </motion.li>
+                ))}
+              </AnimatePresence>
+            </ol>
+          ) : (
+            <ol className="flex flex-col gap-3">
+              {shown.map((m, i) => (
+                <li key={m.id} className={rise} style={riseDelay(i)}>
+                  <MissionCard m={m} now={now} />
+                </li>
+              ))}
+            </ol>
+          )
         ) : noneAtAll ? (
           <FirstMission />
         ) : (
@@ -321,6 +476,71 @@ export function MissionCard({ m, now }: { m: Mission; now: number }) {
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1">
         <Reward points={m.reward} />
+      </div>
+    </article>
+  )
+}
+
+/** A mission on the board: its cover and colour, type, status, reward, crew and how much time is left. */
+export function MissionTile({ m, now, big = false }: { m: Mission; now: number; big?: boolean }) {
+  const state = missionState(m, now)
+  const finished = state === "completed" || state === "expired"
+  return (
+    <article
+      style={{ "--accent-rgb": accentRgb(m.accent) } as React.CSSProperties}
+      className={cn(
+        "group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition-[transform,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-[rgb(var(--accent-rgb)/0.45)] active:scale-[0.99]",
+        finished && "opacity-80",
+      )}
+    >
+      <SpaceCover seed={m.id} cover={m.cover} accent={m.accent} className={cn("transition-transform duration-500 ease-out", big ? "h-40 sm:h-48" : "h-28")}>
+        <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5">
+          <span className="rounded-full border border-white/15 bg-black/45 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">{MISSION_KINDS[m.kind].label}</span>
+          {m.team && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/45 px-2 py-0.5 text-[11px] text-white backdrop-blur-sm">
+              <UsersRoundIcon aria-hidden className="size-3" /> Team
+            </span>
+          )}
+        </div>
+        <span className="absolute top-2.5 right-2.5 rounded-full bg-black/45 px-2 py-0.5 backdrop-blur-sm">
+          <Reward points={m.reward} />
+        </span>
+      </SpaceCover>
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <StatusBadge status={state} />
+          <DifficultyBadge difficulty={m.difficulty} />
+        </div>
+        <h2 className={cn("font-sans leading-snug font-semibold tracking-normal", big ? "text-lg" : "text-base")}>
+          <Link href={`/missions/${m.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring group-hover:text-[rgb(var(--accent-rgb))]">
+            {m.title}
+          </Link>
+        </h2>
+        {big && m.brief && <p className="line-clamp-2 text-sm text-muted-foreground">{m.brief.replace(/[#*_`>]/g, "")}</p>}
+        {m.prize && (
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <GiftIcon aria-hidden className="size-3.5 text-[rgb(var(--accent-rgb))]" /> <span className="truncate">{m.prize}</span>
+          </p>
+        )}
+        <div className="mt-auto flex flex-col gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <PosterAvatar poster={m.poster} size={16} />
+              <span className="max-w-28 truncate">{m.poster.name}</span>
+            </span>
+            <span className="inline-flex items-center gap-1 tabular">
+              <UsersIcon aria-hidden className="size-3.5" />
+              {m.crewCount}
+            </span>
+            <span className="inline-flex items-center gap-1 tabular">
+              <FileTextIcon aria-hidden className="size-3.5" />
+              {m.entryCount}
+            </span>
+            {m.milestones.length > 0 && <span className="tabular">{m.milestones.length} steps</span>}
+            {state === "completed" && m.winner ? <span className="text-ok">Won by {m.winner.name}</span> : !finished && <Deadline deadline={m.deadline} now={now} />}
+          </div>
+          {!finished && <TimeBar m={m} now={now} />}
+        </div>
       </div>
     </article>
   )

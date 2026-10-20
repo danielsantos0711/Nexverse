@@ -60,7 +60,24 @@ export type CrewRole = "owner" | "admin" | "member"
 export const CREW_SLUG = /^[a-z0-9](?:[a-z0-9-]{0,32}[a-z0-9])?$/
 export const CREW_TAG = /^[a-z0-9][a-z0-9-]{0,23}$/
 export const CREW_LIMITS = { name: 60, blurb: 300, tags: 8, post: 10000, request: 300, pinned: 3 } as const
-export const ROLE_LABEL: Record<CrewRole, string> = { owner: "Owner", admin: "Admin", member: "Member" }
+/** In the database the roles are owner, admin and member; on screen a crew has a captain, officers and crew. */
+export const ROLE_LABEL: Record<CrewRole, string> = { owner: "Captain", admin: "Officer", member: "Crew" }
+
+/** The parts of a crew home its captain and officers arrange (…_social.sql). */
+export const HOME_SECTIONS = ["pinned", "events", "projects", "leaderboard", "feed", "galaxy", "rules", "collections"] as const
+export type HomeSection = (typeof HOME_SECTIONS)[number]
+export const DEFAULT_HOME: HomeSection[] = ["galaxy", "pinned", "events", "projects", "leaderboard", "feed", "rules"]
+export const HOME_LABEL: Record<HomeSection, string> = {
+  pinned: "Pinned posts",
+  events: "Upcoming launches",
+  projects: "Project board",
+  leaderboard: "Top crew",
+  feed: "Mission log",
+  galaxy: "Crew galaxy",
+  rules: "Crew code",
+  collections: "Shared collections",
+}
+export const isHomeSection = (s: string): s is HomeSection => (HOME_SECTIONS as readonly string[]).includes(s)
 
 export type Crew = {
   id: string
@@ -75,10 +92,24 @@ export type Crew = {
   memberCount: number
   createdAt: string
   updatedAt: string
+  /** The look (…_social.sql): a banner picture, an emoji sigil, an exact accent colour, a motto and a crew code. */
+  banner: string | null
+  sigil: string | null
+  accent: string | null
+  motto: string
+  rules: string
+  /** The home sections in order. Empty means the default arrangement. */
+  homeSections: HomeSection[]
   /** @deprecated Always false: there are no sample crews any more. */
   sample: boolean
   local: boolean
 }
+
+export type CrewIdentity = Pick<Crew, "banner" | "sigil" | "accent" | "motto" | "rules" | "homeSections">
+
+/** The colour a crew's page is painted in: its exact accent when it has one, its palette colour otherwise. */
+export const crewTint = (c: Pick<Crew, "accent" | "color">) => c.accent || CREW_COLORS[c.color].value
+export const homeOf = (c: Pick<Crew, "homeSections">): HomeSection[] => (c.homeSections.length ? c.homeSections : DEFAULT_HOME)
 
 export type CrewMember = Who & { key: string; role: CrewRole; joinedAt: string }
 
@@ -110,7 +141,7 @@ export const canManage = (role: CrewRole | null | undefined) => role === "owner"
 /** The chat room every crew gets: an ordinary room named after the crew, readable by its members only. */
 export const crewRoomSlug = (slug: string) => `crew-${slug}`
 export function crewRoom(c: Crew): Room {
-  return { slug: crewRoomSlug(c.slug), name: c.name.slice(0, 40), topic: c.blurb.slice(0, 200), createdBy: null, createdAt: c.createdAt }
+  return { slug: crewRoomSlug(c.slug), name: c.name.slice(0, 40), topic: c.blurb.slice(0, 200), createdBy: null, createdAt: c.createdAt, kind: "crew", accent: c.color, emoji: c.sigil }
 }
 
 export function crewSlugify(name: string) {
@@ -217,11 +248,11 @@ function writeStanding(crewId: string, s: Standing | null) {
   emitLocal(crewId)
 }
 
-type LocalCrew = Omit<Crew, "owner" | "memberCount" | "sample" | "local">
+type LocalCrew = Omit<Crew, "owner" | "memberCount" | "sample" | "local" | keyof CrewIdentity> & Partial<CrewIdentity>
 const readLocalCrews = () => readLocal<LocalCrew[]>(CREWS_KEY, [])
 
 function fromLocalCrew(c: LocalCrew): Crew {
-  return { ...c, owner: localWho(), memberCount: 1, sample: false, local: true }
+  return { banner: null, sigil: null, accent: null, motto: "", rules: "", homeSections: [], ...c, owner: localWho(), memberCount: 1, sample: false, local: true }
 }
 
 const localCrews = () => readLocalCrews().map(fromLocalCrew)
@@ -245,8 +276,30 @@ function emitLocal(crewId: string) {
 
 // ─── Database rows ──────────────────────────────────────────────────────────────────────────────────────────
 
-const CREW_COLUMNS = "id, slug, name, blurb, icon, color, visibility, tags, member_count, created_at, updated_at, owner:profiles!crews_owner_id_fkey(id, name)"
+const BASE_CREW_COLUMNS = "id, slug, name, blurb, icon, color, visibility, tags, member_count, created_at, updated_at, owner:profiles!crews_owner_id_fkey(id, name)"
+const IDENTITY_COLUMNS = ", banner_url, sigil, accent, motto, rules, home_sections"
+/** The identity columns arrive with …_social.sql; until then crews read without them. */
+let identity = true
+const crewColumns = () => (identity ? BASE_CREW_COLUMNS + IDENTITY_COLUMNS : BASE_CREW_COLUMNS)
+const columnMissing = (e: { code?: string; message: string } | null) => Boolean(e && (e.code === "42703" || /column .* does not exist|Could not find the .* column/i.test(e.message)))
+/** Runs a crews query, and once more without the identity columns if this database has not got them yet. */
+async function crewQuery<T>(run: (columns: string) => PromiseLike<{ data: T; error: { message: string; code?: string } | null }>) {
+  let res = await run(crewColumns())
+  if (identity && columnMissing(res.error)) {
+    identity = false
+    res = await run(crewColumns())
+  }
+  return res
+}
+export const crewIdentityReady = () => identity
+
 type CrewRow = {
+  banner_url?: string | null
+  sigil?: string | null
+  accent?: string | null
+  motto?: string | null
+  rules?: string | null
+  home_sections?: string[] | null
   id: string
   slug: string
   name: string
@@ -274,6 +327,12 @@ const fromCrewRow = (r: CrewRow): Crew => ({
   memberCount: r.member_count,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
+  banner: r.banner_url ?? null,
+  sigil: r.sigil ?? null,
+  accent: r.accent ?? null,
+  motto: r.motto ?? "",
+  rules: r.rules ?? "",
+  homeSections: (r.home_sections ?? []).filter(isHomeSection),
   sample: false,
   local: false,
 })
@@ -298,7 +357,7 @@ const fromPostRow = (r: PostRow): CrewPost => ({
 export async function listCrews(): Promise<Crew[]> {
   const client = db()
   if (!client) return localCrews()
-  const { data, error } = await client.from("crews").select(CREW_COLUMNS).order("updated_at", { ascending: false }).limit(120)
+  const { data, error } = await crewQuery((cols) => client.from("crews").select(cols).order("updated_at", { ascending: false }).limit(120))
   fail(error)
   return (data as unknown as CrewRow[]).map(fromCrewRow)
 }
@@ -329,7 +388,7 @@ export async function getCrew(slug: string): Promise<Crew | null> {
   const client = db()
   if (!client) return localCrews().find((c) => c.slug === slug) ?? null
   if (!CREW_SLUG.test(slug)) return null
-  const { data, error } = await client.from("crews").select(CREW_COLUMNS).eq("slug", slug).maybeSingle()
+  const { data, error } = await crewQuery((cols) => client.from("crews").select(cols).eq("slug", slug).maybeSingle())
   fail(error)
   return data ? fromCrewRow(data as unknown as CrewRow) : null
 }
@@ -369,7 +428,7 @@ export async function createCrew(raw: CrewInput): Promise<Crew> {
     return fromLocalCrew(crew)
   }
   await requireMe()
-  const { data, error } = await client.from("crews").insert(input).select(CREW_COLUMNS).single()
+  const { data, error } = await crewQuery((cols) => client.from("crews").insert(input).select(cols).single())
   fail(error)
   return fromCrewRow(data as unknown as CrewRow)
 }
@@ -391,7 +450,43 @@ export async function updateCrew(c: Crew, raw: Omit<CrewInput, "slug">): Promise
     emitLocal(c.id)
     return fromLocalCrew(all[i])
   }
-  const { data, error } = await client.from("crews").update(patch).eq("id", c.id).select(CREW_COLUMNS).single()
+  const { data, error } = await crewQuery((cols) => client.from("crews").update(patch).eq("id", c.id).select(cols).single())
+  fail(error)
+  return fromCrewRow(data as unknown as CrewRow)
+}
+
+const SIGIL = /^[^A-Za-z0-9\s<>]{1,16}$/
+const ACCENT = /^#[0-9a-f]{6}$/
+
+/** The crew's look: banner, sigil, accent, motto, crew code and how its home is arranged. Captain and officers. */
+export async function updateCrewIdentity(c: Crew, raw: Partial<CrewIdentity>): Promise<Crew> {
+  const patch: Partial<CrewIdentity> = { ...raw }
+  if (patch.sigil !== undefined) patch.sigil = patch.sigil?.trim() || null
+  if (patch.sigil && !SIGIL.test(patch.sigil)) throw new Error("The sigil is one emoji.")
+  if (patch.accent !== undefined) patch.accent = patch.accent?.toLowerCase() || null
+  if (patch.accent && !ACCENT.test(patch.accent)) throw new Error("Pick the accent colour from the palette.")
+  if (patch.motto !== undefined) patch.motto = patch.motto.trim().slice(0, 140)
+  if (patch.rules !== undefined) patch.rules = patch.rules.trim().slice(0, 2000)
+  if (patch.homeSections) patch.homeSections = [...new Set(patch.homeSections.filter(isHomeSection))]
+  const client = db()
+  if (!client) {
+    const all = readLocalCrews()
+    const i = all.findIndex((x) => x.id === c.id)
+    if (i < 0) throw new Error("Only crews you started in this browser can be edited here.")
+    all[i] = { ...all[i], ...patch, updatedAt: new Date().toISOString() }
+    writeLocal(CREWS_KEY, all)
+    emitLocal(c.id)
+    return fromLocalCrew(all[i])
+  }
+  if (!identity) throw new Error("Crew banners, sigils and home sections are not switched on in the database yet (migration …_social.sql).")
+  const row: Record<string, unknown> = {}
+  if (patch.banner !== undefined) row.banner_url = patch.banner
+  if (patch.sigil !== undefined) row.sigil = patch.sigil
+  if (patch.accent !== undefined) row.accent = patch.accent
+  if (patch.motto !== undefined) row.motto = patch.motto
+  if (patch.rules !== undefined) row.rules = patch.rules
+  if (patch.homeSections !== undefined) row.home_sections = patch.homeSections
+  const { data, error } = await crewQuery((cols) => client.from("crews").update(row).eq("id", c.id).select(cols).single())
   fail(error)
   return fromCrewRow(data as unknown as CrewRow)
 }

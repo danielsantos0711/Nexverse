@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { CheckCircle2Icon } from "lucide-react"
+import { MemberHoverCard } from "@/components/social/member-hover-card"
 import { HiddenBadge, LockedBadge, PinnedBadge, PosterAvatar, rise, riseDelay, SolvedBadge } from "@/components/forum/forum-ui"
 import type { Poster, Topic } from "@/components/forum/topics"
 import { TimeAgo } from "@/components/live/time"
@@ -60,7 +61,9 @@ export function Post({
       <header className="mb-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm">
         <span className="flex items-center gap-2 font-medium">
           <PosterAvatar poster={poster} size={28} />
-          {poster.name}
+          <MemberHoverCard handle={poster.handle} name={poster.name}>
+            {poster.name}
+          </MemberHoverCard>
         </span>
         {original && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-xs text-muted-foreground"><Copy k="thread.thread-parts.started-the-thread">Started the thread</Copy></span>}
         <TimeAgo date={date} className="text-xs text-muted-foreground" />

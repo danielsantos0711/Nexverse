@@ -11,10 +11,11 @@ import { clearDraft } from "@/lib/editor/drafts"
 import { Gate } from "@/components/moderation/gate"
 import { PollBuilder } from "@/components/forum/poll"
 import { TagInput } from "@/components/forum/tags"
+import { SuggestTitleTags } from "@/components/ai/inline-ai"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { createThread, mentionedMemberIds, normalizeTag, validatePoll, validateThread, type MentionCandidate, type NewPoll } from "@/lib/community"
+import { createThread, MAX_TAGS, mentionedMemberIds, normalizeTag, validatePoll, validateThread, type MentionCandidate, type NewPoll } from "@/lib/community"
 import { useCaps } from "@/lib/caps"
 import { type LanguageCode } from "@/lib/data"
 import { useLanguages } from "@/lib/lists/hooks"
@@ -197,6 +198,16 @@ function NewThreadForm() {
           <FieldLabel htmlFor="tags">Tags</FieldLabel>
           <TagInput id="tags" value={tags} onChange={setTags} describedBy="tags-help" />
           <FieldDescription id="tags-help">Up to 5. They help people find the thread later. Press Enter or comma after each one.</FieldDescription>
+          {/* inline AI: a clearer title and tags from the draft, applied only when the member says so */}
+          <SuggestTitleTags
+            title={title}
+            body={body}
+            className="mt-1"
+            onApply={(sug) => {
+              if (sug.title) setTitle(sug.title.slice(0, 300))
+              if (sug.tags?.length) setTags((cur) => [...new Set([...cur, ...sug.tags!.map((t) => normalizeTag(t)).filter(Boolean)])].slice(0, MAX_TAGS))
+            }}
+          />
         </Field>
 
         <div id="poll-section" tabIndex={-1} className="flex flex-col gap-3 outline-none">
