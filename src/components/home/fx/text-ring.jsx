@@ -4,6 +4,7 @@
 // (aria-hidden, the words are said elsewhere on the page); fills a square parent; paused offscreen and still
 // under reduced motion (as the original); cleans up on unmount instead of on pagehide only.
 import { useLayoutEffect, useRef } from 'react';
+import { useQuality } from '@/lib/perf';
 
 const CSS = `
 .txr-ring{position:relative;width:100%;height:100%;border-radius:50%;touch-action:manipulation;-webkit-user-select:none;user-select:none}
@@ -76,7 +77,8 @@ function buildTextRing(root, initial) {
   const ring = root.querySelector('.txr-ring');
   const spin = root.querySelector('.txr-spin');
   const gauge = doc.createElement('canvas').getContext('2d');
-  const reduced = win.matchMedia('(prefers-reduced-motion: reduce)');
+  // quality "off" (the admins' motion off, reduced motion) rests the ring like reduced motion does
+  const reduced = initial.still ? { matches: true, addEventListener() {}, removeEventListener() {} } : win.matchMedia('(prefers-reduced-motion: reduce)');
   const config = initial;
   let destroyed = false, raf = 0, lastFrame = 0, onScreen = false;
   let angle = 0, rate = 0, paused = false, scale = 1, scaleTarget = 1, scaleRate = 0;
@@ -206,7 +208,8 @@ function buildTextRing(root, initial) {
  */
 export default function TextRing({ words, separator = '·', font = 12, weight = 500, ink = 'currentColor', tracking = 0.1, secondsPerTurn = 48, hoverSeconds = 10, reverse = false, className = '' }) {
   const __root = useRef(null);
-  const key = JSON.stringify([words, separator, secondsPerTurn, hoverSeconds, reverse, tracking]);
+  const still = useQuality() === 'off';
+  const key = JSON.stringify([words, separator, secondsPerTurn, hoverSeconds, reverse, tracking, still]);
 
   useLayoutEffect(() => {
     if (!document.querySelector('style[data-text-ring]')) {
@@ -216,7 +219,7 @@ export default function TextRing({ words, separator = '·', font = 12, weight = 
       document.head.append(tag);
     }
     const root = __root.current;
-    return buildTextRing(root, { words, separator, tracking, secondsPerTurn, hoverSeconds, reverse, hoverTarget: root.parentElement });
+    return buildTextRing(root, { words, separator, tracking, secondsPerTurn, hoverSeconds, reverse, still, hoverTarget: root.parentElement });
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

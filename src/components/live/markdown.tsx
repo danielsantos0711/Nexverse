@@ -4,6 +4,8 @@ import { lexer, type Token, type Tokens } from "marked"
 import { decodeEntities, isOffSite } from "@/lib/live/http"
 import { ALLOWED, tokenizeHtml } from "@/lib/markdown/html"
 import { rewriteImage, rewriteLink, slugify, type MdContext } from "@/lib/markdown/urls"
+import { parseEmbed } from "@/lib/editor/embeds"
+import { EmbedBlock } from "@/components/editor/embed"
 import { cn } from "@/lib/utils"
 import { CodeBlock } from "./code-block"
 
@@ -14,12 +16,15 @@ import { CodeBlock } from "./code-block"
  * raw HTML in the source is tokenized and rebuilt from a short whitelist with validated attributes (see
  * lib/markdown/html.ts); links and images are resolved and filtered by lib/markdown/urls.ts, so javascript:
  * and data: URLs never reach the page. External links open in a new tab without a referrer.
+ *
+ * Member posts (embeds on) also turn a link alone on its own line into a safe embed (lib/editor/embeds.ts):
+ * click-to-play video from privacy-friendly hosts, or a card. No third-party script ever runs.
  */
 
 type El = { t: "el"; tag: string; attrs: Record<string, string>; children: Node[] }
 type Node = El | { t: "text"; v: string } | { t: "md"; token: Token }
 
-type R = { ctx: MdContext; slugs: Map<string, number> }
+type R = { ctx: MdContext; slugs: Map<string, number>; embeds: boolean }
 
 const MAX_DEPTH = 40
 
@@ -389,12 +394,20 @@ function renderToken(tok: Token, r: R, key: number): React.ReactNode {
         </Heading>
       )
     }
-    case "paragraph":
+    case "paragraph": {
+      if (r.embeds) {
+        const parts = (tok as Tokens.Paragraph).tokens.filter((t) => !(t.type === "text" && !String((t as Tokens.Text).text).trim()))
+        const only = parts.length === 1 && parts[0].type === "link" ? (parts[0] as Tokens.Link) : null
+        // Only a bare link (its text is its address) becomes an embed; "[my video](…)" stays a link.
+        const embed = only && textOf(only.tokens).trim() === only.href.trim() ? parseEmbed(only.href) : null
+        if (embed) return <EmbedBlock key={key} embed={embed} />
+      }
       return (
         <p key={key} className="my-3">
           {renderTokens((tok as Tokens.Paragraph).tokens, r)}
         </p>
       )
+    }
     case "code": {
       const t = tok as Tokens.Code
       return <CodeBlock key={key} code={t.text} lang={(t.lang ?? "").split(/\s/)[0].slice(0, 20)} />
@@ -513,11 +526,11 @@ function renderToken(tok: Token, r: R, key: number): React.ReactNode {
  * Renders Markdown from a repository. `ctx` says where relative links and images resolve. Long or broken
  * input never throws: it falls back to plain preformatted text.
  */
-export function Markdown({ source, ctx, className }: { source: string; ctx: MdContext; className?: string }) {
+export function Markdown({ source, ctx, className, embeds = false }: { source: string; ctx: MdContext; className?: string; /** Member posts: links alone on a line become safe embeds. */ embeds?: boolean }) {
   let body: React.ReactNode
   try {
     const tokens = lexer(source.slice(0, 500_000), { gfm: true })
-    body = renderTokens(tokens, { ctx, slugs: new Map() })
+    body = renderTokens(tokens, { ctx, slugs: new Map(), embeds })
   } catch {
     body = <pre className="font-mono text-sm whitespace-pre-wrap">{source.slice(0, 200_000)}</pre>
   }

@@ -6,6 +6,7 @@
 // under reduced motion or when the admins switched motion off; paused offscreen and in hidden tabs; tells
 // its parent when the first frame is drawn so the poster can fade; cleans up on unmount.
 import { useLayoutEffect, useRef } from 'react';
+import { qualityScale, useFx } from '@/lib/perf';
 
 const SETTINGS = {
   dust: '#cfe0ff', shade: '#8fb4ff', background: '#05060a',
@@ -124,7 +125,7 @@ void main() {
 }
 `;
 
-function mount(canvas, onReady) {
+function mount(canvas, onReady, perf) {
   const state = SETTINGS;
   const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false, preserveDrawingBuffer: false, powerPreference: 'low-power' });
   if (!gl) return () => {};
@@ -161,13 +162,15 @@ function mount(canvas, onReady) {
   for (const key of ['resolution', 'time', 'cells', 'arms', 'stretch', ...NUMERIC, ...COLOURS]) uniforms[key] = gl.getUniformLocation(program, key);
 
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const still = () => motion.matches || document.documentElement.dataset.motion === 'off';
+  const still = () => motion.matches || document.documentElement.dataset.motion === 'off' || !perf.current.run;
   let frame = 0, last = 0, time = 0, visible = true, destroyed = false, lost = false, ready = false;
 
   function draw() {
     if (destroyed || lost) return;
     const box = canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(1600000 / Math.max(1, box.width * box.height)));
+    // lower quality tiers draw fewer pixels (1.6M, 0.96M, 0.56M); the dust is soft, the canvas is stretched
+    const budget = 1600000 * Math.max(0.35, qualityScale(perf.current.quality));
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(budget / Math.max(1, box.width * box.height)));
     const width = Math.max(1, Math.round(box.width * dpr));
     const height = Math.max(1, Math.round(box.height * dpr));
     if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
@@ -219,6 +222,7 @@ function mount(canvas, onReady) {
   document.addEventListener('visibilitychange', refresh);
   canvas.addEventListener('webglcontextlost', contextLost);
   refresh();
+  perf.current.refresh = refresh;
   return () => {
     destroyed = true;
     cancelAnimationFrame(frame);
@@ -234,9 +238,18 @@ function mount(canvas, onReady) {
 export default function DustVortex({ onReady }) {
   const canvas = useRef(null);
   const ready = useRef(onReady);
+  // perf (src/lib/perf.ts): fewer pixels on lower tiers; "off" or another heavy effect's turn holds one frame
+  const { quality, run } = useFx(canvas);
+  const perf = useRef({ quality, run, refresh: null });
   useLayoutEffect(() => {
     ready.current = onReady;
   });
-  useLayoutEffect(() => mount(canvas.current, () => ready.current?.()), []);
+  useLayoutEffect(() => {
+    const changed = perf.current.quality !== quality || perf.current.run !== run;
+    perf.current.quality = quality;
+    perf.current.run = run;
+    if (changed) perf.current.refresh?.();
+  }, [quality, run]);
+  useLayoutEffect(() => mount(canvas.current, () => ready.current?.(), perf), []);
   return <canvas ref={canvas} aria-hidden="true" className="block size-full" />;
 }

@@ -85,7 +85,7 @@ export function normalizeTag(raw: string) {
     .slice(0, 24)
 }
 
-/** Common AI topics, offered as suggestions while typing a tag. A preset list: members can use any tag. */
+/** Common AI topics, offered as suggestions while typing a tag. A preset list: members can use any tag. Admins edit it in /admin/lists (useKnownTags()). */
 export const KNOWN_TAGS: string[] = [
   "llm", "fine-tuning", "rag", "agents", "evaluation", "quantization", "inference", "training", "datasets", "embeddings",
   "vision", "speech", "multimodal", "on-device", "open-weights", "licensing", "benchmarks", "prompting", "safety",
@@ -530,6 +530,7 @@ export async function votePoll(p: Poll, options: number[]): Promise<Poll> {
 export type EventKind = "paper-club" | "meetup" | "office-hours" | "ama"
 export type EventMode = "online" | "in-person"
 
+/** The four kinds the database accepts. Admins rename them and choose which ones can be hosted (useEventKinds()). */
 export const EVENT_KINDS: Record<EventKind, { label: string; plural: string; blurb: string }> = {
   "paper-club": { label: "Paper club", plural: "Paper clubs", blurb: "Read one paper, then talk it through together." },
   meetup: { label: "Meetup", plural: "Meetups", blurb: "Meet builders in your city." },
@@ -1156,8 +1157,14 @@ export async function listFollowedCollectionIds(): Promise<string[]> {
 
 // ─── Reputation ─────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Points per thing, the same as the database's reputation_ledger(). */
+/**
+ * Points per thing: the defaults of the database's reputation_ledger(). Admins change them in /admin/lists
+ * (site_content "lists.rep.points", read by public.rep_award() in the database); usePoints() in
+ * lib/lists/hooks.ts returns the live values for pages.
+ */
 export const POINTS = { thread: 5, answer: 2, accepted: 15, like: 2, reaction: 1 } as const
+export type PointKind = keyof typeof POINTS
+export type Points = Record<PointKind, number>
 
 export type Level = { name: string; min: number; blurb: string }
 
@@ -1172,12 +1179,14 @@ export const LEVELS: Level[] = [
 
 export type LevelInfo = { level: Level; index: number; next: Level | null; progress: number; toNext: number }
 
-export function levelFor(points: number): LevelInfo {
+/** Where a member stands. Pass the admins' levels (useLevels() in lib/lists/hooks.ts); the defaults otherwise. */
+export function levelFor(points: number, levels: Level[] = LEVELS): LevelInfo {
+  const list = levels.length ? levels : LEVELS
   const p = Math.max(0, Math.floor(points))
   let index = 0
-  for (let i = 0; i < LEVELS.length; i++) if (p >= LEVELS[i].min) index = i
-  const level = LEVELS[index]
-  const next = LEVELS[index + 1] ?? null
+  for (let i = 0; i < list.length; i++) if (p >= list[i].min) index = i
+  const level = list[index]
+  const next = list[index + 1] ?? null
   const progress = next ? (p - level.min) / (next.min - level.min) : 1
   return { level, index, next, progress: Math.min(1, Math.max(0, progress)), toNext: next ? next.min - p : 0 }
 }
@@ -1197,15 +1206,38 @@ export const EMPTY_STATS: RepStats = { points: 0, threads: 0, answers: 0, accept
 
 export type Badge = { id: string; name: string; description: string; earned: (s: RepStats) => boolean }
 
-export const BADGES: Badge[] = [
-  { id: "first-light", name: "First light", description: "Started a first thread.", earned: (s) => s.threads >= 1 },
-  { id: "helping-hand", name: "Helping hand", description: "Replied 10 times.", earned: (s) => s.answers >= 10 },
-  { id: "problem-solver", name: "Problem solver", description: "Had a reply marked as the solution.", earned: (s) => s.accepted >= 1 },
-  { id: "guiding-star", name: "Guiding star", description: "Had 10 replies marked as solutions.", earned: (s) => s.accepted >= 10 },
-  { id: "well-liked", name: "Well liked", description: "Received 50 likes and reactions.", earned: (s) => s.likes + s.reactions >= 50 },
-  { id: "host", name: "Host", description: "Hosted an event.", earned: (s) => s.eventsHosted >= 1 },
-  { id: "curator", name: "Curator", description: "Keeps a public collection.", earned: (s) => s.collections >= 1 },
+/** What a badge counts. "appreciation" is likes and reactions together. */
+export type BadgeStat = "threads" | "answers" | "accepted" | "appreciation" | "eventsHosted" | "collections" | "points"
+
+/** A badge as data, so admins can edit it: earned once `stat` reaches `min`. */
+export type BadgeRule = { id: string; name: string; description: string; stat: BadgeStat; min: number }
+
+export const BADGE_STATS: { id: BadgeStat; label: string }[] = [
+  { id: "threads", label: "Threads started" },
+  { id: "answers", label: "Replies" },
+  { id: "accepted", label: "Replies marked as the solution" },
+  { id: "appreciation", label: "Likes and reactions received" },
+  { id: "eventsHosted", label: "Events hosted" },
+  { id: "collections", label: "Public collections" },
+  { id: "points", label: "Reputation points" },
 ]
+
+const statValue = (s: RepStats, stat: BadgeStat) => (stat === "appreciation" ? s.likes + s.reactions : s[stat])
+
+export const badgeFromRule = (r: BadgeRule): Badge => ({ id: r.id, name: r.name, description: r.description, earned: (s) => statValue(s, r.stat) >= Math.max(1, r.min) })
+
+export const BADGE_RULES: BadgeRule[] = [
+  { id: "first-light", name: "First light", description: "Started a first thread.", stat: "threads", min: 1 },
+  { id: "helping-hand", name: "Helping hand", description: "Replied 10 times.", stat: "answers", min: 10 },
+  { id: "problem-solver", name: "Problem solver", description: "Had a reply marked as the solution.", stat: "accepted", min: 1 },
+  { id: "guiding-star", name: "Guiding star", description: "Had 10 replies marked as solutions.", stat: "accepted", min: 10 },
+  { id: "well-liked", name: "Well liked", description: "Received 50 likes and reactions.", stat: "appreciation", min: 50 },
+  { id: "host", name: "Host", description: "Hosted an event.", stat: "eventsHosted", min: 1 },
+  { id: "curator", name: "Curator", description: "Keeps a public collection.", stat: "collections", min: 1 },
+]
+
+/** The default badges; useBadges() in lib/lists/hooks.ts returns the admins' set. */
+export const BADGES: Badge[] = BADGE_RULES.map(badgeFromRule)
 
 export type Period = "week" | "month" | "all"
 export const PERIODS: { value: Period; label: string }[] = [

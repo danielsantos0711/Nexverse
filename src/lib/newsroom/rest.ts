@@ -88,6 +88,10 @@ export const insert = <T>(db: Db, table: string, rows: unknown, { ignoreDuplicat
     prefer: [returning ? "return=representation" : "return=minimal", ignoreDuplicates ? "resolution=ignore-duplicates" : ""].filter(Boolean).join(","),
   })
 
+/** Insert, or overwrite the row with the same primary key. */
+export const upsert = (db: Db, table: string, rows: unknown, onConflict = "") =>
+  call<null>(db, `/rest/v1/${table}${onConflict ? `?on_conflict=${onConflict}` : ""}`, { method: "POST", body: rows, prefer: "resolution=merge-duplicates,return=minimal" })
+
 export const update = <T>(db: Db, table: string, query: string, patch: unknown) =>
   call<T[]>(db, `/rest/v1/${table}?${query}`, { method: "PATCH", body: patch, prefer: "return=representation" })
 

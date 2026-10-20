@@ -150,6 +150,7 @@ export function createRegexRunner() {
 
 export type LibraryPattern = { id: string; label: string; pattern: string; flags: string; note: string; sample: string }
 
+/** The default pattern library; admins edit the live one in /admin/lists (useRegexLibrary() in lib/lists/hooks.ts). */
 export const LIBRARY: LibraryPattern[] = [
   {
     id: "json-block",

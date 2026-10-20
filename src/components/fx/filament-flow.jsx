@@ -5,7 +5,8 @@
 // (1400 × 140 instead of 3200 × 220) and drawn at 30 fps so it stays light, devicePixelRatio capped at 1.5,
 // one still frame under reduced motion or `still`, paused offscreen and in hidden tabs, settings as a prop,
 // cleans up on unmount.
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import { frameInterval, pixelRatio, qualityScale, useFx } from '@/lib/perf';
 
 const SETTINGS = {
   colorA: '#bcd0ff', colorB: '#05060a', speed: 0.35, scale: 1,
@@ -18,6 +19,14 @@ const STEPS = 140;
 /** Sheets of fine filaments drifting through folds, like gas between stars. `settings` is read once, at mount. */
 export default function FilamentFlow({ className = '', settings = {}, still = false }) {
   const __root = useRef(null);
+  const api = useRef(null);
+  // perf: medium/low draw a share of the strands (spread across the sheet) at a lower pixel ratio; "off",
+  // `still` or another effect's turn holds one frame
+  const { quality, run } = useFx(__root);
+  const live = run && !still;
+  useEffect(() => {
+    api.current?.set(quality, live);
+  }, [quality, live]);
 
   useLayoutEffect(() => {
     const canvas = __root.current.querySelector('canvas');
@@ -83,7 +92,11 @@ export default function FilamentFlow({ className = '', settings = {}, still = fa
       let value = 74219;
       const random = () => { value = (Math.imul(value, 1664525) + 1013904223) >>> 0; return value / 4294967296; };
       let index = 0;
-      for (let strand = 0; strand < STRANDS; strand++) {
+      // strands are laid down in a shuffled order, so drawing the first part of the buffer still covers the sheet
+      const order = Array.from({ length: STRANDS }, (_, i) => i);
+      for (let i = STRANDS - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+      for (let n = 0; n < STRANDS; n++) {
+        const strand = order[n];
         const x = (strand + random()) / STRANDS * 5.20001 - 2.6;
         const offset = random();
         for (let step = 0; step < STEPS; step++) {
@@ -100,6 +113,7 @@ export default function FilamentFlow({ className = '', settings = {}, still = fa
 
     let gl, program, buffer, shaders = [], uniforms = {};
     let frame = 0, last = 0, drawn = 0, time = 0, visible = true, destroyed = false, lost = false;
+    let quality = 'high', live = false;
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
     function release() {
@@ -135,21 +149,22 @@ export default function FilamentFlow({ className = '', settings = {}, still = fa
     function draw() {
       if (destroyed || lost || !program) return;
       const box = canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5, 1440 / Math.max(1, box.width, box.height));
+      const dpr = Math.min(pixelRatio(quality), 1440 / Math.max(1, box.width, box.height));
+      const share = Math.max(0.35, qualityScale(quality));
       const width = Math.max(1, Math.round(box.width * dpr));
       const height = Math.max(1, Math.round(box.height * dpr));
       if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
       gl.viewport(0, 0, width, height); gl.useProgram(program);
       gl.uniform2f(uniforms.resolution, width, height);
       gl.uniform1f(uniforms.time, time + state.phase);
-      for (const key of numeric) gl.uniform1f(uniforms[key], key === 'intensity' ? state[key] * boost : state[key]);
+      for (const key of numeric) gl.uniform1f(uniforms[key], key === 'intensity' ? (state[key] * boost) / Math.sqrt(share) : state[key]);
       gl.uniform3fv(uniforms.colorA, rgb(state.colorA));
       const background = rgb(state.colorB);
       const a = state.backgroundOpacity;
       gl.clearColor(background[0] * a, background[1] * a, background[2] * a, a);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-      gl.drawArrays(gl.LINES, 0, points.length / 3);
+      gl.drawArrays(gl.LINES, 0, Math.round((points.length / 3 / (STEPS * 2)) * share) * STEPS * 2);
     }
     function tick(now) {
       frame = 0;
@@ -157,11 +172,11 @@ export default function FilamentFlow({ className = '', settings = {}, still = fa
       time += delta * state.speed;
       last = now;
       // 30 fps is plenty for drifting gas, and halves the cost
-      if (now - drawn >= 32) { drawn = now; draw(); }
+      if (now - drawn >= Math.max(32, frameInterval(quality))) { drawn = now; draw(); }
       schedule();
     }
     function schedule() {
-      if (!frame && !destroyed && !lost && program && visible && !document.hidden && !still && state.speed > 0 && !motion.matches) {
+      if (!frame && !destroyed && !lost && program && visible && !document.hidden && live && state.speed > 0 && !motion.matches) {
         frame = requestAnimationFrame(tick);
       }
     }
@@ -184,14 +199,16 @@ export default function FilamentFlow({ className = '', settings = {}, still = fa
     canvas.addEventListener('webglcontextlost', contextLost);
     canvas.addEventListener('webglcontextrestored', contextRestored);
     refresh();
+    api.current = { set(q, l) { quality = q; live = l; refresh(); } };
     return () => {
+      api.current = null;
       destroyed = true; cancelAnimationFrame(frame); resize.disconnect(); intersection.disconnect();
       motion.removeEventListener('change', refresh); document.removeEventListener('visibilitychange', refresh);
       canvas.removeEventListener('webglcontextlost', contextLost); canvas.removeEventListener('webglcontextrestored', contextRestored);
       release();
     };
     // settings are read once at mount, like the original export
-  }, [still]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div ref={__root} aria-hidden="true" className={className} style={{ position: 'relative', overflow: 'hidden' }}>

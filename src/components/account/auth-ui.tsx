@@ -246,7 +246,24 @@ export function FormAlert({ children }: { children: React.ReactNode }) {
 }
 
 /** "Check your inbox", with a resend button that waits a minute between sends. */
-export function CheckInbox({ title, email, detail, onResend, onBack, back = "Use another address" }: { title: string; email: string; detail: string; onResend?: () => Promise<void>; onBack: () => void; back?: string }) {
+export function CheckInbox({
+  title,
+  email,
+  detail,
+  onResend,
+  onBack,
+  back = "Use another address",
+  children,
+}: {
+  title: string
+  email: string
+  detail: string
+  onResend?: () => Promise<void>
+  onBack: () => void
+  back?: string
+  /** Extra steps under the buttons, such as typing the code from the email. */
+  children?: React.ReactNode
+}) {
   const [wait, setWait] = useCooldown(60)
   const [note, setNote] = useState("")
   const [busy, setBusy] = useState(false)
@@ -296,6 +313,7 @@ export function CheckInbox({ title, email, detail, onResend, onBack, back = "Use
           {note}
         </p>
       )}
+      {children}
     </section>
   )
 }

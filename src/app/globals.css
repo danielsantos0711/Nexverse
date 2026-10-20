@@ -144,11 +144,14 @@
   .pressable:active {
     transform: scale(0.97);
   }
-  /* A panel of dark glass: used for cards, the header and overlays on photographs. */
+  /* A panel of dark glass: used for cards, the header and overlays on photographs. A lighter cousin of
+     .liquid-glass (below): the same top highlight, no rim layer, a small blur. */
   .glass {
-    background: linear-gradient(180deg, rgb(255 255 255 / 0.045), rgb(255 255 255 / 0.015));
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.015));
     border: 1px solid var(--border);
-    backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    backdrop-filter: blur(10px) saturate(140%);
   }
   /* Chrome text: the N's material applied to type, used only for the largest headline. */
   .chrome-text {
@@ -209,11 +212,21 @@
   overflow: hidden;
   pointer-events: none;
 }
+.starfield {
+  contain: layout paint;
+}
 .starfield i {
   position: absolute;
   inset: -50% 0 0 0;
   background-repeat: repeat;
   animation: drift linear infinite;
+  will-change: transform;
+}
+/* Slow computers (perf tier "low" or "off", set by src/lib/perf.ts) keep the stars still. */
+html[data-fx="low"] .starfield i,
+html[data-fx="off"] .starfield i,
+html[data-fx="off"] .marquee {
+  animation: none;
 }
 .starfield i:nth-child(1) {
   background-image:
@@ -293,51 +306,6 @@
   .starfield i,
   .marquee,
   .pulse-dot::after {
-    animation: none;
-  }
-}
-
-/* The N floats a little, and a band of light runs across its metal (masked by the artwork's own brightness). */
-.logo-float {
-  animation: logo-float 9s ease-in-out infinite;
-}
-@keyframes logo-float {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
-  }
-  50% {
-    transform: translate3d(0, -14px, 0) rotate(-1.2deg);
-  }
-}
-/* The band of light is a wide gradient sliding across a mask of the artwork: it moves by transform, so the
-   browser never repaints it frame by frame. */
-.logo-sheen {
-  overflow: hidden;
-  mask: url(/brand/n-chrome-alpha.webp) center / contain no-repeat;
-  mix-blend-mode: overlay;
-}
-.logo-sheen::before {
-  content: "";
-  position: absolute;
-  inset: 0 -100%;
-  background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.55) 48%, rgb(143 180 255 / 0.4) 52%, transparent 62%);
-  animation: logo-sheen 7s cubic-bezier(0.77, 0, 0.175, 1) infinite;
-  will-change: transform;
-}
-@keyframes logo-sheen {
-  0%,
-  30% {
-    transform: translateX(-34%);
-  }
-  80%,
-  100% {
-    transform: translateX(34%);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .logo-float,
-  .logo-sheen::before {
     animation: none;
   }
 }
@@ -425,46 +393,6 @@
   filter: blur(9px);
 }
 
-/* Hero N: a pointer-led highlight and a soft breathing aura. Both are clipped to or sit behind the artwork,
-   so the logo's shape is never altered. */
-.logo-light {
-  background: radial-gradient(circle at var(--lx, 50%) var(--ly, 40%), rgb(255 255 255 / 0.7), rgb(190 210 255 / 0.25) 22%, transparent 42%);
-  mask: url(/brand/n-chrome-alpha.webp) center / contain no-repeat;
-  mix-blend-mode: soft-light;
-}
-.logo-aura {
-  border-radius: 50%;
-  /* already soft at its edge, so no blur filter (a blurred, animated layer is costly at high zoom) */
-  background: radial-gradient(closest-side, rgb(143 180 255 / 0.3), rgb(143 180 255 / 0.1) 45%, rgb(216 197 158 / 0.04) 70%, transparent);
-  animation: logo-aura 6s ease-in-out infinite;
-}
-@keyframes logo-aura {
-  0%,
-  100% {
-    opacity: 0.6;
-    transform: scale(0.94);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.06);
-  }
-}
-.galaxy-in {
-  animation: galaxy-in 1.6s cubic-bezier(0.23, 1, 0.32, 1) 0.2s both;
-}
-@keyframes galaxy-in {
-  from {
-    opacity: 0;
-    transform: scale(0.9) rotate(-6deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .logo-aura,
-  .galaxy-in {
-    animation: none;
-  }
-}
-
 /* ---------------------------------------------------------------------------------------------------------
  * Round 6, home page.
  * ------------------------------------------------------------------------------------------------------- */
@@ -527,4 +455,672 @@
 .slot-outline {
   border: 1px dashed rgb(143 180 255 / 0.35);
   background: repeating-linear-gradient(135deg, rgb(143 180 255 / 0.04) 0 10px, transparent 10px 20px);
+}
+
+/* ---------------------------------------------------------------------------------------------------------
+ * Round 9: Liquid Glass and the HorizonX pieces built on it (glass worker).
+ * ------------------------------------------------------------------------------------------------------- */
+
+/*
+ * Liquid Glass, after Apple's material: a translucent pane that blurs a little of what is behind it, a
+ * specular rim brighter along the top, a faint chromatic fringe (ion blue on one side, champagne on the
+ * other), light refracting from the top edge inward, and a soft shadow that gives it depth. Use it on small and
+ * medium surfaces only (header, menus, pills, cards, dialogs), never on a full-page layer.
+ *
+ *   .liquid-glass          panels, menus, cards
+ *   .liquid-glass-strong   surfaces that hold reading text (dialogs, sheets, the command palette)
+ *   .liquid-glass-pill     buttons, tabs and chips: rounder, brighter rim, a press that sinks
+ *
+ * <Glass> (src/components/glass/glass.tsx) adds the pointer-led sheen (moved by transform only) and, on
+ * Chromium at high quality, an SVG refraction of the edges. Lower quality tiers drop the blur and refraction;
+ * reduced transparency makes the glass opaque.
+ */
+:root {
+  --lg-fill: rgb(14 17 24 / 0.58);
+  --lg-fill-strong: rgb(13 15 22 / 0.86);
+  --lg-blur: 14px;
+  --lg-sat: 165%;
+  --lg-rim: rgb(255 255 255 / 0.5);
+  --lg-rim-soft: rgb(255 255 255 / 0.06);
+  --lg-fringe-cool: rgb(143 180 255 / 0.32);
+  --lg-fringe-warm: rgb(216 197 158 / 0.24);
+  --lg-light: rgb(255 255 255 / 0.09);
+  --lg-shadow: 0 1px 1px rgb(0 0 0 / 0.35), 0 10px 30px -12px rgb(0 0 0 / 0.7), 0 30px 60px -30px rgb(3 6 16 / 0.8);
+}
+:root.light,
+:root[data-theme="light"] {
+  --lg-fill: rgb(255 255 255 / 0.55);
+  --lg-fill-strong: rgb(250 251 253 / 0.88);
+  --lg-rim: rgb(255 255 255 / 0.95);
+  --lg-rim-soft: rgb(0 0 0 / 0.06);
+  --lg-light: rgb(255 255 255 / 0.5);
+  --lg-shadow: 0 1px 1px rgb(15 20 40 / 0.08), 0 10px 30px -12px rgb(15 20 40 / 0.25);
+}
+
+@property --halo-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* In the components layer, so Tailwind utilities on the same element (absolute, fixed, rounded-*) win. */
+@layer components {
+.liquid-glass,
+.liquid-glass-strong,
+.liquid-glass-pill {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--lg-fill);
+  /* the inner refraction: light enters at the top edge and bends down into the pane */
+  background-image:
+    radial-gradient(120% 70% at 50% -10%, var(--lg-light), transparent 58%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0) 40%, rgb(143 180 255 / 0.025));
+  border: 1px solid var(--lg-rim-soft);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    inset 0 -1px 0 rgb(255 255 255 / 0.03),
+    var(--lg-shadow);
+}
+/* The specular rim: bright at the top left, a cool fringe down one side, a warm one up the other. A masked
+   border, so it costs one layer and never repaints. */
+.liquid-glass::before,
+.liquid-glass-strong::before,
+.liquid-glass-pill::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    140deg,
+    var(--lg-rim) 0%,
+    rgb(255 255 255 / 0.14) 16%,
+    var(--lg-fringe-cool) 30%,
+    rgb(255 255 255 / 0.02) 52%,
+    var(--lg-fringe-warm) 78%,
+    rgb(255 255 255 / 0.22) 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: 0.55;
+  transition: opacity 260ms var(--ease-out);
+}
+.liquid-glass > *,
+.liquid-glass-strong > *,
+.liquid-glass-pill > * {
+  position: relative;
+  z-index: 1;
+}
+.liquid-glass-strong {
+  background-color: var(--lg-fill-strong);
+}
+.liquid-glass-pill {
+  border-radius: 999px;
+  --lg-light: rgb(255 255 255 / 0.12);
+  transition:
+    transform 180ms var(--ease-out),
+    background-color 200ms ease;
+}
+.liquid-glass-pill::before {
+  opacity: 0.7;
+}
+@media (hover: hover) and (pointer: fine) {
+  .liquid-glass:hover::before,
+  .liquid-glass-pill:hover::before,
+  .liquid-glass-strong:hover::before {
+    opacity: 1;
+  }
+  .liquid-glass-pill:hover {
+    background-color: rgb(24 28 38 / 0.62);
+  }
+}
+.liquid-glass-pill:active {
+  transform: scale(0.96);
+}
+.liquid-glass-pill[aria-pressed="true"],
+.liquid-glass-pill[aria-current="page"],
+.liquid-glass-pill[aria-selected="true"] {
+  background-color: rgb(143 180 255 / 0.16);
+  --lg-light: rgb(201 217 255 / 0.22);
+}
+
+/* Pointer sheen: a soft light that follows the pointer across a <Glass> surface. The layer clips; the light
+   inside it is moved by transform only. */
+.lg-sheen {
+  position: absolute !important;
+  inset: 0;
+  z-index: 0 !important;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 320ms var(--ease-out);
+}
+.lg-sheen > i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 360px;
+  height: 360px;
+  margin: -180px 0 0 -180px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 255 255 / 0.13), rgb(201 217 255 / 0.05) 45%, transparent);
+  will-change: transform;
+}
+[data-glass-lit] > .lg-sheen {
+  opacity: 1;
+}
+/* Edge refraction (Chromium, high quality only): the SVG filter in <GlassDefs> bends the backdrop at the rim. */
+:root[data-glass-refract] .lg-refract {
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  backdrop-filter: url(#lg-refraction) blur(calc(var(--lg-blur) * 0.6)) saturate(var(--lg-sat));
+}
+
+/* Quality tiers (set on <html> by <GlassDefs> from useQuality): cheaper glass on slower machines. */
+:root[data-glass="medium"] {
+  --lg-blur: 10px;
+}
+:root[data-glass="low"] .liquid-glass,
+:root[data-glass="low"] .liquid-glass-strong,
+:root[data-glass="low"] .liquid-glass-pill,
+:root[data-glass="off"] .liquid-glass,
+:root[data-glass="off"] .liquid-glass-strong,
+:root[data-glass="off"] .liquid-glass-pill {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: rgb(16 19 27 / 0.96);
+}
+:root[data-glass="low"] .lg-sheen,
+:root[data-glass="off"] .lg-sheen {
+  display: none;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .liquid-glass,
+  .liquid-glass-strong,
+  .liquid-glass-pill {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: var(--popover);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .liquid-glass-pill:active {
+    transform: none;
+  }
+  .lg-sheen {
+    display: none;
+  }
+}
+
+/* Glass keys (adapted from HorizonX "Glass Keys", its azure tone): keycaps of frosted glass lit from behind.
+   Used for every keyboard shortcut on the site; the light follows the pointer through --kx. */
+.glass-key {
+  --gk-key: rgb(6 22 46);
+  --gk-key-hi: rgb(14 58 104);
+  --gk-edge: rgb(30 78 132);
+  --gk-glow: rgb(60 140 222);
+  --gk-ink: rgb(170 198 232);
+  display: inline-flex;
+  min-width: 1.45rem;
+  height: 1.45rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0 0.35rem;
+  border-radius: 0.38rem;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--gk-ink);
+  background: radial-gradient(120% 120% at 30% 22%, var(--gk-key-hi) 0%, var(--gk-key) 72%);
+  box-shadow:
+    inset 0 0 0 1px var(--gk-edge),
+    inset 0 1px 0 rgb(201 217 255 / 0.28),
+    inset 0 -2px 0 rgb(0 0 0 / 0.45),
+    0 2px 6px -2px rgb(0 0 0 / 0.7);
+  transition:
+    box-shadow 200ms ease,
+    color 200ms ease,
+    transform 120ms var(--ease-out);
+  user-select: none;
+}
+.glass-key[data-lit],
+:is(button, a):hover > .glass-key,
+:is(button, a):focus-visible > .glass-key {
+  color: rgb(232 241 255);
+  background: radial-gradient(110% 110% at 40% 30%, var(--gk-glow) 0%, rgb(13 94 160) 48%, var(--gk-key-hi) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgb(157 199 245 / 0.8),
+    inset 0 1px 0 rgb(255 255 255 / 0.4),
+    inset 0 -2px 0 rgb(0 0 0 / 0.35),
+    0 0 14px -2px rgb(60 140 222 / 0.6);
+}
+.glass-key[data-pressed] {
+  transform: translateY(1px) scale(0.96);
+}
+.glass-key-lg {
+  min-width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.6rem;
+  font-size: 0.9rem;
+}
+
+/* Halo button (adapted from HorizonX "Halo Button"): the one main call to action on a page. A ring of light
+   turns around the edge and a few stars drift inside on hover. Ion and champagne instead of grey. */
+.halo-btn {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 2.25rem;
+  padding-inline: 1rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--primary-foreground);
+  background: var(--primary);
+  box-shadow: 0 0 18px -4px rgb(143 180 255 / 0.45);
+  transition:
+    transform 250ms var(--ease-out),
+    box-shadow 250ms var(--ease-out);
+}
+.halo-btn::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  inset: -1.5px;
+  border-radius: inherit;
+  background: conic-gradient(from var(--halo-angle), #eef0f5 0deg, #8fb4ff 70deg, #05060a 140deg, #eef0f5 200deg, #d8c59e 280deg, #eef0f5 360deg);
+  opacity: 0.6;
+  animation: halo-turn 6s linear infinite;
+  transition: opacity 250ms ease;
+}
+.halo-btn::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 20% 30%, rgb(5 6 10 / 0.5) 1px, transparent 1.6px),
+    radial-gradient(circle at 78% 68%, rgb(5 6 10 / 0.5) 1px, transparent 1.6px),
+    radial-gradient(circle at 42% 82%, rgb(5 6 10 / 0.4) 0.6px, transparent 1px),
+    var(--primary);
+}
+@media (hover: hover) and (pointer: fine) {
+  .halo-btn:hover {
+    transform: scale(1.035);
+    box-shadow: 0 0 26px -2px rgb(143 180 255 / 0.6);
+  }
+  .halo-btn:hover::before {
+    opacity: 1;
+    animation-duration: 3s;
+  }
+}
+.halo-btn:active {
+  transform: scale(0.98);
+}
+.halo-btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+@keyframes halo-turn {
+  to {
+    --halo-angle: 360deg;
+  }
+}
+
+/* Glass tabs (adapted from HorizonX "Glass Radio"): a frosted track and a glider that overshoots a little as it
+   moves to the chosen tab. The glider is placed by transform from --i (index) and --n (count). */
+.glass-tabs {
+  position: relative;
+  display: inline-grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  max-width: 100%;
+  padding: 3px;
+  border-radius: 999px;
+}
+.glass-tabs > button {
+  position: relative;
+  z-index: 2;
+  padding: 0.38rem 0.95rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+  transition: color 300ms ease;
+}
+.glass-tabs > button:hover,
+.glass-tabs > button[aria-selected="true"] {
+  color: var(--foreground);
+}
+.glass-tabs > button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -3px;
+}
+.glass-glider {
+  position: absolute !important;
+  z-index: 1 !important;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / var(--n));
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgb(201 217 255 / 0.12), rgb(143 180 255 / 0.32));
+  box-shadow:
+    0 0 16px rgb(143 180 255 / 0.28),
+    inset 0 0 10px rgb(255 255 255 / 0.22),
+    inset 0 1px 0 rgb(255 255 255 / 0.35);
+  transform: translateX(calc(var(--i) * 100%));
+  transition: transform 500ms cubic-bezier(0.37, 1.6, 0.66, 0.92);
+}
+@media (prefers-reduced-motion: reduce) {
+  .glass-glider,
+  .halo-btn::before {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* Twin orbit (adapted from HorizonX "Twin Orbit" loader): two arcs turning against each other. */
+.orbit-loader {
+  position: relative;
+  display: inline-block;
+  width: var(--ol-size, 1.25rem);
+  height: var(--ol-size, 1.25rem);
+}
+.orbit-loader::before,
+.orbit-loader::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+.orbit-loader::before {
+  inset: 0;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  animation: orbit-spin 1.5s linear infinite;
+}
+.orbit-loader::after {
+  inset: 22%;
+  opacity: 0.55;
+  border-top-color: transparent;
+  border-left-color: transparent;
+  animation: orbit-spin 1.5s linear infinite reverse;
+}
+@keyframes orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .orbit-loader::before,
+  .orbit-loader::after {
+    animation-duration: 6s;
+  }
+}
+
+/* Page header backdrop: a HorizonX shader behind the title, faded into the ground on every side. */
+.page-backdrop {
+  mask-image: radial-gradient(85% 100% at 30% 0%, #000 20%, transparent 78%);
+}
+.page-backdrop canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.page-backdrop-still {
+  background:
+    radial-gradient(60% 70% at 20% 0%, rgb(143 180 255 / 0.16), transparent 70%),
+    radial-gradient(40% 60% at 70% 10%, rgb(216 197 158 / 0.08), transparent 70%);
+}
+
+/* Ask Nexverse (adapted from HorizonX "Assistant Pill"): the floating pill and its panel. */
+.apl {
+  --apl-deep: #2b4fd6;
+  --apl-body: #8fb4ff;
+  --apl-glow: #c9d9ff;
+  --apl-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.apl-pill {
+  --apl-h: 3.25rem;
+  --apl-orb: calc(var(--apl-h) * 0.72);
+  --apl-pad: calc((var(--apl-h) - var(--apl-orb)) / 2);
+  position: relative;
+  isolation: isolate;
+  height: var(--apl-h);
+  border-radius: 999px;
+  padding: var(--apl-pad);
+  display: grid;
+  grid-template-columns: var(--apl-orb) minmax(0, 1fr) var(--apl-orb);
+  align-items: center;
+  gap: 0.5rem;
+  background:
+    radial-gradient(90% 120% at 40% -30%, rgb(255 255 255 / 0.07), transparent 62%),
+    linear-gradient(180deg, rgb(24 27 36 / 0.92) 0%, rgb(16 18 25 / 0.94) 42%, rgb(9 10 15 / 0.96) 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    inset 0 -1px 0 rgb(0 0 0 / 0.7),
+    0 0 0 1px var(--apl-ring, rgb(0 0 0 / 0.85)),
+    0 14px 30px -12px rgb(0 0 0 / 0.85),
+    0 30px 60px -26px rgb(0 0 0 / 0.9);
+  transition: box-shadow 240ms ease;
+}
+.apl-pill::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.18), rgb(255 255 255 / 0.05) 30%, transparent 55%, rgb(255 255 255 / 0.03));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.apl-pill:focus-within {
+  --apl-ring: color-mix(in srgb, var(--apl-glow) 45%, transparent);
+}
+.apl-spill {
+  position: absolute;
+  z-index: -1;
+  inset: 0 50% 0 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(closest-side at calc(var(--apl-pad) + var(--apl-orb) / 2) 50%, color-mix(in srgb, var(--apl-glow) 26%, transparent), transparent);
+  background-size: 200% 100%;
+  opacity: 0.35;
+}
+.apl-orb {
+  position: relative;
+  width: var(--apl-orb);
+  height: var(--apl-orb);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 26%, rgb(255 255 255 / 0.55), transparent 16%),
+    radial-gradient(circle at 50% 50%, #fff 0%, var(--apl-glow) 14%, var(--apl-deep) 46%, #10204f 82%, var(--apl-glow) 100%);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--apl-glow) 45%, transparent);
+  transition: transform 240ms var(--apl-ease);
+}
+.apl-orb[data-gl] {
+  background: transparent;
+  box-shadow: none;
+}
+.apl-orb canvas {
+  position: absolute;
+  pointer-events: none;
+  width: 200%;
+  height: 200%;
+  left: -50%;
+  top: -50%;
+}
+.apl-field {
+  position: relative;
+  min-width: 0;
+  height: 100%;
+  display: grid;
+  align-items: center;
+}
+.apl-field input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--foreground);
+  caret-color: #8fc2ff;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+}
+.apl-field input::placeholder {
+  color: transparent;
+}
+.apl-idle {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  pointer-events: none;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--muted-foreground);
+}
+.apl-idle > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: linear-gradient(100deg, var(--muted-foreground) 0%, var(--muted-foreground) 40%, #eef2ff 50%, var(--muted-foreground) 60%, var(--muted-foreground) 100%);
+  background-size: 280% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation:
+    apl-idle-in 900ms var(--apl-ease) both,
+    apl-sweep 2.4s 900ms linear infinite;
+}
+.apl-field input:focus + .apl-idle > span,
+.apl-field input:not(:placeholder-shown) + .apl-idle {
+  display: none;
+}
+.apl-step {
+  background: linear-gradient(90deg, var(--muted-foreground) 0%, var(--muted-foreground) 38%, #f4f7ff 50%, var(--muted-foreground) 62%, var(--muted-foreground) 100%);
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: apl-sweep 1.9s linear infinite;
+}
+@keyframes apl-sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+@keyframes apl-idle-in {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(0.3em);
+  }
+}
+.apl-send {
+  width: var(--apl-orb);
+  height: var(--apl-orb);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #f6f7fa, #dcdde3);
+  color: #121214;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset 0 -1px 0 rgb(0 0 0 / 0.18),
+    0 0 0 1px rgb(0 0 0 / 0.6),
+    0 6px 14px -6px rgb(0 0 0 / 0.8);
+  transition:
+    transform 160ms var(--apl-ease),
+    opacity 160ms ease;
+}
+.apl-send:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.apl-send:disabled {
+  background: linear-gradient(180deg, #1c1c1e, #141415);
+  color: #8a8a92;
+  cursor: not-allowed;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 0 0 1px rgb(0 0 0 / 0.8);
+}
+.apl-send:focus-visible,
+.apl-orb:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.apl-msg-user {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 0.6rem 0.9rem;
+  border-radius: 1.1rem;
+  background: rgb(255 255 255 / 0.06);
+  border: 1px solid rgb(255 255 255 / 0.07);
+}
+@media (prefers-reduced-motion: reduce) {
+  .apl-idle > span,
+  .apl-step {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: var(--muted-foreground);
+  }
+}
+
+/* Liquid Glass for cards in long lists: the same light and rim drawn with shadows only, no backdrop blur (the
+   ground behind a list is plain, so blurring it would cost a layer per card and show nothing). No pseudo
+   elements either, so it combines with .spotlight and the HorizonX layers. */
+.liquid-glass-flat {
+  background-color: rgb(14 17 24 / 0.72);
+  background-image:
+    radial-gradient(120% 70% at 50% -10%, rgb(255 255 255 / 0.055), transparent 58%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.03), transparent 40%);
+  border: 1px solid rgb(255 255 255 / 0.07);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.09),
+    inset 1px 0 0 rgb(143 180 255 / 0.05),
+    inset -1px 0 0 rgb(216 197 158 / 0.04),
+    0 12px 30px -20px rgb(0 0 0 / 0.9);
+  transition:
+    background-color 200ms ease,
+    box-shadow 200ms ease,
+    border-color 200ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .liquid-glass-flat:hover {
+    background-color: rgb(18 22 31 / 0.84);
+    border-color: rgb(255 255 255 / 0.1);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.15),
+      inset 1px 0 0 rgb(143 180 255 / 0.1),
+      inset -1px 0 0 rgb(216 197 158 / 0.08),
+      0 16px 36px -20px rgb(0 0 0 / 0.95);
+  }
+}
+.glass-tabs.liquid-glass-pill:active {
+  transform: none;
+}
 }

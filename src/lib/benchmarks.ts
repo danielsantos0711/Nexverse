@@ -77,6 +77,8 @@ export type Benchmark = {
   arxiv: string
   /** The usual number of examples in the prompt, as a hint in the form. */
   usualShots?: number
+  /** Retired by an admin: its results stay readable, new ones cannot be submitted. */
+  retired?: boolean
 }
 
 export const BENCHMARKS: Benchmark[] = [
@@ -248,7 +250,16 @@ export const BENCHMARKS: Benchmark[] = [
   },
 ]
 
-export const getBenchmark = (slug: string) => BENCHMARKS.find((b) => b.slug === slug)
+// The admins' list (site_content "lists.bench.benchmarks"), once a page has read it through useBenchmarks().
+// Lookups check it first, so renamed, retuned or newly added benchmarks show everywhere a slug is looked up.
+let current: Benchmark[] = BENCHMARKS
+
+/** Called by useBenchmarks() (lib/lists/hooks.ts) with the live list. */
+export function setBenchmarkList(list: Benchmark[]) {
+  if (list.length) current = list
+}
+
+export const getBenchmark = (slug: string) => current.find((b) => b.slug === slug) ?? BENCHMARKS.find((b) => b.slug === slug)
 
 /** "66.1%", "52.7", "6.41". */
 export function formatScore(b: Pick<Benchmark, "unit" | "slug">, score: number) {
@@ -446,6 +457,7 @@ export function validateResult(r: NewResult): ResultErrors {
   const e: ResultErrors = {}
   const bench = getBenchmark(r.benchmark)
   if (!bench) e.benchmark = "Pick a benchmark from the list."
+  else if (bench.retired) e.benchmark = `${bench.name} is retired: its results stay up, but new ones are closed. Pick another benchmark.`
   if (!r.model.trim()) e.model = "Name the model you evaluated."
   else if (r.model.trim().length > 80) e.model = "Keep the model name under 80 characters."
   const score = parseScore(r.score)

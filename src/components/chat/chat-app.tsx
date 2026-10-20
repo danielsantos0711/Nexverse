@@ -2,14 +2,17 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
-import { ArchiveIcon, ChevronRightIcon, LockIcon, PlusIcon, ShieldIcon, TimerIcon } from "lucide-react"
+import { ArchiveIcon, ChevronRightIcon, LockIcon, MenuIcon, PlusIcon, ShieldIcon, TimerIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
+import { ChatSkeleton } from "@/components/chat/chat-skeleton"
 import { CreateRoomDialog } from "@/components/chat/create-room"
 import { roomHref, signInHref } from "@/components/chat/format"
 import { ChatAvatar, RoomGlyph } from "@/components/chat/glyphs"
 import { PeoplePanel, people } from "@/components/chat/people"
 import { RoomView } from "@/components/chat/room-view"
+import { Copy } from "@/components/content/copy"
+import { MemberWall } from "@/components/moderation/site-guard"
 import { useRole } from "@/lib/roles"
 import { cachedRooms, listRooms, live, localMember, subscribeLobby, unreadCounts, type Presence, type Room } from "@/lib/chat"
 import { useSession, type Member } from "@/lib/store"
@@ -33,6 +36,9 @@ export function ChatApp({ slug }: { slug: string }) {
   const me = useMemo<Member | null>(() => (memberId ? { id: memberId, name: memberName ?? "Member" } : null), [memberId, memberName])
   const ready = live ? session.ready : localMe !== null
   const canWrite = Boolean(me && (!live || session.user))
+  // Messages, reactions and who is here are for members: the database refuses them to guests, so guests get
+  // the room list and a way in, and nothing is fetched or subscribed for them.
+  const guest = live && session.ready && !session.user
   // Public rooms are opened by the team (the database allows it to staff only); without a database anyone can.
   const role = useRole()
   const canOpenRooms = !live || (canWrite && role.isStaff)
@@ -61,7 +67,7 @@ export function ChatApp({ slug }: { slug: string }) {
   }, [])
 
   useEffect(() => {
-    if (!ready || !roomsLoaded) return
+    if (!ready || !roomsLoaded || guest) return
     let stale = false
     unreadCounts(
       rooms.map((r) => r.slug),
@@ -72,10 +78,10 @@ export function ChatApp({ slug }: { slug: string }) {
     return () => {
       stale = true
     }
-  }, [ready, roomsLoaded, me?.id, slug]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, roomsLoaded, me?.id, slug, guest]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!ready) return
+    if (!ready || guest) return
     return subscribeLobby(slug, me, {
       onRoom: () => setRooms(cachedRooms()),
       onMessage: (m) => {
@@ -84,7 +90,7 @@ export function ChatApp({ slug }: { slug: string }) {
       },
       onPresence: setLobby,
     })
-  }, [slug, me, ready])
+  }, [slug, me, ready, guest])
 
   const online = useMemo(() => {
     const byRoom: Record<string, Presence[]> = {}
@@ -110,6 +116,44 @@ export function ChatApp({ slug }: { slug: string }) {
       onNavigate={() => setRoomsOpen(false)}
     />
   )
+
+  // Nothing of a room shows until we know who is reading.
+  if (live && !session.ready) return <ChatSkeleton />
+
+  const roomsSheet = (
+    <Sheet open={roomsOpen} onOpenChange={setRoomsOpen}>
+      <SheetContent side="left" className="w-[85%] max-w-xs gap-0 p-0">
+        <SheetTitle className="sr-only">Rooms</SheetTitle>
+        {rail}
+      </SheetContent>
+    </Sheet>
+  )
+
+  if (guest) {
+    return (
+      <div className="relative flex h-[calc(100dvh-4rem)] min-h-[24rem] w-full overflow-hidden border-t border-border">
+        <aside aria-label="Rooms" className="hidden w-64 shrink-0 flex-col border-r border-border bg-card/40 md:flex">
+          {rail}
+        </aside>
+        <section aria-labelledby="chat-room-title" className="relative flex min-w-0 flex-1 flex-col overflow-y-auto">
+          <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-2 md:px-4">
+            <Button variant="ghost" size="icon-sm" className="md:hidden" aria-label="Show rooms" onClick={() => setRoomsOpen(true)}>
+              <MenuIcon aria-hidden />
+            </Button>
+            <RoomGlyph slug={slug} active size={26} />
+            <div className="min-w-0 flex-1">
+              <h1 id="chat-room-title" className="truncate text-sm leading-tight font-semibold">
+                {room?.name ?? slug}
+              </h1>
+              {room?.topic && <p className="truncate text-xs text-muted-foreground">{room.topic}</p>}
+            </div>
+          </header>
+          <MemberWall path={roomHref(slug)} compact />
+        </section>
+        {roomsSheet}
+      </div>
+    )
+  }
 
   return (
     <div className="relative flex h-[calc(100dvh-4rem)] min-h-[24rem] w-full overflow-hidden border-t border-border">
@@ -137,12 +181,7 @@ export function ChatApp({ slug }: { slug: string }) {
         <PeoplePanel room={room} crowd={crowd} me={me} />
       </aside>
 
-      <Sheet open={roomsOpen} onOpenChange={setRoomsOpen}>
-        <SheetContent side="left" className="w-[85%] max-w-xs gap-0 p-0">
-          <SheetTitle className="sr-only">Rooms</SheetTitle>
-          {rail}
-        </SheetContent>
-      </Sheet>
+      {roomsSheet}
       <Sheet open={peopleOpen} onOpenChange={setPeopleOpen}>
         <SheetContent side="right" className="w-[85%] max-w-xs gap-0 p-0">
           <SheetTitle className="sr-only">Room details</SheetTitle>
@@ -213,11 +252,10 @@ function RoomRail({
           </div>
         ) : (
           <p>
-            You’re reading as a guest.{" "}
+            <Copy k="chat.rail.guest">Rooms open once you are signed in.</Copy>{" "}
             <Link href={signInHref(active)} className="text-ion hover:underline">
-              Sign in
-            </Link>{" "}
-            to write.
+              <Copy k="chat.rail.guestSignIn">Sign in or join</Copy>
+            </Link>
           </p>
         )}
       </div>

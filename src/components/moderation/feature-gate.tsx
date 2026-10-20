@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { OrbitIcon, PowerOffIcon } from "lucide-react"
+import { EyeOffIcon, OrbitIcon, PowerOffIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { useRole } from "@/lib/roles"
@@ -41,6 +41,18 @@ export function FeatureOffAdminNote({ feature }: { feature: FeatureKey }) {
         <Link href="/admin/settings/features" className="rounded-sm font-medium text-gold underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
           Feature switches
         </Link>
+      </p>
+    </div>
+  )
+}
+
+/** A thin line staff see on a page the admins hid, so they know everyone else is kept out. */
+export function PageHiddenNote() {
+  return (
+    <div role="note" className="shell pt-4">
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-gold/30 bg-gold/[0.06] px-3 py-2 text-sm text-foreground/90">
+        <EyeOffIcon aria-hidden className="size-4 shrink-0 text-gold" />
+        This page is hidden from everyone but the team. You see it because you are staff.
       </p>
     </div>
   )

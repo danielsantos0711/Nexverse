@@ -2,7 +2,9 @@ import { ViewTransition } from "react"
 import Link from "next/link"
 import { ExternalLinkIcon, HeartIcon, MessageSquareIcon } from "lucide-react"
 import { Cover, KindTag, PersonAvatar, Stat } from "@/components/hub/bits"
+import { GlowCard } from "@/components/hub/glow-card"
 import { Spotlight } from "@/components/hub/motion"
+import { PixelGlint } from "@/components/hub/pixel-glint"
 import { TimeAgo } from "@/components/live/time"
 import type { HubEntry, Share } from "@/lib/hub"
 import { hostOf, ownerHref } from "@/lib/refs"
@@ -11,14 +13,21 @@ import { cn } from "@/lib/utils"
 
 /**
  * A project or shared link in any hub list: a cover drawn from its id, its name, who made or shared it, and only
- * real numbers (member likes, saves and replies on projects).
+ * real numbers (member likes, saves and replies on projects). A pane of glass; pointing at it scatters pixels
+ * in its kind's colours (HorizonX Pixel Card), and a featured one carries a lamp on its rim (HorizonX Border Glow).
  */
 export function HubCard({ e, stats, rank, className }: { e: HubEntry; stats?: ProjectStats; rank?: number; className?: string }) {
+  const card = <HubCardBody e={e} stats={stats} rank={rank} className={className} />
+  return e.featured ? <GlowCard className="rounded-xl">{card}</GlowCard> : card
+}
+
+function HubCardBody({ e, stats, rank, className }: { e: HubEntry; stats?: ProjectStats; rank?: number; className?: string }) {
   const host = e.url ? hostOf(e.url) : ""
   const by = ownerHref(e.owner)
   return (
-    <Spotlight className={cn("group @container relative rounded-xl border border-border bg-card/70 transition-colors hover:bg-card", className)}>
-      <div className="flex gap-3.5 p-3.5">
+    <Spotlight className={cn("group @container liquid-glass-flat relative overflow-hidden rounded-xl transition-colors", className)}>
+      <PixelGlint kind={e.kind} />
+      <div className="relative flex gap-3.5 p-3.5">
         <div className="relative size-14 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/10">
           <ViewTransition name={`cover-${e.key.replace(":", "-")}`} share="morph" default="none">
             <Cover seed={e.id} kind={e.kind} />
@@ -64,7 +73,7 @@ export function HubCard({ e, stats, rank, className }: { e: HubEntry; stats?: Pr
 export function NewsShareCard({ s, big = false, className }: { s: Share; big?: boolean; className?: string }) {
   const host = hostOf(s.url)
   return (
-    <Spotlight className={cn("group relative flex overflow-hidden rounded-2xl border border-border bg-card", big ? "flex-col" : "flex-row", className)}>
+    <Spotlight className={cn("group liquid-glass-flat relative flex overflow-hidden rounded-2xl", big ? "flex-col" : "flex-row", className)}>
       <div className={cn("relative shrink-0 overflow-hidden", big ? "aspect-[16/7]" : "w-24 sm:w-32")}>
         <Cover seed={s.id} kind="news" className="transition-transform duration-700 ease-out group-hover:scale-[1.05] motion-reduce:transform-none" />
         {big && <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />}

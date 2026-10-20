@@ -226,12 +226,38 @@ export async function renameMember(id: string, name: string) {
 
 // The signed-in member, shared by every component that asks for it.
 
-type Session = { ready: boolean; user: User | null; member: Member | null }
+/**
+ * `recovery` is true while this tab holds a session that came from a password reset link (or code): the one
+ * moment Nexverse asks for a new password without the old one.
+ */
+type Session = { ready: boolean; user: User | null; member: Member | null; recovery: boolean }
 
-const SERVER: Session = { ready: false, user: null, member: null }
-let session: Session = live ? SERVER : { ready: true, user: null, member: null }
+const SERVER: Session = { ready: false, user: null, member: null, recovery: false }
+let session: Session = live ? SERVER : { ready: true, user: null, member: null, recovery: false }
 const listeners = new Set<() => void>()
 let started = false
+
+// The recovery mark lives in this tab only (sessionStorage), keyed to the account it was granted for.
+const RECOVERY_KEY = "nexverse-recovery"
+
+function readRecovery(): string | null {
+  try {
+    return sessionStorage.getItem(RECOVERY_KEY)
+  } catch {
+    return null
+  }
+}
+
+function writeRecovery(userId: string | null) {
+  try {
+    if (userId) sessionStorage.setItem(RECOVERY_KEY, userId)
+    else sessionStorage.removeItem(RECOVERY_KEY)
+  } catch {}
+  if (session.ready) {
+    session = { ...session, recovery: Boolean(userId && session.user?.id === userId) }
+    emit()
+  }
+}
 
 function emit() {
   for (const l of listeners) l()
@@ -243,7 +269,7 @@ async function loadMember(user: User | null) {
     const { data } = await db()!.from("profiles").select("id, name").eq("id", user.id).maybeSingle()
     member = (data as Member | null) ?? { id: user.id, name: user.email?.split("@")[0] ?? "Member" }
   }
-  session = { ready: true, user, member }
+  session = { ready: true, user, member, recovery: Boolean(user && readRecovery() === user.id) }
   emit()
 }
 
@@ -252,6 +278,10 @@ function start() {
   if (started || !client) return
   started = true
   client.auth.onAuthStateChange((event, s) => {
+    // A reset link (PKCE code, token hash or old-style hash) was just turned into a session: mark it at once,
+    // before anything else reads the session, so the reset page knows to ask for the new password.
+    if (event === "PASSWORD_RECOVERY" && s?.user) writeRecovery(s.user.id)
+    if (event === "SIGNED_OUT") writeRecovery(null)
     if (event === "TOKEN_REFRESHED") return
     // Supabase asks that no other request runs inside this callback, so the profile loads just after it.
     setTimeout(() => loadMember(s?.user ?? null), 0)
@@ -338,10 +368,74 @@ export async function resendConfirmation(email: string, next: string) {
   authFail(error)
 }
 
-/** Sends a link that opens /reset-password with a short-lived session for choosing a new password. */
+/**
+ * Sends the reset email. The link comes back through /auth/callback (the address already on the Supabase
+ * allow-list for every other email link), which hands over to /reset-password in recovery mode. With the
+ * email template in docs (token_hash link to /auth/confirm, plus the code), it works in any browser.
+ */
 export async function sendPasswordReset(email: string) {
-  const { error } = await authClient().auth.resetPasswordForEmail(email, { redirectTo: new URL("/reset-password", window.location.origin).toString() })
+  const { error } = await authClient().auth.resetPasswordForEmail(email, { redirectTo: callbackUrl(RESET_PATH) })
   authFail(error)
+}
+
+/** Where a password reset ends: the page that asks for the new password. */
+export const RESET_PATH = "/reset-password"
+
+/** The kinds of email link Supabase sends; `email` is its name for sign-up and sign-in links by token hash. */
+export type EmailLinkType = "recovery" | "signup" | "email" | "magiclink" | "invite" | "email_change"
+
+export const EMAIL_LINK_TYPES: readonly EmailLinkType[] = ["recovery", "signup", "email", "magiclink", "invite", "email_change"]
+
+/**
+ * Uses an email link that carries a token hash (`/auth/confirm?token_hash=…&type=…`). Unlike the PKCE code,
+ * a token hash needs nothing stored in the browser, so the link works on any device and in any browser.
+ */
+export async function verifyEmailLink(tokenHash: string, type: EmailLinkType) {
+  const { data, error } = await authClient().auth.verifyOtp({ token_hash: tokenHash, type })
+  authFail(error)
+  if (type === "recovery" && data.user) writeRecovery(data.user.id)
+  return data.user
+}
+
+/** Uses the 6-digit code from the reset email instead of the link. */
+export async function verifyRecoveryCode(email: string, code: string) {
+  const { data, error } = await authClient().auth.verifyOtp({ email, token: code, type: "recovery" })
+  authFail(error)
+  if (data.user) writeRecovery(data.user.id)
+  return data.user
+}
+
+/**
+ * Finishes whatever email link or social sign-in brought the browser here. The client already swaps a PKCE
+ * `?code=` for a session on its own; this waits for that and reports its error, and also accepts an
+ * old-style `#access_token=…` link (implicit flow), which a PKCE client refuses by itself. `recovery` is
+ * true when the link was a password reset.
+ */
+export async function finishAuthRedirect(): Promise<{ error: AuthFailure | null; recovery: boolean }> {
+  const client = authClient()
+  const hash = new URLSearchParams(window.location.hash.slice(1))
+  const { error } = await client.auth.initialize()
+  const access = hash.get("access_token")
+  const refresh = hash.get("refresh_token")
+  if (access && refresh) {
+    const { data, error: hashError } = await client.auth.setSession({ access_token: access, refresh_token: refresh })
+    window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search)
+    if (hashError) return { error: new AuthFailure(hashError), recovery: false }
+    const recovery = hash.get("type") === "recovery"
+    if (recovery && data.user) writeRecovery(data.user.id)
+    return { error: null, recovery }
+  }
+  if (error) return { error: new AuthFailure(error), recovery: false }
+  // The client announces PASSWORD_RECOVERY a moment after the exchange; give it that moment.
+  await new Promise((r) => setTimeout(r, 30))
+  const { data } = await client.auth.getSession()
+  const user = data.session?.user
+  return { error: null, recovery: Boolean(user && readRecovery() === user.id) }
+}
+
+/** Marks this tab's session as a password recovery (a reset link that arrived through the callback page). */
+export function markRecovery(userId: string) {
+  writeRecovery(userId)
 }
 
 // Microsoft only sends the email address when it is asked for by scope (Supabase's Azure guide).
@@ -357,6 +451,8 @@ export async function signInWithProvider(provider: Provider, next: string) {
 export async function updatePassword(password: string, nonce?: string) {
   const { error } = await authClient().auth.updateUser(nonce ? { password, nonce } : { password })
   authFail(error)
+  // The reset is used up: from now on a password change asks for the usual proof again.
+  writeRecovery(null)
 }
 
 /** Emails a one-time code that proves it is you, for a password change Supabase wants confirmed. */

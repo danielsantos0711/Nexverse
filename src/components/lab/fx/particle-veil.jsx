@@ -4,7 +4,8 @@
 // parent, decorative (aria-hidden, no error box: without WebGL it simply shows nothing), no pointer
 // interaction, devicePixelRatio capped at 1.5, one still frame under reduced motion, paused offscreen and in
 // hidden tabs, cleans up on unmount.
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import { frameInterval, pixelRatio, useFx } from '@/lib/perf';
 
 const STATE = {
   foreground: '#c9d6ff', accent: '#8fb4ff',
@@ -14,6 +15,14 @@ const STATE = {
 
 export default function ParticleVeil({ className = '' }) {
   const root = useRef(null);
+  const api = useRef(null);
+  // perf (src/lib/perf.ts): pixel ratio and frame rate follow the quality tier; "off" or another heavy
+  // effect's turn on screen holds one still frame
+  const { quality, run } = useFx(root);
+  const live = run;
+  useEffect(() => {
+    api.current?.set(quality, live);
+  }, [quality, live]);
 
   useLayoutEffect(() => {
     const canvas = root.current.querySelector('canvas');
@@ -85,6 +94,7 @@ export default function ParticleVeil({ className = '' }) {
     `;
 
     let gl, program, buffer, shaders = [], uniforms = {};
+    let quality = 'high', live = false, drawnAt = 0;
     let frame = 0, last = 0, time = 4, visible = false, destroyed = false, lost = false;
     let pointCount = 0, lineCount = 0, frameCount = 0;
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -154,7 +164,7 @@ export default function ParticleVeil({ className = '' }) {
     function draw() {
       if (destroyed || lost || !program) return;
       const box = canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(1500000 / Math.max(1, box.width * box.height)));
+      const dpr = Math.min(pixelRatio(quality), Math.sqrt(1500000 / Math.max(1, box.width * box.height)));
       const width = Math.max(1, Math.round(box.width * dpr));
       const height = Math.max(1, Math.round(box.height * dpr));
       if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
@@ -173,12 +183,14 @@ export default function ParticleVeil({ className = '' }) {
     }
     function tick(now) {
       frame = 0;
+      if (now - drawnAt < frameInterval(quality)) { schedule(); return; }
+      drawnAt = now;
       const delta = last ? Math.min((now - last) / 1000, 0.05) : 1 / 60;
       time += delta * state.speed;
       last = now; draw(); schedule();
     }
     function schedule() {
-      if (!frame && !destroyed && !lost && program && visible && !document.hidden && !motion.matches) frame = requestAnimationFrame(tick);
+      if (!frame && !destroyed && !lost && program && live && visible && !document.hidden && !motion.matches) frame = requestAnimationFrame(tick);
     }
     function refresh() {
       cancelAnimationFrame(frame); frame = 0; last = 0; draw(); schedule();
@@ -199,7 +211,9 @@ export default function ParticleVeil({ className = '' }) {
     canvas.addEventListener('webglcontextlost', contextLost);
     canvas.addEventListener('webglcontextrestored', contextRestored);
     refresh();
+    api.current = { set(q, l) { quality = q; live = l; refresh(); } };
     return () => {
+      api.current = null;
       destroyed = true; cancelAnimationFrame(frame); resize.disconnect(); intersection.disconnect();
       motion.removeEventListener('change', refresh); document.removeEventListener('visibilitychange', refresh);
       canvas.removeEventListener('webglcontextlost', contextLost); canvas.removeEventListener('webglcontextrestored', contextRestored);

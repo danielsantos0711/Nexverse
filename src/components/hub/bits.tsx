@@ -2,6 +2,8 @@ import Link from "next/link"
 import { BoxIcon, DatabaseIcon, FolderGit2Icon, WrenchIcon, type LucideIcon } from "lucide-react"
 import { compact, KINDS, LANGUAGES, type LanguageCode, type ResourceKind } from "@/lib/data"
 import { cn } from "@/lib/utils"
+import { Copy } from "@/components/content/copy"
+import { PageBackdrop, type Backdrop } from "@/components/glass/page-backdrop"
 
 export const KIND_ICONS: Record<ResourceKind, LucideIcon> = {
   model: BoxIcon,
@@ -199,22 +201,28 @@ export function PageTitle({
   title,
   lead,
   children,
+  k,
+  backdrop = "phosphor",
 }: {
   eyebrow?: React.ReactNode
   title: string
   lead?: string
   children?: React.ReactNode
+  /** Content key ("models.header"): the admins can then edit the title and lead from the site editor. */
+  k?: string
+  /** The shader behind the title (see PageBackdrop); "none" for a plain header. */
+  backdrop?: Backdrop
 }) {
   return (
     <header className="relative isolate flex flex-col gap-3 pt-10 pb-8 md:pt-14">
-      <div aria-hidden className="pointer-events-none absolute -top-16 left-1/2 -z-10 h-72 w-screen -translate-x-1/2 bg-[radial-gradient(60%_70%_at_20%_0%,rgb(143_180_255/0.14),transparent_70%),radial-gradient(40%_60%_at_70%_10%,rgb(216_197_158/0.07),transparent_70%)]" />
+      <PageBackdrop variant={backdrop} />
       <div aria-hidden className="starfield left-1/2 -z-10 w-screen -translate-x-1/2 [mask-image:linear-gradient(to_bottom,black,transparent)]">
         <i />
         <i />
       </div>
       {eyebrow && <div className="text-sm text-muted-foreground">{eyebrow}</div>}
-      <h1 className="text-3xl font-semibold tracking-[-0.03em] md:text-[2.75rem] md:leading-[1.05]">{title}</h1>
-      {lead && <p className="max-w-[62ch] text-base text-muted-foreground">{lead}</p>}
+      <h1 className="text-3xl font-semibold tracking-[-0.03em] md:text-[2.75rem] md:leading-[1.05]">{k ? <Copy k={`${k}.title`}>{title}</Copy> : title}</h1>
+      {lead && <p className="max-w-[62ch] text-base text-muted-foreground">{k ? <Copy k={`${k}.lead`} multiline>{lead}</Copy> : lead}</p>}
       {children}
     </header>
   )

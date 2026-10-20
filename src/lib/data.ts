@@ -6,6 +6,7 @@
 
 export type LanguageCode = "en" | "pt" | "es" | "ja" | "de" | "fr" | "yo" | "sw" | "hi" | "sv" | "ko" | "ar"
 
+/** The default languages. Admins add, rename and reorder them in /admin/lists; pickers read useLanguages() (lib/lists/hooks.ts). */
 export const LANGUAGES: Record<LanguageCode, { name: string; native: string }> = {
   en: { name: "English", native: "English" },
   pt: { name: "Portuguese", native: "Português" },
@@ -25,6 +26,7 @@ export const LANGUAGES: Record<LanguageCode, { name: string; native: string }> =
 
 export type ResourceKind = "model" | "dataset" | "tool" | "repo"
 
+/** The four kinds of thing on the hub. Admins rename and describe them in /admin/lists (useKinds() returns the live version). */
 export const KINDS: Record<ResourceKind, { label: string; plural: string; path: string; blurb: string }> = {
   model: { label: "Model", plural: "Models", path: "/models", blurb: "Open weights you can download, fine-tune and run." },
   dataset: { label: "Dataset", plural: "Datasets", path: "/datasets", blurb: "Data with datasheets: where it came from and what it is for." },

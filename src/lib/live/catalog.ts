@@ -1,6 +1,8 @@
 /**
- * The fixed lists behind the live pages: the GitHub topics Nexverse follows, and the projects
- * whose releases it tracks. Plain data, safe to import from client components.
+ * The default lists behind the live pages: the GitHub topics Nexverse follows, and the projects whose
+ * releases it tracks. Plain data, safe to import from client components. Admins edit all three in
+ * /admin/lists; server code reads the live version with getGhTopics(), getMoreGhTopics() and
+ * getReleaseRepos() from lib/lists/server.ts, which fall back to these.
  */
 
 /** The topics Nexverse follows on GitHub, in the order they are shown. */

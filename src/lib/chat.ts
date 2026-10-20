@@ -76,7 +76,11 @@ export type LobbyHandlers = {
   onPresence?: (people: Presence[]) => void
 }
 
-/** The rooms every copy of Nexverse starts with; the database seeds the same ten. */
+/**
+ * The rooms every copy of Nexverse starts with; the database seeds the same ten. With a database the rooms
+ * table is the only source (admins rename, reorder and archive rooms in /admin/chat), so this list is used
+ * only by browser-only copies, to prerender the starting rooms, and as a tie-break for rows with no position.
+ */
 export const DEFAULT_ROOMS: Room[] = [
   ["general", "Lobby", "Say hello, share what you are building, and meet other builders."],
   ["models", "Models", "New releases, fine-tunes, quantizations and which model to use for what."],
@@ -272,8 +276,12 @@ async function selectRooms<T>(run: (columns: string) => PromiseLike<{ data: T; e
 
 let roomsCache: Room[] | null = null
 
-/** The last list of rooms this page loaded, for drawing the rail before the next load finishes. */
-export const cachedRooms = () => roomsCache ?? DEFAULT_ROOMS
+/**
+ * The last list of rooms this page loaded, for drawing the rail before the next load finishes. With a
+ * database nothing is drawn until the real list arrives, so a renamed or archived starting room never
+ * flashes back with its default name.
+ */
+export const cachedRooms = () => roomsCache ?? (live ? [] : DEFAULT_ROOMS)
 
 export async function listRooms(): Promise<Room[]> {
   const client = db()
