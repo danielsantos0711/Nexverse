@@ -14,10 +14,14 @@ import { CardsSkeleton, RowsSkeleton, StripSkeleton } from "@/components/live/sk
 import { latestStories } from "@/lib/newsroom/public"
 import { TrendingNowLive } from "@/components/live/trending-now"
 import { GH_TOPICS, ghTopicHref, githubReleases, githubTopicRepos, githubTrendingAi, type Feed, type GhRepo } from "@/lib/live"
+import { seoMetadata } from "@/lib/content-server"
+import { Copy } from "@/components/content/copy"
 
-export const metadata: Metadata = {
-  title: "Trending",
-  description: "Live: the open-source AI repositories rising on GitHub, fresh releases, the newest Nexverse newsroom stories and what the community is into right now.",
+export async function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("/trending", {
+    title: "Trending",
+    description: "Live: the open-source AI repositories rising on GitHub, fresh releases, the newest Nexverse newsroom stories and what the community is into right now.",
+  })
 }
 
 const SECTIONS = [
@@ -120,8 +124,8 @@ async function Newsroom() {
 export default function TrendingPage() {
   return (
     <div className="shell pb-16">
-      <PageTitle
-        eyebrow="Live from GitHub, the newsroom and the hub itself"
+      <PageTitle k="trending.header"
+        eyebrow={<Copy k="trending.header.eyebrow">Live from GitHub, the newsroom and the hub itself</Copy>}
         title="Trending"
         lead="The open-source AI projects gathering stars, the releases that just shipped, the newsroom’s latest stories and what people here are talking about. Repositories open on Nexverse with their READMEs and files, refreshed through the day."
       >

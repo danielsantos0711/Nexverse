@@ -91,7 +91,8 @@ const RINGS = [
   { r: 1, flat: 0.2, tilt: -12, period: 92 },
 ]
 
-type Geometry = { cx: number; cy: number; radius: number; narrow: boolean }
+/** Where the N sits and how big it is (half width, half height), and the orbit's size, in px. */
+type Geometry = { cx: number; cy: number; radius: number; nw: number; nh: number; narrow: boolean }
 
 function measure(w: number, h: number): Geometry {
   const filmW = Math.max((h * 16) / 9, Math.min(w, FILM_MAX))
@@ -101,25 +102,43 @@ function measure(w: number, h: number): Geometry {
     cx: w * N_AT.x,
     cy: h / 2 + (N_AT.y - 0.5) * filmH,
     // wide enough to clear the N, never so wide a chip leaves the screen
-    radius: Math.min(filmW * 0.35, w / 2 - (narrow ? 50 : 76)),
+    radius: Math.min(filmW * 0.35, w / 2 - (narrow ? 44 : 76)),
+    nw: filmW * 0.11,
+    nh: filmH * 0.18,
     narrow,
   }
 }
 
 /** A moon's place on its ring at time t (seconds): x, y in px, and depth from -1 (far) to 1 (near). */
 function place(i: number, count: number, t: number, g: Geometry) {
-  const ringIndex = i % 2
-  const ring = RINGS[ringIndex]
-  const perRing = Math.ceil(count / 2)
-  const slot = Math.floor(i / 2)
-  const phase = slot / perRing + ringIndex * (0.5 / perRing)
+  let phase: number
+  let ring: { r: number; flat: number; tilt: number; period: number }
+  if (g.narrow) {
+    // phones: one rounder ring with every moon, evenly spaced, so the labels never pile up
+    ring = { r: 1, flat: 0.62, tilt: -8, period: 80 }
+    phase = i / count
+  } else {
+    const ringIndex = i % 2
+    const perRing = Math.ceil(count / 2)
+    ring = RINGS[ringIndex]
+    phase = Math.floor(i / 2) / perRing + ringIndex * (0.5 / perRing)
+  }
   const a = (phase + t / ring.period) * Math.PI * 2
   const rx = g.radius * ring.r
-  const ry = rx * (g.narrow ? ring.flat * 1.5 : ring.flat)
+  const ry = rx * ring.flat
   const tilt = (ring.tilt * Math.PI) / 180
   const ex = Math.cos(a) * rx
   const ey = Math.sin(a) * ry
   return { x: g.cx + ex * Math.cos(tilt) - ey * Math.sin(tilt), y: g.cy + ex * Math.sin(tilt) + ey * Math.cos(tilt), depth: Math.sin(a) }
+}
+
+/** 1 when a moon on the far side of its orbit is right behind the N (so it passes behind it), 0 elsewhere. */
+function behind(p: { x: number; y: number; depth: number }, g: Geometry) {
+  if (p.depth >= 0) return 0
+  const dx = Math.abs(p.x - g.cx) / g.nw
+  const dy = Math.abs(p.y - g.cy) / g.nh
+  const inside = Math.max(0, 1 - Math.max(dx, dy))
+  return Math.min(1, inside * 2.5) * Math.min(1, -p.depth * 3)
 }
 
 /**
@@ -152,8 +171,10 @@ export function HeroStage({ film, orbit, slow = 1, className }: { film: boolean;
         if (!moon) continue
         const p = place(i, count, t, g)
         const near = (p.depth + 1) / 2
+        const hidden = behind(p, g)
         moon.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0) translate(-50%, -50%) scale(${(0.84 + near * 0.2).toFixed(3)})`
-        moon.style.opacity = (0.5 + near * 0.5).toFixed(3)
+        moon.style.opacity = ((0.5 + near * 0.5) * (1 - hidden * 0.85)).toFixed(3)
+        moon.style.pointerEvents = hidden > 0.5 ? "none" : ""
         moon.style.zIndex = p.depth > 0 ? "2" : "1"
       }
     }
@@ -240,10 +261,10 @@ export function HeroStage({ film, orbit, slow = 1, className }: { film: boolean;
               onPointerLeave={() => {
                 hold.current = false
               }}
-              className="moon group absolute top-0 left-0 flex items-center gap-1.5 rounded-full border border-white/12 bg-[#0b0e16]/75 py-1 pr-3 pl-1 text-xs font-medium whitespace-nowrap text-foreground/90 shadow-[0_8px_30px_-12px_rgb(0_0_0/0.8)] transition-[border-color,background-color,box-shadow] duration-200 will-change-transform hover:border-white/35 hover:bg-[#0b0e16]/95 hover:text-foreground hover:shadow-[0_0_32px_-4px_rgb(143_180_255/0.65)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:py-1.5 sm:pr-3.5 sm:text-[13px]"
+              className="moon group absolute top-0 left-0 flex items-center gap-1.5 rounded-full border border-white/12 bg-[#0b0e16]/75 py-0.5 pr-2.5 pl-0.5 text-[11px] font-medium whitespace-nowrap text-foreground/90 shadow-[0_8px_30px_-12px_rgb(0_0_0/0.8)] transition-[border-color,background-color,box-shadow] duration-200 will-change-transform hover:border-white/35 hover:bg-[#0b0e16]/95 hover:text-foreground hover:shadow-[0_0_32px_-4px_rgb(143_180_255/0.65)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:py-1 sm:pr-3.5 sm:pl-1 sm:text-[13px]"
             >
-              <span className={cn("grid size-6 place-items-center rounded-full bg-white/[0.07] ring-1 ring-white/10 sm:size-7", TINTS[m.tint] ?? "text-ion")}>
-                <Icon aria-hidden className="size-3.5" />
+              <span className={cn("grid size-5 place-items-center rounded-full bg-white/[0.07] ring-1 ring-white/10 sm:size-7", TINTS[m.tint] ?? "text-ion")}>
+                <Icon aria-hidden className="size-3 sm:size-3.5" />
               </span>
               {m.label}
             </Link>

@@ -1,9 +1,9 @@
 "use client"
 
 import { useSyncExternalStore } from "react"
+import { GlassKeys } from "@/components/glass/glass-keys"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useCopy } from "@/lib/content"
-import { cn } from "@/lib/utils"
 
 /** True on Apple devices, where shortcuts use ⌘ instead of Ctrl. */
 export function useIsMac() {
@@ -14,28 +14,17 @@ export function useIsMac() {
   )
 }
 
-/** "Mod+Shift+K" as key caps: ⌘ ⇧ K on a Mac, Ctrl Shift K elsewhere. */
+/** "Mod+Shift+K" as glass keycaps (the site's GlassKeys): ⌘ ⇧ K on a Mac, Ctrl Shift K elsewhere. */
 export function Keys({ combo, className }: { combo: string; className?: string }) {
   const mac = useIsMac()
-  const caps = combo.split("+").map((k) => {
-    if (k === "Mod") return mac ? "⌘" : "Ctrl"
+  const keys = combo.split("+").map((k) => {
+    if (k === "Mod") return "mod"
     if (k === "Shift") return mac ? "⇧" : "Shift"
     if (k === "Alt") return mac ? "⌥" : "Alt"
-    if (k === "Enter") return mac ? "↩" : "Enter"
+    if (k === "Enter") return "↵"
     return k
   })
-  return (
-    <span className={cn("inline-flex items-center gap-0.5", className)}>
-      {caps.map((c, i) => (
-        <kbd
-          key={i}
-          className="inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] border border-white/15 bg-gradient-to-b from-white/[0.12] to-white/[0.03] px-1 font-sans text-[11px] font-medium text-foreground/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_1px_0_rgba(0,0,0,0.4)]"
-        >
-          {c}
-        </kbd>
-      ))}
-    </span>
-  )
+  return <GlassKeys keys={keys} live={false} className={className} />
 }
 
 /** Every shortcut the editor knows, in the order the help lists them. */

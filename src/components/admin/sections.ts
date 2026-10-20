@@ -32,5 +32,6 @@ export const ADMIN_PAGES = [
   { href: "/admin/menus", label: "Menus", admin: false },
   { href: "/admin/roles", label: "Roles and powers", admin: true },
   { href: "/admin/ai", label: "AI", admin: true },
+  { href: "/admin/logins", label: "Sign-in methods", admin: true },
   { href: "/admin/settings", label: "Site settings", admin: true },
 ] as const

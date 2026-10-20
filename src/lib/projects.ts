@@ -2,6 +2,7 @@ import type { LanguageCode, ResourceKind } from "@/lib/data"
 import { LANGUAGES } from "@/lib/data"
 import type { Member } from "@/lib/store"
 import { db } from "@/lib/supabase"
+import { LICENSE_ID, LICENSE_LIST, legacyLicense, licenseName, normalizeLicense } from "@/lib/publish/licenses"
 
 /**
  * Projects members publish on Nexverse: a model, dataset, tool or repo with a README, links and a changelog.
@@ -16,27 +17,12 @@ import { db } from "@/lib/supabase"
 export type ProjectKind = ResourceKind
 export type ProjectStatus = "draft" | "published"
 
-export const LICENSES = [
-  { id: "unspecified", label: "No licence chosen yet" },
-  { id: "Apache-2.0", label: "Apache 2.0" },
-  { id: "MIT", label: "MIT" },
-  { id: "BSD-3-Clause", label: "BSD 3-Clause" },
-  { id: "GPL-3.0", label: "GPL 3.0" },
-  { id: "AGPL-3.0", label: "AGPL 3.0" },
-  { id: "LGPL-3.0", label: "LGPL 3.0" },
-  { id: "MPL-2.0", label: "Mozilla Public License 2.0" },
-  { id: "CC-BY-4.0", label: "Creative Commons BY 4.0" },
-  { id: "CC-BY-SA-4.0", label: "Creative Commons BY-SA 4.0" },
-  { id: "CC-BY-NC-4.0", label: "Creative Commons BY-NC 4.0" },
-  { id: "CC0-1.0", label: "CC0 (public domain)" },
-  { id: "OpenRAIL-M", label: "OpenRAIL-M" },
-  { id: "Llama-community", label: "Llama community licence" },
-  { id: "Proprietary", label: "Proprietary" },
-] as const
+/** Licence choices, by SPDX id (see lib/publish/licenses.ts). */
+export const LICENSES = LICENSE_LIST.map((l) => ({ id: l.id, label: l.name }))
 
-export type LicenseId = (typeof LICENSES)[number]["id"]
+export type LicenseId = string
 
-export const licenseLabel = (id: string) => LICENSES.find((l) => l.id === id)?.label ?? id
+export const licenseLabel = (id: string) => licenseName(id)
 
 export type ProjectVersion = { id?: string; version: string; notes: string; releasedOn: string }
 
@@ -44,7 +30,32 @@ export type ProjectLinks = { repo: string; paper: string; demo: string }
 
 export type ProjectOwner = Member & { handle: string | null; avatarUrl: string | null }
 
-export type Project = {
+/** Who can open the page: everyone, signed-in members only, or anyone with the link (not listed anywhere). */
+export type ProjectVisibility = "public" | "members" | "unlisted"
+
+export type GalleryItem = { url: string; caption: string }
+export type ExtraLink = { label: string; url: string }
+
+/** Publishing options (round 9). Optional on Project so lists built elsewhere need not fill them; see pub(). */
+export type ProjectPublishing = {
+  visibility: ProjectVisibility
+  commentsEnabled: boolean
+  /** A future time when a published project goes public; null for "now". */
+  publishAt: string | null
+  coverUrl: string
+  gallery: GalleryItem[]
+  extraLinks: ExtraLink[]
+  coauthors: ProjectOwner[]
+  /** Set by staff. */
+  featuredAt: string | null
+}
+
+export const PUBLISHING_DEFAULTS: ProjectPublishing = { visibility: "public", commentsEnabled: true, publishAt: null, coverUrl: "", gallery: [], extraLinks: [], coauthors: [], featuredAt: null }
+
+/** A project's publishing options with defaults filled in. */
+export const pub = (p: Partial<ProjectPublishing>): ProjectPublishing => ({ ...PUBLISHING_DEFAULTS, ...Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined)) })
+
+export type Project = Partial<ProjectPublishing> & {
   id: string
   kind: ProjectKind
   name: string
@@ -66,11 +77,12 @@ export type Project = {
   local: boolean
 }
 
-export type ProjectInput = Pick<Project, "kind" | "name" | "slug" | "summary" | "readme" | "tags" | "license" | "langs" | "links" | "status" | "versions">
+export type ProjectInput = Pick<Project, "kind" | "name" | "slug" | "summary" | "readme" | "tags" | "license" | "langs" | "links" | "status" | "versions"> &
+  Omit<ProjectPublishing, "featuredAt">
 
 export type ProjectStats = { likes: number; saves: number; replies: number }
 
-export const LIMITS = { name: [2, 80], summary: [10, 160], readme: 50000, tags: 8, tag: 30, versions: 50, notes: 5000 } as const
+export const LIMITS = { name: [2, 80], summary: [10, 160], readme: 50000, tags: 8, tag: 30, versions: 50, notes: 5000, gallery: 12, links: 10, coauthors: 10 } as const
 
 export const projectPath = (id: string) => `/p/${id}`
 export const projectTarget = (id: string) => `project:${id}`
@@ -110,7 +122,7 @@ function httpsUrl(raw: string) {
   }
 }
 
-export type ProjectErrors = Partial<Record<"kind" | "name" | "slug" | "summary" | "readme" | "tags" | "repo" | "paper" | "demo" | "versions", string>>
+export type ProjectErrors = Partial<Record<"kind" | "name" | "slug" | "summary" | "readme" | "tags" | "repo" | "paper" | "demo" | "versions" | "license" | "cover" | "gallery" | "extraLinks" | "publishAt", string>>
 
 /** The same rules the database enforces, checked first so the form can say exactly what to fix. */
 export function validateProject(p: ProjectInput): ProjectErrors {
@@ -129,6 +141,13 @@ export function validateProject(p: ProjectInput): ProjectErrors {
   if (p.links.repo && !GITHUB_REPO.test(p.links.repo.trim())) e.repo = "Use a GitHub repository address, like https://github.com/owner/repo"
   if (p.links.paper && !httpsUrl(p.links.paper)) e.paper = "Use a full link that starts with https://"
   if (p.links.demo && !httpsUrl(p.links.demo)) e.demo = "Use a full link that starts with https://"
+  if (!LICENSE_ID.test(p.license)) e.license = "Pick a licence from the list, or type its SPDX id (like Apache-2.0)."
+  if (p.coverUrl && !httpsUrl(p.coverUrl)) e.cover = "The cover must be a full https:// address."
+  if (p.gallery.length > LIMITS.gallery) e.gallery = "Use up to 12 pictures."
+  else if (p.gallery.some((g) => !httpsUrl(g.url) || g.caption.length > 120)) e.gallery = "Each picture needs an https:// address and a caption under 120 characters."
+  if (p.extraLinks.length > LIMITS.links) e.extraLinks = "Use up to 10 links."
+  else if (p.extraLinks.some((l) => !l.label.trim() || l.label.length > 120 || !httpsUrl(l.url))) e.extraLinks = "Each link needs a name and a full https:// address."
+  if (p.publishAt && Number.isNaN(Date.parse(p.publishAt))) e.publishAt = "Pick a date and time to publish."
   if (p.versions.length > LIMITS.versions) e.versions = "List up to 50 versions."
   else {
     const seen = new Set<string>()
@@ -164,6 +183,11 @@ function clean(p: ProjectInput): ProjectInput {
     tags: [...new Set(p.tags)].slice(0, LIMITS.tags),
     langs: [...new Set(p.langs)].filter((l) => l in LANGUAGES).slice(0, 12),
     links: { repo: link(p.links.repo).replace(/\/$/, ""), paper: link(p.links.paper), demo: link(p.links.demo) },
+    license: normalizeLicense(p.license.trim()),
+    coverUrl: p.coverUrl.trim(),
+    gallery: p.gallery.map((g) => ({ url: g.url.trim(), caption: g.caption.trim() })).filter((g) => g.url),
+    extraLinks: p.extraLinks.map((l) => ({ label: l.label.trim(), url: l.url.trim() })).filter((l) => l.url || l.label),
+    publishAt: p.publishAt && Date.parse(p.publishAt) > Date.now() ? new Date(p.publishAt).toISOString() : null,
     versions: p.versions.map((v) => ({ ...v, version: v.version.trim(), notes: v.notes.trim() })),
   }
 }
@@ -202,6 +226,15 @@ const fromLocal = (p: LocalProject): Project => ({
   langs: p.langs ?? [],
   versions: p.versions ?? [],
   links: { repo: p.links?.repo ?? "", paper: p.links?.paper ?? "", demo: p.links?.demo ?? "" },
+  license: normalizeLicense(p.license),
+  visibility: p.visibility ?? "public",
+  commentsEnabled: p.commentsEnabled ?? true,
+  publishAt: p.publishAt ?? null,
+  coverUrl: p.coverUrl ?? "",
+  gallery: p.gallery ?? [],
+  extraLinks: p.extraLinks ?? [],
+  coauthors: [],
+  featuredAt: null,
   owner: null,
   ownerId: null,
   local: true,
@@ -209,11 +242,36 @@ const fromLocal = (p: LocalProject): Project => ({
 
 // ─── Database rows ──────────────────────────────────────────────────────────────────────────────────────────
 
-const COLUMNS =
-  "id, owner_id, kind, name, slug, summary, readme, tags, license, langs, repo_url, paper_url, demo_url, status, created_at, updated_at, published_at, owner:profiles(id, name, handle, avatar_url), versions:project_versions(id, version, notes, released_on)"
-// Lists skip the README and changelog.
-const LIST_COLUMNS =
-  "id, owner_id, kind, name, slug, summary, tags, license, langs, repo_url, paper_url, demo_url, status, created_at, updated_at, published_at, owner:profiles(id, name, handle, avatar_url)"
+const OWNER = "owner:profiles!projects_owner_id_fkey(id, name, handle, avatar_url)"
+const BASE = "id, owner_id, kind, name, slug, summary, tags, license, langs, repo_url, paper_url, demo_url, status, created_at, updated_at, published_at"
+// Publishing options from the round 9 update (cover, gallery, visibility, …). Older databases lack them.
+const EXT = "visibility, comments_enabled, publish_at, cover_url, gallery, extra_links, license_id, featured_at"
+const COAUTHORS = "coauthors:project_coauthors(member:profiles!project_coauthors_member_id_fkey(id, name, handle, avatar_url))"
+const VERSIONS = "versions:project_versions(id, version, notes, released_on)"
+
+/** Whether the database has the publishing columns; null until the first query tells. */
+let extended: boolean | null = null
+
+const columns = (full: boolean, ext = extended !== false) =>
+  [BASE, full ? "readme" : null, ext ? EXT : null, OWNER, full ? VERSIONS : null, full && ext ? COAUTHORS : null].filter(Boolean).join(", ")
+
+const isMissingColumn = (e: { code?: string; message: string } | null) =>
+  Boolean(e && (e.code === "42703" || e.code === "PGRST200" || e.code === "PGRST204" || /column .* does not exist|could not find a relationship|project_coauthors/i.test(e.message)))
+
+/** Runs a select with the publishing columns, and once more without them on an older database. */
+async function selectWithFallback<T>(run: (cols: (full: boolean) => string) => PromiseLike<{ data: T | null; error: { message: string; code?: string } | null }>) {
+  if (extended !== false) {
+    const res = await run((full) => columns(full, true))
+    if (!isMissingColumn(res.error)) {
+      if (!res.error) extended = true
+      return res
+    }
+    extended = false
+  }
+  return run((full) => columns(full, false))
+}
+
+type Person = { id: string; name: string; handle: string | null; avatar_url: string | null }
 
 type Row = {
   id: string
@@ -224,7 +282,7 @@ type Row = {
   summary: string
   readme?: string
   tags: string[] | null
-  license: LicenseId
+  license: string
   langs: string[] | null
   repo_url: string | null
   paper_url: string | null
@@ -233,11 +291,24 @@ type Row = {
   created_at: string
   updated_at: string
   published_at: string | null
-  owner: { id: string; name: string; handle: string | null; avatar_url: string | null } | null
+  visibility?: ProjectVisibility
+  comments_enabled?: boolean
+  publish_at?: string | null
+  cover_url?: string | null
+  gallery?: GalleryItem[] | null
+  extra_links?: ExtraLink[] | null
+  license_id?: string | null
+  featured_at?: string | null
+  owner: Person | null
   versions?: { id: string; version: string; notes: string; released_on: string }[]
+  coauthors?: { member: Person | null }[]
 }
 
 const byRelease = (a: ProjectVersion, b: ProjectVersion) => b.releasedOn.localeCompare(a.releasedOn) || b.version.localeCompare(a.version, "en", { numeric: true })
+
+const person = (o: Person): ProjectOwner => ({ id: o.id, name: o.name, handle: o.handle, avatarUrl: o.avatar_url })
+
+const asList = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : [])
 
 function fromRow(r: Row): Project {
   return {
@@ -248,35 +319,64 @@ function fromRow(r: Row): Project {
     summary: r.summary,
     readme: r.readme ?? "",
     tags: r.tags ?? [],
-    license: r.license,
+    license: normalizeLicense(r.license_id ?? r.license),
     langs: (r.langs ?? []).filter((l): l is LanguageCode => l in LANGUAGES),
     links: { repo: r.repo_url ?? "", paper: r.paper_url ?? "", demo: r.demo_url ?? "" },
     status: r.status,
     versions: (r.versions ?? []).map((v) => ({ id: v.id, version: v.version, notes: v.notes, releasedOn: v.released_on })).sort(byRelease),
+    visibility: r.visibility ?? "public",
+    commentsEnabled: r.comments_enabled ?? true,
+    publishAt: r.publish_at ?? null,
+    coverUrl: r.cover_url ?? "",
+    gallery: asList<GalleryItem>(r.gallery).map((g) => ({ url: String(g?.url ?? ""), caption: String(g?.caption ?? "") })).filter((g) => g.url),
+    extraLinks: asList<ExtraLink>(r.extra_links).map((l) => ({ label: String(l?.label ?? ""), url: String(l?.url ?? "") })).filter((l) => l.url),
+    coauthors: (r.coauthors ?? []).flatMap((c) => (c.member ? [person(c.member)] : [])),
+    featuredAt: r.featured_at ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     publishedAt: r.published_at,
-    owner: r.owner ? { id: r.owner.id, name: r.owner.name, handle: r.owner.handle, avatarUrl: r.owner.avatar_url } : null,
+    owner: r.owner ? person(r.owner) : null,
     ownerId: r.owner_id,
     local: false,
   }
 }
 
 function toRow(p: ProjectInput) {
-  return {
+  const base = {
     kind: p.kind,
     name: p.name,
     slug: p.slug,
     summary: p.summary,
     readme: p.readme,
     tags: p.tags,
-    license: p.license,
+    license: legacyLicense(p.license),
     langs: p.langs,
     repo_url: p.links.repo || null,
     paper_url: p.links.paper || null,
     demo_url: p.links.demo || null,
     status: p.status,
   }
+  if (extended === false) return base
+  return {
+    ...base,
+    license_id: p.license === "unspecified" ? null : p.license,
+    visibility: p.visibility,
+    comments_enabled: p.commentsEnabled,
+    publish_at: p.publishAt,
+    cover_url: p.coverUrl || null,
+    gallery: p.gallery,
+    extra_links: p.extraLinks,
+  }
+}
+
+/** True when this database can store the round 9 publishing options (visibility, cover, gallery, …). */
+export async function publishingOptionsAvailable() {
+  const client = db()
+  if (!client) return true
+  if (extended !== null) return extended
+  const { error } = await client.from("projects").select("visibility").limit(1)
+  extended = !isMissingColumn(error)
+  return extended
 }
 
 async function currentUserId() {
@@ -298,13 +398,19 @@ export async function listProjects({ kind, owner, limit = 30 }: { kind?: Project
       .slice(0, limit)
       .map(fromLocal)
   }
-  let query = client.from("projects").select(LIST_COLUMNS).limit(limit)
-  if (owner) query = query.eq("owner_id", owner).order("updated_at", { ascending: false })
-  else query = query.eq("status", "published").order("published_at", { ascending: false })
-  if (kind) query = query.eq("kind", kind)
-  const { data, error } = await query
+  const { data, error } = await selectWithFallback<Row[]>((cols) => {
+    let query = client.from("projects").select(cols(false)).limit(limit)
+    if (owner) query = query.eq("owner_id", owner).order("updated_at", { ascending: false })
+    else {
+      query = query.eq("status", "published").order("published_at", { ascending: false })
+      // Unlisted projects open from their link only. (Scheduled and members-only ones are filtered by the database.)
+      if (extended !== false) query = query.eq("visibility", "public").lte("published_at", new Date().toISOString())
+    }
+    if (kind) query = query.eq("kind", kind)
+    return query.overrideTypes<Row[], { merge: false }>()
+  })
   fail(error)
-  return (data as unknown as Row[]).map(fromRow)
+  return (data ?? []).map(fromRow)
 }
 
 /** Your own projects, drafts included, most recently edited first. Empty when signed out. */
@@ -323,9 +429,9 @@ export async function getProject(id: string): Promise<Project | null> {
     const p = readLocal().find((x) => x.id === id)
     return p ? fromLocal(p) : null
   }
-  const { data, error } = await client.from("projects").select(COLUMNS).eq("id", id).maybeSingle()
+  const { data, error } = await selectWithFallback<Row>((cols) => client.from("projects").select(cols(true)).eq("id", id).maybeSingle().overrideTypes<Row, { merge: false }>())
   fail(error)
-  return data ? fromRow(data as unknown as Row) : null
+  return data ? fromRow(data) : null
 }
 
 /** Whether one of your projects already uses this address (other than `except`). */
@@ -401,6 +507,24 @@ async function syncVersions(projectId: string, versions: ProjectVersion[], befor
   }
 }
 
+/** Brings the co-author list in line with the form. Only the owner may change it (the database checks). */
+async function syncCoauthors(projectId: string, next: ProjectOwner[], before: ProjectOwner[]) {
+  if (extended === false) return
+  const client = db()!
+  const keep = new Set(next.map((c) => c.id))
+  const had = new Set(before.map((c) => c.id))
+  const gone = before.filter((c) => !keep.has(c.id)).map((c) => c.id)
+  if (gone.length) {
+    const { error } = await client.from("project_coauthors").delete().eq("project_id", projectId).in("member_id", gone)
+    fail(error)
+  }
+  const fresh = next.filter((c) => !had.has(c.id))
+  if (fresh.length) {
+    const { error } = await client.from("project_coauthors").insert(fresh.map((c) => ({ project_id: projectId, member_id: c.id })))
+    fail(error)
+  }
+}
+
 function assertValid(p: ProjectInput) {
   const errors = validateProject(p)
   const first = Object.values(errors)[0]
@@ -421,7 +545,8 @@ export async function createProject(input: ProjectInput): Promise<Project> {
       versions: p.versions.map((v) => ({ ...v, id: crypto.randomUUID() })).sort(byRelease),
       createdAt: now,
       updatedAt: now,
-      publishedAt: p.status === "published" ? now : null,
+      publishedAt: p.status === "published" ? (p.publishAt ?? now) : null,
+      featuredAt: null,
     }
     writeLocal([local, ...list])
     return fromLocal(local)
@@ -435,6 +560,13 @@ export async function createProject(input: ProjectInput): Promise<Project> {
       await syncVersions(id, p.versions, [])
     } catch (e) {
       throw new Error(`The project was saved, but its changelog was not: ${(e as Error).message}`)
+    }
+  }
+  if (p.coauthors.length) {
+    try {
+      await syncCoauthors(id, p.coauthors, [])
+    } catch (e) {
+      throw new Error(`The project was saved, but its co-authors were not: ${(e as Error).message}`)
     }
   }
   return (await getProject(id))!
@@ -465,6 +597,8 @@ export async function updateProject(id: string, input: ProjectInput, before?: Pr
   const { error } = await client.from("projects").update(toRow(p)).eq("id", id)
   fail(error)
   await syncVersions(id, p.versions, prev.versions)
+  // Co-authors may edit the project but not its list of co-authors.
+  if (prev.ownerId === (await currentUserId())) await syncCoauthors(id, p.coauthors, prev.coauthors ?? [])
   return (await getProject(id))!
 }
 
@@ -499,19 +633,90 @@ export async function deleteProject(id: string) {
 
 /** A blank project for the editor. */
 export function emptyProject(kind: ProjectKind = "model"): ProjectInput {
-  return { kind, name: "", slug: "", summary: "", readme: "", tags: [], license: "unspecified", langs: [], links: { repo: "", paper: "", demo: "" }, status: "draft", versions: [] }
+  return {
+    kind,
+    name: "",
+    slug: "",
+    summary: "",
+    readme: "",
+    tags: [],
+    license: "unspecified",
+    langs: [],
+    links: { repo: "", paper: "", demo: "" },
+    status: "draft",
+    versions: [],
+    visibility: "public",
+    commentsEnabled: true,
+    publishAt: null,
+    coverUrl: "",
+    gallery: [],
+    extraLinks: [],
+    coauthors: [],
+  }
 }
 
-export const toInput = (p: Project): ProjectInput => ({
-  kind: p.kind,
-  name: p.name,
-  slug: p.slug,
-  summary: p.summary,
-  readme: p.readme,
-  tags: p.tags,
-  license: p.license,
-  langs: p.langs,
-  links: p.links,
-  status: p.status,
-  versions: p.versions,
-})
+export function toInput(p: Project): ProjectInput {
+  const { visibility, commentsEnabled, publishAt, coverUrl, gallery, extraLinks, coauthors } = pub(p)
+  return {
+    kind: p.kind,
+    name: p.name,
+    slug: p.slug,
+    summary: p.summary,
+    readme: p.readme,
+    tags: p.tags,
+    license: p.license,
+    langs: p.langs,
+    links: p.links,
+    status: p.status,
+    versions: p.versions,
+    visibility,
+    commentsEnabled,
+    publishAt,
+    coverUrl,
+    gallery,
+    extraLinks,
+    coauthors,
+  }
+}
+
+/** Whether the signed-in member may edit a project: its owner or a co-author. */
+export function canEditProject(p: Project, userId: string | null | undefined) {
+  return p.local || Boolean(userId && (p.ownerId === userId || (p.coauthors ?? []).some((c) => c.id === userId)))
+}
+
+/** A published project is live once its scheduled time (if any) has come. */
+export const isScheduled = (p: Pick<Project, "status" | "publishAt">) => p.status === "published" && Boolean(p.publishAt && Date.parse(p.publishAt) > Date.now())
+
+// ─── Staff and history ──────────────────────────────────────────────────────────────────────────────────────
+
+/** Staff only: puts a project in the featured lists (logged in the moderation log by the database). */
+export async function featureProject(id: string, featured: boolean): Promise<string | null> {
+  const client = db()
+  if (!client) throw new Error("Featuring needs the site's database.")
+  const { data, error } = await client.rpc("feature_project", { target: id, featured })
+  fail(error)
+  return (data as string | null) ?? null
+}
+
+export type ProjectRevision = { id: string; name: string; summary: string; readme: string; createdAt: string; editor: ProjectOwner | null }
+
+/** Earlier texts of a project, newest first (editors and staff only). Empty when the history is not available. */
+export async function listRevisions(projectId: string, limit = 50): Promise<ProjectRevision[]> {
+  const client = db()
+  if (!client) return []
+  const { data, error } = await client
+    .from("project_revisions")
+    .select("id, name, summary, readme, created_at, editor:profiles!project_revisions_editor_id_fkey(id, name, handle, avatar_url)")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+  if (error) return []
+  return (data as unknown as { id: string; name: string; summary: string; readme: string; created_at: string; editor: Person | null }[]).map((r) => ({
+    id: r.id,
+    name: r.name,
+    summary: r.summary,
+    readme: r.readme,
+    createdAt: r.created_at,
+    editor: r.editor ? person(r.editor) : null,
+  }))
+}

@@ -53,6 +53,7 @@ export function AuthConfirm() {
   const copy = type ? COPY[type] : null
   const title = useCopy(`auth.confirm.${type ?? "unknown"}.title`, copy?.title ?? "This link is not complete")
   const lead = useCopy(`auth.confirm.${type ?? "unknown"}.lead`, copy?.lead ?? "Part of the link is missing. Copy the whole link from the email, or ask for a new one.")
+  const failedTitle = useCopy("auth.confirm.failedTitle", "That link did not work")
   const action = useCopy(`auth.confirm.${type ?? "unknown"}.action`, copy?.action ?? "Continue")
 
   async function confirm() {
@@ -80,14 +81,15 @@ export function AuthConfirm() {
         <Icon aria-hidden className="size-5" />
       </span>
       <div className="flex flex-col gap-1.5">
-        <h1 className="text-xl font-semibold tracking-[-0.02em]">{title}</h1>
-        <p className="max-w-[54ch] text-sm text-muted-foreground">{lead}</p>
+        <h1 className="text-xl font-semibold tracking-[-0.02em]">{error ? failedTitle : title}</h1>
+        {error ? (
+          <p role="alert" className="max-w-[54ch] text-sm text-muted-foreground">
+            {error}
+          </p>
+        ) : (
+          <p className="max-w-[54ch] text-sm text-muted-foreground">{lead}</p>
+        )}
       </div>
-      {error && (
-        <p role="alert" className="max-w-[54ch] text-sm text-destructive">
-          {error}
-        </p>
-      )}
       {!live ? (
         <p className="text-sm text-muted-foreground">This copy of Nexverse is not connected to a database, so there are no accounts.</p>
       ) : copy && tokenHash && !error ? (

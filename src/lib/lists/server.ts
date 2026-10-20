@@ -1,51 +1,25 @@
-import { cacheLife, cacheTag } from "next/cache"
+import { getContentValues } from "@/lib/content-server"
 import type { Benchmark } from "@/lib/benchmarks"
 import type { LabTool } from "@/components/lab/tools"
 import { defOf, resolveRows, toBenchmarks, toGhTopics, toLabShelves, toLabTools, toMoreTopics, toReleaseRepos, type GhTopic, type ListName, type Row } from "./registry"
 
 /*
  * Server-side reads of the lists admins edit in /admin/lists, for server components, route handlers and the
- * live feeds. Never import this from a client component (it uses next/cache); client code reads the same rows
- * with the hooks in lib/lists/hooks.ts.
+ * live feeds. Never import this from a client component; client code reads the same rows with the hooks in
+ * lib/lists/hooks.ts.
  *
- * Each value is one row of public.site_content (anyone may read it), fetched with the publishable key through
- * the REST API and cached under the "site-content" tag: /admin/lists expires that tag when an admin saves, so
- * pages show the change on their next request. A missing table, a missing row or any error means the defaults.
+ * Values come from the shared editable-content read (lib/content-server.ts: every public.site_content row,
+ * fetched with the publishable key and cached under the "site-content" tag, which /admin/lists expires on save).
+ * The raw value is checked here with the lists' own rules; a missing table, row or bad value means the defaults.
  */
 
-/** Tag on every cached site_content read; expire it to refresh them all. */
+/** Tag on the cached site_content read; expire it to refresh every server page that uses a list. */
 export const CONTENT_TAG = "site-content"
-
-/** The raw stored value of a site_content key, or `fallback` when there is none or it cannot be read. */
-export async function getBlock<T>(key: string, fallback: T): Promise<T> {
-  "use cache"
-  cacheTag(CONTENT_TAG, `${CONTENT_TAG}:${key}`)
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const apikey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !apikey) {
-    cacheLife("max")
-    return fallback
-  }
-  try {
-    const res = await fetch(`${url}/rest/v1/site_content?select=value&key=eq.${encodeURIComponent(key)}&limit=1`, {
-      headers: { apikey, authorization: `Bearer ${apikey}`, accept: "application/json" },
-      signal: AbortSignal.timeout(5000),
-    })
-    if (!res.ok) throw new Error(`site_content answered ${res.status}`)
-    const rows = (await res.json()) as { value?: unknown }[]
-    cacheLife("hours")
-    return Array.isArray(rows) && rows[0] && rows[0].value !== null && rows[0].value !== undefined ? (rows[0].value as T) : fallback
-  } catch (err) {
-    console.warn(`[lists] ${key} unavailable, using the defaults:`, err instanceof Error ? err.message : err)
-    cacheLife("minutes")
-    return fallback
-  }
-}
 
 /** One list as rows, checked and merged with its defaults (see resolveRows). */
 export async function getList(name: ListName): Promise<Row[]> {
   const def = defOf(name)
-  return resolveRows(def, await getBlock<unknown>(def.key, null))
+  return resolveRows(def, (await getContentValues())[def.key])
 }
 
 /** The featured GitHub topics, in the admins' order (same shape as GH_TOPICS). */

@@ -22,9 +22,10 @@ const WORDS = [{ word: "builders." }, { word: "researchers." }, { word: "makers.
  * orbiting the N as links, then one short headline, search and the way in.
  *
  * Every word is editable (content keys "home.hero.*"); the admins' hero settings (Admin → Site) are the
- * defaults those keys fall back to. The admins' hero effect: "galaxy" plays the film and turns the orbit,
- * "orbit" keeps the film still and turns the orbit, "still" holds both. The site's motion level "calm" slows
- * the orbit; "off", the visitor's reduced motion and the "off" quality tier hold everything still.
+ * defaults those keys fall back to. The admins' hero effect: "galaxy" and "orbit" (older name, same today) play
+ * the film and turn the orbit, "still" shows the film's poster with the moons resting on their rings. The site's
+ * motion level "calm" slows the orbit; "off", the visitor's reduced motion and the "off" quality tier hold
+ * everything still.
  */
 export function Hero() {
   const { settings } = useSiteSettings()
@@ -57,10 +58,10 @@ export function Hero() {
   return (
     <section aria-labelledby="hero-h" className="relative isolate -mt-16 flex flex-col overflow-hidden">
       <HeroStage
-        film={!still && effect === "galaxy"}
+        film={!still && effect !== "still"}
         orbit={!still && effect !== "still"}
         slow={settings.theme.motion === "calm" ? 2 : 1}
-        className="h-[var(--stage-h)] [--stage-h:clamp(25rem,62svh,46rem)] max-sm:[--stage-h:clamp(24rem,54svh,30rem)]"
+        className="h-[var(--stage-h)] [--stage-h:clamp(25rem,62svh,46rem)] max-sm:[--stage-h:clamp(21rem,46svh,26rem)]"
       />
 
       <div className="shell relative z-10 -mt-14 flex flex-col items-center pb-14 text-center sm:-mt-20">

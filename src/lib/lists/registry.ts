@@ -57,6 +57,8 @@ export type ListDef = {
   blurb: string
   /** One item, for buttons: "topic", "language". */
   noun: string
+  /** When adding "s" is wrong. */
+  nouns?: string
   fields: Field[]
   /** The field that names an item; unique within the list. */
   idField: string
@@ -177,6 +179,7 @@ export const LISTS: ListDef[] = [
     title: "Tracked releases",
     blurb: "Open-source projects whose new releases appear on /trending.",
     noun: "repository",
+    nouns: "repositories",
     idField: "repo",
     mode: "free",
     min: 1,
@@ -423,6 +426,7 @@ export const LISTS: ListDef[] = [
     title: "Lab shelves",
     blurb: "The groups the Lab sorts its tools into.",
     noun: "shelf",
+    nouns: "shelves",
     idField: "id",
     mode: "fixed",
     max: CATEGORIES.length,
@@ -521,6 +525,9 @@ export const GROUPS: { id: ListGroup; label: string; blurb: string }[] = [
   { id: "lab", label: "The Lab", blurb: "Tools and the presets inside them." },
 ]
 
+/** "3 topics", "1 shelf", "2 shelves". */
+export const countOf = (def: ListDef, n: number) => `${n} ${n === 1 ? def.noun : (def.nouns ?? `${def.noun}s`)}`
+
 export const getListDef = (slug: string) => LISTS.find((l) => l.slug === slug)
 const byKey = (key: string) => LISTS.find((l) => l.key === key)!
 
@@ -566,8 +573,8 @@ export function checkList(def: ListDef, rows: Row[]): { rows: RowErrors[]; list:
     return e
   })
   let list: string | null = null
-  if (def.min && rows.length < def.min) list = `Keep at least ${def.min} ${def.min === 1 ? def.noun : `${def.noun}s`}.`
-  else if (rows.length > def.max) list = `Up to ${def.max} ${def.noun}s.`
+  if (def.min && rows.length < def.min) list = `Keep at least ${countOf(def, def.min)}.`
+  else if (rows.length > def.max) list = `Up to ${countOf(def, def.max)}.`
   else if (out.every((e) => !Object.keys(e).length)) list = def.check?.(rows) ?? null
   return { rows: out, list }
 }

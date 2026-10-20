@@ -287,6 +287,8 @@ grant execute on function public.post_media_writable(text) to authenticated;
 
 create policy "Members upload post images to their folder" on storage.objects for insert
   to authenticated with check (bucket_id = 'post-media' and public.post_media_writable(name));
+create policy "Members read their post images" on storage.objects for select
+  to authenticated using (bucket_id = 'post-media' and owner_id = (select auth.uid())::text);
 create policy "Members remove their post images" on storage.objects for delete
   to authenticated using (bucket_id = 'post-media' and owner_id = (select auth.uid())::text);
 
@@ -451,6 +453,10 @@ grant execute on function public.download_object_removable(text) to authenticate
 
 create policy "Members download files they can see" on storage.objects for select
   to authenticated using (bucket_id = 'downloads' and public.download_object_readable(name));
+-- Storage removal also needs read access; uploaders can always see their own objects (for cleaning up an upload
+-- whose file row was refused).
+create policy "Uploaders read their own downloadable files" on storage.objects for select
+  to authenticated using (bucket_id = 'downloads' and owner_id = (select auth.uid())::text);
 create policy "Editors upload downloadable files" on storage.objects for insert
   to authenticated with check (bucket_id = 'downloads' and public.download_object_writable(name));
 create policy "Uploaders and editors remove downloadable files" on storage.objects for delete

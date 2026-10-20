@@ -77,6 +77,7 @@ export function TrendingBoard() {
   if (!items.length) {
     return (
       <FirstLight
+        k="home.trending.empty"
         icon={PlusIcon}
         title="The hub is ready for its first project"
         body={
@@ -136,6 +137,7 @@ export function TrendingBoard() {
           >
             {!lead ? (
               <FirstLight
+                k={`home.trending.empty.${kind}`}
                 title={`No ${KINDS[kind].plural.toLowerCase()} yet`}
                 body={`Be the first to publish a ${KINDS[kind].label.toLowerCase()} on the hub, with a README, a licence and a changelog, or share a link to one.`}
                 href="/new/project"

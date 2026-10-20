@@ -35,7 +35,7 @@ async function isStaff(token: string): Promise<boolean> {
 /** Expires the cached copy of a saved list, so the next request of every server page reads the new one. */
 export async function refreshList(token: string, key: string): Promise<{ ok: boolean }> {
   if (!LISTS.some((l) => l.key === key) || !(await isStaff(token))) return { ok: false }
-  updateTag(`${CONTENT_TAG}:${key}`)
+  updateTag(CONTENT_TAG)
   return { ok: true }
 }
 

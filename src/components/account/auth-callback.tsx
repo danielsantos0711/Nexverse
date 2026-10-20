@@ -51,10 +51,12 @@ export function AuthCallback() {
     void finishAuthRedirect().then(async (r) => {
       if (stale) return
       if (r.error) return setOutcome({ error: r.error.message, recovery: false })
+      // A code the client could not use (no record of the request in this browser) leaves no session behind.
+      const signedIn = (await db()?.auth.getSession())?.data.session?.user
+      if (stale) return
+      if (carriedLink && !signedIn) return setOutcome({ error: authErrorMessage({ code: "pkce_code_verifier_not_found" }), recovery: false })
       // A reset link that came back here is a recovery even if the client's own announcement was missed.
       if (!r.recovery && toReset && carriedLink) {
-        const signedIn = (await db()?.auth.getSession())?.data.session?.user
-        if (stale) return
         if (signedIn) markRecovery(signedIn.id)
         return setOutcome({ error: "", recovery: Boolean(signedIn) })
       }

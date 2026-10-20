@@ -2,16 +2,19 @@ import type { Metadata } from "next"
 import { UsersIcon } from "lucide-react"
 import { CrewsIndex } from "@/components/crews/crews-index"
 import { ForumHeader } from "@/components/forum/forum-header"
+import { seoMetadata } from "@/lib/content-server"
 
-export const metadata: Metadata = {
-  title: "Crews",
-  description: "Labs, study groups and project teams on Nexverse, each with a wall, a chat room and shared collections.",
+export async function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("/crews", {
+    title: "Crews",
+    description: "Labs, study groups and project teams on Nexverse, each with a wall, a chat room and shared collections.",
+  })
 }
 
 export default function CrewsPage() {
   return (
     <div className="shell max-w-6xl pb-16">
-      <ForumHeader
+      <ForumHeader k="crews.header"
         title="Crews"
         lead="Labs, study groups and project teams. Each crew has a wall, its own chat room, shared collections and a members list."
         icon={

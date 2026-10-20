@@ -7,10 +7,14 @@ import { Item, Spotlight, Stagger } from "@/components/hub/motion"
 import { Skeleton } from "@/components/ui/skeleton"
 import { compact } from "@/lib/data"
 import { GH_TOPICS, ghHref, ghTopicHref, githubTopicRepos, MORE_GH_TOPICS } from "@/lib/live"
+import { seoMetadata } from "@/lib/content-server"
+import { Copy } from "@/components/content/copy"
 
-export const metadata: Metadata = {
-  title: "GitHub topics",
-  description: "Open-source AI on GitHub by topic: LLMs, agents, RAG, diffusion and machine learning, with the projects rising in each, readable on Nexverse.",
+export async function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("/gh/topics", {
+    title: "GitHub topics",
+    description: "Open-source AI on GitHub by topic: LLMs, agents, RAG, diffusion and machine learning, with the projects rising in each, readable on Nexverse.",
+  })
 }
 
 /** The three most starred new repositories in a topic, as a teaser on its card. */
@@ -50,8 +54,8 @@ function RisingSkeleton() {
 export default function TopicsPage() {
   return (
     <div className="shell pb-16">
-      <PageTitle
-        eyebrow="Live from GitHub"
+      <PageTitle k="gh-topics.header"
+        eyebrow={<Copy k="gh-topics.header.eyebrow">Live from GitHub</Copy>}
         title="Topics"
         lead="Open-source AI by subject. Each topic shows the most starred projects people are working on this week and the new ones rising this month, all readable here on Nexverse."
       />

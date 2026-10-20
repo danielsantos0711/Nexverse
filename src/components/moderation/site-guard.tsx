@@ -8,11 +8,11 @@ import { Copy } from "@/components/content/copy"
 import { FeatureOff, FeatureOffAdminNote, PageHiddenNote } from "@/components/moderation/feature-gate"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import * as content from "@/lib/content"
-import { useBlock, useCopy } from "@/lib/content"
+import { isVisibility, useBlock, useContentValues, useCopy, visibilityKey } from "@/lib/content"
 import { useQuality } from "@/lib/perf"
 import { useRole } from "@/lib/roles"
 import { featureForPath, useSiteSettings } from "@/lib/site-settings"
+import { routeFor } from "@/lib/site-map"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -58,18 +58,21 @@ export function defaultPageVisibility(path: string): PageVisibility {
 /** Pages that show guests their own, richer wall (chat lists its rooms) instead of the generic one. */
 const SELF_GUARDED = /^\/chat(?:\/|$)/
 
-type VisibilityHook = (path: string) => PageVisibility | null | undefined
-// The site editor's choice per page (`usePageVisibility` from @/lib/content, owned by the CMS). Read without a
-// static import so this file works before and after the CMS ships it; until then the defaults above apply.
-const useAdminVisibility: VisibilityHook = (Reflect.get(content, "usePageVisibility") as VisibilityHook | undefined) ?? (() => null)
-
-const VISIBILITIES: readonly PageVisibility[] = ["everyone", "members", "staff", "hidden"]
-
-/** The visibility that applies to a page: the admins' choice when they made one, otherwise the default. */
+/**
+ * The visibility that applies to a page: the admins' saved choice for this address or its route (site editor,
+ * "visibility.<path>" in site_content) when there is one, otherwise the default above. Unlike the CMS's own
+ * usePageVisibility (which reads "no choice" as everyone), this keeps members-only defaults until an admin
+ * explicitly opens a page.
+ */
 export function usePageAccess(path: string): PageVisibility {
-  const chosen = useAdminVisibility(path)
+  const values = useContentValues()
   if (AUTH_ROUTES.test(path)) return "everyone"
-  return chosen && VISIBILITIES.includes(chosen) ? chosen : defaultPageVisibility(path)
+  const clean = path.split(/[?#]/)[0].replace(/(.)\/+$/, "$1") || "/"
+  const exact = values[visibilityKey(clean)]
+  if (isVisibility(exact)) return exact
+  const route = routeFor(clean)
+  const byRoute = route ? values[visibilityKey(route.path)] : undefined
+  return isVisibility(byRoute) ? byRoute : defaultPageVisibility(clean)
 }
 
 /** A short name for the area a path belongs to, for the wall's label. */
@@ -121,10 +124,10 @@ export function SiteGuard({ children }: { children: React.ReactNode }) {
   if (visibility !== "everyone") {
     const selfGuarded = visibility === "members" && SELF_GUARDED.test(path)
     if (!selfGuarded) {
-      if (!session.ready) return <GuardSkeleton />
+      if (!session.ready) return <Held>{children}</Held>
       if (!session.user) return <MemberWall path={path} />
       if (visibility === "staff" || visibility === "hidden") {
-        if (!me.ready) return <GuardSkeleton />
+        if (!me.ready) return <Held>{children}</Held>
         if (!me.isStaff) return <TeamOnly hidden={visibility === "hidden"} />
         if (visibility === "hidden") {
           return (
@@ -156,7 +159,23 @@ export function SiteGuard({ children }: { children: React.ReactNode }) {
   return children
 }
 
-/** What a protected page shows while the session loads: its outline, never its content. */
+/**
+ * A protected page while the session loads (a fraction of a second, read from this browser): its outline
+ * shows and the page itself stays rendered but hidden and inert, so nothing flashes, the router keeps its
+ * segment (Next's instant-navigation check needs the page rendered), and the wall replaces it for a guest.
+ */
+function Held({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <GuardSkeleton />
+      <div hidden inert>
+        {children}
+      </div>
+    </>
+  )
+}
+
+/** The outline of a page, never its content. */
 function GuardSkeleton() {
   return (
     <div className="shell flex flex-col gap-4 py-10" aria-busy="true" aria-label="Loading">
@@ -267,7 +286,7 @@ function Orbit({ still }: { still: boolean }) {
       <span className={cn("absolute inset-5 rounded-full border border-gold/20", spinBack)}>
         <span className="absolute -top-1 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-gold shadow-[0_0_8px_var(--gold)]" />
       </span>
-      <NMark material="chrome" small sizes="48px" className="size-12" />
+      <NMark material="chrome" small sizes="48px" className="size-12 rounded-xl" />
     </div>
   )
 }

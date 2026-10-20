@@ -33,7 +33,7 @@ export type Gathered = { docs: Doc[]; errors: string[]; cached: number }
 const NOT_OFFICIAL =
   /(^|\.)(x\.com|twitter\.com|t\.co|linkedin\.com|lnkd\.in|facebook\.com|fb\.me|instagram\.com|threads\.net|youtube\.com|youtu\.be|tiktok\.com|medium\.com|substack\.com|bsky\.app|mastodon\.social|wikipedia\.org|apps\.apple\.com|play\.google\.com|bit\.ly|goo\.gl|forms\.gle|eventbrite\.com|zoom\.us|calendly\.com)$/i
 
-const NOT_ARTICLE = /^\/?(careers|jobs|legal|privacy|terms|cookies?|login|signin|sign-in|signup|sign-up|register|contact|about|press-kit|brand|tag|tags|category|categories|author|authors|search|subscribe|newsletter|events?)(\/|$)/i
+const NOT_ARTICLE = /^\/?(careers|jobs|legal|privacy|terms|cookies?|login|signin|sign-in|signup|sign-up|register|contact|about|press-kit|brand|search|subscribe|newsletter|events?)(\/|$)|(^|\/)(tag|tags|topic|topics|category|categories|author|authors|page)(\/|$)/i
 
 const FILE = /\.(pdf|zip|tar|gz|png|jpe?g|gif|webp|svg|mp4|mov|webm|mp3|csv|xlsx?|pptx?|docx?)$/i
 
@@ -84,7 +84,14 @@ const KIND_BONUS: Record<Exclude<LinkKind, null>, number> = { github: 3, arxiv: 
 
 /** The article's links that are official pages, best first: closest to the story, then by kind. */
 export function rankLinks(links: PageLink[], primaryUrl: string, title: string, officialSites: Set<string>): { url: string; kind: Exclude<LinkKind, null>; score: number }[] {
-  const want = tokens(title)
+  // Words of the publisher's own address ("nvidia", "blogs") say nothing about the story: every link has them.
+  let hostWords = new Set<string>()
+  try {
+    hostWords = new Set(new URL(primaryUrl).hostname.toLowerCase().split(/[.-]/))
+  } catch {
+    // keep empty
+  }
+  const want = new Set([...tokens(title)].filter((t) => !hostWords.has(t) && t.length > 2))
   const out: { url: string; kind: Exclude<LinkKind, null>; score: number }[] = []
   for (const l of links) {
     const kind = linkKind(l.url, primaryUrl, officialSites)
@@ -99,8 +106,8 @@ export function rankLinks(links: PageLink[], primaryUrl: string, title: string, 
     let shared = 0
     for (const t of want) if (have.has(t)) shared++
     const score = shared * 2 + KIND_BONUS[kind] - (l.text.length < 3 ? 1 : 0)
-    // A same-site link that shares nothing with the story is usually navigation ("Our research", "Blog").
-    if (kind === "same-site" && shared === 0) continue
+    // A link from the same company or another vendor that shares nothing with the story is navigation.
+    if ((kind === "same-site" || kind === "official") && shared === 0) continue
     out.push({ url: l.url, kind, score })
   }
   return out.sort((a, b) => b.score - a.score)

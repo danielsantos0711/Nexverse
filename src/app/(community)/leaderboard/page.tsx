@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import { TrophyIcon } from "lucide-react"
-import { ForumHeader } from "@/components/forum/forum-header"
+import { PageTitle } from "@/components/hub/bits"
 import { LeaderboardView } from "@/components/reputation/leaderboard-view"
+import { LevelsShowcase } from "@/components/reputation/levels-showcase"
 
 export const metadata: Metadata = {
   title: "Leaderboard",
@@ -11,16 +12,18 @@ export const metadata: Metadata = {
 export default function LeaderboardPage() {
   return (
     <div className="shell pb-16">
-      <ForumHeader
-        title="Leaderboard"
-        lead="Points come from helping: starting good threads, replying, and having your answer marked as the solution. Levels go from Stardust to Galaxy."
-        icon={
-          <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl border border-gold/25 bg-gold/10 text-gold">
-            <TrophyIcon aria-hidden className="size-5" />
+      <PageTitle
+        k="leaderboard.header"
+        eyebrow={
+          <span className="inline-flex items-center gap-2">
+            <TrophyIcon aria-hidden className="size-4 text-gold" /> The brightest stars in the sky
           </span>
         }
+        title="Leaderboard"
+        lead="Every member starts as stardust. Points come from helping: starting good threads, replying, and having your answer marked as the solution. Shine long enough and you become a galaxy."
       />
       <LeaderboardView />
+      <LevelsShowcase />
     </div>
   )
 }

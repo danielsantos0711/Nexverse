@@ -249,6 +249,7 @@ export function authErrorMessage(error: unknown): string {
     case "validation_failed":
       return /email/i.test(message) ? "That does not look like an email address." : message || "Something in the form is not valid."
   }
+  if (e.code === "bad_jwt" || /jwt/i.test(message)) return "That link is incomplete or was changed on the way. Ask for a new one."
   if (e.status === 429) return "Too many attempts. Wait a minute and try again."
   if (/fetch|network/i.test(message)) return "We could not reach the sign-in service. Check your connection and try again."
   return message || "Something went wrong. Try again."

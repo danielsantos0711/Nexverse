@@ -5,7 +5,9 @@
 --   lists.rep.points        points per contribution, used by reputation_ledger() (leaderboard, tiers, profiles)
 --   lists.bench.benchmarks  benchmark slugs and reproduction tolerances, used by benchmark_tolerance(), and
 --                           which benchmarks are retired (no new results)
--- Additive only: functions are replaced with the same signatures, one trigger is added. While site_content is
+-- Lists change site-wide rules and what every page offers, so only admins (or holders of settings.manage) write
+-- them; other page editors keep editing copy. Additive only: functions are replaced with the same signatures,
+-- one trigger and two restrictive policies are added. While site_content is
 -- missing, or a list was never saved, everything behaves exactly as before (the built-in defaults).
 
 -- ─── Reading a list ─────────────────────────────────────────────────────────────────────────────────────────
@@ -141,3 +143,24 @@ $$;
 create or replace trigger benchmark_results_open
   before insert on public.benchmark_results
   for each row execute function public.benchmark_results_open();
+
+-- ─── Who may write lists ────────────────────────────────────────────────────────────────────────────────────
+
+-- On top of site_content's own policies (page editors write content): keys under 'lists.' need an admin.
+do $$
+begin
+  if to_regclass('public.site_content') is null then
+    raise notice 'public.site_content is missing: apply 20261019130000_site_content.sql, then this file again.';
+    return;
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'site_content' and policyname = 'Only admins add lists') then
+    create policy "Only admins add lists" on public.site_content as restrictive for insert to authenticated
+      with check (key not like 'lists.%' or public.is_admin() or public.cms_can('settings.manage'));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'site_content' and policyname = 'Only admins change lists') then
+    create policy "Only admins change lists" on public.site_content as restrictive for update to authenticated
+      using (key not like 'lists.%' or public.is_admin() or public.cms_can('settings.manage'))
+      with check (key not like 'lists.%' or public.is_admin() or public.cms_can('settings.manage'));
+  end if;
+end;
+$$;

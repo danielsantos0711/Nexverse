@@ -189,7 +189,7 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
 
       <div className="flex min-w-0 flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label className="glass flex h-11 flex-1 items-center gap-2.5 rounded-xl px-3.5 focus-within:border-ion/50 focus-within:ring-2 focus-within:ring-ring/40">
+          <label className="liquid-glass flex h-11 flex-1 items-center gap-2.5 rounded-full px-4 focus-within:ring-2 focus-within:ring-ring/40">
             <SearchIcon aria-hidden className="size-4 text-muted-foreground" />
             <span className="sr-only">Filter {noun}</span>
             <input
@@ -202,7 +202,7 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
           </label>
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             Sort
-            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="glass h-11 rounded-xl px-3 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="liquid-glass-pill h-11 px-3.5 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
               {SORTS.map(([v, label]) => (
                 <option key={v} value={v} className="bg-popover">
                   {label}
@@ -277,7 +277,7 @@ function FirstShare({ kind, errors }: { kind?: ResourceKind; errors: string[] })
   const Icon = kind ? KIND_ICONS[kind] : RocketIcon
   const label = kind ? KINDS[kind].label.toLowerCase() : "project"
   return (
-    <Empty className="spotlight glass rounded-2xl px-6 py-16">
+    <Empty className="liquid-glass-flat rounded-2xl px-6 py-16">
       <EmptyHeader className="max-w-md">
         <EmptyMedia variant="icon" className="size-12 rounded-full bg-ion/10 text-ion">
           <Icon className="size-6" />
@@ -320,8 +320,8 @@ function Pill({ on, onClick, children }: { on: boolean; onClick: () => void; chi
       aria-pressed={on}
       onClick={onClick}
       className={cn(
-        "pressable inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-        on ? "border-ion/50 bg-ion/15 text-foreground" : "border-border bg-card/60 text-muted-foreground hover:border-white/15 hover:text-foreground"
+        "liquid-glass-pill inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1 text-[13px] whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        on ? "text-foreground" : "text-muted-foreground hover:text-foreground"
       )}
     >
       {children}

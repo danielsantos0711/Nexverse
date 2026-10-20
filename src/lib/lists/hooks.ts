@@ -4,7 +4,7 @@ import { useMemo } from "react"
 import type { DuelTask } from "@/lib/arena"
 import { setBenchmarkList } from "@/lib/benchmarks"
 import type { EventKind } from "@/lib/community"
-import { useBlock } from "@/lib/content"
+import { useContentValues } from "@/lib/content"
 import {
   defOf,
   resolveRows,
@@ -31,16 +31,19 @@ import {
 } from "./registry"
 
 /*
- * The live versions of the curated lists, for client components. Each hook reads its site_content row through
- * useBlock() (the shared editable-content layer), checks it with the same rules the admin editor uses, and
+ * The live versions of the curated lists, for client components. Each hook reads its site_content row from the
+ * shared editable-content store (lib/content.ts: one read, live updates, seeded by the server), checks it with the same rules the admin editor uses, and
  * returns the same shape as the constant it replaces, so a call site changes from `KINDS` to `useKinds()`.
  * Before anything loads, or when nothing was saved, they return the defaults.
  */
 
-/** One list as checked rows. */
+/**
+ * One list as checked rows. Reads the raw saved value (not useBlock's reshaping to the first default item),
+ * because lists have their own, stricter rules in resolveRows: optional fields, fixed items, whole-list checks.
+ */
 export function useListRows(name: ListName): Row[] {
   const def = defOf(name)
-  const saved = useBlock<unknown>(def.key, def.fallback)
+  const saved = useContentValues()[def.key]
   return useMemo(() => resolveRows(def, saved), [def, saved])
 }
 

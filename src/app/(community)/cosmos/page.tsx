@@ -2,10 +2,13 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { CosmosView } from "@/components/cosmos/cosmos-view"
 import { githubTrendingAi } from "@/lib/live"
+import { seoMetadata } from "@/lib/content-server"
 
-export const metadata: Metadata = {
-  title: "Cosmos",
-  description: "Nexverse as a star map: what members published and shared, the members themselves, every forum category and the AI repositories rising on GitHub.",
+export async function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("/cosmos", {
+    title: "Cosmos",
+    description: "Nexverse as a star map: what members published and shared, the members themselves, every forum category and the AI repositories rising on GitHub.",
+  })
 }
 
 export default function CosmosPage() {

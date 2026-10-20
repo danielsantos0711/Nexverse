@@ -3,10 +3,13 @@ import { Suspense } from "react"
 import { CodeExplore } from "@/components/code/explore"
 import { CodeHero } from "@/components/code/hero"
 import { Skeleton } from "@/components/ui/skeleton"
+import { seoMetadata } from "@/lib/content-server"
 
-export const metadata: Metadata = {
-  title: "Code",
-  description: "Git-style repositories on Nexverse: commits, branches, pull requests, issues and releases, linked to the models, datasets and discussions they belong to.",
+export async function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("/code", {
+    title: "Code",
+    description: "Git-style repositories on Nexverse: commits, branches, pull requests, issues and releases, linked to the models, datasets and discussions they belong to.",
+  })
 }
 
 export default function CodePage() {

@@ -95,7 +95,6 @@ function Editor() {
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("edit") === "1") {
       setEditMode(true)
-      setOpen(true)
     }
   }, [path])
 

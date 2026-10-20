@@ -1,24 +1,27 @@
 import { AiError } from "@/lib/ai/errors"
-import { askJson, type JsonSchema, type LlmOptions } from "@/lib/ai/llm"
-import { htmlToText } from "@/lib/ai/safe-url"
+import { askJson } from "@/lib/ai/llm"
 import { hostname } from "@/lib/live/http"
-import { makeSlug, readNewsroomSettings, toSource, type NewsSource, type RunSummary, type SourceRow } from "@/lib/newsroom"
+import { isDepth, makeSlug, readNewsroomSettings, toSource, type Depth, type NewsroomSettings, type NewsSource, type RunSummary, type SourceRow } from "@/lib/newsroom"
 import { clusterSignals, pickClusters, type Cluster, type Signal } from "./cluster"
 import { collectSource } from "./collect"
-import { getPage } from "./http"
+import { siteOf } from "./gather"
 import { signalHash } from "./parse"
-import { DbError, insert, isMissing, rpc, select, update, type Db } from "./rest"
-import { readStory, storyRequest, type Material, type WrittenStory } from "./writer"
+import { research, type AskFn, type Researched } from "./research"
+import { DbError, insert, isMissing, rpc, select, update, upsert, type Db } from "./rest"
 
 /*
  * Server only. One newsroom run: collect every enabled source, store new signals (deduplicated by address),
- * group the fresh ones, and have the free AI write up to the day's allowance of stories, each checked
- * against its material before it is saved. Stories go to the editors' queue as drafts, or straight out when
- * the editors switched auto-publish on for that category (never for rumours) and the caller may publish.
+ * group the fresh ones, and research and write up to the day's allowance of stories. The first stories of a
+ * run (the editors' "deep stories per run") are researched at the chosen depth: several official pages read,
+ * a brief of verified facts, the story in sections with citations, a second fact-check pass and the best
+ * cover; the rest of the run is written short, to stay inside the free AI quota. Stories go to the editors'
+ * queue as drafts, or straight out when the editors switched auto-publish on for that category (never for
+ * rumours, and by default only when the fact check passed) and the caller may publish.
  * Used by the daily cron (service role) and by "Collect now" (the editor's own session).
  */
 
-export type AskFn = (o: LlmOptions & { schema: JsonSchema }) => Promise<{ json: unknown; model: string }>
+export type { AskFn } from "./research"
+export { pagePublished } from "./page"
 
 export type RunOptions = {
   db: Db
@@ -41,7 +44,6 @@ export class RunError extends Error {
 }
 
 const DAY = 864e5
-const PAGE_CHARS = 6000
 
 async function pool<T, R>(items: T[], size: number, fn: (t: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length)
@@ -57,62 +59,79 @@ async function pool<T, R>(items: T[], size: number, fn: (t: T) => Promise<R>): P
   return out
 }
 
-/** The date a page says it was published (Open Graph, schema.org or a <time> element), if it says. */
-export function pagePublished(html: string): string | null {
-  const raw =
-    html.match(/<meta[^>]+(?:property|name)=["'](?:article:published_time|og:published_time|date|pubdate)["'][^>]*content=["']([^"']+)["']/i)?.[1] ??
-    html.match(/"datePublished"\s*:\s*"([^"]+)"/)?.[1] ??
-    html.match(/<time[^>]+datetime=["']([^"']+)["']/i)?.[1]
-  const t = raw ? Date.parse(raw) : NaN
-  return Number.isFinite(t) ? new Date(t).toISOString() : null
-}
-
-/** The article pages behind the first signals of a cluster, as plain text, best effort. */
-export async function readPages(signals: Signal[], max = 2): Promise<Material[]> {
-  return Promise.all(
-    signals.map(async (signal, i) => {
-      if (i >= max) return { signal }
-      const got = await getPage(signal.url, 8_000)
-      if (!got.ok) return { signal }
-      const page = htmlToText(got.text, PAGE_CHARS)
-      // A page that dates itself fills in a signal that came without a date (news pages without feeds).
-      const dated = signal.publishedAt ? signal : { ...signal, publishedAt: pagePublished(got.text) }
-      return { signal: dated, page: { title: page.title, text: [page.description, page.text].filter(Boolean).join("\n\n").slice(0, PAGE_CHARS) } }
-    })
-  )
-}
-
-/** Asks for one story and checks it. Throws AiError when AI is not available at all. */
-export async function writeStory(material: Material[], ask: AskFn, note = ""): Promise<{ ok: true; story: WrittenStory; model: string } | { ok: false; reason: string }> {
-  const req = storyRequest(material, note)
-  let res: { json: unknown; model: string }
-  try {
-    res = await ask({ ...req, job: "news" })
-  } catch (err) {
-    if (err instanceof AiError && (err.code === "not_configured" || err.status === 503)) throw err
-    return { ok: false, reason: err instanceof Error ? err.message.slice(0, 200) : "the AI request failed" }
+/** Site → publisher for every source the newsroom reads, so links between vendors' official pages count. */
+export async function officialSites(db: Db): Promise<Map<string, string>> {
+  const rows = await select<{ kind: string; url: string | null; publisher: string }>(db, "news_sources", "enabled=is.true&select=kind,url,publisher").catch(() => [])
+  const out = new Map<string, string>()
+  for (const r of rows) {
+    if ((r.kind !== "rss" && r.kind !== "site") || !r.url) continue
+    const site = siteOf(hostname(r.url))
+    if (site && !out.has(site)) out.set(site, r.publisher || site)
   }
-  const verdict = readStory(res.json, material)
-  return verdict.ok ? { ok: true, story: verdict.story, model: res.model } : { ok: false, reason: verdict.reason }
+  return out
 }
 
-export async function saveStory(db: Db, s: WrittenStory, { model, status, hashes }: { model: string; status: "draft" | "published"; hashes: string[] }) {
-  const rows = await insert<{ id: string; slug: string; title: string }>(db, "news_stories", {
-    slug: makeSlug(s.title),
+/** The row for a researched story, with the long-form columns unless the database does not have them yet. */
+function storyRow(s: Researched, model: string, legacy: boolean) {
+  const base = {
     title: s.title,
     dek: s.dek,
     body: s.body,
     category: s.category,
     unconfirmed: s.unconfirmed,
     sources: s.sources,
-    ai_generated: true,
+    cover: s.cover.kind === "generated" ? null : s.cover.url || null,
     model: model.slice(0, 120),
-    status,
-    published_at: status === "published" ? new Date().toISOString() : null,
-    signal_hashes: hashes.slice(0, 20),
-  })
-  return rows[0]
+  }
+  if (legacy) return base
+  return {
+    ...base,
+    cover_kind: s.cover.kind,
+    cover_credit: s.cover.kind === "generated" ? null : s.cover.credit,
+    cover_alt: s.cover.alt.slice(0, 300) || null,
+    cover_candidates: s.candidates.slice(0, 24),
+    key_facts: s.keyFacts,
+    pull_quote: s.pullQuote,
+    depth: s.depth,
+    word_count: s.words,
+  }
 }
+
+const missingColumn = (err: unknown) => err instanceof DbError && (err.code === "42703" || err.code === "PGRST204")
+
+/** Insert a new story, or rewrite one in place (`replace`), then keep its fact-check report. */
+export async function saveStory(
+  db: Db,
+  s: Researched,
+  { model, status, hashes, replace }: { model: string; status: "draft" | "published"; hashes: string[]; replace?: string }
+): Promise<{ id: string; slug: string; title: string }> {
+  const write = async (legacy: boolean) => {
+    const row = storyRow(s, model, legacy)
+    if (replace) return update<{ id: string; slug: string; title: string }>(db, "news_stories", `id=eq.${replace}&select=id,slug,title`, { ...row, status: "draft", reject_note: null })
+    return insert<{ id: string; slug: string; title: string }>(db, "news_stories", {
+      ...row,
+      slug: makeSlug(s.title),
+      ai_generated: true,
+      status,
+      published_at: status === "published" ? new Date().toISOString() : null,
+      signal_hashes: hashes.slice(0, 20),
+    })
+  }
+  let rows: { id: string; slug: string; title: string }[]
+  try {
+    rows = await write(false)
+  } catch (err) {
+    if (!missingColumn(err)) throw err
+    rows = await write(true)
+  }
+  const saved = rows[0]
+  if (!saved) throw new RunError("The story could not be saved.", 500)
+  await upsert(db, "news_checks", { story_id: saved.id, report: s.report, model: model.slice(0, 200), updated_at: new Date().toISOString() }).catch(() => {})
+  return saved
+}
+
+/** Which depth the n-th story of a run is written at. */
+export const depthFor = (settings: NewsroomSettings, index: number): Depth => (index < settings.deepPerRun ? settings.depth : "short")
 
 type CandidateRow = {
   id: number
@@ -135,7 +154,7 @@ export async function runNewsroom(o: RunOptions): Promise<RunSummary> {
   const settingsRows = await select<{ value: unknown }>(db, "site_settings", "key=eq.newsroom&select=value").catch(() => [])
   const settings = readNewsroomSettings(settingsRows[0]?.value)
   if (trigger === "cron" && settings.paused) {
-    return { runId: null, status: "ok", sourcesChecked: 0, signalsNew: 0, drafts: 0, published: 0, rejected: 0, aiReady: true, note: "The newsroom is paused in its settings.", errors: [] }
+    return { runId: null, status: "ok", sourcesChecked: 0, signalsNew: 0, drafts: 0, published: 0, rejected: 0, deep: 0, aiReady: true, note: "The newsroom is paused in its settings.", errors: [] }
   }
 
   // The run row; its insert trigger refuses a second run within five minutes.
@@ -150,7 +169,7 @@ export async function runNewsroom(o: RunOptions): Promise<RunSummary> {
   }
 
   const errors: RunSummary["errors"] = []
-  const summary: RunSummary = { runId, status: "ok", sourcesChecked: 0, signalsNew: 0, drafts: 0, published: 0, rejected: 0, aiReady: true, note: "", errors }
+  const summary: RunSummary = { runId, status: "ok", sourcesChecked: 0, signalsNew: 0, drafts: 0, published: 0, rejected: 0, deep: 0, aiReady: true, note: "", errors }
 
   try {
     // 1. Collect.
@@ -187,7 +206,11 @@ export async function runNewsroom(o: RunOptions): Promise<RunSummary> {
       summary.signalsNew = fresh.length
     }
 
-    // 2. How many stories today still allows.
+    // 2. How many stories today still allows (the daily run writes only on the editors' days).
+    if (trigger === "cron" && !settings.days.includes(new Date().getUTCDay())) {
+      summary.note = "Today is not a writing day in the newsroom's schedule; signals were collected."
+      return summary
+    }
     const today = new Date().toISOString().slice(0, 10)
     const written = await select<{ id: string }>(db, "news_stories", `ai_generated=is.true&created_at=gte.${today}T00:00:00Z&select=id`)
     const room = Math.max(0, Math.min(settings.perRun, settings.dailyCap - written.length))
@@ -216,19 +239,23 @@ export async function runNewsroom(o: RunOptions): Promise<RunSummary> {
       kind: c.source?.kind ?? "rss",
     }))
     const clusters = pickClusters(clusterSignals(signals), room * 2)
+    const sites = await officialSites(db)
+    let index = 0
     for (const c of clusters) {
       if (summary.drafts + summary.published >= room) break
       if (Date.now() > deadline) {
         summary.note = "Stopped early to stay within the time limit; the rest waits for the next run."
         break
       }
-      const outcome = await writeCluster(db, c, ask, settings.autoPublish, o.canPublish).catch((err: unknown) => {
+      const depth = depthFor(settings, index++)
+      const outcome = await writeCluster(db, c, { ask, settings, depth, canPublish: o.canPublish, sites, deadline }).catch((err: unknown) => {
         if (err instanceof AiError) throw err
         return { ok: false as const, reason: err instanceof Error ? err.message : "could not save" }
       })
       if (outcome.ok) {
         if (outcome.status === "published") summary.published++
         else summary.drafts++
+        if (outcome.depth !== "short") summary.deep++
       } else {
         summary.rejected++
         errors.push({ where: c.signals[0].title.slice(0, 80), error: `story not saved: ${outcome.reason}` })
@@ -236,7 +263,9 @@ export async function runNewsroom(o: RunOptions): Promise<RunSummary> {
     }
     if (!summary.note) summary.note = clusters.length ? "" : "No fresh signals to write about."
   } catch (err) {
-    if (err instanceof AiError) {
+    if (err instanceof AiError && err.code === "rate_limited") {
+      summary.note = `${err.message} Signals were collected and wait for the next run.`
+    } else if (err instanceof AiError) {
       summary.aiReady = false
       summary.note = "AI is not switched on for this site yet, so no stories were written. Signals were collected and wait in the queue."
     } else {
@@ -245,7 +274,7 @@ export async function runNewsroom(o: RunOptions): Promise<RunSummary> {
     }
   } finally {
     if (summary.status !== "failed" && errors.length) summary.status = "partial"
-    await update(db, "news_runs", `id=eq.${runId}`, {
+    const finished = {
       status: summary.status,
       sources_checked: summary.sourcesChecked,
       signals_new: summary.signalsNew,
@@ -255,7 +284,8 @@ export async function runNewsroom(o: RunOptions): Promise<RunSummary> {
       errors: errors.slice(0, 30).map((e) => ({ where: e.where.slice(0, 120), error: e.error.slice(0, 300) })),
       note: summary.note.slice(0, 500),
       finished_at: new Date().toISOString(),
-    }).catch(() => {})
+    }
+    await update(db, "news_runs", `id=eq.${runId}`, { ...finished, deep: summary.deep }).catch(() => update(db, "news_runs", `id=eq.${runId}`, finished).catch(() => {}))
   }
   return summary
 }
@@ -263,51 +293,49 @@ export async function runNewsroom(o: RunOptions): Promise<RunSummary> {
 async function writeCluster(
   db: Db,
   c: Cluster,
-  ask: AskFn,
-  autoPublish: Record<string, boolean>,
-  canPublish: boolean
-): Promise<{ ok: true; status: "draft" | "published" } | { ok: false; reason: string }> {
+  o: { ask: AskFn; settings: NewsroomSettings; depth: Depth; canPublish: boolean; sites: Map<string, string>; deadline: number }
+): Promise<{ ok: true; status: "draft" | "published"; depth: Depth } | { ok: false; reason: string }> {
   const ids = c.signals.map((s) => s.id).filter((n): n is number => typeof n === "number")
   const done = (storyId: string | null) => (ids.length ? update(db, "news_signals", `id=in.(${ids.join(",")})`, { used: true, story_id: storyId }).catch(() => {}) : Promise.resolve())
-  const material = await readPages(c.signals.slice(0, 5))
-  const newest = Math.max(...material.map((m) => (m.signal.publishedAt ? Date.parse(m.signal.publishedAt) : Date.now())))
+  // The main page is the cluster's best-known publisher's (a vendor post over a release over an arXiv listing).
+  const ordered = [...c.signals].sort((a, b) => Number(a.internalOnly) - Number(b.internalOnly) || Number(a.kind === "github_releases") - Number(b.kind === "github_releases"))
+  const primary = ordered[0]
+  const newest = Math.max(...c.signals.map((s) => (s.publishedAt ? Date.parse(s.publishedAt) : Date.now())))
   if (Date.now() - newest > 10 * DAY) {
     await done(null)
     return { ok: false, reason: "the newest source is more than ten days old" }
   }
-  const res = await writeStory(material, ask)
+  const res = await research({ db, primary, cluster: ordered.slice(1), settings: o.settings, depth: o.depth, ask: o.ask, officialSites: o.sites, deadline: o.deadline + 50_000 })
   if (!res.ok) {
     // A group the model skipped or got wrong is not retried on every run.
     await done(null)
     return res
   }
-  const status = canPublish && res.story.category !== "rumor" && autoPublish[res.story.category] === true ? "published" : "draft"
-  const saved = await saveStory(db, res.story, { model: res.model, status, hashes: c.signals.map((s) => s.hash) })
-  await done(saved?.id ?? null)
-  return { ok: true, status }
+  const s = res.story
+  const checkedEnough = !o.settings.autoPublishNeedsCheck || s.report.checked
+  const status = o.canPublish && s.category !== "rumor" && o.settings.autoPublish[s.category] === true && checkedEnough ? "published" : "draft"
+  const saved = await saveStory(db, s, { model: res.model, status, hashes: c.signals.map((x) => x.hash) })
+  await done(saved.id)
+  return { ok: true, status, depth: s.depth }
 }
 
-/** A story from one page an editor (or a member's tip) pointed at. Always a draft. */
-export async function draftFromPage(db: Db, url: string, note: string, ask: AskFn = (req) => askJson(req)) {
-  const got = await getPage(url, 10_000)
-  if (!got.ok) throw new RunError(`That page could not be read: ${got.error}.`, 422)
-  const page = htmlToText(got.text, PAGE_CHARS)
-  if (page.text.length < 200 && !page.description) throw new RunError("That page has almost no readable text (it may need JavaScript).", 422)
-  const signal: Signal = {
-    hash: signalHash(got.url),
-    url: got.url,
-    title: page.title || got.url,
-    excerpt: page.description,
-    publisher: hostname(got.url),
-    publishedAt: null,
-    internalOnly: false,
-    categoryHint: null,
-    kind: "site",
-  }
-  const res = await writeStory([{ signal, page: { title: page.title, text: [page.description, page.text].filter(Boolean).join("\n\n").slice(0, PAGE_CHARS) } }], ask, note)
-  if (!res.ok) throw new RunError(`The AI draft did not pass the newsroom's checks: ${res.reason}.`, 422)
-  const saved = await saveStory(db, res.story, { model: res.model, status: "draft", hashes: [signal.hash] })
-  if (!saved) throw new RunError("The draft could not be saved.", 500)
-  return saved
-}
+const pageSignal = (url: string): Signal => ({ hash: signalHash(url), url, title: url, excerpt: "", publisher: "", publishedAt: null, internalOnly: false, categoryHint: null, kind: "site" })
 
+/**
+ * A story from one page an editor (or a member's tip) pointed at, researched at the chosen depth. Always a
+ * draft. With `replace`, an existing draft is researched again from its own sources and rewritten in place.
+ */
+export async function draftFromPage(
+  db: Db,
+  url: string,
+  note: string,
+  { depth, ask = (req) => askJson(req), replace, extraUrls = [] }: { depth?: Depth; ask?: AskFn; replace?: string; extraUrls?: string[] } = {}
+) {
+  const settingsRows = await select<{ value: unknown }>(db, "site_settings", "key=eq.newsroom&select=value").catch(() => [])
+  const settings = readNewsroomSettings(settingsRows[0]?.value)
+  const want: Depth = isDepth(depth) ? depth : settings.depth
+  const res = await research({ db, primary: pageSignal(url), settings, depth: want, ask, note, officialSites: await officialSites(db), extraUrls, deadline: Date.now() + 230_000 })
+  if (!res.ok) throw new RunError(res.skipped ? `The AI passed on this page: ${res.reason.replace(/^skipped: /, "")}.` : `The AI draft did not pass the newsroom's checks: ${res.reason}.`, 422)
+  const saved = await saveStory(db, res.story, { model: res.model, status: "draft", hashes: [signalHash(url)], replace })
+  return { story: saved, depth: res.story.depth, words: res.story.words, checked: res.story.report.checked, note: res.story.report.note }
+}

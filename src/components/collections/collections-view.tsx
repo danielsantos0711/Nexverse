@@ -1,20 +1,21 @@
 "use client"
 
 import Link from "next/link"
-import { motion, useReducedMotion } from "motion/react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { FolderPlusIcon, LayersIcon } from "lucide-react"
 import { CollectionCard } from "@/components/collections/collection-card"
 import { CollectionForm } from "@/components/collections/collection-form"
+import { OrbitCards, type OrbitItem } from "@/components/collections/orbit-cards"
 import { primaryButton, rise, riseDelay } from "@/components/forum/forum-ui"
+import { GlassTabs } from "@/components/glass/glass-tabs"
 import { Gate } from "@/components/moderation/gate"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { createCollection, getCollection, listFollowedCollectionIds, listMyCollections, listPublicCollections, type Collection } from "@/lib/community"
+import { Copy } from "@/components/content/copy"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
-import { cn } from "@/lib/utils"
 
 type View = "discover" | "mine" | "following"
 const VIEWS: { value: View; label: string }[] = [
@@ -22,6 +23,23 @@ const VIEWS: { value: View; label: string }[] = [
   { value: "mine", label: "Yours" },
   { value: "following", label: "Following" },
 ]
+/*
+ * Parts of the site to collect from, for the orbit while there are still few public collections: real pages,
+ * each a world in the galaxy, never invented collections.
+ */
+const WORLDS: OrbitItem[] = [
+  { id: "w-models", title: "Models", href: "/models", meta: "Planet of weights", kind: "model" },
+  { id: "w-datasets", title: "Datasets", href: "/datasets", meta: "Planet of data", kind: "dataset" },
+  { id: "w-tools", title: "Tools", href: "/tools", meta: "Planet of tools", kind: "tool" },
+  { id: "w-repos", title: "Repos", href: "/repos", meta: "Open-source moons", kind: "repo" },
+  { id: "w-forum", title: "Forum threads", href: "/forum", meta: "Signals from members", kind: "thread" },
+  { id: "w-news", title: "News", href: "/news", meta: "Today's transmissions", kind: "news" },
+  { id: "w-bench", title: "Benchmarks", href: "/benchmarks", meta: "Star charts", kind: "model" },
+  { id: "w-trending", title: "Trending", href: "/trending", meta: "Bright right now", kind: "thread" },
+  { id: "w-launch", title: "Launchpad", href: "/launchpad", meta: "New launches", kind: "tool" },
+  { id: "w-const", title: "Constellations", href: "/constellations", meta: "Collections as star maps", kind: "repo" },
+]
+
 const isView = (v: string | null): v is View => v === "discover" || v === "mine" || v === "following"
 
 type Lists = Record<View, Collection[] | null>
@@ -31,7 +49,6 @@ export function CollectionsView() {
   const params = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
-  const reduce = useReducedMotion()
   const { ready, user } = useSession()
   const raw = params.get("view")
   const view: View = isView(raw) ? raw : "discover"
@@ -82,32 +99,13 @@ export function CollectionsView() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div role="tablist" aria-label="Which collections" className="glass flex w-fit max-w-full overflow-x-auto rounded-full p-1">
-          {VIEWS.map((v) => {
-            const on = v.value === view
-            const n = lists[v.value]?.length
-            return (
-              <button
-                key={v.value}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                aria-controls="collections-panel"
-                onClick={() => setView(v.value)}
-                className={cn(
-                  "relative shrink-0 rounded-full px-3.5 py-1.5 text-sm whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                  on ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {on && <motion.span layoutId="collections-view" className="absolute inset-0 rounded-full bg-primary" transition={reduce ? { duration: 0 } : { type: "spring", bounce: 0.18, duration: 0.45 }} />}
-                <span className="relative">
-                  {v.label}
-                  {n !== undefined && <span className={cn("ml-1.5 text-xs tabular", on ? "opacity-80" : "opacity-60")}>{n}</span>}
-                </span>
-              </button>
-            )
-          })}
-        </div>
+        <GlassTabs
+          tabs={VIEWS.map((v) => ({ value: v.value, label: v.label, count: lists[v.value]?.length }))}
+          value={view}
+          onChange={setView}
+          label="Which collections"
+          controls="collections-panel"
+        />
         <button type="button" onClick={startCreate} className={primaryButton}>
           <FolderPlusIcon aria-hidden className="size-4" /> New collection
         </button>
@@ -117,6 +115,22 @@ export function CollectionsView() {
         <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           Some collections could not be loaded: {error}
         </p>
+      )}
+
+      {view === "discover" && lists.discover && (
+        <section aria-labelledby="collections-orbit" className="liquid-glass-flat relative overflow-hidden rounded-3xl px-4 pt-4">
+          <h2 id="collections-orbit" className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
+            {lists.discover.length >= 6 ? <Copy k="collections.orbit.title">In orbit now</Copy> : <Copy k="collections.orbit.worlds">Worlds to collect from</Copy>}
+          </h2>
+          <OrbitCards
+            label={lists.discover.length >= 6 ? "Public collections" : "Parts of Nexverse to collect from"}
+            items={
+              lists.discover.length >= 6
+                ? lists.discover.slice(0, 14).map((c) => ({ id: c.id, title: c.title, href: `/collections/${c.id}` as const, meta: `${c.items.length} ${c.items.length === 1 ? "star" : "stars"}` }))
+                : WORLDS
+            }
+          />
+        </section>
       )}
 
       <div id="collections-panel" role="tabpanel" aria-label={VIEWS.find((v) => v.value === view)?.label} aria-busy={list === null}>
@@ -137,7 +151,7 @@ export function CollectionsView() {
             ))}
           </ul>
         ) : (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 px-6 py-14 text-center">
+          <div className="liquid-glass-flat flex flex-col items-center gap-3 rounded-2xl px-6 py-14 text-center">
             <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
               <LayersIcon aria-hidden className="size-5" />
             </span>
@@ -148,7 +162,7 @@ export function CollectionsView() {
                   : "You have no collections yet. Start one here, or use “Collect” on any model, dataset, repo or thread."
                 : view === "following"
                   ? "You are not following any collections. Follow one to find it here."
-                  : "No public collections yet. Start one: gather the models, datasets, repos and threads you keep sending people, with a note on why each one matters."}
+                  : "This part of the sky is still unexplored. Start the first collection: gather the models, datasets, repos and threads you keep sending people, with a note on why each one matters."}
             </p>
             {(view === "mine" || view === "discover") &&
               (signedOut ? (

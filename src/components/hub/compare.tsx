@@ -119,7 +119,7 @@ export function CompareTray() {
           animate={{ opacity: 1, transform: "translate(-50%, 0%)" }}
           exit={reduce ? { opacity: 0 } : { opacity: 0, transform: "translate(-50%, 120%)" }}
           transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
-          className="fixed bottom-4 left-1/2 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border border-white/10 bg-popover/90 p-1.5 pl-3 shadow-[0_20px_60px_-15px_rgb(0_0_0/0.8)] backdrop-blur-xl"
+          className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] left-1/2 z-40 flex max-w-[calc(100vw-9rem)] items-center gap-2 liquid-glass-strong lg:bottom-4 lg:max-w-[calc(100vw-2rem)] rounded-full p-1.5 pl-3"
         >
           <ul className="flex items-center -space-x-2">
             <AnimatePresence initial={false}>

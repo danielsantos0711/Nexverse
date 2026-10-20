@@ -1,7 +1,10 @@
 import type { Metadata } from "next"
 import { ResourceListPage } from "@/components/hub/resource-pages"
+import { seoMetadata } from "@/lib/content-server"
 
-export const metadata: Metadata = { title: "Explore", description: "Every model, dataset, tool and repo members published or shared on Nexverse, next to what is rising on GitHub." }
+export async function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("/explore", { title: "Explore", description: "Every model, dataset, tool and repo members published or shared on Nexverse, next to what is rising on GitHub." })
+}
 
 export default function Page() {
   return <ResourceListPage />

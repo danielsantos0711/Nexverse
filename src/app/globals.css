@@ -256,6 +256,25 @@ html[data-fx="off"] .marquee {
   }
 }
 
+/* A few stars of the constellations' sky breathe (opacity only, on small SVG dots). */
+.sky-twinkle {
+  animation: sky-twinkle 4.5s ease-in-out var(--d, 0s) infinite;
+}
+@keyframes sky-twinkle {
+  50% {
+    opacity: 0.15;
+  }
+}
+html[data-fx="low"] .sky-twinkle,
+html[data-fx="off"] .sky-twinkle {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sky-twinkle {
+    animation: none;
+  }
+}
+
 /* A live dot that breathes, for anything happening now. */
 .pulse-dot {
   position: relative;
@@ -1123,4 +1142,46 @@ html[data-fx="off"] .marquee {
 .glass-tabs.liquid-glass-pill:active {
   transform: none;
 }
+}
+
+/* Round 9 (glass): section accents. A heading lit from below by a short ion-to-champagne horizon, and a section
+   divider drawn as a horizon with a glow rising over its middle (both static: no animation, no blur). */
+@layer components {
+  .section-glow {
+    position: relative;
+    width: fit-content;
+    padding-bottom: 0.35rem;
+  }
+  .section-glow::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 30%;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--color-ion, #8fb4ff), rgb(216 197 158 / 0.7) 60%, transparent);
+    box-shadow: 0 0 10px 0 rgb(143 180 255 / 0.55);
+  }
+  .horizon-rule {
+    position: relative;
+  }
+  .horizon-rule::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(143 180 255 / 0.45) 30%, rgb(216 197 158 / 0.45) 70%, transparent);
+  }
+  .horizon-rule::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: min(42rem, 80%);
+    height: 5rem;
+    transform: translate(-50%, -100%);
+    background: radial-gradient(50% 100% at 50% 100%, rgb(143 180 255 / 0.12), transparent);
+    pointer-events: none;
+  }
 }
