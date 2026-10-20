@@ -5,8 +5,8 @@
 // three-step downsampled bloom). Changes for Nexverse: fills its parent on a transparent ground, decorative
 // (aria-hidden; no drag-to-orbit or keyboard, since it sits behind content; the pointer still dimples the
 // fabric and a click sends a ripple), site colours, and its cost follows useFx() from @/lib/perf (high: DPR up
-// to 1.5 and the full mesh; medium: DPR 1.25 and fewer samples; low: DPR 1, fewer rings, 30 fps; "off" and
-// another effect's turn: one still frame). Paused offscreen and in hidden tabs.
+// to 1.5 and the full mesh; medium: DPR 1.25 and fewer samples; low: DPR 1, fewer rings, lines only, one still
+// frame; "off" and another effect's turn: one still frame). Paused offscreen and in hidden tabs.
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { frameInterval, pixelRatio, useFx } from '@/lib/perf';
 
@@ -307,7 +307,7 @@ function mount(root, canvas, config) {
 export default function GravityWell({ className = '', settings = {} }) {
   const root = useRef(null);
   const scene = useRef(null);
-  const { quality, run } = useFx(root);
+  const { quality, run } = useFx(root, { minimum: 'medium' });
 
   useLayoutEffect(() => {
     const el = root.current;

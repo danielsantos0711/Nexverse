@@ -66,7 +66,7 @@ async function searchHub(q: string): Promise<Hit[]> {
   const [threads, links, projects, people, pages, stories] = await Promise.all([
     c.from("questions").select("id, title").ilike("title", like).order("created_at", { ascending: false }).limit(6),
     c.from("submissions").select("id, kind, title").ilike("title", like).order("created_at", { ascending: false }).limit(6),
-    c.from("projects").select("id, name, kind").eq("status", "published").ilike("name", like).limit(6),
+    c.from("projects").select("id, name, kind").eq("status", "published").eq("visibility", "public").ilike("name", like).limit(6),
     c.from("profiles").select("handle, name").not("handle", "is", null).or(`name.ilike.${like},handle.ilike.${like}`).limit(6),
     c.from("site_pages").select("slug, title").eq("status", "published").ilike("title", like).limit(6),
     c.from("news_stories").select("slug, title").eq("status", "published").ilike("title", like).order("published_at", { ascending: false }).limit(6),

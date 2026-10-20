@@ -6,7 +6,7 @@ import { Gate } from "@/components/moderation/gate"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { MarkdownComposer } from "@/components/forum/markdown-composer"
 import { sendTip } from "@/lib/newsroom"
 import { live } from "@/lib/supabase"
 
@@ -74,7 +74,7 @@ function Form() {
       </Field>
       <Field>
         <FieldLabel htmlFor="tip-note">What should the editors know?</FieldLabel>
-        <Textarea id="tip-note" value={note} rows={4} maxLength={2000} onChange={(e) => setNote(e.target.value)} placeholder="What happened, and how you know. Rumours are fine: tell us where you heard it." className="bg-background/60" />
+        <MarkdownComposer id="tip-note" value={note} onChange={setNote} maxLength={2000} rows={4} mentions={false} placeholder="What happened, and how you know. Rumours are fine: tell us where you heard it." />
         <FieldDescription>{2000 - note.length} characters left. Editors see your name; readers do not.</FieldDescription>
       </Field>
       {error && <FieldError role="alert">{error}</FieldError>}

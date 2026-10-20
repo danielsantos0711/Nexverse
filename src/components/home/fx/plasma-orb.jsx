@@ -4,8 +4,8 @@
 // pixel around a plasma core, with electric webs on wobbling shells and a mip-chain bloom. Original HorizonX
 // code, HorizonX Tools License. Changes for Nexverse: fills a square parent on a transparent ground,
 // decorative (aria-hidden; a soft CSS orb stands in without WebGL2), ray-march samples, buffer size and pixel
-// ratio follow useFx() from @/lib/perf (high 22 steps / 640 px, medium 16 / 480 px, low 12 / 360 px at
-// 30 fps, "off" or another effect's turn: one still frame), paused offscreen and in hidden tabs. Hovering the
+// ratio follow useFx() from @/lib/perf (high 22 steps / 640 px, medium 16 / 480 px; low (12 / 360 px),
+// "off" or another effect's turn: one still frame), paused offscreen and in hidden tabs. Hovering the
 // parent lifts the plasma; a press sends a pulse.
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { frameInterval, pixelRatio, useFx } from '@/lib/perf';

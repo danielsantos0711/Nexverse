@@ -7,7 +7,7 @@
 // Round 9 (performance): the section's fade is computed in the shader and pixels outside it return at once
 // (no CSS mask over a moving canvas, and most of the box costs nothing); the Oklab colours are converted once
 // in JavaScript, not per streak per pixel; resolution and frame rate follow useFx() from @/lib/perf
-// (high: up to 1.6M px at DPR 1.5, medium: 0.9M px, low: 0.5M px at 30 fps, off: one still frame), and only
+// (high: up to 1.6M px at DPR 1.5, medium: 0.9M px; low and off: one still frame at 0.5M px), and only
 // the biggest heavy effect on screen animates.
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { frameInterval, pixelRatio, useFx } from '@/lib/perf';

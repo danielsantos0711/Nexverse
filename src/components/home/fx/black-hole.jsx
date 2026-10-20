@@ -7,8 +7,8 @@
 // tone mapping and coverage-as-alpha, all with the original shaders' maths.
 // Changes for Nexverse: fills its parent (16:9, contained, transparent ground), decorative (aria-hidden; a
 // soft CSS ring stands in without WebGL2), devicePixelRatio and work follow useFx() from @/lib/perf
-// (high: up to DPR 1.5, full grid and blur; medium: DPR 1, lighter grid, half the blur taps; low: DPR 0.75 and
-// 30 fps; "off" and another effect's turn: one still frame), paused offscreen and in hidden tabs.
+// (high: up to DPR 1.5, full grid and blur; medium: DPR 1, lighter grid, half the blur taps; low: DPR 0.75, one
+// still frame; "off" and another effect's turn: one still frame), paused offscreen and in hidden tabs.
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { frameInterval, useFx } from '@/lib/perf';
 
