@@ -3,7 +3,9 @@
 import Link from "next/link"
 import { motion, useReducedMotion } from "motion/react"
 import { useEffect, useMemo, useState } from "react"
-import { PlusIcon, SearchIcon, UsersIcon, XIcon } from "lucide-react"
+import type { Route } from "next"
+import { ArrowDownWideNarrowIcon, PlusIcon, SearchIcon, UsersIcon, XIcon } from "lucide-react"
+import { OrbitCards } from "@/components/collections/orbit-cards"
 import { CrewCard } from "@/components/crews/crew-card"
 import { primaryButton, rise, riseDelay } from "@/components/forum/forum-ui"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -19,6 +21,20 @@ const VIEWS: { value: View; label: string }[] = [
   { value: "yours", label: "Your crews" },
 ]
 
+type Sort = "active" | "biggest" | "newest" | "name"
+const SORTS: { value: Sort; label: string }[] = [
+  { value: "active", label: "Most active" },
+  { value: "biggest", label: "Biggest" },
+  { value: "newest", label: "Newest" },
+  { value: "name", label: "A to Z" },
+]
+type Access = "all" | "public" | "invite"
+const ACCESS: { value: Access; label: string }[] = [
+  { value: "all", label: "Any crew" },
+  { value: "public", label: "Open to join" },
+  { value: "invite", label: "Invite only" },
+]
+
 const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase()
 
 /** Every crew: discover them (busiest topics first), the ones you are in, and a search over names and topics. */
@@ -31,6 +47,8 @@ export function CrewsIndex() {
   const [view, setView] = useState<View>("discover")
   const [query, setQuery] = useState("")
   const [tag, setTag] = useState<string | null>(null)
+  const [sort, setSort] = useState<Sort>("active")
+  const [access, setAccess] = useState<Access>("all")
 
   useEffect(() => {
     if (live && !ready) return
@@ -66,8 +84,29 @@ export function CrewsIndex() {
     return (crews ?? [])
       .filter((c) => (view === "yours" ? standing[c.id]?.role || standing[c.id]?.requested : true))
       .filter((c) => !tag || c.tags.includes(tag))
-      .filter((c) => !q || fold(`${c.name} ${c.blurb} ${c.tags.join(" ")}`).includes(q))
-  }, [crews, standing, view, tag, query])
+      .filter((c) => access === "all" || c.visibility === access)
+      .filter((c) => !q || fold(`${c.name} ${c.blurb} ${c.motto} ${c.tags.join(" ")}`).includes(q))
+      .sort((a, b) =>
+        sort === "biggest"
+          ? b.memberCount - a.memberCount
+          : sort === "newest"
+            ? b.createdAt.localeCompare(a.createdAt)
+            : sort === "name"
+              ? a.name.localeCompare(b.name)
+              : b.updatedAt.localeCompare(a.updatedAt)
+      )
+  }, [crews, standing, view, tag, query, sort, access])
+
+  // The busiest crews ride the orbit at the top of Discover, once there are enough to make a ring.
+  const orbit = useMemo(
+    () =>
+      [...(crews ?? [])]
+        .filter((c) => c.visibility === "public")
+        .sort((a, b) => b.memberCount - a.memberCount)
+        .slice(0, 12)
+        .map((c) => ({ id: c.id, title: c.name, href: `/crews/${c.slug}` as Route, meta: `${c.memberCount} aboard${c.tags[0] ? ` · #${c.tags[0]}` : ""}` })),
+    [crews]
+  )
 
   const yoursCount = (crews ?? []).filter((c) => standing[c.id]?.role || standing[c.id]?.requested).length
 
@@ -118,6 +157,44 @@ export function CrewsIndex() {
         </div>
       </div>
 
+      {view === "discover" && !query && !tag && orbit.length >= 5 && <OrbitCards items={orbit} label="The busiest crews" className="-mx-2" />}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <ArrowDownWideNarrowIcon aria-hidden className="size-3.5" />
+          <span className="sr-only">Sort crews</span>
+          <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-8 rounded-full border border-input bg-background/60 px-2.5 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {SORTS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div role="radiogroup" aria-label="Who can join" className="flex gap-1">
+          {ACCESS.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={access === o.value}
+              onClick={() => setAccess(o.value)}
+              className={cn(
+                "pressable h-8 rounded-full border px-3 text-xs transition-colors",
+                access === o.value ? "border-ion/50 bg-ion/10 text-ion" : "border-border text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        {crews && (
+          <span className="ml-auto text-xs text-muted-foreground tabular" aria-live="polite">
+            {shown.length} {shown.length === 1 ? "crew" : "crews"}
+          </span>
+        )}
+      </div>
+
       {topTags.length > 0 && (
         <ul className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" aria-label="Filter by topic">
           {topTags.map((t) => {
@@ -153,7 +230,7 @@ export function CrewsIndex() {
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-hidden>
             {[0, 1, 2, 3, 4, 5].map((i) => (
               <li key={i}>
-                <Skeleton className="h-44 w-full rounded-xl" />
+                <Skeleton className="h-64 w-full rounded-xl" />
               </li>
             ))}
           </ul>
@@ -171,7 +248,7 @@ export function CrewsIndex() {
               <UsersIcon aria-hidden className="size-5" />
             </span>
             <p className="max-w-sm text-sm text-muted-foreground">
-              {query || tag
+              {query || tag || access !== "all"
                 ? <Copy k="crews.crews-index.no-crew-matches-that-try">No crew matches that. Try another word or topic.</Copy>
                 : view === "yours"
                   ? live && !user
@@ -187,7 +264,8 @@ export function CrewsIndex() {
               </Link>
             ) : (
               !query &&
-              !tag && (
+              !tag &&
+              access === "all" && (
                 <Link href="/crews/new" className={primaryButton}>
                   <PlusIcon aria-hidden className="size-4" /> {view === "discover" && crews.length === 0 ? "Start the first crew" : "Start a crew"}
                 </Link>
