@@ -121,6 +121,11 @@ function MenusAdminInner() {
                 <p className="text-sm text-muted-foreground">Up to four links that sit next to the menus, such as Explore.</p>
                 <LinksEditor links={value.headerLinks} onChange={(headerLinks) => set({ headerLinks })} pages={pages} max={4} />
               </section>
+              <section className="flex flex-col gap-2 rounded-2xl border border-border bg-card/40 p-4">
+                <h3 className="text-sm font-semibold">The Create sheet</h3>
+                <p className="text-sm text-muted-foreground">What members can start from the Create button, in this order.</p>
+                <LinksEditor links={value.create ?? DEFAULT_MENUS.create ?? []} onChange={(create) => set({ create })} pages={pages} max={16} withDescriptions />
+              </section>
             </>
           )}
           {tab === "footer" && <GroupsEditor groups={value.footer} onChange={(footer) => set({ footer })} pages={pages} what="column" />}
