@@ -11,7 +11,7 @@ import { AmberSphere } from "@/components/reputation/fx/amber-sphere"
 import { LEVEL_COLORS, LevelChip, LevelRing } from "@/components/reputation/level-ring"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CAP_INFO, isCap, useCaps } from "@/lib/caps"
-import { getLeaderboard, levelFor, PERIODS, type LeaderRow, type Period } from "@/lib/community"
+import { getLeaderboard, levelFor, PERIODS, POINT_RULES, type LeaderRow, type Period } from "@/lib/community"
 import { useLevels, usePoints } from "@/lib/lists/hooks"
 import { compact } from "@/lib/data"
 import { useSession } from "@/lib/store"
@@ -74,7 +74,7 @@ export function LeaderboardView() {
               ))}
             </ul>
           ) : rows.length === 0 ? (
-            <div className="liquid-glass-flat flex flex-col items-center gap-3 rounded-2xl px-6 py-14 text-center">
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card px-6 py-14 text-center">
               <span className="grid size-10 place-items-center rounded-full bg-gold/10 text-gold">
                 <TrophyIcon aria-hidden className="size-5" />
               </span>
@@ -112,7 +112,7 @@ export function LeaderboardView() {
 
       <aside aria-label="How points work" className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
         {you && (
-          <section aria-labelledby="you-h" className="liquid-glass relative flex flex-col gap-3 overflow-hidden rounded-2xl p-4">
+          <section aria-labelledby="you-h" className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4">
             <YourStar points={you.points} />
             <h2 id="you-h" className="font-sans text-sm font-semibold tracking-normal">
               You, {PERIODS.find((p) => p.value === period)?.label.toLowerCase()}
@@ -127,25 +127,24 @@ export function LeaderboardView() {
             )}
           </section>
         )}
-        <section id="how-points" aria-labelledby="points-h" className="liquid-glass scroll-mt-24 rounded-2xl p-4">
+        <section aria-labelledby="points-h" className="rounded-2xl border border-border bg-card p-4">
           <h2 id="points-h" className="mb-3 font-sans text-sm font-semibold tracking-normal">
-            <Copy k="leaderboard.points.title">How points work</Copy>
+            <Copy k="leaderboard.points.title">Biggest ways to rise</Copy>
           </h2>
           <dl className="flex flex-col gap-1.5 text-sm">
-            {[
-              ["Start a thread", POINTS.thread],
-              ["Reply", POINTS.answer],
-              ["Your reply marked as the solution", POINTS.accepted],
-              ["A like on your thread", POINTS.like],
-              ["A reaction to your post", POINTS.reaction],
-            ].map(([label, n]) => (
-              <div key={label} className="flex items-baseline justify-between gap-3">
-                <dt className="text-muted-foreground">{label}</dt>
-                <dd className="shrink-0 font-medium tabular">+{n}</dd>
-              </div>
-            ))}
+            {[...POINT_RULES]
+              .sort((a, b) => (POINTS[b.id] ?? 0) - (POINTS[a.id] ?? 0))
+              .slice(0, 6)
+              .map((r) => (
+                <div key={r.id} className="flex items-baseline justify-between gap-3">
+                  <dt className="text-muted-foreground">{r.label}</dt>
+                  <dd className="shrink-0 font-medium tabular">+{POINTS[r.id]}</dd>
+                </div>
+              ))}
           </dl>
-          <p className="mt-3 text-xs text-muted-foreground">Liking or reacting to your own posts earns nothing.</p>
+          <a href="#how-points" className="mt-3 inline-block text-sm text-ion hover:underline">
+            All {POINT_RULES.length} ways to earn
+          </a>
         </section>
         <Unlocks />
       </aside>
@@ -180,7 +179,7 @@ function Unlocks() {
     .filter((t) => t.text.length || t.min === 0)
   if (!rows.length) return null
   return (
-    <section aria-labelledby="unlocks-h" className="liquid-glass rounded-2xl p-4">
+    <section aria-labelledby="unlocks-h" className="rounded-2xl border border-border bg-card p-4">
       <h2 id="unlocks-h" className="mb-1 font-sans text-sm font-semibold tracking-normal">
         What points unlock
       </h2>
@@ -244,7 +243,7 @@ function Podium({ rows }: { rows: LeaderRow[] }) {
   if (rows.length < 3) return null
   const order = [rows[1], rows[0], rows[2]]
   return (
-    <ol aria-label="Top three" className="liquid-glass-flat mb-4 grid grid-cols-3 items-end gap-2 rounded-3xl px-2 pt-2 pb-4 sm:gap-6 sm:px-6">
+    <ol aria-label="Top three" className="mb-4 grid border border-border bg-card grid-cols-3 items-end gap-2 rounded-3xl px-2 pt-2 pb-4 sm:gap-6 sm:px-6">
       {order.map((r) => {
         const rank = rows.indexOf(r) + 1
         const seed = r.who.handle ?? r.who.memberId ?? r.who.name

@@ -1,6 +1,7 @@
 // Types only from the store (it pulls in React hooks); community.ts is plain functions and safe to import.
 import type { Member } from "@/lib/store"
 import { isUuid, normalizeTag, TAG, type Who } from "@/lib/community"
+import { isAccent, isMissionKind, MILESTONE_LENGTH, MILESTONE_MAX, PRIZE_LENGTH, validCover, type Accent, type MissionKind } from "@/lib/missions-look"
 import { db } from "@/lib/supabase"
 
 /**
@@ -149,7 +150,30 @@ export const REWARD_PRESETS = [0, 10, 25, 50, 100, 250]
 
 type StoredStatus = Exclude<MissionStatus, "expired">
 
-export type Mission = {
+/**
+ * A mission's type, cover, colour and shape (supabase/migrations/…_engage.sql). Before that migration is applied
+ * every mission reads as a plain bounty with a drawn cover.
+ */
+export type MissionLook = {
+  kind: MissionKind
+  /** "pattern:<id>", an https image, or null (a cover drawn from the mission's id). */
+  cover: string | null
+  accent: Accent
+  /** Steps pilots tick off as they go. */
+  milestones: string[]
+  /** Anything beyond the points, in words ("A month of GPU time"). */
+  prize: string
+  /** Entries may name teammates from the crew. */
+  team: boolean
+  /** The crew hosting the mission. */
+  crewId: string | null
+  /** The previous mission of a quest chain. */
+  chainPrev: string | null
+}
+
+export const DEFAULT_LOOK: MissionLook = { kind: "bounty", cover: null, accent: "ion", milestones: [], prize: "", team: false, crewId: null, chainPrev: null }
+
+export type Mission = MissionLook & {
   id: string
   title: string
   brief: string
@@ -180,6 +204,8 @@ export type MissionEntry = {
   kind: EntryKind
   url: string
   notes: string
+  /** Member ids of teammates on a team entry. */
+  teammates: string[]
   createdAt: string
   updatedAt: string
   author: Who
@@ -241,6 +267,7 @@ type LocalEntry = {
   kind: EntryKind
   url: string
   notes: string
+  teammates?: string[]
   createdAt: string
   updatedAt: string
 }
@@ -261,6 +288,7 @@ function withLocal(m: Mission): Mission {
 }
 
 const fromLocalMission = (m: LocalMission): Mission => ({
+  ...DEFAULT_LOOK,
   ...m,
   poster: YOU,
   winner: null,
@@ -272,8 +300,28 @@ const fromLocalMission = (m: LocalMission): Mission => ({
 
 // ─── Database rows ──────────────────────────────────────────────────────────────────────────────────────────
 
-const COLUMNS =
+const BASE_COLUMNS =
   "id, title, brief, criteria, difficulty, reward, tags, deadline, status, created_at, completed_at, winner_entry, poster:profiles!missions_poster_id_fkey(id, name), winner:profiles!missions_winner_id_fkey(id, name), crew:mission_crew(count), entries:mission_entries!mission_entries_mission_id_fkey(count)"
+const LOOK_COLUMNS = "kind, cover, accent, milestones, prize, team, crew_id, chain_prev"
+
+/** Whether the database has the look columns yet; null until the first read says. */
+let hasLook: boolean | null = null
+const columns = () => (hasLook === false ? BASE_COLUMNS : `${BASE_COLUMNS}, ${LOOK_COLUMNS}`)
+const lookMissing = (e: { message: string } | null) => Boolean(e && /column .* does not exist|Could not find .* column|schema cache/i.test(e.message))
+
+/** Runs a missions read with the look columns, and again without them while the engage migration is missing. */
+async function withLook<T extends { error: { message: string } | null }>(run: (cols: string) => PromiseLike<T>): Promise<T> {
+  const res = await run(columns())
+  if (hasLook !== false && lookMissing(res.error)) {
+    hasLook = false
+    return run(BASE_COLUMNS)
+  }
+  if (!res.error) hasLook ??= true
+  return res
+}
+
+/** Whether missions can carry a type, cover, milestones and the rest here (false until the migration is in). */
+export const lookSupported = () => hasLook !== false
 
 type Row = {
   id: string
@@ -292,9 +340,25 @@ type Row = {
   winner: Member | null
   crew: { count: number }[] | null
   entries: { count: number }[] | null
+  kind?: string
+  cover?: string | null
+  accent?: string
+  milestones?: string[] | null
+  prize?: string | null
+  team?: boolean | null
+  crew_id?: string | null
+  chain_prev?: string | null
 }
 
 const fromRow = (r: Row): Mission => ({
+  kind: r.kind && isMissionKind(r.kind) ? r.kind : "bounty",
+  cover: r.cover ?? null,
+  accent: isAccent(r.accent) ? r.accent : "ion",
+  milestones: r.milestones ?? [],
+  prize: r.prize ?? "",
+  team: Boolean(r.team),
+  crewId: r.crew_id ?? null,
+  chainPrev: r.chain_prev ?? null,
   id: r.id,
   title: r.title,
   brief: r.brief,
@@ -321,7 +385,7 @@ const fromRow = (r: Row): Mission => ({
 export async function listMissions(): Promise<Mission[]> {
   const client = db()
   if (!client) return readMissions().map(fromLocalMission).map(withLocal)
-  const { data, error } = await client.from("missions").select(COLUMNS).order("created_at", { ascending: false }).limit(300)
+  const { data, error } = await withLook((cols) => client.from("missions").select(cols).order("created_at", { ascending: false }).limit(300))
   fail(error)
   return (data as unknown as Row[]).map(fromRow)
 }
@@ -333,7 +397,7 @@ export async function getMission(id: string): Promise<Mission | null> {
     return m ? withLocal(fromLocalMission(m)) : null
   }
   if (!isUuid(id)) return null
-  const { data, error } = await client.from("missions").select(COLUMNS).eq("id", id).maybeSingle()
+  const { data, error } = await withLook((cols) => client.from("missions").select(cols).eq("id", id).maybeSingle())
   fail(error)
   return data ? fromRow(data as unknown as Row) : null
 }
@@ -347,6 +411,7 @@ type EntryRow = {
   updated_at: string
   author_id: string
   author: Member | null
+  teammates?: string[] | null
 }
 
 /** A mission's crew (earliest first) and its entries, with yours marked. */
@@ -361,7 +426,7 @@ export async function getMissionCrew(m: Mission): Promise<MissionCrew> {
     if (joinedAt) crew.push({ who: YOU, joinedAt, mine: true })
     const local = readEntries()[m.id]
     if (local) {
-      myEntry = { ...local, author: YOU, mine: true }
+      myEntry = { ...local, teammates: local.teammates ?? [], author: YOU, mine: true }
       entries.push(myEntry)
     }
     return { crew, entries, joined: Boolean(joinedAt), myEntry }
@@ -369,7 +434,11 @@ export async function getMissionCrew(m: Mission): Promise<MissionCrew> {
   const [userId, crewRes, entryRes] = await Promise.all([
     me(),
     client.from("mission_crew").select("user_id, created_at, member:profiles(id, name)").eq("mission_id", m.id).order("created_at").limit(100),
-    client.from("mission_entries").select("id, kind, url, notes, created_at, updated_at, author_id, author:profiles(id, name)").eq("mission_id", m.id).order("created_at").limit(100),
+    (async () => {
+      const cols = "id, kind, url, notes, created_at, updated_at, author_id, author:profiles(id, name)"
+      const res = await client.from("mission_entries").select(`${cols}, teammates`).eq("mission_id", m.id).order("created_at").limit(100)
+      return lookMissing(res.error) ? client.from("mission_entries").select(cols).eq("mission_id", m.id).order("created_at").limit(100) : res
+    })(),
   ])
   fail(crewRes.error)
   fail(entryRes.error)
@@ -389,6 +458,7 @@ export async function getMissionCrew(m: Mission): Promise<MissionCrew> {
     kind: r.kind,
     url: r.url,
     notes: r.notes,
+    teammates: r.teammates ?? [],
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     author: memberWho(r.author),
@@ -412,9 +482,37 @@ export type NewMission = {
   reward: number
   tags: string[]
   deadline: string
+  /** Type, cover and shape; left out, the mission is a plain bounty. */
+  look?: Partial<MissionLook>
 }
 
-export type MissionErrors = Partial<Record<keyof NewMission | "form", string>>
+export type MissionErrors = Partial<Record<keyof NewMission | "milestones" | "cover" | "prize" | "form", string>>
+
+/** The rules for the look fields, as the database checks them. */
+export function validateLook(look: Partial<MissionLook>): MissionErrors {
+  const e: MissionErrors = {}
+  const steps = (look.milestones ?? []).map((x) => x.trim()).filter(Boolean)
+  if (steps.length > MILESTONE_MAX) e.milestones = `Use at most ${MILESTONE_MAX} milestones.`
+  else if (steps.some((x) => x.length > MILESTONE_LENGTH)) e.milestones = `Keep each milestone under ${MILESTONE_LENGTH} characters.`
+  const cover = validCover(look.cover ?? null)
+  if (cover) e.cover = cover
+  if ((look.prize ?? "").length > PRIZE_LENGTH) e.prize = `Keep the prize under ${PRIZE_LENGTH} characters.`
+  return e
+}
+
+/** Look fields as database columns (only those given). */
+function lookRow(look: Partial<MissionLook>) {
+  const row: Record<string, unknown> = {}
+  if (look.kind !== undefined) row.kind = look.kind
+  if (look.cover !== undefined) row.cover = look.cover || null
+  if (look.accent !== undefined) row.accent = look.accent
+  if (look.milestones !== undefined) row.milestones = look.milestones.map((x) => x.trim()).filter(Boolean)
+  if (look.prize !== undefined) row.prize = look.prize.trim()
+  if (look.team !== undefined) row.team = look.team
+  if (look.crewId !== undefined) row.crew_id = look.crewId
+  if (look.chainPrev !== undefined) row.chain_prev = look.chainPrev
+  return row
+}
 
 /** The same rules the database enforces, checked first so the form can say exactly what to fix. */
 export function validateMission(m: NewMission, available: number | null, now = Date.now()): MissionErrors {
@@ -429,6 +527,7 @@ export function validateMission(m: NewMission, available: number | null, now = D
   else if (criteria.some((c) => c.length > LIMITS.criterion)) e.criteria = "Keep each criterion under 200 characters."
   if (!Number.isInteger(m.reward) || m.reward < 0 || m.reward > LIMITS.reward) e.reward = "The reward is a whole number of points from 0 to 1,000."
   else if (available !== null && m.reward > Math.max(0, available)) e.reward = `You have ${Math.max(0, available)} points free to pledge.`
+  Object.assign(e, validateLook(m.look ?? {}))
   if (m.tags.length > 5) e.tags = "Use at most 5 tags."
   else if (m.tags.some((t) => !TAG.test(t))) e.tags = "Tags are lowercase letters, numbers and hyphens."
   const deadline = Date.parse(m.deadline)
@@ -463,9 +562,12 @@ export async function createMission(input: NewMission): Promise<Mission> {
   const errors = validateMission(clean, client ? await pointsAvailable() : null)
   const first = Object.values(errors)[0]
   if (first) throw new Error(first)
+  const { look, ...fields } = clean
   if (!client) {
     const m: LocalMission = {
-      ...clean,
+      ...DEFAULT_LOOK,
+      ...look,
+      ...fields,
       id: crypto.randomUUID(),
       status: "open",
       createdAt: new Date().toISOString(),
@@ -476,9 +578,52 @@ export async function createMission(input: NewMission): Promise<Mission> {
     return fromLocalMission(m)
   }
   await requireMe()
-  const { data, error } = await client.from("missions").insert(clean).select(COLUMNS).single()
+  const extra = look && lookSupported() ? lookRow(look) : {}
+  const { data, error } = await withLook((cols) => client.from("missions").insert({ ...fields, ...(hasLook === false ? {} : extra) }).select(cols).single())
   fail(error)
   return fromRow(data as unknown as Row)
+}
+
+/** The poster changes the mission's type, cover, colour, milestones, prize or team setting. */
+export async function updateMissionLook(id: string, look: Partial<MissionLook>): Promise<void> {
+  const problem = Object.values(validateLook(look))[0]
+  if (problem) throw new Error(problem)
+  const client = db()
+  if (!client) {
+    const all = readMissions()
+    if (!all.some((m) => m.id === id)) throw new Error("Only the member who posted this mission can change it.")
+    writeLocal(
+      MISSIONS_KEY,
+      all.map((m) => (m.id === id ? { ...m, ...look } : m)),
+    )
+    return
+  }
+  await requireMe()
+  const { data, error } = await client.from("missions").update(lookRow(look)).eq("id", id).select("id")
+  if (lookMissing(error)) throw new Error("Mission covers and milestones are still being switched on for this site. Try again soon.")
+  fail(error)
+  if (!(data ?? []).length) throw new Error("Only the member who posted this mission can change it.")
+}
+
+/** Changes the brief, criteria, tags or a later deadline (the database refuses earlier deadlines). */
+export async function editMission(id: string, patch: Partial<Pick<NewMission, "title" | "brief" | "criteria" | "tags" | "deadline">>): Promise<void> {
+  const client = db()
+  const row = {
+    ...patch,
+    ...(patch.title !== undefined ? { title: patch.title.trim() } : {}),
+    ...(patch.criteria ? { criteria: patch.criteria.map((c) => c.trim()).filter(Boolean) } : {}),
+  }
+  if (!client) {
+    writeLocal(
+      MISSIONS_KEY,
+      readMissions().map((m) => (m.id === id ? { ...m, ...row } : m)),
+    )
+    return
+  }
+  await requireMe()
+  const { data, error } = await client.from("missions").update(row).eq("id", id).select("id")
+  fail(error)
+  if (!(data ?? []).length) throw new Error("Only the member who posted this mission can change it.")
 }
 
 /** Calls off your mission (only before anyone has submitted an entry). The pledge is returned. */
@@ -526,7 +671,7 @@ export async function leaveCrew(missionId: string) {
   fail(error)
 }
 
-export type NewEntry = { kind: EntryKind; url: string; notes: string }
+export type NewEntry = { kind: EntryKind; url: string; notes: string; teammates?: string[] }
 
 const GITHUB_REPO = /^https:\/\/github\.com\/[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}\/?$/
 const PROJECT_PATH = /^\/p\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -551,11 +696,12 @@ export function validateEntry(e: NewEntry): Partial<Record<"url" | "notes", stri
 export async function submitEntry(missionId: string, input: NewEntry): Promise<void> {
   const problem = Object.values(validateEntry(input))[0]
   if (problem) throw new Error(problem)
-  const row = {
+  const row: { kind: EntryKind; url: string; notes: string; teammates?: string[] } = {
     kind: input.kind,
     url: input.url.trim(),
     notes: input.notes.trim(),
   }
+  if (input.teammates?.length) row.teammates = [...new Set(input.teammates)].slice(0, 5)
   const client = db()
   if (!client) {
     const now = new Date().toISOString()

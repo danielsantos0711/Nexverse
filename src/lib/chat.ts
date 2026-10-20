@@ -10,8 +10,13 @@ import { db, live } from "@/lib/supabase"
 
 export const MAX_MESSAGE = 2000
 export const PAGE_SIZE = 50
+/** The quick reactions under every message. Any other emoji works too (room_reactions, …_social.sql). */
 export const EMOJIS = ["👍", "❤️", "🎉", "🚀", "👀", "🤔", "😂", "🔥"] as const
-export type Emoji = (typeof EMOJIS)[number]
+export type Emoji = string
+/** The first eight live in message_reactions, whose check lists them; every other emoji in room_reactions. */
+export const isClassicEmoji = (e: string) => (EMOJIS as readonly string[]).includes(e)
+/** A reaction is an emoji, never a word: what the database accepts too. */
+export const isEmoji = (e: string) => e.length > 0 && e.length <= 16 && !/[A-Za-z0-9\s<>]/.test(e)
 export const ROOM_SLUG = /^[a-z0-9-]{2,40}$/
 
 export type Room = {
@@ -32,14 +37,40 @@ export type Room = {
   staffOnly?: boolean
   /** Reputation a member needs to write. */
   minReputation?: number
+  /** "crew" rooms belong to a crew and only its members open them. */
+  kind?: "public" | "crew"
+  /** The room's look (…_social.sql): one of the crew colours, an emoji for its planet, and a rules banner. */
+  accent?: RoomAccent | null
+  emoji?: string | null
+  rules?: string
 }
+
+export const ROOM_ACCENTS = ["ion", "gold", "ok", "violet", "rose", "teal", "amber", "sky"] as const
+export type RoomAccent = (typeof ROOM_ACCENTS)[number]
+export const ACCENT_VALUE: Record<RoomAccent, string> = {
+  ion: "var(--ion)",
+  gold: "var(--gold)",
+  ok: "var(--ok)",
+  violet: "#b49cff",
+  rose: "#ff8fb1",
+  teal: "#5fd3c6",
+  amber: "#ffb86b",
+  sky: "#7cc7ff",
+}
+const isAccent = (s: unknown): s is RoomAccent => typeof s === "string" && (ROOM_ACCENTS as readonly string[]).includes(s)
 
 /** The rules columns, read when the database has them. */
 const RULE_COLUMNS = "position, slow_mode_seconds, locked, archived, staff_only, min_reputation"
+const STYLE_COLUMNS = "kind, accent, emoji, rules"
 
 export type Reaction = { emoji: Emoji; userId: string }
 
 export type QuotedMessage = { id: string; body: string; author: Member | null }
+
+/** A picture added to a message: stored in the post-media bucket, as the database requires. */
+export type Attachment = { url: string; alt: string; w?: number; h?: number }
+/** "me" is an action line (/me waves), "poll" carries a poll, "sticker" one of our stickers. */
+export type MessageKind = "text" | "me" | "poll" | "sticker"
 
 export type ChatMessage = {
   id: string
@@ -51,6 +82,15 @@ export type ChatMessage = {
   replyTo: string | null
   parent: QuotedMessage | null
   reactions: Reaction[]
+  kind: MessageKind
+  attachments: Attachment[]
+  /** Members this message mentions (they were notified). */
+  mentions: string[]
+  /** Set on a reply inside a thread: the message the thread hangs from. */
+  threadRoot: string | null
+  replyCount: number
+  lastReplyAt: string | null
+  pinnedAt: string | null
   /** Hidden by moderators: only its author and staff receive it, and they see it marked. */
   hidden?: boolean
   /** Only on messages this browser is still sending, or failed to send. */
@@ -61,13 +101,19 @@ export type ChatMessage = {
 /** Someone with the room open. Signed-out readers count, but have no member. */
 export type Presence = { key: string; member: Member | null; room: string; at: number }
 
+export type MessagePatch = Pick<ChatMessage, "id" | "body" | "editedAt"> & Partial<Pick<ChatMessage, "pinnedAt" | "replyCount" | "lastReplyAt" | "attachments">>
+
 export type RoomHandlers = {
   onInsert?: (m: ChatMessage) => void
-  onUpdate?: (m: { id: string; body: string; editedAt: string | null }) => void
+  onUpdate?: (m: MessagePatch) => void
   onDelete?: (id: string) => void
   onReaction?: (r: { messageId: string; userId: string; emoji: Emoji; on: boolean }) => void
   onPresence?: (people: Presence[]) => void
   onTyping?: (member: Member) => void
+  /** A poll vote cast or taken back, in a room this member can open. */
+  onVote?: (v: { messageId: string; userId: string; choice: number; on: boolean }) => void
+  /** A poll closed or reopened by its author. */
+  onPoll?: (p: { messageId: string; closesAt: string | null }) => void
 }
 
 export type LobbyHandlers = {
@@ -92,7 +138,7 @@ export const DEFAULT_ROOMS: Room[] = [
   ["research-papers", "Research papers", "Discuss new papers, reading groups and ideas worth trying."],
   ["portugues", "Português", "Conversa em português sobre IA, modelos e projetos."],
   ["jobs", "Jobs", "Hiring or looking for work in AI. One post per role, please."],
-].map(([slug, name, topic]) => ({ slug, name, topic, createdBy: null, createdAt: "2026-10-18T19:00:00Z" }))
+].map(([slug, name, topic]) => ({ slug, name, topic, createdBy: null, createdAt: "2026-10-18T19:00:00Z", kind: "public" as const }))
 
 export function slugify(name: string) {
   return name
@@ -147,6 +193,8 @@ const tabKey = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.
 
 const AUTHOR = "author:profiles!room_messages_author_id_fkey(id, name)"
 const MESSAGE_COLUMNS = `id, room, body, created_at, edited_at, reply_to, ${AUTHOR}, parent:reply_to(id, body, ${AUTHOR}), reactions:message_reactions(emoji, user_id)`
+/** Threads, pins, polls, pictures and any-emoji reactions (…_social.sql). */
+const EXTRA_COLUMNS = "kind, attachments, mentions, thread_root, reply_count, last_reply_at, pinned_at, more:room_reactions(emoji, user_id)"
 const ROOM_COLUMNS = "slug, name, topic, created_by, created_at"
 
 type RoomRow = {
@@ -161,6 +209,10 @@ type RoomRow = {
   archived?: boolean
   staff_only?: boolean
   min_reputation?: number
+  kind?: "public" | "crew"
+  accent?: string | null
+  emoji?: string | null
+  rules?: string | null
 }
 type MessageRow = {
   id: string
@@ -172,7 +224,15 @@ type MessageRow = {
   author?: Member | null
   parent?: { id: string; body: string; author: Member | null } | null
   reactions?: { emoji: Emoji; user_id: string }[]
+  more?: { emoji: Emoji; user_id: string }[]
   hidden_at?: string | null
+  kind?: MessageKind
+  attachments?: Attachment[] | null
+  mentions?: string[] | null
+  thread_root?: string | null
+  reply_count?: number
+  last_reply_at?: string | null
+  pinned_at?: string | null
 }
 
 const fromRoomRow = (r: RoomRow): Room => ({
@@ -187,6 +247,10 @@ const fromRoomRow = (r: RoomRow): Room => ({
   archived: r.archived ?? false,
   staffOnly: r.staff_only ?? false,
   minReputation: r.min_reputation ?? 0,
+  kind: r.kind ?? "public",
+  accent: isAccent(r.accent) ? r.accent : null,
+  emoji: r.emoji ?? null,
+  rules: r.rules ?? "",
 })
 
 function fromMessageRow(r: MessageRow): ChatMessage {
@@ -199,22 +263,41 @@ function fromMessageRow(r: MessageRow): ChatMessage {
     author: r.author ?? null,
     replyTo: r.reply_to,
     parent: r.parent ?? null,
-    reactions: (r.reactions ?? []).map((x) => ({ emoji: x.emoji, userId: x.user_id })),
+    reactions: [...(r.reactions ?? []), ...(r.more ?? [])].map((x) => ({ emoji: x.emoji, userId: x.user_id })),
     hidden: Boolean(r.hidden_at),
+    kind: r.kind ?? "text",
+    attachments: Array.isArray(r.attachments) ? r.attachments : [],
+    mentions: r.mentions ?? [],
+    threadRoot: r.thread_root ?? null,
+    replyCount: r.reply_count ?? 0,
+    lastReplyAt: r.last_reply_at ?? null,
+    pinnedAt: r.pinned_at ?? null,
   }
 }
 
-// hidden_at arrives with the moderation migration (…_roles_admin.sql); reads skip it while a database lacks it.
-let hiddenColumn = true
+type DbError = { message: string; code?: string } | null
+/** A column, table or relationship this database does not have yet. */
+export const isMissing = (e: DbError) =>
+  Boolean(e && (e.code === "42703" || e.code === "42P01" || e.code === "PGRST200" || e.code === "PGRST204" || e.code === "PGRST202" || /does not exist|could not find|schema cache/i.test(e.message)))
 
-/** Runs a message select with hidden_at, and once more without it if the database does not have the column. */
-async function selectMessages<T>(run: (columns: string) => PromiseLike<{ data: T; error: { message: string; code?: string } | null }>) {
-  if (hiddenColumn) {
-    const res = await run(`${MESSAGE_COLUMNS}, hidden_at`)
-    if (res.error?.code !== "42703") return res
-    hiddenColumn = false
+// What this database has: 2 = threads, pins, polls and the rest (…_social.sql) plus hidden_at; 1 = hidden_at
+// (…_roles_admin.sql); 0 = the first chat tables. Reads step down once when a column is missing and remember it.
+let messageLevel: 0 | 1 | 2 = 2
+
+/** Whether threads, pins, polls, pictures and any-emoji reactions are switched on in this database. */
+export const chatExtras = () => messageLevel === 2
+
+/** Runs a message select with every column this database has, stepping down when one is missing. */
+async function selectMessages<T>(run: (columns: string, extras: boolean) => PromiseLike<{ data: T; error: DbError }>) {
+  for (;;) {
+    const columns = messageLevel === 2 ? `${MESSAGE_COLUMNS}, hidden_at, ${EXTRA_COLUMNS}` : messageLevel === 1 ? `${MESSAGE_COLUMNS}, hidden_at` : MESSAGE_COLUMNS
+    const res = await run(columns, messageLevel === 2)
+    if (messageLevel > 0 && isMissing(res.error)) {
+      messageLevel = (messageLevel - 1) as 0 | 1
+      continue
+    }
+    return res
   }
-  return run(MESSAGE_COLUMNS)
 }
 
 function fail(error: { message: string; code?: string } | null): asserts error is null {
@@ -262,16 +345,19 @@ function sortRooms(rooms: Room[]) {
   return [...rooms].sort((a, b) => order(a) - order(b) || a.createdAt.localeCompare(b.createdAt))
 }
 
-// Whether this database has the rules columns; a missing column is remembered and later reads skip them.
-let ruleColumns = true
+// Which room columns this database has: 2 = rules and look, 1 = rules (…_cms.sql), 0 = the first ones.
+let roomLevel: 0 | 1 | 2 = 2
 
-async function selectRooms<T>(run: (columns: string) => PromiseLike<{ data: T; error: { message: string; code?: string } | null }>) {
-  if (ruleColumns) {
-    const res = await run(`${ROOM_COLUMNS}, ${RULE_COLUMNS}`)
-    if (res.error?.code !== "42703") return res
-    ruleColumns = false
+async function selectRooms<T>(run: (columns: string) => PromiseLike<{ data: T; error: DbError }>) {
+  for (;;) {
+    const columns = roomLevel === 2 ? `${ROOM_COLUMNS}, ${RULE_COLUMNS}, ${STYLE_COLUMNS}` : roomLevel === 1 ? `${ROOM_COLUMNS}, ${RULE_COLUMNS}` : ROOM_COLUMNS
+    const res = await run(columns)
+    if (roomLevel > 0 && isMissing(res.error)) {
+      roomLevel = (roomLevel - 1) as 0 | 1
+      continue
+    }
+    return res
   }
-  return run(ROOM_COLUMNS)
 }
 
 let roomsCache: Room[] | null = null
@@ -313,7 +399,12 @@ export async function updateRoom(slug: string, patch: Partial<Pick<Room, "name" 
   if (patch.archived !== undefined) row.archived = patch.archived
   if (patch.staffOnly !== undefined) row.staff_only = patch.staffOnly
   if (patch.minReputation !== undefined) row.min_reputation = Math.max(0, Math.round(patch.minReputation))
-  const { data, error } = await client.from("rooms").update(row).eq("slug", slug).select(`${ROOM_COLUMNS}, ${RULE_COLUMNS}`).maybeSingle()
+  const { data, error } = await client
+    .from("rooms")
+    .update(row)
+    .eq("slug", slug)
+    .select(roomLevel === 2 ? `${ROOM_COLUMNS}, ${RULE_COLUMNS}, ${STYLE_COLUMNS}` : `${ROOM_COLUMNS}, ${RULE_COLUMNS}`)
+    .maybeSingle()
   if (error?.code === "42703") throw new Error("Room rules are not switched on in the database yet (migration …_cms.sql).")
   if (error?.code === "42501" || (!error && !data)) throw new Error("Your account cannot manage chat rooms.")
   fail(error)
@@ -366,16 +457,35 @@ export const cachedMessages = (room: string) => messageCache.get(room) ?? null
 export const cacheMessages = (room: string, messages: ChatMessage[]) =>
   messageCache.set(room, messages.filter((m) => !m.status).slice(-PAGE_SIZE * 2))
 
-/** A page of a room's messages, oldest first. Pass the oldest one you have as `before` to go further back. */
+/** Messages saved by a browser-only copy, filled in with the fields older copies did not keep. */
+const localList = (room: string) => readJSON<ChatMessage[]>(messagesKey(room), []).map(normalise)
+function normalise(m: ChatMessage): ChatMessage {
+  return {
+    ...m,
+    kind: m.kind ?? "text",
+    attachments: m.attachments ?? [],
+    mentions: m.mentions ?? [],
+    threadRoot: m.threadRoot ?? null,
+    replyCount: m.replyCount ?? 0,
+    lastReplyAt: m.lastReplyAt ?? null,
+    pinnedAt: m.pinnedAt ?? null,
+  }
+}
+
+/**
+ * A page of a room's messages, oldest first. Pass the oldest one you have as `before` to go further back.
+ * Replies inside threads are not part of the room's stream; they show under their thread.
+ */
 export async function listMessages(room: string, { before, limit = PAGE_SIZE }: { before?: string; limit?: number } = {}) {
   const client = db()
   if (!client) {
-    const all = readJSON<ChatMessage[]>(messagesKey(room), [])
+    const all = localList(room).filter((m) => !m.threadRoot)
     const older = before ? all.filter((m) => m.createdAt < before) : all
     return { messages: older.slice(-limit), more: older.length > limit }
   }
-  const { data, error } = await selectMessages((columns) => {
+  const { data, error } = await selectMessages((columns, extras) => {
     let query = client.from("room_messages").select(columns).eq("room", room).order("created_at", { ascending: false }).limit(limit + 1)
+    if (extras) query = query.is("thread_root", null)
     if (before) query = query.lt("created_at", before)
     return query
   })
@@ -384,6 +494,133 @@ export async function listMessages(room: string, { before, limit = PAGE_SIZE }: 
   const messages = rows.slice(0, limit).map(fromMessageRow).reverse()
   messages.forEach(remember)
   return { messages, more: rows.length > limit }
+}
+
+/**
+ * The messages around a moment (a date picked to jump to, or a linked message), oldest first: a few before it
+ * and a page after. `newer` says whether the room goes on past this window.
+ */
+export async function listAround(room: string, at: string, limit = PAGE_SIZE) {
+  const client = db()
+  if (!client) {
+    const all = localList(room).filter((m) => !m.threadRoot)
+    const i = Math.max(0, all.findIndex((m) => m.createdAt >= at))
+    const start = Math.max(0, i - 5)
+    return { messages: all.slice(start, start + limit), more: start > 0, newer: start + limit < all.length }
+  }
+  const [before, after] = await Promise.all([
+    selectMessages((columns, extras) => {
+      let q = client.from("room_messages").select(columns).eq("room", room).lt("created_at", at).order("created_at", { ascending: false }).limit(6)
+      if (extras) q = q.is("thread_root", null)
+      return q
+    }),
+    selectMessages((columns, extras) => {
+      let q = client.from("room_messages").select(columns).eq("room", room).gte("created_at", at).order("created_at").limit(limit + 1)
+      if (extras) q = q.is("thread_root", null)
+      return q
+    }),
+  ])
+  fail(before.error)
+  fail(after.error)
+  const older = (before.data as unknown as MessageRow[]).map(fromMessageRow)
+  const newer = (after.data as unknown as MessageRow[]).map(fromMessageRow)
+  const messages = [...older.slice(0, 5).reverse(), ...newer.slice(0, limit)]
+  messages.forEach(remember)
+  return { messages, more: older.length > 5, newer: newer.length > limit }
+}
+
+/** A thread: the message it hangs from and every reply, oldest first. */
+export async function listThread(room: string, rootId: string): Promise<ChatMessage[]> {
+  const client = db()
+  if (!client) return localList(room).filter((m) => m.threadRoot === rootId)
+  const { data, error } = await selectMessages((columns, extras) =>
+    extras ? client.from("room_messages").select(columns).eq("thread_root", rootId).order("created_at").limit(200) : client.from("room_messages").select(columns).eq("id", "00000000-0000-0000-0000-000000000000")
+  )
+  fail(error)
+  const list = (data as unknown as MessageRow[]).map(fromMessageRow)
+  list.forEach(remember)
+  return list
+}
+
+/** Messages in a room whose text contains every word of the query, newest first. */
+export async function searchRoom(room: string, query: string, limit = 40): Promise<ChatMessage[]> {
+  const words = query.trim().split(/\s+/).filter((w) => w.length > 0).slice(0, 5)
+  if (!words.length) return []
+  const client = db()
+  if (!client) {
+    const low = words.map((w) => w.toLowerCase())
+    return localList(room)
+      .filter((m) => low.every((w) => m.body.toLowerCase().includes(w)))
+      .reverse()
+      .slice(0, limit)
+  }
+  const { data, error } = await selectMessages((columns) => {
+    let q = client.from("room_messages").select(columns).eq("room", room)
+    for (const w of words) q = q.ilike("body", `%${w.replace(/[\\%_]/g, (c) => `\\${c}`)}%`)
+    return q.order("created_at", { ascending: false }).limit(limit)
+  })
+  fail(error)
+  return (data as unknown as MessageRow[]).map(fromMessageRow)
+}
+
+/** The room's pinned messages, most recently pinned first. Empty while the database has no pins. */
+export async function listPinned(room: string): Promise<ChatMessage[]> {
+  const client = db()
+  if (!client) return localList(room).filter((m) => m.pinnedAt).sort((a, b) => (b.pinnedAt ?? "").localeCompare(a.pinnedAt ?? ""))
+  const { data, error } = await selectMessages((columns, extras) =>
+    extras
+      ? client.from("room_messages").select(columns).eq("room", room).not("pinned_at", "is", null).order("pinned_at", { ascending: false }).limit(25)
+      : client.from("room_messages").select(columns).eq("id", "00000000-0000-0000-0000-000000000000")
+  )
+  fail(error)
+  return (data as unknown as MessageRow[]).map(fromMessageRow)
+}
+
+/** Pins or unpins a message (chat managers in public rooms, the captain and officers in a crew's room). */
+export async function pinMessage(m: Pick<ChatMessage, "id" | "room">, pin: boolean): Promise<string | null> {
+  const client = db()
+  if (!client) {
+    const at = pin ? new Date().toISOString() : null
+    writeJSON(
+      messagesKey(m.room),
+      localList(m.room).map((x) => (x.id === m.id ? { ...x, pinnedAt: at } : x))
+    )
+    local()?.postMessage({ kind: "patch", room: m.room, patch: { id: m.id, pinnedAt: at } } satisfies LocalEvent)
+    return at
+  }
+  const { data, error } = await client.rpc("chat_pin", { message: m.id, pin })
+  if (error && isMissing(error)) throw new Error("Pins are not switched on in the database yet (migration …_social.sql).")
+  fail(error)
+  return (data as string | null) ?? null
+}
+
+/** Sets a room's accent colour, emoji, rules banner and topic. The database checks who may. */
+export async function styleRoom(slug: string, look: { accent: RoomAccent | null; emoji: string; rules: string; topic: string }) {
+  const client = db()
+  if (!client) throw new Error("A room's look is saved in the database. Connect Supabase first.")
+  const { error } = await client.rpc("chat_room_style", {
+    room_slug: slug,
+    new_accent: look.accent ?? "",
+    new_emoji: look.emoji.trim(),
+    new_rules: look.rules.trim().slice(0, 1500),
+    new_topic: look.topic.trim().slice(0, 200),
+  })
+  if (error && isMissing(error)) throw new Error("Room looks are not switched on in the database yet (migration …_social.sql).")
+  fail(error)
+  if (roomsCache) {
+    roomsCache = roomsCache.map((r) =>
+      r.slug === slug ? { ...r, accent: look.accent, emoji: look.emoji.trim() || null, rules: look.rules.trim(), topic: look.topic.trim() || r.topic } : r
+    )
+  }
+}
+
+/** Several messages by id (for saved messages), in no particular order. Ones you cannot read are left out. */
+export async function getMessages(ids: string[]): Promise<ChatMessage[]> {
+  const client = db()
+  if (!client || !ids.length) return []
+  const { data, error } = await selectMessages((columns) => client.from("room_messages").select(columns).in("id", ids.slice(0, 100)))
+  fail(error)
+  return (data as unknown as MessageRow[]).map(fromMessageRow)
 }
 
 export async function getMessage(id: string): Promise<ChatMessage | null> {
@@ -398,10 +635,20 @@ export async function getMessage(id: string): Promise<ChatMessage | null> {
  * Sends a message. Pass the id of the optimistic copy already on screen, so the live echo of this insert
  * replaces it instead of appearing twice, and a retry after a lost response does not post it twice.
  */
+export type SendOptions = {
+  id?: string
+  replyTo?: string | null
+  parent?: QuotedMessage | null
+  kind?: MessageKind
+  attachments?: Attachment[]
+  mentions?: string[]
+  threadRoot?: string | null
+}
+
 export async function sendMessage(
   room: string,
   body: string,
-  { id = crypto.randomUUID(), replyTo = null, parent = null }: { id?: string; replyTo?: string | null; parent?: QuotedMessage | null } = {}
+  { id = crypto.randomUUID(), replyTo = null, parent = null, kind = "text", attachments = [], mentions = [], threadRoot = null }: SendOptions = {}
 ): Promise<ChatMessage> {
   const text = body.trim()
   if (!text) throw new Error("Write something first.")
@@ -418,16 +665,39 @@ export async function sendMessage(
       replyTo,
       parent,
       reactions: [],
+      kind,
+      attachments,
+      mentions,
+      threadRoot,
+      replyCount: 0,
+      lastReplyAt: null,
+      pinnedAt: null,
     }
-    writeJSON(messagesKey(room), [...readJSON<ChatMessage[]>(messagesKey(room), []), m].slice(-LOCAL_CAP))
+    const all = localList(room)
+    const next = threadRoot
+      ? all.map((x) => (x.id === threadRoot ? { ...x, replyCount: x.replyCount + 1, lastReplyAt: m.createdAt } : x))
+      : all
+    writeJSON(messagesKey(room), [...next, m].slice(-LOCAL_CAP))
     local()?.postMessage({ kind: "insert", message: m } satisfies LocalEvent)
+    if (threadRoot) {
+      const root = next.find((x) => x.id === threadRoot)
+      if (root) local()?.postMessage({ kind: "patch", room, patch: { id: root.id, replyCount: root.replyCount, lastReplyAt: root.lastReplyAt } } satisfies LocalEvent)
+    }
     return m
   }
+  const row: Record<string, unknown> = { id, room, body: text, reply_to: replyTo }
+  // Only what differs from a plain message, so plain messages still send while a database lacks …_social.sql.
+  if (kind !== "text") row.kind = kind
+  if (attachments.length) row.attachments = attachments
+  if (mentions.length) row.mentions = [...new Set(mentions)].slice(0, 20)
+  if (threadRoot) row.thread_root = threadRoot
+  const extras = Object.keys(row).length > 4
   const { data, error } = await client
     .from("room_messages")
-    .insert({ id, room, body: text, reply_to: replyTo })
-    .select(MESSAGE_COLUMNS)
+    .insert(row)
+    .select(extras || messageLevel === 2 ? `${MESSAGE_COLUMNS}, ${EXTRA_COLUMNS}` : MESSAGE_COLUMNS)
     .single()
+  if (extras && isMissing(error)) throw new Error("Threads, polls, stickers and pictures need the latest database update (migration …_social.sql).")
   if (error?.code === "42501") throw new Error(await whyNot(room))
   if (error?.code === "23505") {
     // The first attempt reached the database; only its answer was lost.
@@ -506,6 +776,11 @@ export async function deleteMessage(id: string, room: string) {
   fail(error)
 }
 
+/** For the browser-only copy: tells the other tabs about a poll vote (polls themselves live in lib/chat-features). */
+export function announceLocalVote(room: string, v: { messageId: string; userId: string; choice: number; on: boolean }) {
+  local()?.postMessage({ kind: "vote", room, ...v } satisfies LocalEvent)
+}
+
 /** Adds your reaction, or takes it back when `on` is false. */
 export async function toggleReaction(message: Pick<ChatMessage, "id" | "room">, emoji: Emoji, userId: string, on: boolean) {
   const client = db()
@@ -519,10 +794,13 @@ export async function toggleReaction(message: Pick<ChatMessage, "id" | "room">, 
     local()?.postMessage({ kind: "reaction", room: message.room, messageId: message.id, userId, emoji, on } satisfies LocalEvent)
     return
   }
+  if (!isEmoji(emoji)) throw new Error("Reactions are emoji.")
+  const table = isClassicEmoji(emoji) ? "message_reactions" : "room_reactions"
   const { error } = on
-    ? await client.from("message_reactions").insert({ message_id: message.id, emoji })
-    : await client.from("message_reactions").delete().eq("message_id", message.id).eq("user_id", userId).eq("emoji", emoji)
+    ? await client.from(table).insert({ message_id: message.id, emoji })
+    : await client.from(table).delete().eq("message_id", message.id).eq("user_id", userId).eq("emoji", emoji)
   if (on && error?.code === "23505") return
+  if (table === "room_reactions" && isMissing(error)) throw new Error("Only the eight quick reactions work until the database is updated (migration …_social.sql).")
   fail(error)
 }
 
@@ -554,6 +832,48 @@ export function markRead(room: string, at = new Date().toISOString()) {
   const s = readState()
   if ((s.rooms[room] ?? "") >= at) return
   writeJSON(READ_KEY, { ...s, rooms: { ...s.rooms, [room]: at } })
+  queueReadSync(room, at)
+}
+
+// Signed-in members' read marks are also kept in the database (chat_reads), so another device starts where this
+// one stopped. Writes are gathered for two seconds; a database without the table is simply skipped.
+const pendingReads = new Map<string, string>()
+let readTimer: ReturnType<typeof setTimeout> | undefined
+let readsTable = true
+
+function queueReadSync(room: string, at: string) {
+  if (!readsTable || !db() || !ROOM_SLUG.test(room)) return
+  pendingReads.set(room, at)
+  clearTimeout(readTimer)
+  readTimer = setTimeout(flushReads, 2000)
+}
+
+async function flushReads() {
+  const client = db()
+  if (!client || !pendingReads.size) return
+  const { data } = await client.auth.getSession()
+  if (!data.session) return pendingReads.clear()
+  const rows = [...pendingReads].map(([room, read_at]) => ({ room, read_at }))
+  pendingReads.clear()
+  const { error } = await client.from("chat_reads").upsert(rows, { onConflict: "user_id,room" })
+  if (isMissing(error)) readsTable = false
+}
+
+/** Brings in the read marks this member left on other devices (the later of the two wins). */
+export async function loadReadMarks() {
+  const client = db()
+  if (!client || !readsTable) return
+  const { data: session } = await client.auth.getSession()
+  if (!session.session) return
+  const { data, error } = await client.from("chat_reads").select("room, read_at").limit(500)
+  if (error) {
+    if (isMissing(error)) readsTable = false
+    return
+  }
+  const s = readState()
+  const rooms = { ...s.rooms }
+  for (const r of data as { room: string; read_at: string }[]) if ((rooms[r.room] ?? "") < r.read_at) rooms[r.room] = r.read_at
+  writeJSON(READ_KEY, { ...s, rooms })
 }
 
 /** How many messages from other people arrived in each room since you last had it open. */
@@ -690,7 +1010,12 @@ export function subscribeRoom(room: string, member: Member | null, handlers: Roo
         )
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "room_messages", filter: `room=eq.${room}` }, (p) => {
           const row = p.new as MessageRow
-          dispatch("onUpdate", { id: row.id, body: row.body, editedAt: row.edited_at })
+          const patch: MessagePatch = { id: row.id, body: row.body, editedAt: row.edited_at }
+          if ("pinned_at" in row) patch.pinnedAt = row.pinned_at ?? null
+          if ("reply_count" in row) patch.replyCount = row.reply_count ?? 0
+          if ("last_reply_at" in row) patch.lastReplyAt = row.last_reply_at ?? null
+          if (Array.isArray(row.attachments)) patch.attachments = row.attachments
+          dispatch("onUpdate", patch)
         })
         // Deletes can't be filtered and arrive with the id only; rooms ignore ids they don't show.
         .on("postgres_changes", { event: "DELETE", schema: "public", table: "room_messages" }, (p) => {
@@ -704,6 +1029,27 @@ export function subscribeRoom(room: string, member: Member | null, handlers: Roo
         .on("postgres_changes", { event: "DELETE", schema: "public", table: "message_reactions" }, (p) => {
           const r = p.old as { message_id?: string; user_id?: string; emoji?: Emoji }
           if (r.message_id && r.user_id && r.emoji) dispatch("onReaction", { messageId: r.message_id, userId: r.user_id, emoji: r.emoji, on: false })
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "room_reactions", filter: `room=eq.${room}` }, (p) => {
+          const r = p.new as { message_id: string; user_id: string; emoji: Emoji }
+          dispatch("onReaction", { messageId: r.message_id, userId: r.user_id, emoji: r.emoji, on: true })
+        })
+        .on("postgres_changes", { event: "DELETE", schema: "public", table: "room_reactions" }, (p) => {
+          const r = p.old as { message_id?: string; user_id?: string; emoji?: Emoji }
+          if (r.message_id && r.user_id && r.emoji) dispatch("onReaction", { messageId: r.message_id, userId: r.user_id, emoji: r.emoji, on: false })
+        })
+        // Votes carry no room; each room ignores polls it does not show (and only sees rooms it can open).
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_poll_votes" }, (p) => {
+          const v = p.new as { message_id: string; user_id: string; choice: number }
+          dispatch("onVote", { messageId: v.message_id, userId: v.user_id, choice: v.choice, on: true })
+        })
+        .on("postgres_changes", { event: "DELETE", schema: "public", table: "chat_poll_votes" }, (p) => {
+          const v = p.old as { message_id?: string; user_id?: string; choice?: number }
+          if (v.message_id && v.user_id && typeof v.choice === "number") dispatch("onVote", { messageId: v.message_id, userId: v.user_id, choice: v.choice, on: false })
+        })
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chat_polls", filter: `room=eq.${room}` }, (p) => {
+          const r = p.new as { message_id: string; closes_at: string | null }
+          dispatch("onPoll", { messageId: r.message_id, closesAt: r.closes_at })
         })
         .on("presence", { event: "sync" }, () => dispatch("onPresence", presenceList(channel.presenceState())))
         .on("broadcast", { event: "typing" }, ({ payload }) => {
@@ -785,6 +1131,8 @@ export function subscribeLobby(room: string, member: Member | null, handlers: Lo
 
 type LocalEvent =
   | { kind: "insert"; message: ChatMessage }
+  | { kind: "patch"; room: string; patch: Partial<ChatMessage> & { id: string } }
+  | { kind: "vote"; room: string; messageId: string; userId: string; choice: number; on: boolean }
   | { kind: "update"; room: string; id: string; body: string; editedAt: string | null }
   | { kind: "delete"; room: string; id: string }
   | { kind: "reaction"; room: string; messageId: string; userId: string; emoji: Emoji; on: boolean }
@@ -861,6 +1209,8 @@ function buildLocal(
     const e = ev.data
     if (e.kind === "insert" && e.message.room === room) dispatch("onInsert", e.message)
     else if (e.kind === "update" && e.room === room) dispatch("onUpdate", { id: e.id, body: e.body, editedAt: e.editedAt })
+    else if (e.kind === "patch" && e.room === room) dispatch("onUpdate", e.patch as MessagePatch)
+    else if (e.kind === "vote" && e.room === room) dispatch("onVote", e)
     else if (e.kind === "delete" && e.room === room) dispatch("onDelete", e.id)
     else if (e.kind === "reaction" && e.room === room) dispatch("onReaction", e)
     else if (e.kind === "typing" && e.room === room && e.key !== tabKey) dispatch("onTyping", e.member)

@@ -5,7 +5,7 @@ import type { Route } from "next"
 import { usePathname, useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ChevronDownIcon, HomeIcon, MailIcon, MenuIcon, PlusIcon, SearchIcon, ShieldIcon } from "lucide-react"
+import { ArrowRightIcon, ChevronDownIcon, CompassIcon, HomeIcon, MailIcon, MenuIcon, PlusIcon, SearchIcon, ShieldIcon } from "lucide-react"
 import { AccountButton } from "@/components/account/account-button"
 import { NotificationBell } from "@/components/social/notification-bell"
 import { OnlineNow } from "@/components/presence/online-now"
@@ -13,7 +13,10 @@ import { useUnreadMessages } from "@/lib/messages"
 import { Lockup } from "@/components/brand"
 import { useOpenCommandMenu } from "@/components/site/command-menu"
 import { Button } from "@/components/ui/button"
-import { Glass, GlassDefs } from "@/components/glass/glass"
+import { GlassDefs } from "@/components/glass/glass"
+import { CreateSheet, openCreate } from "@/components/site/create-sheet"
+import { GO_KEYS, isTyping } from "@/components/site/shortcuts"
+import { Toaster } from "@/components/site/toaster"
 import { GlassKeys } from "@/components/glass/glass-keys"
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useRole } from "@/lib/roles"
@@ -24,7 +27,7 @@ import { FEATURES, useSiteSettings, type SiteSettings } from "@/lib/site-setting
 import { cn } from "@/lib/utils"
 
 type NavLink = { href: string; label: string; blurb: string; icon: string; tint: string }
-type NavMenu = { id: string; label: string; links: NavLink[] }
+type NavMenu = { id: string; label: string; blurb?: string; links: NavLink[] }
 
 const TINT: Record<string, string> = { ion: "text-ion", gold: "text-gold", model: "text-model", dataset: "text-dataset", tool: "text-tool", repo: "text-repo" }
 const toNav = (l: MenuLink): NavLink => ({ href: l.href, label: l.label, blurb: l.description, icon: l.icon, tint: TINT[l.accent] ?? "text-ion" })
@@ -49,7 +52,7 @@ function useMenus() {
   const { settings } = useSiteSettings()
   const data = useMenuData()
   return useMemo(() => {
-    const menus = (groups: typeof data.header): NavMenu[] => groups.map((g) => ({ id: g.id, label: g.label, links: g.links.map(toNav) }))
+    const menus = (groups: typeof data.header): NavMenu[] => groups.map((g) => ({ id: g.id, label: g.label, blurb: g.blurb, links: g.links.map(toNav) }))
     return {
       menus: menus(data.header),
       mobile: menus(data.mobile),
@@ -60,6 +63,37 @@ function useMenus() {
   }, [settings, data])
 }
 
+/**
+ * The site-wide keys: / opens search, G then a letter jumps to a place (GO_KEYS). C (create) lives in the sheet.
+ */
+function useSiteShortcuts(openSearch: () => void) {
+  const router = useRouter()
+  useEffect(() => {
+    let g = 0
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e)) return
+      const k = e.key.toLowerCase()
+      if (k === "/") {
+        e.preventDefault()
+        openSearch()
+        return
+      }
+      if (g && Date.now() - g < 900) {
+        g = 0
+        const to = GO_KEYS.find((x) => x.key === k)
+        if (to) {
+          e.preventDefault()
+          router.push(to.href as Route)
+        }
+        return
+      }
+      if (k === "g") g = Date.now()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [openSearch, router])
+}
+
 export function SiteHeader() {
   const pathname = usePathname()
   const openSearch = useOpenCommandMenu()
@@ -67,7 +101,8 @@ export function SiteHeader() {
   const { isStaff } = useRole()
   const [scrolled, setScrolled] = useState(false)
   const searchLabel = useCopy("header.search", "Search")
-  const shareLabel = useCopy("header.share", "Share")
+  const createLabel = useCopy("header.create", "Create")
+  useSiteShortcuts(openSearch)
 
   // A passive listener that only re-renders when the header crosses the 8px line, never per scroll event.
   useEffect(() => {
@@ -81,14 +116,12 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 h-16">
       <GlassDefs />
       <div className="shell relative flex h-full items-center gap-3 lg:gap-6">
-        {/* Once the page moves, the bar becomes a floating pane of Liquid Glass (refracting at its rim on
-            Chromium). It fades in by opacity; the blur covers this 52px strip, never the page. */}
-        <Glass
+        {/* Once the page moves, the bar becomes a floating pane of plain blur. It fades in by opacity; the blur
+            covers this 52px strip, never the page. */}
+        <div
           aria-hidden
-          sheen={false}
-          refract
           className={cn(
-            "pointer-events-none absolute inset-x-[max(0.25rem,calc(var(--gutter)-0.9rem))] inset-y-1.5 rounded-[1.4rem] transition-opacity duration-300",
+            "liquid-glass pointer-events-none absolute inset-x-[max(0.25rem,calc(var(--gutter)-0.9rem))] inset-y-1.5 rounded-[1.4rem] transition-opacity duration-(--dur-slow)",
             scrolled ? "opacity-100" : "opacity-0"
           )}
         />
@@ -107,6 +140,7 @@ export function SiteHeader() {
           <button
             type="button"
             onClick={openSearch}
+            aria-keyshortcuts="Control+K Meta+K /"
             className="liquid-glass-pill flex h-9 items-center gap-2 px-3 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <SearchIcon aria-hidden className="size-4" />
@@ -128,37 +162,63 @@ export function SiteHeader() {
             </Link>
           )}
           <AccountButton />
-          {/* the halo button sets its own display, so the phone rule sits on a wrapper (the tab bar has Share) */}
+          {/* the halo button sets its own display, so the phone rule sits on a wrapper (the tab bar has Create) */}
           <span className="contents max-sm:hidden">
-            <Link href="/share" className="halo-btn">
+            <button type="button" onClick={openCreate} className="halo-btn" aria-keyshortcuts="c">
               <PlusIcon aria-hidden className="size-4" />
-              {shareLabel}
-            </Link>
+              {createLabel}
+            </button>
           </span>
           <MobileMenu pathname={pathname} menus={mobile} direct={direct} isStaff={isStaff} name={name} />
         </div>
       </div>
+      <CreateSheet />
+      <Toaster />
     </header>
   )
 }
 
-/** The menu sheet for phones and tablets: the lockup, then every place in its group, then the two things to do. */
+/**
+ * The menu sheet for phones and tablets: the same groups, icons and one-line descriptions as the desktop panel,
+ * so nothing is phone-only or desktop-only. Rows rise in one after another; Create and Search sit at the top.
+ */
 function MobileMenu({ pathname, menus, direct, isStaff, name }: { pathname: string; menus: NavMenu[]; direct: NavLink[]; isStaff: boolean; name: string }) {
+  const openSearch = useOpenCommandMenu()
   const groups: NavMenu[] = [{ id: "top", label: "", links: [{ href: "/", label: "Home", blurb: "", icon: "house", tint: "text-ion" }, ...direct] }, ...menus]
+  let row = 0
   return (
     <Sheet>
       <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu" />}>
         <MenuIcon />
       </SheetTrigger>
-      <SheetContent side="right" className="liquid-glass-strong w-[min(22rem,88vw)] rounded-l-3xl border-y-0 border-r-0">
+      <SheetContent side="right" className="liquid-glass-strong w-[min(23rem,90vw)] rounded-l-3xl border-y-0 border-r-0">
         <SheetTitle className="sr-only">{name} menu</SheetTitle>
         <div className="flex h-16 shrink-0 items-center border-b border-border px-5">
           <Lockup size="sm" alt={name} />
         </div>
-        <nav aria-label="Menu" className="flex flex-col gap-6 overflow-y-auto px-3 pt-2 pb-8">
+        <div className="grid grid-cols-2 gap-2 px-4 pt-4">
+          <SheetClose
+            render={<button type="button" onClick={openCreate} />}
+            className="pressable inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-primary text-sm font-medium text-primary-foreground"
+          >
+            <PlusIcon aria-hidden className="size-4" /> Create
+          </SheetClose>
+          <SheetClose
+            render={<button type="button" onClick={openSearch} />}
+            className="pressable liquid-glass-pill inline-flex h-11 items-center justify-center gap-1.5 text-sm font-medium"
+          >
+            <SearchIcon aria-hidden className="size-4" /> Search
+          </SheetClose>
+        </div>
+        <nav aria-label="Menu" className="flex flex-col gap-5 overflow-y-auto px-3 pt-4 pb-8">
           {groups.map((m) => (
             <div key={m.id} className="flex flex-col gap-0.5">
-              {m.label && <p className="px-3 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">{m.label}</p>}
+              {m.label && (
+                <div className="px-3 pb-1.5">
+                  <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{m.label}</p>
+                  {m.blurb && <p className="text-xs text-muted-foreground/70">{m.blurb}</p>}
+                </div>
+              )}
               {m.links.map((n, i) => {
                 const Icon = iconFor(n.icon, HomeIcon)
                 const on = isOnPath(pathname, n.href)
@@ -167,13 +227,19 @@ function MobileMenu({ pathname, menus, direct, isStaff, name }: { pathname: stri
                     key={`${n.href}-${i}`}
                     render={<Link href={n.href as Route} aria-current={on ? "page" : undefined} />}
                     nativeButton={false}
+                    style={{ "--i": row++ } as React.CSSProperties}
                     className={cn(
-                      "relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium transition-colors hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-ring",
+                      "nx-enter group relative flex items-center gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-ring active:bg-white/[0.07]",
                       on && "bg-white/[0.06] before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-ion"
                     )}
                   >
-                    <Icon aria-hidden className={cn("size-4", n.tint)} />
-                    {n.label}
+                    <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg bg-white/[0.05] ring-1 ring-white/10 transition-transform duration-(--dur-base) group-active:scale-95", n.tint)}>
+                      <Icon aria-hidden className="size-4" />
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="text-[15px] font-medium">{n.label}</span>
+                      {n.blurb && <span className="truncate text-xs text-muted-foreground">{n.blurb}</span>}
+                    </span>
                   </SheetClose>
                 )
               })}
@@ -188,13 +254,6 @@ function MobileMenu({ pathname, menus, direct, isStaff, name }: { pathname: stri
               <ShieldIcon aria-hidden className="size-4" /> Admin
             </SheetClose>
           )}
-          <SheetClose
-            render={<Link href="/share" />}
-            nativeButton={false}
-            className="mx-3 inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-primary text-sm font-medium text-primary-foreground"
-          >
-            <PlusIcon aria-hidden className="size-4" /> Share something
-          </SheetClose>
         </nav>
       </SheetContent>
     </Sheet>
@@ -261,7 +320,7 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
   useEffect(() => {
     if (!open || !focusFirst.current) return
     focusFirst.current = false
-    panel.current?.querySelector<HTMLAnchorElement>("a")?.focus()
+    panel.current?.querySelector<HTMLAnchorElement>("ul a")?.focus()
   }, [open])
 
   // A new page closes the panel.
@@ -281,9 +340,10 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
     closeTimer.current = setTimeout(() => setOpen(null), 140)
   }
   const menu = menus.find((m) => m.id === open)
+  const [hot, setHot] = useState<string | null>(null)
 
   function onPanelKey(e: React.KeyboardEvent) {
-    const links = [...(panel.current?.querySelectorAll<HTMLAnchorElement>("a") ?? [])]
+    const links = [...(panel.current?.querySelectorAll<HTMLAnchorElement>("ul a") ?? [])]
     const i = links.indexOf(document.activeElement as HTMLAnchorElement)
     const step = e.key === "ArrowDown" ? 2 : e.key === "ArrowUp" ? -2 : e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0
     if (!step || i < 0) return
@@ -292,16 +352,28 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
   }
 
   return (
-    <nav aria-label="Main" className="relative hidden flex-1 justify-center lg:flex" onPointerLeave={hide} onPointerEnter={() => clearTimeout(closeTimer.current)}>
+    <nav
+      aria-label="Main"
+      className="relative hidden flex-1 justify-center lg:flex"
+      onPointerLeave={() => {
+        hide()
+        setHot(null)
+      }}
+      onPointerEnter={() => clearTimeout(closeTimer.current)}
+    >
       <ul className="liquid-glass flex items-center gap-1 rounded-full p-1">
         {menus.map((m) => {
           const current = m.links.some((l) => isOn(l.href))
+          const lit = (hot ?? open) === m.id || (!hot && !open && current)
           return (
-            <li key={m.id}>
+            <li key={m.id} className="relative" onPointerEnter={() => setHot(m.id)}>
+              {/* one highlight that glides to whichever menu the pointer is on (transform only, via layout) */}
+              {lit && <motion.span layoutId="nav-hot" aria-hidden transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} className="absolute inset-0 rounded-full bg-white/[0.08]" />}
               <button
                 ref={(el) => {
                   triggers.current[m.id] = el
                 }}
+                data-nav-trigger
                 type="button"
                 aria-expanded={open === m.id}
                 aria-controls={open === m.id ? "nav-panel" : undefined}
@@ -316,8 +388,7 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
                 }}
                 className={cn(
                   "relative flex items-center gap-1 rounded-full px-3.5 py-1.5 text-sm transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-                  open === m.id || current ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-                  (current || open === m.id) && "bg-white/[0.07]"
+                  open === m.id || current ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {m.label}
@@ -357,45 +428,73 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
             transition={{ type: "spring", duration: 0.35, bounce: 0.1 }}
             style={{ transformOrigin: "top center" }}
             // Liquid Glass with a dense fill: readable over anything, and at the low quality tiers it turns solid
-            className="liquid-glass-strong absolute top-[calc(100%+12px)] left-1/2 w-[36rem] -translate-x-1/2 overflow-hidden rounded-3xl p-2"
+            className="liquid-glass-strong absolute top-[calc(100%+12px)] left-1/2 w-[44rem] -translate-x-1/2 overflow-hidden rounded-3xl"
           >
             <AnimatePresence mode="popLayout" initial={false} custom={dir}>
-              <motion.ul
+              <motion.div
                 key={menu.id}
                 custom={dir}
-                aria-label={menu.label}
                 initial={reduce ? { opacity: 0 } : { opacity: 0, transform: `translateX(${dir * 32}px)` }}
                 animate={{ opacity: 1, transform: "translateX(0px)" }}
                 exit={reduce ? { opacity: 0 } : { opacity: 0, transform: `translateX(${dir * -32}px)` }}
                 transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-                className="grid grid-cols-2 gap-1"
+                className="grid grid-cols-[11rem_1fr]"
               >
-                {menu.links.map((l, i) => {
-                  const Icon = iconFor(l.icon)
-                  return (
-                    <li key={`${l.href}-${i}`}>
-                      <Link
-                        href={l.href as Route}
-                        prefetch={false}
-                        onPointerEnter={() => l.href.startsWith("/") && router.prefetch(l.href)}
-                        onFocus={() => l.href.startsWith("/") && router.prefetch(l.href)}
-                        aria-current={isOn(l.href) ? "page" : undefined}
-                        onClick={() => setOpen(null)}
-                        className="group flex items-start gap-3 rounded-xl p-3 transition-colors duration-150 hover:bg-white/[0.05] focus-visible:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-ring aria-[current=page]:bg-white/[0.06]"
-                      >
-                        <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg bg-white/[0.05] ring-1 ring-white/10 transition-transform duration-200 group-hover:scale-105", l.tint)}>
-                          <Icon aria-hidden className="size-4" />
-                        </span>
-                        <span className="flex flex-col gap-0.5">
-                          <span className="text-sm font-medium">{l.label}</span>
-                          <span className="text-xs text-muted-foreground">{l.blurb}</span>
-                        </span>
-                      </Link>
-                    </li>
-                  )
-                })}
-              </motion.ul>
+                {/* what this group is, in one line, and the way to the whole map */}
+                <div className="flex flex-col justify-between gap-6 border-r border-white/[0.06] bg-white/[0.02] p-5">
+                  <div className="flex flex-col gap-1.5">
+                    <p className="font-display text-base font-semibold">{menu.label}</p>
+                    {menu.blurb && <p className="text-xs leading-relaxed text-muted-foreground">{menu.blurb}</p>}
+                  </div>
+                  <Link
+                    href="/explore"
+                    onClick={() => setOpen(null)}
+                    className="group inline-flex items-center gap-1.5 text-xs font-medium text-ion focus-visible:outline-2 focus-visible:outline-ring"
+                  >
+                    <CompassIcon aria-hidden className="size-3.5" />
+                    The whole map
+                    <ArrowRightIcon aria-hidden className="size-3 transition-transform duration-(--dur-base) group-hover:translate-x-0.5" />
+                  </Link>
+                </div>
+                <ul aria-label={menu.label} className="grid grid-cols-2 gap-1 p-2">
+                  {menu.links.map((l, i) => {
+                    const Icon = iconFor(l.icon)
+                    return (
+                      <li key={`${l.href}-${i}`} className="nx-enter" style={{ "--i": i } as React.CSSProperties}>
+                        <Link
+                          href={l.href as Route}
+                          prefetch={false}
+                          onPointerEnter={() => l.href.startsWith("/") && router.prefetch(l.href)}
+                          onFocus={() => l.href.startsWith("/") && router.prefetch(l.href)}
+                          aria-current={isOn(l.href) ? "page" : undefined}
+                          onClick={() => setOpen(null)}
+                          className="group flex items-start gap-3 rounded-xl p-2.5 transition-colors duration-(--dur-fast) hover:bg-white/[0.05] focus-visible:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-ring active:scale-[0.98] aria-[current=page]:bg-white/[0.06]"
+                        >
+                          <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg bg-white/[0.05] ring-1 ring-white/10 transition-transform duration-(--dur-base) ease-(--ease-out) group-hover:scale-110 group-hover:-rotate-6", l.tint)}>
+                            <Icon aria-hidden className="size-4" />
+                          </span>
+                          <span className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium">{l.label}</span>
+                            <span className="text-xs leading-snug text-muted-foreground">{l.blurb}</span>
+                          </span>
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </motion.div>
             </AnimatePresence>
+            <div aria-hidden className="flex items-center gap-4 border-t border-white/[0.06] px-5 py-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <GlassKeys keys={["/"]} live={false} /> search
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <GlassKeys keys={["C"]} live={false} /> create
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <GlassKeys keys={["G"]} live={false} /> then a letter to jump
+              </span>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

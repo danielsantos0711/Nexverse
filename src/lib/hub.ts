@@ -2,7 +2,7 @@ import { describeLabTarget } from "@/components/lab/tools"
 import { getCollection } from "@/lib/community"
 import { getCategory, KINDS, type LanguageCode, type ResourceKind } from "@/lib/data"
 import { describeLiveTarget, internalHref } from "@/lib/live/ids"
-import { getProjectStats, listProjects, projectPath, type Project, type ProjectStats } from "@/lib/projects"
+import { getProjectsById, getProjectStats, listProjects, projectHref, type Project, type ProjectStats } from "@/lib/projects"
 import { getMemberNames, getMemberThreads } from "@/lib/social"
 import type { Member } from "@/lib/store"
 import { hostOf, isHubId, ownerHref } from "@/lib/refs"
@@ -51,7 +51,7 @@ export function fromProject(p: Project): HubEntry {
     kind: p.kind,
     name: p.name,
     summary: p.summary,
-    href: projectPath(p.id),
+    href: projectHref(p),
     url: null,
     owner: p.owner ? { id: p.owner.id, name: p.owner.name, handle: p.owner.handle, avatarUrl: p.owner.avatarUrl } : p.local ? { id: null, name: "You, in this browser", handle: null, avatarUrl: null } : null,
     tags: p.tags,
@@ -242,59 +242,12 @@ export async function listHub({ kind, limit = 60 }: { kind?: ResourceKind; limit
   return { entries: list, stats, errors }
 }
 
-/** Newest-first projects by id. Missing or private ones are absent. */
+/** Projects by id (with their specs, for comparing). Missing or private ones are absent. */
 export async function getProjects(ids: string[]): Promise<Project[]> {
   const list = ids.filter(isHubId).slice(0, 200)
   if (!list.length) return []
-  const client = db()
-  if (!client) return (await listProjects({ owner: "local", limit: 500 })).filter((p) => list.includes(p.id))
-  const { data, error } = await client
-    .from("projects")
-    .select("id, owner_id, kind, name, slug, summary, tags, license, langs, repo_url, paper_url, demo_url, status, created_at, updated_at, published_at, owner:profiles(id, name, handle, avatar_url)")
-    .in("id", list)
-  if (error) throw new Error(error.message)
-  return (data as unknown as Parameters<typeof rowToProject>[0][]).map(rowToProject)
-}
-
-function rowToProject(r: {
-  id: string
-  owner_id: string
-  kind: ResourceKind
-  name: string
-  slug: string
-  summary: string
-  tags: string[] | null
-  license: string
-  langs: string[] | null
-  repo_url: string | null
-  paper_url: string | null
-  demo_url: string | null
-  status: "draft" | "published"
-  created_at: string
-  updated_at: string
-  published_at: string | null
-  owner: { id: string; name: string; handle: string | null; avatar_url: string | null } | null
-}): Project {
-  return {
-    id: r.id,
-    kind: r.kind,
-    name: r.name,
-    slug: r.slug,
-    summary: r.summary,
-    readme: "",
-    tags: r.tags ?? [],
-    license: r.license as Project["license"],
-    langs: (r.langs ?? []) as LanguageCode[],
-    links: { repo: r.repo_url ?? "", paper: r.paper_url ?? "", demo: r.demo_url ?? "" },
-    status: r.status,
-    versions: [],
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-    publishedAt: r.published_at,
-    owner: r.owner ? { id: r.owner.id, name: r.owner.name, handle: r.owner.handle, avatarUrl: r.owner.avatar_url } : null,
-    ownerId: r.owner_id,
-    local: false,
-  }
+  if (!db()) return (await listProjects({ owner: "local", limit: 500 })).filter((p) => list.includes(p.id))
+  return getProjectsById(list)
 }
 
 // ─── Describing anything by its key ─────────────────────────────────────────────────────────────────────────
@@ -354,7 +307,7 @@ export async function resolveTargets(targets: string[]): Promise<Record<string, 
   for (const t of targets) out[t] = describeNow(t)
   for (const p of projects) {
     if (p.status !== "published" && !p.local) continue
-    out[`project:${p.id}`] = { target: `project:${p.id}`, group: p.kind, type: KINDS[p.kind].label, kind: p.kind, label: p.name, summary: p.summary, href: projectPath(p.id), by: p.owner?.name, date: p.publishedAt ?? p.updatedAt, found: true }
+    out[`project:${p.id}`] = { target: `project:${p.id}`, group: p.kind, type: KINDS[p.kind].label, kind: p.kind, label: p.name, summary: p.summary, href: projectHref(p), by: p.owner?.name, date: p.publishedAt ?? p.updatedAt, found: true }
   }
   for (const s of shares) {
     const group: ItemGroup = s.kind

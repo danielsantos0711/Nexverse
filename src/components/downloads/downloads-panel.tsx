@@ -16,8 +16,12 @@ import {
   FolderDownIcon,
   Loader2Icon,
   LockIcon,
+  PauseIcon,
   PencilIcon,
+  PlayIcon,
+  RotateCcwIcon,
   Trash2Icon,
+  XIcon,
   UploadCloudIcon,
 } from "lucide-react"
 import { ConfirmDialog } from "@/components/studio/ui"
@@ -27,12 +31,29 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { useCopy } from "@/lib/content"
 import { formatBytes } from "@/lib/editor/media"
-import { downloadAll, downloadFile, FILE_LIMITS, fileProblem, listFiles, myUsage, removeFile, updateFile, uploadFile, type FileTargetKind, type HostedFile } from "@/lib/publish/files"
+import {
+  downloadAll,
+  downloadFile,
+  FILE_LIMITS,
+  fileProblem,
+  listFiles,
+  myUsage,
+  removeFile,
+  RESUMABLE_FROM,
+  updateFile,
+  uploadFile,
+  uploadLimits,
+  type FileTargetKind,
+  type HostedFile,
+  type UploadControl,
+  type UploadLimits,
+  type UploadStage,
+} from "@/lib/publish/files"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
-type Upload = { key: string; name: string; stage: "waiting" | "hashing" | "uploading" | "saving" | "done" | "error"; error?: string }
+type Upload = { key: string; name: string; size: number; stage: "waiting" | UploadStage | "done" | "error"; share: number; detail?: string; error?: string; resumable: boolean }
 
 const ICONS: [RegExp, typeof FileIcon][] = [
   [/\.(zip|tar|gz|tgz|bz2|xz|7z|rar|zst)$/i, FileArchiveIcon],
@@ -47,7 +68,7 @@ const dateOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day:
 /**
  * Files to download on a project or shared link: name, version, size, SHA-256, count, a button per file and
  * "Download all" as one zip. Signed-in members download; visitors see the list and a way to sign in. People who
- * can edit the page get an upload area (50 MB a file, 1 GB per member).
+ * can edit the page get an upload area: big files go up resumably, with progress, pause, resume and retry.
  */
 export function DownloadsPanel({
   kind,
@@ -110,7 +131,7 @@ export function DownloadsPanel({
   // Without the database or the files table, only editors hear about it; visitors see nothing.
   if (!state.available) {
     return canEdit && live ? (
-      <section aria-labelledby={`${uid}-h`} className={cn("liquid-glass flex flex-col gap-2 rounded-2xl border border-border p-5 text-sm", className)}>
+      <section aria-labelledby={`${uid}-h`} className={cn("flex flex-col gap-2 rounded-2xl border border-border bg-card p-5 text-sm", className)}>
         <h2 id={`${uid}-h`} className="text-base font-semibold">
           {t.title}
         </h2>
@@ -153,7 +174,7 @@ export function DownloadsPanel({
   }
 
   return (
-    <section aria-labelledby={`${uid}-h`} className={cn("liquid-glass flex flex-col gap-4 rounded-2xl border border-border p-5", className)}>
+    <section aria-labelledby={`${uid}-h`} className={cn("flex flex-col gap-4 rounded-2xl border border-border bg-card p-5", className)}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-col">
           <h2 id={`${uid}-h`} className="flex items-center gap-2 text-base font-semibold">
@@ -318,50 +339,83 @@ function Sha({ sha }: { sha: string }) {
   )
 }
 
-const STAGE: Record<Upload["stage"], string> = { waiting: "Waiting", hashing: "Checking", uploading: "Uploading", saving: "Saving", done: "Added", error: "Failed" }
+const STAGE: Record<Upload["stage"], string> = { waiting: "Waiting", hashing: "Checking", uploading: "Uploading", paused: "Paused", retrying: "Reconnecting", saving: "Saving", done: "Added", error: "Failed" }
 
 function Uploader({ kind, targetId, versions, count, onAdded }: { kind: FileTargetKind; targetId: string; versions: string[]; count: number; onAdded: (f: HostedFile) => void }) {
   const uid = useId()
+  const reduce = useReducedMotion()
   const input = useRef<HTMLInputElement>(null)
   const [version, setVersion] = useState(versions[0] ?? "")
   const [note, setNote] = useState("")
   const [queue, setQueue] = useState<Upload[]>([])
   const [drag, setDrag] = useState(false)
   const [usage, setUsage] = useState<number | null>(null)
+  const [limits, setLimits] = useState<UploadLimits | null>(null)
+  // The File objects and the pause/resume handles stay out of state: they are not for rendering.
+  const files = useRef(new Map<string, File>())
+  const controls = useRef(new Map<string, UploadControl>())
+  const running = useRef(Promise.resolve())
 
   useEffect(() => {
     let on = true
     void myUsage().then((u) => on && setUsage(u))
+    void uploadLimits().then((l) => on && setLimits(l))
     return () => {
       on = false
     }
   }, [])
 
-  async function add(list: File[]) {
-    const room = FILE_LIMITS.perPage - count
+  const patch = (key: string, p: Partial<Upload>) => setQueue((q) => q.map((x) => (x.key === key ? { ...x, ...p } : x)))
+
+  async function run(key: string) {
+    const f = files.current.get(key)
+    if (!f) return
+    patch(key, { stage: "hashing", share: 0, error: undefined, detail: undefined })
+    try {
+      const added = await uploadFile(kind, targetId, f, {
+        version,
+        note,
+        onStage: (stage, detail) => patch(key, { stage, detail }),
+        onProgress: (share) => patch(key, { share }),
+        onControl: (c) => controls.current.set(key, c),
+      })
+      patch(key, { stage: "done", share: 1 })
+      files.current.delete(key)
+      onAdded(added)
+      setUsage((u) => (u === null ? u : u + added.size))
+    } catch (e) {
+      const msg = (e as Error).message
+      patch(key, { stage: "error", error: /cancelled/i.test(msg) ? "Cancelled." : msg })
+    } finally {
+      controls.current.delete(key)
+    }
+  }
+
+  /** One upload at a time, in the order they were added, so big files do not fight over the connection. */
+  const enqueue = (key: string) => {
+    running.current = running.current.then(() => run(key))
+  }
+
+  function add(list: File[]) {
+    const room = (limits?.perPage ?? FILE_LIMITS.perPage) - count
     const picked = list.slice(0, Math.max(0, room))
-    const items: Upload[] = picked.map((f) => ({ key: crypto.randomUUID(), name: f.name, stage: "waiting" }))
-    setQueue((q) => [...items, ...q.filter((x) => x.stage !== "done")].slice(0, 20))
-    const patch = (key: string, p: Partial<Upload>) => setQueue((q) => q.map((x) => (x.key === key ? { ...x, ...p } : x)))
+    const items: Upload[] = picked.map((f) => ({ key: crypto.randomUUID(), name: f.name, size: f.size, stage: "waiting", share: 0, resumable: f.size > RESUMABLE_FROM }))
+    setQueue((q) => [...items, ...q.filter((x) => x.stage !== "done")].slice(0, 30))
     for (const [i, f] of picked.entries()) {
       const key = items[i].key
-      const problem = fileProblem(f)
+      const problem = fileProblem(f, limits ?? FILE_LIMITS)
       if (problem) {
         patch(key, { stage: "error", error: problem })
         continue
       }
-      try {
-        const added = await uploadFile(kind, targetId, f, { version, note, onStage: (stage) => patch(key, { stage }) })
-        patch(key, { stage: "done" })
-        onAdded(added)
-        setUsage((u) => (u === null ? u : u + added.size))
-      } catch (e) {
-        patch(key, { stage: "error", error: (e as Error).message })
-      }
+      files.current.set(key, f)
+      enqueue(key)
     }
   }
 
-  const pct = usage === null ? null : Math.min(100, (usage / FILE_LIMITS.memberBytes) * 100)
+  const memberBytes = limits?.memberBytes ?? FILE_LIMITS.memberBytes
+  const pct = usage === null ? null : Math.min(100, (usage / memberBytes) * 100)
+  const fileMax = limits?.fileBytes ?? FILE_LIMITS.fileBytes
 
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-4">
@@ -395,16 +449,18 @@ function Uploader({ kind, targetId, versions, count, onAdded }: { kind: FileTarg
         onDrop={(e) => {
           e.preventDefault()
           setDrag(false)
-          void add(Array.from(e.dataTransfer.files))
+          add(Array.from(e.dataTransfer.files))
         }}
         className={cn(
-          "flex flex-col items-center gap-1.5 rounded-xl border border-dashed px-4 py-6 text-center text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-          drag ? "border-ion/70 bg-ion/10" : "border-border bg-background/30 hover:border-ion/40 hover:bg-ion/[0.04]"
+          "pressable flex flex-col items-center gap-1.5 rounded-xl border border-dashed px-4 py-6 text-center text-sm transition-[border-color,background-color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+          drag ? "scale-[1.01] border-ion/70 bg-ion/10" : "border-border bg-background/30 hover:border-ion/40 hover:bg-ion/[0.04]"
         )}
       >
-        <UploadCloudIcon aria-hidden className="size-6 text-ion" />
+        <UploadCloudIcon aria-hidden className={cn("size-6 text-ion transition-transform duration-200", drag && "-translate-y-0.5")} />
         <span className="font-medium">Drop files here or choose them</span>
-        <span className="text-xs text-muted-foreground">Up to 50 MB each and 100 per page. Checked with SHA-256 before upload.</span>
+        <span className="text-xs text-muted-foreground">
+          Up to {formatBytes(fileMax)} each and {(limits?.perPage ?? FILE_LIMITS.perPage).toLocaleString("en")} per page. Files over 6 MB upload in pieces you can pause and resume.
+        </span>
       </button>
       <input
         ref={input}
@@ -414,26 +470,74 @@ function Uploader({ kind, targetId, versions, count, onAdded }: { kind: FileTarg
         onChange={(e) => {
           const list = Array.from(e.target.files ?? [])
           e.target.value = ""
-          void add(list)
+          add(list)
         }}
       />
       {queue.length > 0 && (
-        <ul aria-live="polite" className="flex flex-col gap-1 text-sm">
-          {queue.map((u) => (
-            <li key={u.key} className="flex items-start gap-2">
-              {u.stage === "done" ? (
-                <CheckIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-ok" />
-              ) : u.stage === "error" ? (
-                <span aria-hidden className="mt-1.5 size-2 shrink-0 rounded-full bg-destructive" />
-              ) : (
-                <Loader2Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-ion motion-safe:animate-spin" />
-              )}
-              <span className="min-w-0 flex-1">
-                <span className="truncate">{u.name}</span> <span className="text-muted-foreground">· {STAGE[u.stage]}</span>
-                {u.error && <span className="block text-xs text-destructive">{u.error}</span>}
-              </span>
-            </li>
-          ))}
+        <ul aria-live="polite" className="flex flex-col gap-2 text-sm">
+          <AnimatePresence initial={false}>
+            {queue.map((u) => {
+              const active = u.stage === "uploading" || u.stage === "hashing" || u.stage === "retrying" || u.stage === "paused"
+              return (
+                <motion.li
+                  key={u.key}
+                  layout={!reduce}
+                  initial={reduce ? false : { opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                  className="flex flex-col gap-1.5 rounded-lg border border-border bg-background/30 px-3 py-2"
+                >
+                  <div className="flex items-center gap-2">
+                    {u.stage === "done" ? (
+                      <CheckIcon aria-hidden className="size-4 shrink-0 text-ok" />
+                    ) : u.stage === "error" ? (
+                      <span aria-hidden className="size-2 shrink-0 rounded-full bg-destructive" />
+                    ) : u.stage === "paused" ? (
+                      <PauseIcon aria-hidden className="size-4 shrink-0 text-gold" />
+                    ) : (
+                      <Loader2Icon aria-hidden className="size-4 shrink-0 text-ion motion-safe:animate-spin" />
+                    )}
+                    <span className="min-w-0 flex-1 truncate">{u.name}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground tabular">
+                      {STAGE[u.stage]}
+                      {active && u.stage !== "paused" ? ` ${Math.floor(u.share * 100)}%` : ""} · {formatBytes(u.size)}
+                    </span>
+                    {u.resumable && (u.stage === "uploading" || u.stage === "retrying") && (
+                      <Button variant="ghost" size="icon-sm" aria-label={`Pause ${u.name}`} onClick={() => controls.current.get(u.key)?.pause()}>
+                        <PauseIcon aria-hidden />
+                      </Button>
+                    )}
+                    {u.stage === "paused" && (
+                      <Button variant="ghost" size="icon-sm" aria-label={`Resume ${u.name}`} onClick={() => controls.current.get(u.key)?.resume()}>
+                        <PlayIcon aria-hidden />
+                      </Button>
+                    )}
+                    {u.resumable && active && (
+                      <Button variant="ghost" size="icon-sm" aria-label={`Cancel ${u.name}`} onClick={() => void controls.current.get(u.key)?.cancel()}>
+                        <XIcon aria-hidden />
+                      </Button>
+                    )}
+                    {u.stage === "error" && files.current.has(u.key) && (
+                      <Button variant="ghost" size="sm" onClick={() => enqueue(u.key)}>
+                        <RotateCcwIcon aria-hidden /> Retry
+                      </Button>
+                    )}
+                  </div>
+                  {active && (
+                    <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]" role="progressbar" aria-label={`${u.name} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.floor(u.share * 100)}>
+                      <div
+                        className={cn("h-full origin-left rounded-full transition-transform duration-300 ease-out", u.stage === "paused" ? "bg-gold/70" : u.stage === "hashing" ? "bg-white/30" : "bg-ion")}
+                        style={{ transform: `scaleX(${Math.max(u.share, 0.01)})` }}
+                      />
+                    </div>
+                  )}
+                  {u.detail && u.stage === "retrying" && <span className="text-xs text-muted-foreground">{u.detail}</span>}
+                  {u.error && <span className="text-xs text-destructive">{u.error}</span>}
+                </motion.li>
+              )
+            })}
+          </AnimatePresence>
         </ul>
       )}
       {pct !== null && (
@@ -442,7 +546,7 @@ function Uploader({ kind, targetId, versions, count, onAdded }: { kind: FileTarg
             <div className={cn("h-full rounded-full", pct > 90 ? "bg-destructive" : "bg-ion")} style={{ width: `${Math.max(pct, 1)}%` }} />
           </div>
           <p className="text-xs text-muted-foreground">
-            You use {formatBytes(usage ?? 0)} of your 1 GB for files.
+            You use {formatBytes(usage ?? 0)} of your {formatBytes(memberBytes)} for files.
           </p>
         </div>
       )}

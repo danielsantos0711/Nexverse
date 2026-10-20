@@ -1,8 +1,11 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { createContext, use, useEffect, useState } from "react"
-import { FileTextIcon, FolderGit2Icon, LinkIcon, MessageSquareIcon, NewspaperIcon, UserIcon, type LucideIcon } from "lucide-react"
+import { createContext, use, useCallback, useEffect, useState } from "react"
+import { FileTextIcon, FolderGit2Icon, LinkIcon, MessageSquareIcon, NewspaperIcon, PlusIcon, ShieldIcon, UserIcon, type LucideIcon } from "lucide-react"
+import { openCreate } from "@/components/site/create-sheet"
+import { iconFor } from "@/components/site/icons"
+import { GO_KEYS } from "@/components/site/shortcuts"
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from "@/components/ui/command"
 import { useRole } from "@/lib/roles"
 import { useMenus } from "@/lib/menus"
@@ -14,47 +17,18 @@ import { GlassKeys } from "@/components/glass/glass-keys"
 const Ctx = createContext<() => void>(() => {})
 export const useOpenCommandMenu = () => use(Ctx)
 
-const PAGES = [
-  ["Explore everything", "/explore"],
-  ["Trending now", "/trending"],
-  ["Forum", "/forum"],
-  ["Chat rooms", "/chat"],
-  ["Start a thread", "/forum/new"],
-  ["News: the AI newsroom", "/news"],
-  ["Code: Nexverse repositories", "/code"],
-  ["Lab", "/lab"],
-  ["Constellations", "/constellations"],
-  ["People", "/people"],
-  ["Publish a project", "/new/project"],
-  ["Your studio", "/studio"],
-  ["Lab: VRAM calculator", "/lab/vram"],
-  ["Lab: token cost", "/lab/tokens"],
-  ["Lab: licence checker", "/lab/licences"],
-  ["Lab: model card builder", "/lab/model-card"],
-  ["GitHub topics", "/gh/topics"],
-  ["Settings", "/settings"],
-  ["Share something", "/share"],
-  ["Compare side by side", "/compare"],
-  ["For you", "/for-you"],
-  ["Cosmos: star map of the hub", "/cosmos"],
-  ["Arena: play blind duels", "/arena"],
-  ["Arena ratings", "/arena/ratings"],
-  ["Post a duel", "/arena/new"],
-  ["Benchmarks", "/benchmarks"],
-  ["Missions", "/missions"],
-  ["Post a mission", "/missions/new"],
-  ["Launchpad", "/launchpad"],
-  ["Schedule a launch", "/launchpad/new"],
-  ["Crews", "/crews"],
-  ["Start a crew", "/crews/new"],
-  ["Messages", "/messages"],
-  ["Events", "/events"],
-  ["Create an event", "/events/new"],
-  ["Collections", "/collections"],
-  ["Leaderboard", "/leaderboard"],
-  ["Saved", "/saved"],
-  ["Notifications", "/notifications"],
-] as const
+// Places the menus do not list, so ⌘K still finds them. Everything else comes from the admins' menus.
+const EXTRA: { label: string; href: string; icon: string; group: string }[] = [
+  { label: "Lab: VRAM calculator", href: "/lab/vram", icon: "flask-conical", group: "Build" },
+  { label: "Lab: token cost", href: "/lab/tokens", icon: "flask-conical", group: "Build" },
+  { label: "Lab: licence checker", href: "/lab/licences", icon: "flask-conical", group: "Build" },
+  { label: "Lab: model card builder", href: "/lab/model-card", icon: "flask-conical", group: "Build" },
+  { label: "Arena ratings", href: "/arena/ratings", icon: "trophy", group: "Build" },
+  { label: "Compare side by side", href: "/compare", icon: "scale", group: "Build" },
+  { label: "Repos", href: "/repos", icon: "git-branch", group: "Build" },
+  { label: "GitHub topics", href: "/gh/topics", icon: "git-branch", group: "Discover" },
+  { label: "Messages", href: "/messages", icon: "mail", group: "Community" },
+]
 
 type Hit = { key: string; label: string; hint?: string; href: string; icon: LucideIcon; group: string }
 
@@ -90,7 +64,7 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const { settings } = useSiteSettings()
   const { isStaff } = useRole()
-  const { pages: menuPages } = useMenus()
+  const { pages: menuPages, header, footer, create } = useMenus()
   const placeholder = useCopy("search.placeholder", "Search the universe…")
   const empty = useCopy("search.empty", "No star matches that yet. Try another word, or ask in the forum.")
   const goTo = useCopy("search.goto", "Jump to")
@@ -121,21 +95,36 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
     }
   }, [query, open])
 
+  const show = useCallback(() => setOpen(true), [])
   const go = (href: string) => {
     setOpen(false)
     router.push(href)
   }
 
-  const pages: (readonly [string, string])[] = [
-    ...PAGES,
-    ...menuPages.map((p) => [p.title, p.href] as const),
-    ...(isStaff ? ([["Admin panel", "/admin"]] as const) : []),
-  ].filter(([, href]) => isLinkVisible(settings, href.split("?")[0]))
+  // Every place, grouped as the header groups it (so ⌘K teaches the same map), then You and the extras.
+  type Place = { label: string; href: string; icon: string; blurb?: string }
+  const you = footer.find((g) => g.id === "you")
+  const placeGroups: { id: string; label: string; items: Place[] }[] = [
+    ...header.map((g) => ({ id: g.id, label: g.label, items: g.links.map((l) => ({ label: l.label, href: l.href, icon: l.icon, blurb: l.description })) })),
+    ...(you ? [{ id: "you", label: you.label, items: you.links.map((l) => ({ label: l.label, href: l.href, icon: l.icon })) }] : []),
+  ]
+  const seen = new Set(placeGroups.flatMap((g) => g.items.map((i) => i.href)))
+  for (const x of EXTRA) {
+    if (seen.has(x.href)) continue
+    const g = placeGroups.find((p) => p.label === x.group) ?? placeGroups[0]
+    g?.items.push(x)
+  }
+  const more: Place[] = [
+    { label: "Home", href: "/", icon: "house" },
+    ...menuPages.map((p) => ({ label: p.title, href: p.href, icon: "file-text" })),
+    ...(isStaff ? [{ label: "Admin panel", href: "/admin", icon: "shield" }] : []),
+  ]
+  const visibleOnly = (items: Place[]) => items.filter((i) => !i.href.startsWith("/") || isLinkVisible(settings, i.href.split("?")[0]))
   const shown = query.trim().length >= 2 ? hits : []
   const groups = [...new Set(shown.map((h) => h.group))]
 
   return (
-    <Ctx value={() => setOpen(true)}>
+    <Ctx value={show}>
       {children}
       <CommandDialog open={open} onOpenChange={setOpen} title="Search Nexverse" description="Find pages, threads, links, projects and people">
         <Command>
@@ -143,11 +132,51 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
           <CommandList className="max-h-[60vh]">
             <CommandEmpty>{empty}</CommandEmpty>
             <CommandGroup heading={goTo}>
-              {pages.map(([label, href]) => (
-                <CommandItem key={href} value={label} onSelect={() => go(href)}>
-                  {label}
-                </CommandItem>
-              ))}
+              <CommandItem
+                value="create something new make publish start"
+                onSelect={() => {
+                  setOpen(false)
+                  openCreate()
+                }}
+              >
+                <PlusIcon aria-hidden className="text-ion" />
+                Create something
+                <CommandShortcut>C</CommandShortcut>
+              </CommandItem>
+              {visibleOnly(more).map((p) => {
+                const Icon = p.href === "/admin" ? ShieldIcon : iconFor(p.icon)
+                return (
+                  <CommandItem key={p.href} value={p.label} onSelect={() => go(p.href)}>
+                    <Icon aria-hidden />
+                    {p.label}
+                  </CommandItem>
+                )
+              })}
+            </CommandGroup>
+            {placeGroups.map((g) => (
+              <CommandGroup key={g.id} heading={g.label}>
+                {visibleOnly(g.items).map((p) => {
+                  const Icon = iconFor(p.icon)
+                  return (
+                    <CommandItem key={p.href} value={`${p.label} ${p.blurb ?? ""}`} onSelect={() => go(p.href)}>
+                      <Icon aria-hidden />
+                      <span className="truncate">{p.label}</span>
+                      {p.blurb && <span className="hidden truncate text-xs text-muted-foreground sm:inline">{p.blurb}</span>}
+                    </CommandItem>
+                  )
+                })}
+              </CommandGroup>
+            ))}
+            <CommandGroup heading="Create">
+              {create.map((c) => {
+                const Icon = iconFor(c.icon, PlusIcon)
+                return (
+                  <CommandItem key={c.href} value={`new ${c.label} create ${c.description}`} onSelect={() => go(c.href)}>
+                    <Icon aria-hidden />
+                    New {c.label.toLowerCase()}
+                  </CommandItem>
+                )
+              })}
             </CommandGroup>
             {groups.map((g) => (
               <CommandGroup key={g} heading={g}>
@@ -174,6 +203,9 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
             </span>
             <span className="inline-flex items-center gap-1.5">
               <GlassKeys keys={["Esc"]} live={false} /> close
+            </span>
+            <span className="inline-flex items-center gap-1.5" title={GO_KEYS.map((g) => `G ${g.key.toUpperCase()}: ${g.label}`).join(", ")}>
+              <GlassKeys keys={["G"]} live={false} /> then a letter to jump
             </span>
             <span className="ml-auto inline-flex items-center gap-1.5">
               <GlassKeys keys={["mod", "K"]} /> anywhere

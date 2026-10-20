@@ -13,8 +13,16 @@ import { FEATURES, isLinkVisible, isSafeHref, saveSettingRow, useSiteSettings, t
  */
 
 export type MenuLink = { label: string; href: string; description: string; icon: string; accent: CategoryAccent }
-export type MenuGroup = { id: string; label: string; links: MenuLink[] }
+export type MenuGroup = {
+  id: string
+  label: string
+  /** One line under the group's name in the header's panel and on /explore: what lives here. */
+  blurb?: string
+  links: MenuLink[]
+}
 export type AreaText = { label: string; blurb: string }
+/** One choice in the Create sheet: what you make, where its form is, and the power it needs. */
+export type CreateLink = MenuLink & { cap?: string }
 
 export type Menus = {
   header: MenuGroup[]
@@ -25,70 +33,94 @@ export type Menus = {
   mobile: { sameAsHeader: boolean; groups: MenuGroup[] }
   /** New names for parts of the site, used wherever a menu links to them. Empty fields keep each link's own text. */
   areas: Partial<Record<FeatureKey, AreaText>>
+  /** The Create sheet (the header's Create button, the tab bar's middle button, C anywhere). */
+  create?: CreateLink[]
 }
 
 const L = (label: string, href: string, description: string, icon: string, accent: CategoryAccent = "ion"): MenuLink => ({ label, href, description, icon, accent })
+const C = (label: string, href: string, description: string, icon: string, accent: CategoryAccent, cap?: string): CreateLink => ({ ...L(label, href, description, icon, accent), cap })
 
+/*
+ * Round 10 layout, for newcomers: three places, each named by what you do there.
+ *   Discover   find things: the map, what is trending, the news, curated collections
+ *   Build      make things: projects (with their code), the hub's kinds, the Lab, evals
+ *   Community  meet people: talk, crews, missions, events, launches
+ * "Projects" is one entry: a project page carries its code, so Code and "Publish a project" are not separate.
+ * Making anything starts from the Create button, never from a menu link.
+ */
 export const DEFAULT_MENUS: Menus = {
   header: [
     {
-      id: "hub",
-      label: "Hub",
+      id: "discover",
+      label: "Discover",
+      blurb: "Find what is new and worth your time",
       links: [
+        L("Explore the map", "/explore", "Every part of Nexverse on one page", "compass", "ion"),
+        L("Trending", "/trending", "Rising on GitHub and the hub this week", "flame", "gold"),
+        L("News", "/news", "The AI newsroom: what happened and why", "newspaper", "model"),
+        L("Collections", "/collections", "Lists members curated, with notes", "library", "repo"),
+        L("Constellations", "/constellations", "Stacks drawn as star maps", "sparkles", "gold"),
+        L("Cosmos", "/cosmos", "The whole hub as one star map", "orbit", "ion"),
+        L("Leaderboard", "/leaderboard", "Who helped the most this week", "trophy", "gold"),
+      ],
+    },
+    {
+      id: "build",
+      label: "Build",
+      blurb: "Make, test and ship AI work",
+      links: [
+        L("Projects", "/code", "Projects with their code, issues and releases", "folder-git-2", "repo"),
         L("Models", "/models", "Weights you can run, tune and ship", "box", "model"),
         L("Datasets", "/datasets", "Open data with its licence up front", "database", "dataset"),
         L("Tools", "/tools", "Apps and libraries builders rely on", "wrench", "tool"),
-        L("Repos", "/repos", "Code worth reading and forking", "folder-git-2", "repo"),
-        L("Trending now", "/trending", "Live from GitHub and the hub", "flame", "gold"),
-        L("GitHub topics", "/gh/topics", "LLMs, agents, RAG and more, rising", "git-branch", "repo"),
-        L("Cosmos", "/cosmos", "The whole hub as a star map", "orbit", "ion"),
-        L("Constellations", "/constellations", "Stacks drawn as star maps", "sparkles", "gold"),
+        L("Lab", "/lab", "Calculators, cards and builders for AI work", "flask-conical", "dataset"),
+        L("Arena", "/arena", "Blind duels between models: vote, then see", "swords", "model"),
+        L("Benchmarks", "/benchmarks", "Eval results, verified by reproduction", "gauge", "dataset"),
+        L("Your studio", "/studio", "Everything you made, with its numbers", "layout-dashboard", "gold"),
       ],
     },
     {
       id: "community",
       label: "Community",
+      blurb: "Talk, team up and take on challenges",
       links: [
-        L("Forum", "/forum", "Real discussions, organised by category", "message-square", "ion"),
-        L("News", "/news", "The AI newsroom: what happened and why it matters", "newspaper", "model"),
+        L("Forum", "/forum", "Discussions organised by category", "message-square", "ion"),
         L("Chat", "/chat", "Live rooms for every corner of AI", "messages-square", "gold"),
-        L("Crews", "/crews", "Labs, study groups and teams with a wall and a chat", "users-round", "repo"),
-        L("Messages", "/messages", "Direct messages with other members", "mail", "ion"),
-        L("People", "/people", "Builders and labs to follow", "users", "dataset"),
-        L("Missions", "/missions", "Challenges with reputation rewards: accept, build, win", "target", "gold"),
-        L("Launchpad", "/launchpad", "Project launches, countdowns and Launch of the day", "rocket", "repo"),
-        L("Arena", "/arena", "Blind duels between models: vote, then see who wrote what", "swords", "model"),
-        L("Benchmarks", "/benchmarks", "Eval results from members, verified by reproduction", "gauge", "dataset"),
+        L("Crews", "/crews", "Teams with a wall, a chat and goals", "users-round", "repo"),
+        L("Missions", "/missions", "Challenges with reputation rewards", "target", "gold"),
         L("Events", "/events", "Reading clubs, meetups and live demos", "calendar-days", "model"),
-        L("Leaderboard", "/leaderboard", "Who helped the most this week", "trophy", "gold"),
-        L("For you", "/for-you", "New from what you follow and save", "heart", "gold"),
-      ],
-    },
-    {
-      id: "create",
-      label: "Create",
-      links: [
-        L("Code", "/code", "Nexverse repositories: code, issues and releases", "code", "repo"),
-        L("Lab", "/lab", "Calculators, cards and builders for AI work", "flask-conical", "dataset"),
-        L("Publish a project", "/new/project", "A model, dataset, tool or repo page", "plus", "ion"),
-        L("Your studio", "/studio", "Everything you made, with its numbers", "layout-dashboard", "gold"),
-        L("Collections", "/collections", "Curate your own constellation", "library", "repo"),
-        L("Start a thread", "/forum/new", "Ask, share or start a debate", "message-square", "model"),
+        L("Launchpad", "/launchpad", "Launches, countdowns, Launch of the day", "rocket", "repo"),
+        L("People", "/people", "Builders and labs to follow", "users", "dataset"),
       ],
     },
   ],
-  headerLinks: [L("Explore", "/explore", "Search everything", "search", "ion")],
+  headerLinks: [],
   footer: [
     {
-      id: "hub",
-      label: "Hub",
+      id: "discover",
+      label: "Discover",
       links: [
+        L("Explore the map", "/explore", "", "compass"),
+        L("Trending", "/trending", "", "flame"),
+        L("News", "/news", "", "newspaper"),
+        L("Collections", "/collections", "", "library"),
+        L("Constellations", "/constellations", "", "sparkles"),
+        L("Cosmos", "/cosmos", "", "orbit"),
+        L("GitHub topics", "/gh/topics", "", "git-branch"),
+      ],
+    },
+    {
+      id: "build",
+      label: "Build",
+      links: [
+        L("Projects", "/code", "", "folder-git-2"),
         L("Models", "/models", "", "box"),
         L("Datasets", "/datasets", "", "database"),
         L("Tools", "/tools", "", "wrench"),
-        L("Repos", "/repos", "", "folder-git-2"),
-        L("Trending now", "/trending", "", "flame"),
-        L("GitHub topics", "/gh/topics", "", "git-branch"),
+        L("Repos", "/repos", "", "git-branch"),
+        L("Lab", "/lab", "", "flask-conical"),
+        L("Arena", "/arena", "", "swords"),
+        L("Benchmarks", "/benchmarks", "", "gauge"),
       ],
     },
     {
@@ -96,25 +128,13 @@ export const DEFAULT_MENUS: Menus = {
       label: "Community",
       links: [
         L("Forum", "/forum", "", "message-square"),
-        L("News", "/news", "", "newspaper"),
-        L("Chat rooms", "/chat", "", "messages-square"),
-        L("Events", "/events", "", "calendar-days"),
+        L("Chat", "/chat", "", "messages-square"),
+        L("Crews", "/crews", "", "users-round"),
         L("Missions", "/missions", "", "target"),
-        L("Arena", "/arena", "", "swords"),
+        L("Events", "/events", "", "calendar-days"),
+        L("Launchpad", "/launchpad", "", "rocket"),
+        L("People", "/people", "", "users"),
         L("Leaderboard", "/leaderboard", "", "trophy"),
-      ],
-    },
-    {
-      id: "create",
-      label: "Create",
-      links: [
-        L("Code", "/code", "", "code"),
-        L("Lab", "/lab", "", "flask-conical"),
-        L("Publish a project", "/new/project", "", "plus"),
-        L("Share a link", "/share", "", "link"),
-        L("Start a thread", "/forum/new", "", "message-square"),
-        L("Your studio", "/studio", "", "layout-dashboard"),
-        L("Collections", "/collections", "", "library"),
       ],
     },
     {
@@ -123,6 +143,8 @@ export const DEFAULT_MENUS: Menus = {
       links: [
         L("Your page", "/you", "", "user"),
         L("For you", "/for-you", "", "heart"),
+        L("Your studio", "/studio", "", "layout-dashboard"),
+        L("Messages", "/messages", "", "mail"),
         L("Saved", "/saved", "", "bookmark"),
         L("Notifications", "/notifications", "", "bell"),
         L("Settings", "/settings", "", "settings"),
@@ -131,6 +153,20 @@ export const DEFAULT_MENUS: Menus = {
   ],
   mobile: { sameAsHeader: true, groups: [] },
   areas: {},
+  create: [
+    C("Project", "/new/project", "A model, dataset, tool or code, with a README", "folder-git-2", "repo", "project.create"),
+    C("Model", "/new/project?kind=model", "Weights with a model card", "box", "model", "project.create"),
+    C("Dataset", "/new/project?kind=dataset", "Data with its licence and a preview", "database", "dataset", "project.create"),
+    C("Tool", "/new/project?kind=tool", "An app or a library people can use", "wrench", "tool", "project.create"),
+    C("Thread", "/forum/new", "Ask, share or start a debate", "message-square", "ion", "thread.create"),
+    C("Event", "/events/new", "A reading club, meetup or live demo", "calendar-days", "model", "event.create"),
+    C("Mission", "/missions/new", "A challenge with a reward", "target", "gold", "mission.create"),
+    C("Crew", "/crews/new", "A team with a wall and a chat", "users-round", "repo", "crew.create"),
+    C("Collection", "/collections?new=1", "A list of things worth knowing", "library", "repo", "collection.create"),
+    C("Launch", "/launchpad/new", "A countdown to your release", "rocket", "gold", "launch.create"),
+    C("Share a link", "/share", "A model, tool, paper or story from elsewhere", "link", "ion", "submission.create"),
+    C("News tip", "/news#tip", "Tell the newsroom what happened", "newspaper", "model", "news.tip"),
+  ],
 }
 
 // ─── Reading and cleaning ───────────────────────────────────────────────────────────────────────────────────
@@ -158,6 +194,7 @@ function cleanGroups(v: unknown): MenuGroup[] {
       return {
         id: str(r.id, 40) || `group-${i}`,
         label: str(r.label, LIMITS.groupLabel).trim(),
+        blurb: str(r.blurb, LIMITS.description).trim() || undefined,
         links: arr(r.links).slice(0, LIMITS.links).map(cleanLink).filter((l): l is MenuLink => l !== null),
       }
     })
@@ -181,6 +218,15 @@ export function cleanMenus(raw: unknown): Menus {
     footer: Array.isArray(r.footer) ? cleanGroups(r.footer) : DEFAULT_MENUS.footer,
     mobile: { sameAsHeader: m.sameAsHeader !== false, groups: cleanGroups(m.groups) },
     areas,
+    create: Array.isArray(r.create)
+      ? arr(r.create)
+          .slice(0, LIMITS.links)
+          .map((v): CreateLink | null => {
+            const l = cleanLink(v)
+            return l ? { ...l, cap: str(rec(v).cap, 40) || undefined } : null
+          })
+          .filter((l): l is CreateLink => l !== null)
+      : DEFAULT_MENUS.create,
   }
 }
 
@@ -271,6 +317,7 @@ export function useMenus() {
       headerLinks: visible([{ id: "bar", label: "", links: m.headerLinks }], settings, m.areas)[0]?.links ?? [],
       footer: [...visible(m.footer, settings, m.areas), ...pageGroup].slice(0, 5),
       mobile: m.mobile.sameAsHeader ? [...header, ...pageGroup] : [...visible(m.mobile.groups, settings, m.areas), ...pageGroup],
+      create: (m.create ?? DEFAULT_MENUS.create ?? []).filter((l) => !l.href.startsWith("/") || isLinkVisible(settings, l.href.split(/[?#]/)[0])),
       pages,
     }
   }, [raw, settings, pages])

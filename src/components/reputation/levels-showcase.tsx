@@ -46,7 +46,7 @@ export function LevelsShowcase() {
   const [amber, gold] = LEVEL_COLORS[chosen.name] ?? LEVEL_COLORS.Stardust
 
   return (
-    <section aria-labelledby="levels-showcase-h" className="liquid-glass-flat relative mt-10 overflow-hidden rounded-3xl p-4 sm:p-6">
+    <section aria-labelledby="levels-showcase-h" className="relative mt-10 overflow-hidden rounded-3xl border border-border bg-card p-4 sm:p-6">
       <div aria-hidden className="pointer-events-none absolute -top-24 left-1/2 h-48 w-[70%] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,rgb(216_197_158/0.18),transparent)]" />
       <div className="relative mb-5 flex flex-col gap-1">
         <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
@@ -81,7 +81,7 @@ export function LevelsShowcase() {
                     type="button"
                     aria-pressed={i === pick}
                     onClick={() => setPick(i)}
-                    className="liquid-glass-pill flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+                    className="pressable flex w-full items-center gap-2 rounded-full border border-border bg-background/40 px-3 py-2 text-left text-sm transition-colors hover:border-white/20 aria-pressed:border-gold/40 aria-pressed:bg-gold/10"
                   >
                     {Icon && <Icon aria-hidden className="size-4 shrink-0" style={{ color: from }} />}
                     <span className="min-w-0 flex-1 truncate">{l.name}</span>
