@@ -181,7 +181,7 @@ export function CoverPicker({ id, value, onChange, fallback }: { id: string; val
   }
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative aspect-[16/7] overflow-hidden rounded-xl border border-border bg-card">
+      <div className="relative aspect-[16/7] max-h-60 w-full overflow-hidden rounded-xl border border-border bg-card">
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element -- member picture from storage or an https address
           <img src={value} alt="Cover preview" referrerPolicy="no-referrer" className="size-full object-cover" />

@@ -121,7 +121,7 @@ function Editor() {
       <style href="nexverse-content-edit" precedence="default">
         {EDIT_CSS}
       </style>
-      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] left-3 z-[60] flex items-center gap-2 md:bottom-5 md:left-5">
+      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] left-3 z-[61] flex items-center gap-2 md:bottom-5 md:left-5">
         <button
           type="button"
           aria-pressed={on}
@@ -205,7 +205,9 @@ function Panel({ path, registry, onClose }: { path: string; registry: Registered
   return (
     <aside
       aria-label="Page editor"
-      className="liquid-glass-strong fixed inset-x-2 bottom-2 z-[60] flex max-h-[62vh] flex-col overflow-hidden rounded-2xl shadow-2xl md:inset-x-auto md:top-20 md:right-4 md:bottom-4 md:max-h-none md:w-[24rem]"
+      // Nearly opaque: the panel sits over busy pages and holds small text.
+      style={{ backgroundColor: "rgb(13 15 22 / 0.95)" }}
+      className="liquid-glass-strong fixed inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+8.75rem)] z-[60] flex max-h-[55vh] flex-col overflow-hidden rounded-2xl shadow-2xl md:inset-x-auto md:top-20 md:right-4 md:bottom-4 md:max-h-none md:w-[24rem]"
     >
       <div className="flex min-h-0 flex-1 flex-col">
         <header className="flex items-start gap-2 border-b border-border px-4 pt-3 pb-2">

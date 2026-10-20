@@ -456,7 +456,7 @@ export async function loadList(source: ListSource, count: number): Promise<ListI
       date: r.created_at,
     }))
   }
-  const { data } = await c.from("projects").select("id, name, kind, summary, published_at").eq("status", "published").order("published_at", { ascending: false }).limit(count)
+  const { data } = await c.from("projects").select("id, name, kind, summary, published_at").eq("status", "published").eq("visibility", "public").lte("published_at", new Date().toISOString()).order("published_at", { ascending: false }).limit(count)
   return ((data as { id: string; name: string; kind: string; summary: string | null; published_at: string }[] | null) ?? []).map((r) => ({
     id: r.id,
     title: r.name,

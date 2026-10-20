@@ -190,7 +190,7 @@ function mount(canvas: HTMLCanvasElement, opts: Opts, onLost: () => void) {
     gl.uniform1f(u.uDpr, dpr)
     gl.uniform1f(u.uScale, Math.max(0.55, Math.min(Math.min(w, h) / 320, 1.1)))
     // small spheres hold fewer, brighter grains; the energy lifts them toward the next level
-    gl.uniform1f(u.uIntensity, (1.25 + 0.5 * opts.energy) * Math.max(1, 22000 / opts.count) ** 0.35)
+    gl.uniform1f(u.uIntensity, (2.6 + 1.0 * opts.energy) * Math.max(1, 22000 / opts.count) ** 0.35)
     gl.uniform1f(u.uTurbulence, 0.052)
     gl.uniform1f(u.uCameraDistance, distance)
     gl.uniform1f(u.uFocal, focal)

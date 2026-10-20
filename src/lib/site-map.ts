@@ -123,6 +123,7 @@ export const SITE_MAP: SitePageEntry[] = [
   { path: "/sign-in", label: "Sign in", area: "Account", keys: ["sign-in", "auth"] },
   { path: "/reset-password", label: "Reset password", area: "Account", keys: ["reset-password"] },
   { path: "/auth/callback", label: "Signing in", area: "Account", keys: ["auth-callback"] },
+  { path: "/auth/confirm", label: "Confirm email", area: "Account", keys: ["auth-confirm"] },
   { path: "/you", label: "You", area: "Account", keys: ["you"], membersOnly: true },
   { path: "/settings", label: "Settings", area: "Account", keys: ["settings"], membersOnly: true },
   { path: "/notifications", label: "Notifications", area: "Account", keys: ["notifications"], membersOnly: true },
@@ -146,6 +147,8 @@ export const SITE_MAP: SitePageEntry[] = [
   { path: "/admin/log", label: "Moderation log", area: "Admin", keys: ["admin-log"], membersOnly: true },
   { path: "/admin/roles", label: "Roles and powers", area: "Admin", keys: ["admin-roles"], membersOnly: true },
   { path: "/admin/ai", label: "AI admin", area: "Admin", keys: ["admin-ai"], membersOnly: true },
+  { path: "/admin/logins", label: "Social logins", area: "Admin", keys: ["admin-logins"], membersOnly: true },
+  { path: "/admin/lists", label: "Curated lists", area: "Admin", keys: ["admin-lists"], membersOnly: true },
 ]
 
 /** True for a real address (not a "*shared" pseudo-entry). */

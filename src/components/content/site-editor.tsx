@@ -7,6 +7,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { ChevronRightIcon, EyeOffIcon, HistoryIcon, LockIcon, PencilIcon, RefreshCwIcon, RotateCcwIcon, SearchIcon, ShieldIcon, SquareArrowOutUpRightIcon } from "lucide-react"
 import { AdminHeading, Notice, when } from "@/components/admin/controls"
 import { Gate } from "@/components/moderation/gate"
+import { defaultPageVisibility } from "@/components/moderation/site-guard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -139,7 +140,7 @@ function StatusLineLive() {
 
 function visibilityOf(values: Record<string, unknown>, path: string): Visibility {
   const v = values[visibilityKey(path)]
-  return isVisibility(v) ? v : "everyone"
+  return isVisibility(v) ? v : (defaultPageVisibility(path) as Visibility)
 }
 
 function PageList({ byPage, values, loading, onOpen }: { byPage: Map<string, ContentRow[]>; values: Record<string, unknown>; loading: boolean; onOpen: (p: string) => void }) {

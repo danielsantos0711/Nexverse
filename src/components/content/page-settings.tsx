@@ -6,6 +6,7 @@ import { ChoiceCards } from "@/components/admin/controls"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { defaultPageVisibility } from "@/components/moderation/site-guard"
 import { useCaps } from "@/lib/caps"
 import { saveContent, seoKey, useContentValues, VISIBILITIES, visibilityKey, isVisibility, type Seo, type Visibility } from "@/lib/content"
 import { MEDIA_MAX, MEDIA_TYPES, uploadMedia } from "@/lib/pages"
@@ -149,14 +150,17 @@ export function VisibilityForm({ route, membersOnly }: { route: string; membersO
   const me = useRole()
   const allowed = me.isAdmin || caps.can("settings.manage")
   const raw = values[visibilityKey(route)]
-  const current: Visibility = isVisibility(raw) ? raw : "everyone"
+  // Nobody chose: the site guard's built-in default for this kind of page (members only for chat, staff for admin…).
+  const fallback = defaultPageVisibility(route) as Visibility
+  const current: Visibility = isVisibility(raw) ? raw : fallback
   const [busy, setBusy] = useState(false)
 
   async function choose(next: Visibility) {
     if (next === current || !allowed) return
     setBusy(true)
     try {
-      await saveContent(visibilityKey(route), "block", next === "everyone" ? null : next)
+      // Choosing the default removes the override (null), so the page follows the built-in default again.
+      await saveContent(visibilityKey(route), "block", next === fallback ? null : next)
       announce(true, `Now visible to: ${VISIBILITIES.find((x) => x.id === next)!.label.toLowerCase()}.`)
     } catch (err) {
       announce(false, (err as Error).message)
@@ -174,7 +178,11 @@ export function VisibilityForm({ route, membersOnly }: { route: string; membersO
           Visible to: <strong>{VISIBILITIES.find((x) => x.id === current)!.label}</strong>. Only admins change who sees a page.
         </p>
       )}
-      {membersOnly && <p className="text-xs text-muted-foreground">This page is for signed-in members anyway: guests are asked to sign in whatever is chosen here.</p>}
+      <p className="text-xs text-muted-foreground">
+        Default for this page: {VISIBILITIES.find((x) => x.id === fallback)?.label.toLowerCase() ?? fallback}
+        {isVisibility(raw) && raw !== fallback ? " (changed)" : ""}.
+        {membersOnly ? " Its forms need an account anyway." : ""}
+      </p>
     </div>
   )
 }
