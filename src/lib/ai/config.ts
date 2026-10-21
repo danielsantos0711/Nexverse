@@ -39,6 +39,19 @@ export function credentials(id: ProviderId): Credentials | null {
       const key = env("MISTRAL_API_KEY")
       return key ? { key } : null
     }
+    case "cerebras": {
+      const key = env("CEREBRAS_API_KEY")
+      return key ? { key } : null
+    }
+    // Premium (paid). Each needs its own variable on purpose, so a paid model is never used by accident.
+    case "anthropic": {
+      const key = env("ANTHROPIC_API_KEY")
+      return key ? { key } : null
+    }
+    case "openrouterpaid": {
+      const key = env("OPENROUTER_PREMIUM_API_KEY")
+      return key ? { key } : null
+    }
   }
 }
 
@@ -47,6 +60,11 @@ export const isConfigured = (id: ProviderId) => credentials(id) !== null
 /** Providers with a key set. */
 export function configuredProviders(): ProviderId[] {
   return PROVIDERS.filter((p) => isConfigured(p.id)).map((p) => p.id)
+}
+
+/** Free providers with a key set. Premium keys alone do not switch member AI on: Nexverse runs on free AI. */
+export function configuredFreeProviders(): ProviderId[] {
+  return PROVIDERS.filter((p) => !p.premium && isConfigured(p.id)).map((p) => p.id)
 }
 
 /** Models whose provider has a key. */
@@ -77,7 +95,7 @@ export function cacheSecret(): string {
   return PROVIDERS.map((p) => credentials(p.id)?.key ?? "").join("|")
 }
 
-/** At least one free provider has a key. Member features also need accounts (`supabaseEnv`). */
+/** At least one provider has a key. Which jobs can run is decided per job (catalog.ts `jobsReady`). */
 export function anyProvider(): boolean {
   return configuredProviders().length > 0
 }

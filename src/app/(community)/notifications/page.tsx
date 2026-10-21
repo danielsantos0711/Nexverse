@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function NotificationsPage() {
   return (
-    <div className="shell max-w-3xl">
+    <div className="sd-flow shell max-w-3xl">
       <PageTitle k="notifications.header" title="Notifications" lead="Replies to your threads, upvotes and new followers, as they happen." />
       <NotificationsView />
     </div>

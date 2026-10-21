@@ -16,12 +16,12 @@ import { cn } from "@/lib/utils"
  * real numbers (member likes, saves and replies on projects). A pane of glass; pointing at it scatters pixels
  * in its kind's colours (HorizonX Pixel Card), and a featured one carries a lamp on its rim (HorizonX Border Glow).
  */
-export function HubCard({ e, stats, rank, className }: { e: HubEntry; stats?: ProjectStats; rank?: number; className?: string }) {
-  const card = <HubCardBody e={e} stats={stats} rank={rank} className={className} />
+export function HubCard({ e, stats, rank, image, imported, className }: { e: HubEntry; stats?: ProjectStats; rank?: number; image?: string | null; imported?: boolean; className?: string }) {
+  const card = <HubCardBody e={e} stats={stats} rank={rank} image={image} imported={imported} className={className} />
   return e.featured ? <GlowCard className="rounded-xl">{card}</GlowCard> : card
 }
 
-function HubCardBody({ e, stats, rank, className }: { e: HubEntry; stats?: ProjectStats; rank?: number; className?: string }) {
+function HubCardBody({ e, stats, rank, image, imported, className }: { e: HubEntry; stats?: ProjectStats; rank?: number; image?: string | null; imported?: boolean; className?: string }) {
   const host = e.url ? hostOf(e.url) : ""
   const by = ownerHref(e.owner)
   return (
@@ -30,7 +30,13 @@ function HubCardBody({ e, stats, rank, className }: { e: HubEntry; stats?: Proje
       <div className="relative flex gap-3.5 p-3.5">
         <div className="relative size-14 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/10">
           <ViewTransition name={`cover-${e.key.replace(":", "-")}`} share="morph" default="none">
-            <Cover seed={e.id} kind={e.kind} />
+            {image ? (
+              // The project's own cover, stored on Nexverse (imports copy theirs at import time).
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={image} alt="" loading="lazy" decoding="async" className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.08] motion-reduce:transform-none" />
+            ) : (
+              <Cover seed={e.id} kind={e.kind} />
+            )}
           </ViewTransition>
           {rank !== undefined && <span className="absolute top-1 left-1 rounded bg-black/60 px-1 font-mono text-[10px] text-white/80">#{rank}</span>}
         </div>
@@ -48,7 +54,7 @@ function HubCardBody({ e, stats, rank, className }: { e: HubEntry; stats?: Proje
           <p className="line-clamp-1 text-[13px] text-muted-foreground">{e.summary || (host ? `A link to ${host}` : "")}</p>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <KindTag kind={e.kind} />
-            <span>{e.source === "project" ? "Project" : "Shared link"}</span>
+            <span>{e.source === "project" ? (imported ? "Imported" : "Project") : "Shared link"}</span>
             {e.owner &&
               (by ? (
                 <Link href={by as `/people/${string}`} className="relative z-10 inline-flex items-center gap-1.5 hover:text-foreground">

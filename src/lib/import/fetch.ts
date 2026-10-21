@@ -1,40 +1,72 @@
 import { CodeError } from "@/lib/code/server"
 
 /*
- * The only way the import routes reach the internet. Requests go to three hosts and nowhere else: the public
- * Hugging Face API and file host, its dataset viewer API, and OpenRouter's public model list. The address is
- * always built here from a checked id (never taken from the member), redirects are followed by hand and only
- * to those same hosts, and every body is read with a size cap. No tokens are sent: public items only.
+ * The only way the import routes reach the internet. Requests go to a short list of hosts and nowhere else: the
+ * public Hugging Face API and file host (models, datasets and the daily papers list), its dataset viewer API,
+ * OpenRouter's public model list, GitHub's public API (mass import), and, for cover pictures only, the CDNs those
+ * sites serve images from.
+ * Addresses are built here from checked ids or read from the source's own card, redirects are followed by hand
+ * and only to listed hosts, and every body is read with a size cap. Only GitHub gets a token (GITHUB_TOKEN, a
+ * server-only variable, when set): public items only.
  */
 
-export const ALLOWED_HOSTS = new Set(["huggingface.co", "datasets-server.huggingface.co", "openrouter.ai"])
+export const ALLOWED_HOSTS = new Set(["huggingface.co", "datasets-server.huggingface.co", "openrouter.ai", "api.github.com"])
+
+/** Where cover pictures may come from: the sites above and the CDNs they hand pictures out from. */
+const IMAGE_HOSTS = new Set([
+  "huggingface.co",
+  "cdn-uploads.huggingface.co",
+  "cdn-avatars.huggingface.co",
+  "cdn-thumbnails.huggingface.co",
+  "datasets-server.huggingface.co",
+  "raw.githubusercontent.com",
+  "user-images.githubusercontent.com",
+  "avatars.githubusercontent.com",
+  "repository-images.githubusercontent.com",
+  "opengraph.githubassets.com",
+])
+/** Hugging Face's file CDNs (us.aws.cdn.hf.co, cas-bridge.xethub.hf.co, cdn-lfs.hf.co, …). */
+const IMAGE_SUFFIXES = [".hf.co", ".huggingface.co"]
+
+export const isImageHost = (host: string) => IMAGE_HOSTS.has(host) || IMAGE_SUFFIXES.some((s) => host.endsWith(s))
 
 const UA = "Nexverse-Import"
 
 export class ImportError extends CodeError {}
 
-function checkUrl(raw: string): URL {
+function checkUrl(raw: string, image = false): URL {
   let u: URL
   try {
     u = new URL(raw)
   } catch {
     throw new ImportError(400, "That address is not valid.")
   }
-  if (u.protocol !== "https:" || u.username || u.password || u.port || !ALLOWED_HOSTS.has(u.hostname)) {
-    throw new ImportError(400, "Imports only read from Hugging Face and OpenRouter.")
+  const ok = image ? isImageHost(u.hostname) : ALLOWED_HOSTS.has(u.hostname)
+  if (u.protocol !== "https:" || u.username || u.password || u.port || !ok) {
+    throw new ImportError(400, "Imports only read from Hugging Face, OpenRouter and GitHub.")
   }
   return u
+}
+
+function authHeaders(url: URL): Record<string, string> {
+  const token = process.env.GITHUB_TOKEN?.trim()
+  if (url.hostname === "api.github.com") {
+    const h: Record<string, string> = { "x-github-api-version": "2022-11-28" }
+    if (token) h.authorization = `Bearer ${token}`
+    return h
+  }
+  return {}
 }
 
 type Got = { status: number; body: Uint8Array; type: string }
 
 /** GETs an allow-listed address, following up to 3 redirects that stay on allow-listed hosts. */
-export async function getAllowed(raw: string, { maxBytes = 2 * 1024 * 1024, timeoutMs = 15_000, accept = "application/json" } = {}): Promise<Got> {
-  let url = checkUrl(raw)
+export async function getAllowed(raw: string, { maxBytes = 2 * 1024 * 1024, timeoutMs = 15_000, accept = "application/json", image = false } = {}): Promise<Got> {
+  let url = checkUrl(raw, image)
   for (let hop = 0; hop < 4; hop++) {
     let res: Response
     try {
-      res = await fetch(url, { headers: { accept, "user-agent": UA }, redirect: "manual", signal: AbortSignal.timeout(timeoutMs), cache: "no-store" })
+      res = await fetch(url, { headers: { accept, "user-agent": UA, ...authHeaders(url) }, redirect: "manual", signal: AbortSignal.timeout(timeoutMs), cache: "no-store" })
     } catch {
       throw new ImportError(502, `Could not reach ${url.hostname}. Try again in a minute.`)
     }
@@ -42,7 +74,7 @@ export async function getAllowed(raw: string, { maxBytes = 2 * 1024 * 1024, time
       const loc = res.headers.get("location")
       await res.body?.cancel().catch(() => null)
       if (!loc || hop === 3) throw new ImportError(502, "The source sent too many redirects.")
-      url = checkUrl(new URL(loc, url).toString())
+      url = checkUrl(new URL(loc, url).toString(), image)
       continue
     }
     const declared = Number(res.headers.get("content-length") ?? "0")
@@ -110,5 +142,37 @@ export async function getBytes(url: string, maxBytes: number): Promise<Uint8Arra
   } catch (e) {
     if (e instanceof ImportError && e.status === 413) return null
     throw e
+  }
+}
+
+const IMAGE_TYPES: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif", "image/avif": "avif" }
+
+/** The picture type from its first bytes (the Content-Type header is not trusted alone). */
+function sniff(b: Uint8Array): string | null {
+  if (b.length < 12) return null
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png"
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg"
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return "image/gif"
+  const ascii = (from: number, to: number) => String.fromCharCode(...b.slice(from, to))
+  if (ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") return "image/webp"
+  if (ascii(4, 8) === "ftyp" && /avi[fs]/.test(ascii(8, 12))) return "image/avif"
+  return null
+}
+
+export type Picture = { data: Uint8Array; type: string; ext: string }
+
+/**
+ * A raster picture (PNG, JPEG, WebP, GIF or AVIF, never SVG) from an image host, up to `maxBytes`, or null when
+ * it is missing, too big or not a picture. Never throws for a bad picture: covers are best effort.
+ */
+export async function getImage(url: string, maxBytes = 5 * 1024 * 1024): Promise<Picture | null> {
+  try {
+    const got = await getAllowed(url, { maxBytes, accept: "image/avif,image/webp,image/png,image/jpeg,image/gif;q=0.9", timeoutMs: 20_000, image: true })
+    if (got.status !== 200 || got.body.length < 200) return null
+    const type = sniff(got.body)
+    if (!type) return null
+    return { data: got.body, type, ext: IMAGE_TYPES[type] }
+  } catch {
+    return null
   }
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FileTextIcon, FlagIcon, KeyRoundIcon, LayoutDashboardIcon, LogInIcon, ListChecksIcon, ListOrderedIcon, MenuIcon, MessageCircleIcon, MessagesSquareIcon, NewspaperIcon, PanelsTopLeftIcon, RadioTowerIcon, Settings2Icon, ShieldCheckIcon, SparklesIcon, UsersIcon, type LucideIcon } from "lucide-react"
+import { DownloadCloudIcon, FileTextIcon, FlagIcon, KeyRoundIcon, LayoutDashboardIcon, LogInIcon, ListChecksIcon, ListOrderedIcon, MenuIcon, MessageCircleIcon, MessagesSquareIcon, NewspaperIcon, PanelsTopLeftIcon, RadarIcon, RadioTowerIcon, Settings2Icon, ShieldCheckIcon, SparklesIcon, UsersIcon, type LucideIcon } from "lucide-react"
 import { Notice } from "@/components/admin/controls"
 import { ADMIN_PAGES } from "@/components/admin/sections"
 import { Gate } from "@/components/moderation/gate"
@@ -18,6 +18,7 @@ const ICONS: Record<(typeof ADMIN_PAGES)[number]["href"], LucideIcon> = {
   "/admin/content": NewspaperIcon,
   "/admin/log": ListChecksIcon,
   "/admin/newsroom": RadioTowerIcon,
+  "/admin/newsroom/control": RadarIcon,
   "/admin/forum": MessagesSquareIcon,
   "/admin/chat": MessageCircleIcon,
   "/admin/pages": FileTextIcon,
@@ -26,6 +27,7 @@ const ICONS: Record<(typeof ADMIN_PAGES)[number]["href"], LucideIcon> = {
   "/admin/ai": SparklesIcon,
   "/admin/logins": LogInIcon,
   "/admin/lists": ListOrderedIcon,
+  "/admin/import": DownloadCloudIcon,
   "/admin/site": PanelsTopLeftIcon,
   "/admin/settings": Settings2Icon,
 }
@@ -59,7 +61,9 @@ function Frame({ children }: { children: React.ReactNode }) {
   const path = usePathname()
   const me = useRole()
   const pages = ADMIN_PAGES.filter((p) => !p.admin || me.isAdmin || !live)
-  const isOn = (href: string) => (href === "/admin" ? path === "/admin" : path === href || path.startsWith(href + "/"))
+  // The longest matching entry wins, so /admin/newsroom/control does not also light up /admin/newsroom.
+  const best = ADMIN_PAGES.map((p) => p.href).filter((h) => h !== "/admin" && (path === h || path.startsWith(h + "/"))).sort((a, b) => b.length - a.length)[0]
+  const isOn = (href: string) => (href === "/admin" ? path === "/admin" : href === best)
 
   return (
     <div className={cn("flex flex-col gap-6 lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10", !live && "shell py-10")}>

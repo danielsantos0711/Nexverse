@@ -23,6 +23,10 @@ export type GhRepo = {
   topics: string[]
   pushedAt: string
   createdAt: string
+  /** Stars per day since it was created (rising feeds only). */
+  starsPerDay?: number
+  /** The followed topic it was found under (rising feeds only). */
+  topic?: string
 }
 
 /** A published release of a well-known open-source AI project. */

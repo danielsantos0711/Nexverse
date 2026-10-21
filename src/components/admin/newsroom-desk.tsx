@@ -67,6 +67,9 @@ function Desk() {
           title="Newsroom"
           lead="Stories the free AI researched from official sources, and the ones editors write. Nothing reaches /news until an editor publishes it, unless auto-publish is on for its category. Depth, length, sections, tone, categories, schedule and covers are under Settings."
         >
+          <Link href="/admin/newsroom/control" className="pressable inline-flex h-8 items-center gap-1.5 rounded-lg border border-ion/40 bg-ion/10 px-3 text-sm font-medium text-ion hover:bg-ion/15 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+            <RadarIcon aria-hidden className="size-4" /> Newsroom control
+          </Link>
           <CollectNow />
         </AdminHeading>
       </div>

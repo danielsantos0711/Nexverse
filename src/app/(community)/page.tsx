@@ -9,6 +9,8 @@ import { TrendingBoard } from "@/components/home/trending-board"
 import { LaunchOfTheDay } from "@/components/launchpad/launch-of-the-day"
 import { OnlineNow } from "@/components/presence/online-now"
 import { LANGUAGES } from "@/lib/data"
+import { SkySection, WarpDivider } from "@/components/motion/sections"
+import { DeepFieldPortal, DriftMarquee } from "@/components/home/scroll-moments"
 
 /*
  * The home page. Under the hero (the official N in its galaxy), one focus per section, in the order and with
@@ -22,6 +24,10 @@ import { LANGUAGES } from "@/lib/data"
  *   close           one thing to do
  * Everything the community makes is read live from the database; with nothing there yet, each section says so
  * and offers to make the first one. Nothing on this page is an example.
+ *
+ * Round 11 motion: each section tints the sky behind the page while it is in view (data-sky), warp dividers
+ * stretch into light-speed streaks between sections, the languages drift with the scroll, and before the
+ * closing band the Hubble deep field opens from a small window to the full screen (src/components/motion).
  */
 export default function Home() {
   const langs = Object.values(LANGUAGES)
@@ -32,8 +38,8 @@ export default function Home() {
       <RiseObserver />
       <Hero />
 
-      {/* the languages the forum and its translations speak */}
-      <div aria-hidden className="overflow-hidden border-b border-border py-3.5 [mask-image:linear-gradient(90deg,transparent,#000_8%,#000_92%,transparent)]">
+      {/* the languages the forum and its translations speak; scrolling pushes them along */}
+      <DriftMarquee>
         <div className="marquee gap-10 pr-10 font-display text-xl text-white/25">
           {[...langs, ...langs].map((l, i) => (
             <span key={i} className="whitespace-nowrap">
@@ -41,7 +47,7 @@ export default function Home() {
             </span>
           ))}
         </div>
-      </div>
+      </DriftMarquee>
 
       <HomeSections
         slots={{
@@ -51,35 +57,44 @@ export default function Home() {
             </Suspense>
           ),
           trending: (
-            <section aria-labelledby="trend-h" className={`shell ${gap}`}>
-              <Head id="trend-h" k="home.trending" title="New in the hub" lead="Projects members published and links they shared, newest first." href="/explore" action="Explore all" />
-              <TrendingBoard />
-            </section>
+            <>
+              <WarpDivider className="mt-16 md:mt-24" />
+              <SkySection tone="nova" aria-labelledby="trend-h" className="shell mt-8 md:mt-10">
+                <Head id="trend-h" k="home.trending" title="New in the hub" lead="Projects members published and links they shared, newest first." href="/explore" action="Explore all" />
+                <TrendingBoard />
+              </SkySection>
+            </>
           ),
           forum: (
-            <div className={gap}>
+            <div data-sky="ion" className={gap}>
               <HotInForum online={<OnlineNow />} />
             </div>
           ),
           today: (
-            <div className={gap}>
-              <DoToday missions={<MissionsToday />} arena={<ArenaToday />} />
-            </div>
+            <>
+              <WarpDivider className="mt-16 md:mt-24" />
+              <div data-sky="gold" className="mt-8 md:mt-10">
+                <DoToday missions={<MissionsToday />} arena={<ArenaToday />} />
+              </div>
+            </>
           ),
           constellations: (
-            <div className="mt-16 md:mt-24">
+            <div data-sky="nova" className="mt-16 md:mt-24">
               <Constellations />
             </div>
           ),
           builders: (
-            <div className="mt-16 md:mt-24">
+            <div data-sky="aurora" className="mt-16 md:mt-24">
               <BuilderWorlds />
             </div>
           ),
           close: (
-            <div className={gap}>
-              <Close />
-            </div>
+            <>
+              <DeepFieldPortal className="mt-16 md:mt-24" />
+              <div data-sky="gold">
+                <Close />
+              </div>
+            </>
           ),
         }}
       />

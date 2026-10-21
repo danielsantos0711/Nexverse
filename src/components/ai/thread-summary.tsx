@@ -2,11 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import dynamic from "next/dynamic"
-import { SparklesIcon, XIcon } from "lucide-react"
+import { RotateCcwIcon, SparklesIcon, XIcon } from "lucide-react"
+import { Feedback } from "@/components/ai/ai-answer"
+import { askAi } from "@/lib/ai/client"
 import { AiErrorText, AiLabel, useAiReady } from "@/components/ai/ai-bits"
 import { AiPill } from "@/components/ai/inline-ai"
 import { Button } from "@/components/ui/button"
-import { ai, type ThreadSummaryResult } from "@/lib/ai-client"
+import type { ThreadSummaryResult as BaseSummary } from "@/lib/ai-client"
+
+/** The round 11 summary adds open questions and the thread's consensus (older cached ones lack them). */
+type ThreadSummaryResult = BaseSummary & { open?: string[]; consensus?: string }
 import { cn } from "@/lib/utils"
 
 /*
@@ -15,7 +20,7 @@ import { cn } from "@/lib/utils"
  * in this tab shows it again for free. A new reply means a new summary. Renders nothing when AI is off.
  */
 
-const KEY = "nexverse.ai.summary."
+const KEY = "nexverse.ai.summary2."
 const SiriWave = dynamic(() => import("@/components/assistant/siri-wave"), { ssr: false })
 
 const cacheListeners = new Set<() => void>()
@@ -55,8 +60,11 @@ export function ThreadSummary({
   title,
   posts,
   minPosts = 4,
+  accepted,
   className,
 }: {
+  /** The accepted answer's text, when the thread has one, so the summary leads with it. */
+  accepted?: string
   threadId: string
   title: string
   /** The opening post first, then replies oldest first. Bodies as Markdown or plain text. */
@@ -78,12 +86,13 @@ export function ThreadSummary({
   const [error, setError] = useState<Error | null>(null)
   const [busy, setBusy] = useState(false)
   const abort = useRef<AbortController | null>(null)
+  const [model, setModel] = useState("")
 
   useEffect(() => () => abort.current?.abort(), [])
 
   if (!usable || posts.length < minPosts) return null
 
-  async function run() {
+  async function run(regenerate = false) {
     abort.current?.abort()
     const ctrl = new AbortController()
     abort.current = ctrl
@@ -92,7 +101,8 @@ export function ThreadSummary({
     setBusy(true)
     setError(null)
     try {
-      const r = await ai.threadSummary({ title, posts }, ctrl.signal)
+      const r = await askAi<ThreadSummaryResult>("thread-summary", { title, posts, accepted: accepted?.slice(0, 6000), regenerate }, ctrl.signal)
+      setModel(r.model)
       setFresh({ key: cacheKey, data: r.data })
       writeCache(cacheKey, r.data)
     } catch (err) {
@@ -103,7 +113,7 @@ export function ThreadSummary({
   }
 
   if (!open) {
-    return <AiPill label={summary ? "Show the summary" : "Summarise this thread"} onClick={summary ? () => setDismissed(null) : run} className={cn("self-start", className)} />
+    return <AiPill label={summary ? "Show the summary" : "Summarise this thread"} onClick={summary ? () => setDismissed(null) : () => void run()} className={cn("self-start", className)} />
   }
 
   return (
@@ -132,7 +142,7 @@ export function ThreadSummary({
       {error && !busy && (
         <div className="flex flex-wrap items-center gap-3">
           <AiErrorText error={error} />
-          <Button type="button" variant="ghost" size="xs" onClick={run}>
+          <Button type="button" variant="ghost" size="xs" onClick={() => void run(true)}>
             Try again
           </Button>
         </div>
@@ -147,6 +157,32 @@ export function ThreadSummary({
               ))}
             </ul>
           )}
+          {summary.consensus && (
+            <p className="rounded-xl border border-ion/20 bg-ion/[0.06] px-3 py-2 text-sm">
+              <span className="font-medium text-ion">Where it landed. </span>
+              {summary.consensus}
+            </p>
+          )}
+          {summary.open && summary.open.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <p className="text-xs font-medium text-muted-foreground">Still open</p>
+              <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
+                {summary.open.map((q, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span aria-hidden className="text-gold">?</span>
+                    {q}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-1 border-t border-white/[0.06] pt-2">
+            <button type="button" onClick={() => void run(true)} className="pressable inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground">
+              <RotateCcwIcon aria-hidden className="size-3.5" /> Regenerate
+            </button>
+            <span className="flex-1" />
+            <Feedback feature="thread-summary" target={threadId} model={model} />
+          </div>
           <AiLabel>{`AI summary of ${summary.postsRead} posts. It can miss nuance, so read the posts before replying.`}</AiLabel>
         </>
       )}

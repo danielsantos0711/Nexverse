@@ -15,7 +15,7 @@ export default function Page() {
     <>
       <ExploreMap />
       {/* Everything members published or shared, filterable (the hub's own index, ?q= from search lands here). */}
-      <section aria-labelledby="everything-h" className="shell flex flex-col gap-4 pb-16">
+      <section aria-labelledby="everything-h" data-flow="clip" className="sd-flow shell flex flex-col gap-4 pb-16">
         <h2 id="everything-h" className="section-glow text-xl font-semibold">
           <Copy k="explore.members">Everything members published</Copy>
         </h2>

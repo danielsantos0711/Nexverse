@@ -53,7 +53,7 @@ export function PageBackdrop({ variant = "phosphor", className }: { variant?: Ba
   // software-drawn WebGL and slow machines ("low") keep the still gradient: the shader costs them too much
   const live = idle && (quality === "high" || quality === "medium")
   return (
-    <div aria-hidden className={cn("pointer-events-none absolute -top-16 left-1/2 -z-10 h-[22rem] w-screen -translate-x-1/2 overflow-hidden", className)}>
+    <div aria-hidden className={cn("pointer-events-none absolute -top-16 left-1/2 -z-10 h-[22rem] w-screen -translate-x-1/2 overflow-hidden [mask-image:linear-gradient(to_bottom,#000_55%,transparent)]", className)}>
       <div className="page-backdrop-still absolute inset-0" />
       {live && variant === "phosphor" && (
         <div className="page-backdrop absolute inset-0 opacity-60 mix-blend-screen">
@@ -65,7 +65,6 @@ export function PageBackdrop({ variant = "phosphor", className }: { variant?: Ba
           <LightWarp {...WARP[quality as "high" | "medium"]} />
         </div>
       )}
-      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-background" />
     </div>
   )
 }

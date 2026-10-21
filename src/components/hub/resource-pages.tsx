@@ -6,6 +6,7 @@ import { PageSkeleton } from "@/components/app/page-skeleton"
 import { KIND_ICONS, PageTitle, SectionHead } from "@/components/hub/bits"
 import { Item, Stagger } from "@/components/hub/motion"
 import { ResourceIndex } from "@/components/hub/resource-index"
+import { RisingStrip } from "@/components/hub/rising-strip"
 import { HubItem } from "@/components/hub/hub-item"
 import { FeedMeta, FeedUnavailable } from "@/components/live/bits"
 import { GitHubRepoCard } from "@/components/live/github-repo-card"
@@ -32,15 +33,15 @@ const LIVE: Record<ResourceKind | "all", { title: string; lead: string; topic: s
   model: { title: "Open model code on GitHub", lead: "Repositories under #llm pushed to this week: training, fine-tuning and serving code for open models.", topic: "llm", mode: "active" },
   dataset: { title: "Datasets on GitHub", lead: "Repositories under #datasets pushed to this week.", topic: "datasets", mode: "active" },
   tool: { title: "AI tools on GitHub", lead: "Repositories under #ai-tools pushed to this week.", topic: "ai-tools", mode: "active" },
-  repo: { title: "Rising on GitHub", lead: "New open-source AI repositories from the last 30 days, most starred first.", topic: null, mode: "new" },
-  all: { title: "Rising on GitHub", lead: "New open-source AI repositories from the last 30 days, most starred first.", topic: null, mode: "new" },
+  repo: { title: "Rising on GitHub", lead: "New open-source AI repositories from the last 30 days, ranked by stars per day.", topic: null, mode: "new" },
+  all: { title: "Rising on GitHub", lead: "New open-source AI repositories from the last 30 days, ranked by stars per day.", topic: null, mode: "new" },
 }
 
 export function ResourceListPage({ kind }: { kind?: ResourceKind }) {
   const Icon = kind ? KIND_ICONS[kind] : null
   const live = LIVE[kind ?? "all"]
   return (
-    <div className="shell pb-16">
+    <div data-flow="tilt" className="sd-flow shell pb-16">
       <PageTitle
         k={`${kind ?? "explore"}.header`}
         backdrop="warp"
@@ -65,6 +66,8 @@ export function ResourceListPage({ kind }: { kind?: ResourceKind }) {
           </Link>
         </div>
       </PageTitle>
+
+      <RisingStrip kind={kind} />
 
       <section aria-labelledby="members-h" className="flex flex-col gap-4">
         <h2 id="members-h" className="section-glow text-xl font-semibold">

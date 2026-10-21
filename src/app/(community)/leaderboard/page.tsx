@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function LeaderboardPage() {
   return (
-    <div className="shell pb-16">
+    <div className="sd-flow shell pb-16">
       <PageTitle
         k="leaderboard.header"
         eyebrow={

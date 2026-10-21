@@ -2,10 +2,11 @@ import Link from "next/link"
 import { BadgeCheckIcon, BookOpenTextIcon, CircleHelpIcon, FlagIcon, NewspaperIcon, SendIcon, SparklesIcon } from "lucide-react"
 import { Copy } from "@/components/content/copy"
 import { Item, Stagger } from "@/components/hub/motion"
-import { PillTabs } from "@/components/live/pill-tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { NEWS_CATEGORIES, type CategoryNames, type Story } from "@/lib/newsroom"
-import { latestStories, newsCategoryNames } from "@/lib/newsroom/public"
+import { latestStories, newsCategoryNames, publicDesks, storyExtras } from "@/lib/newsroom/public"
+import { DeskTabs } from "./desk-tabs"
+import { RisingNews } from "./rising"
 import { FeatureStory, StoryCard, StoryRow, TopStory } from "./story-card"
 
 /*
@@ -29,7 +30,7 @@ function Grid({ stories, names, empty }: { stories: Story[]; names: CategoryName
 }
 
 export async function NewsFront() {
-  const [{ ok, items }, names] = await Promise.all([latestStories(60), newsCategoryNames()])
+  const [{ ok, items }, names, desks] = await Promise.all([latestStories(60), newsCategoryNames(), publicDesks()])
 
   if (!items.length) return <EmptyNewsroom unavailable={!ok} />
 
@@ -38,9 +39,20 @@ export async function NewsFront() {
   const top = rest.slice(0, 2)
   const next = rest.slice(2, 6)
   const deep = items.filter((s) => s.depth === "deep" && s.id !== lead.id).slice(0, 3)
-  const order = NEWS_CATEGORIES.map((c) => c.id)
-    .sort((a, b) => Object.keys(names).indexOf(a) - Object.keys(names).indexOf(b))
-    .filter((id) => !names[id].hidden)
+  // Desks come from the database (the editors add and order them); a story without a desk sits on the desk of
+  // its format. Desks with no stories yet are left out of the tabs rather than shown empty.
+  const extras = await storyExtras(items.map((s) => s.id))
+  const deskOf = (s: Story) => extras[s.id]?.desk ?? s.category
+  const known = new Set(desks.map((d) => d.id))
+  const hiddenFormats = new Set(NEWS_CATEGORIES.map((c) => c.id).filter((id) => names[id].hidden))
+  const deskTabs = desks
+    .filter((d) => !(hiddenFormats.has(d.kind) && d.id === d.kind))
+    .map((d) => {
+      const list = items.filter((s) => deskOf(s) === d.id || (!known.has(deskOf(s)) && s.category === d.id))
+      const fmt = names[d.kind]
+      return { id: d.id, label: d.id === d.kind && fmt ? fmt.label : d.label, tint: d.tint, blurb: d.id === d.kind && fmt ? fmt.blurb : d.blurb, count: list.length, content: <Grid stories={list} names={names} empty="" /> }
+    })
+    .filter((t) => t.count > 0)
 
   return (
     <div className="flex flex-col gap-14">
@@ -73,6 +85,8 @@ export async function NewsFront() {
         </section>
       )}
 
+      <RisingNews names={names} />
+
       {deep.length > 0 && (
         <section aria-labelledby="deep-h" className="liquid-glass relative overflow-hidden rounded-[2rem] p-5 md:p-8">
           <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 size-80 rounded-full border border-dashed border-gold/20 motion-safe:animate-[spin_140s_linear_infinite]" />
@@ -93,27 +107,9 @@ export async function NewsFront() {
         <h2 id="all-h" className="text-xl font-semibold md:text-2xl">
           <Copy k="news.front.all">Every story</Copy>
         </h2>
-        <PillTabs
-          label="Categories"
-          tabs={[
-            { id: "all", label: "All", count: items.length, content: <Grid stories={items} names={names} empty="" /> },
-            ...order.map((id) => {
-              const c = names[id]
-              const list = items.filter((s) => s.category === id)
-              return {
-                id,
-                label: c.label,
-                count: list.length,
-                icon: id === "rumor" ? <CircleHelpIcon aria-hidden className="size-3.5" /> : undefined,
-                content: (
-                  <div className="flex flex-col gap-4">
-                    <p className="text-sm text-muted-foreground">{c.blurb}</p>
-                    <Grid stories={list} names={names} empty={`No ${c.label.toLowerCase()} stories yet. This corner of the sky is still waiting for its first star.`} />
-                  </div>
-                ),
-              }
-            }),
-          ]}
+        <DeskTabs
+          label="Desks"
+          tabs={[{ id: "all", label: "All", count: items.length, tint: null, blurb: "", content: <Grid stories={items} names={names} empty="" /> }, ...deskTabs]}
         />
       </section>
     </div>
@@ -138,7 +134,7 @@ function EmptyNewsroom({ unavailable }: { unavailable: boolean }) {
           </Copy>
         ) : (
           <Copy k="news.empty.body" multiline>
-            Nexverse&apos;s newsroom reads official blogs, changelogs and releases every day and researches sourced stories from them. Each one is checked by an editor before it appears here. Nothing has been published yet.
+            Nexverse&apos;s research desks scout official blogs, releases, repositories, papers and public records around the clock and research sourced stories from what they find. Stories appear here when they pass the editors&apos; rules or an editor approves them. Nothing has been published yet.
           </Copy>
         )}
       </p>
@@ -158,7 +154,7 @@ function EmptyNewsroom({ unavailable }: { unavailable: boolean }) {
 export function HowWeReport() {
   const points = [
     { k: "sources", icon: BadgeCheckIcon, title: "Official sources only", body: "Vendor blogs, docs, release notes, papers and GitHub releases. Every claim is cited to the page it comes from." },
-    { k: "checked", icon: SparklesIcon, title: "Researched with AI, checked twice", body: "A free AI model reads several official pages, keeps only facts it can quote, and a second pass checks every claim. An editor publishes." },
+    { k: "checked", icon: SparklesIcon, title: "Researched by AI desks, checked twice", body: "Research agents watch official sources, repositories, papers and public records around the clock. They keep only facts they can quote, a second pass checks every claim, and the editors\u2019 rules decide what is published and what waits for review." },
     { k: "rumours", icon: CircleHelpIcon, title: "Rumours are labelled", body: "Leaks and reports the company has not confirmed always carry an Unconfirmed badge." },
     { k: "corrections", icon: FlagIcon, title: "Corrections welcome", body: "Spot a mistake? Report the story and an editor will look at it." },
   ]

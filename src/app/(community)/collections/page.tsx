@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function CollectionsPage() {
   return (
-    <div className="shell pb-16">
+    <div data-flow="fan" className="sd-flow shell pb-16">
       <PageTitle
         k="collections.header"
         eyebrow={

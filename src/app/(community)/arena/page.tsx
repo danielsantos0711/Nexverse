@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function ArenaPage() {
   return (
-    <div className="shell max-w-5xl pb-16">
+    <div data-flow="fan" className="sd-flow shell max-w-5xl pb-16">
       <ForumHeader k="arena.header"
         title="Arena"
         lead="Two answers to the same prompt, model names hidden. Vote for the better one, then see who wrote them. Every vote moves the ratings."

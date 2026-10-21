@@ -11,13 +11,15 @@ import { Button } from "@/components/ui/button"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { KINDS, LANGUAGES, type LanguageCode, type ResourceKind } from "@/lib/data"
-import { listHub, type HubList } from "@/lib/hub"
+import { listHub, type HubEntry, type HubList } from "@/lib/hub"
+import { importedIds, listRising, projectCovers } from "@/lib/live/nexverse"
 import { licenseLabel } from "@/lib/projects"
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 const SORTS = [
+  ["trending", "Trending"],
   ["new", "Newest"],
   ["liked", "Most liked"],
   ["name", "Name"],
@@ -30,6 +32,12 @@ const SOURCES = [
   ["share", "Shared links"],
 ] as const
 type Source = (typeof SOURCES)[number][0]
+
+const ORIGINS = [
+  ["members", "Made by members"],
+  ["imported", "Imported"],
+] as const
+type Origin = (typeof ORIGINS)[number][0]
 
 const fold = (s: string) => s.toLowerCase().normalize("NFKD").replace(/\p{M}/gu, "")
 
@@ -50,7 +58,10 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
   const [lang, setLang] = useState<LanguageCode | null>(null)
   const [license, setLicense] = useState<string | null>(null)
   const raw = params.get("sort")
-  const [sort, setSort] = useState<Sort>(isSort(raw) ? raw : "new")
+  const [sort, setSort] = useState<Sort>(isSort(raw) ? raw : "trending")
+  const [origin, setOrigin] = useState<Origin | null>(null)
+  // Covers, which entries were imported, and momentum over 30 days: read after the list, never blocking it.
+  const [extra, setExtra] = useState<{ covers: Record<string, string>; imported: Set<string>; score: Map<string, number> }>({ covers: {}, imported: new Set(), score: new Map() })
 
   useEffect(() => {
     if (live && !ready) return
@@ -63,6 +74,19 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
     }
   }, [kind, ready, user?.id])
 
+  useEffect(() => {
+    if (!data) return
+    let stale = false
+    const ids = data.entries.filter((e) => e.source === "project" && !e.local).map((e) => e.id)
+    void Promise.all([projectCovers(ids), importedIds(ids), listRising({ days: 30, kind, limit: 60 }).catch(() => ({ items: [] }))]).then(([covers, imported, rising]) => {
+      if (stale) return
+      setExtra({ covers, imported, score: new Map(rising.items.map((i) => [i.target, i.score])) })
+    })
+    return () => {
+      stale = true
+    }
+  }, [data, kind])
+
   const pool = useMemo(() => data?.entries ?? [], [data])
   const tags = useMemo(() => {
     const n = new Map<string, number>()
@@ -72,12 +96,15 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
   const langs = (Object.keys(LANGUAGES) as LanguageCode[]).filter((l) => pool.some((e) => e.langs.includes(l)))
   const licenses = [...new Set(pool.map((e) => e.license).filter((l): l is string => Boolean(l)))].sort()
   const sources = SOURCES.filter(([s]) => pool.some((e) => e.source === s))
+  const isImported = (id: string) => extra.imported.has(id)
+  const hasImports = extra.imported.size > 0
 
   const list = useMemo(() => {
     const words = fold(q).split(/\s+/).filter(Boolean)
     const out = pool.filter((e) => {
       if (kinds.length && !kinds.includes(e.kind)) return false
       if (source && e.source !== source) return false
+      if (origin && (origin === "imported") !== extra.imported.has(e.id)) return false
       if (tag && !e.tags.includes(tag)) return false
       if (lang && !e.langs.includes(lang)) return false
       if (license && e.license !== license) return false
@@ -86,13 +113,17 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
       return words.every((w) => hay.includes(w))
     })
     if (sort === "name") return [...out].sort((a, b) => a.name.localeCompare(b.name))
-    if (sort === "liked") return [...out].sort((a, b) => (data?.stats[b.id]?.likes ?? 0) - (data?.stats[a.id]?.likes ?? 0) || b.date.localeCompare(a.date))
-    return out
-  }, [pool, kinds, source, tag, lang, license, q, sort, data])
+    // Nexverse first: what members made here comes before items imported from elsewhere, in every other order.
+    const native = (a: HubEntry, b: HubEntry) => Number(extra.imported.has(a.id)) - Number(extra.imported.has(b.id))
+    if (sort === "liked") return [...out].sort((a, b) => native(a, b) || (data?.stats[b.id]?.likes ?? 0) - (data?.stats[a.id]?.likes ?? 0) || b.date.localeCompare(a.date))
+    if (sort === "trending") return [...out].sort((a, b) => native(a, b) || Number(b.featured) - Number(a.featured) || (extra.score.get(b.key) ?? 0) - (extra.score.get(a.key) ?? 0) || b.date.localeCompare(a.date))
+    return [...out].sort((a, b) => native(a, b) || Number(b.featured) - Number(a.featured) || b.date.localeCompare(a.date))
+  }, [pool, kinds, source, origin, tag, lang, license, q, sort, data, extra])
 
-  const active = [source && SOURCES.find(([s]) => s === source)?.[1], tag && `#${tag}`, lang && LANGUAGES[lang].name, license && licenseLabel(license), ...kinds.map((k) => KINDS[k].plural)].filter(Boolean) as string[]
+  const active = [source && SOURCES.find(([s]) => s === source)?.[1], origin && ORIGINS.find(([o]) => o === origin)?.[1], tag && `#${tag}`, lang && LANGUAGES[lang].name, license && licenseLabel(license), ...kinds.map((k) => KINDS[k].plural)].filter(Boolean) as string[]
   const clear = () => {
     setSource(null)
+    setOrigin(null)
     setTag(null)
     setLang(null)
     setLicense(null)
@@ -128,7 +159,7 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
 
   if (pool.length === 0) return <FirstShare kind={kind} errors={data.errors} />
 
-  const showFacets = !kind || sources.length > 1 || tags.length > 0 || langs.length > 0 || licenses.length > 0
+  const showFacets = !kind || sources.length > 1 || hasImports || tags.length > 0 || langs.length > 0 || licenses.length > 0
 
   return (
     <div className={cn("grid grid-cols-1 gap-8", showFacets && "lg:grid-cols-[15rem_1fr]")}>
@@ -152,6 +183,15 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
             <Facet title="Source">
               {sources.map(([s, label]) => (
                 <Pill key={s} on={source === s} onClick={() => setSource(source === s ? null : s)}>
+                  {label}
+                </Pill>
+              ))}
+            </Facet>
+          )}
+          {hasImports && (
+            <Facet title="Origin">
+              {ORIGINS.map(([o, label]) => (
+                <Pill key={o} on={origin === o} onClick={() => setOrigin(origin === o ? null : o)}>
                   {label}
                 </Pill>
               ))}
@@ -261,7 +301,7 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
                   exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.97 }}
                   transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
                 >
-                  <HubCard e={e} stats={data.stats[e.id]} />
+                  <HubCard e={e} stats={data.stats[e.id]} image={extra.covers[e.id]} imported={isImported(e.id)} />
                 </motion.li>
               ))}
             </AnimatePresence>

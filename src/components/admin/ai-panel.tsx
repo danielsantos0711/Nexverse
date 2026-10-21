@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { RefreshCwIcon, SparklesIcon } from "lucide-react"
+import { CatalogBrowser, JobsOverview, PremiumSlots } from "@/components/admin/ai-jobs"
 import { ChainEditor, ProviderCard, UsageTable } from "@/components/admin/ai-parts"
 import { AdminHeading, Notice, StatusLine, SwitchRow } from "@/components/admin/controls"
 import { Gate } from "@/components/moderation/gate"
@@ -9,14 +10,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { aiAdmin, AiRequestError, type AiAdminStatus } from "@/lib/ai-client"
+import { AiRequestError } from "@/lib/ai-client"
+import { aiAdmin2, type AdminStatus as AiAdminStatus } from "@/lib/ai/client"
 import { DEFAULT_CHAINS, DEFAULT_QUOTAS, JOBS, PROVIDERS, type AiJob } from "@/lib/ai/models"
-import { chainFor, DEFAULT_AI_SETTINGS, normalizeAiSettings, type AiSettings } from "@/lib/ai/settings"
+import { allModels, chainFor, DEFAULT_AI_SETTINGS, normalizeAiSettings, type AiSettings } from "@/lib/ai/settings"
 import { db, live } from "@/lib/supabase"
 
 /*
- * /admin/ai: which free providers have a key (yes or no, never the key), today's use against each cap, the
- * model order per job, members' daily quotas by role, and one switch for everything. The settings are saved
+ * /admin/ai: what every job runs on and how well (model, provider, latency, success, tokens, cost, feedback, a
+ * live test per job), which providers have a key (yes or no, never the key), the model order per job, the
+ * opt-in premium slot per job with its monthly budget, the live model catalogue, members' daily quotas by role,
+ * and one switch for everything. The settings are saved
  * to site_settings under "ai" (public, no secrets) and every save goes in the moderation log.
  */
 
@@ -52,6 +56,9 @@ function describe(before: AiSettings, after: AiSettings): string {
   if (jobs.length) parts.push(`model order: ${jobs.join(", ")}`)
   if (!same(before.quotas, after.quotas)) parts.push("quotas")
   if (!same(before.caps, after.caps)) parts.push("provider caps")
+  if (!same(before.premium, after.premium)) parts.push(`premium slots: ${Object.keys(after.premium).join(", ") || "none"}`)
+  if (before.premiumBudgetUsd !== after.premiumBudgetUsd) parts.push(`premium budget $${after.premiumBudgetUsd}`)
+  if (!same(before.custom, after.custom)) parts.push(`added models: ${after.custom.length}`)
   return parts.join("; ") || "no change"
 }
 
@@ -81,7 +88,7 @@ function Panel() {
     if (!live) return
     setLoading(true)
     try {
-      const s = await aiAdmin.status(signal)
+      const s = await aiAdmin2.status(signal)
       setStatus(s)
       setSaved(normalizeAiSettings(s.settings))
       setLoadError(null)
@@ -139,7 +146,7 @@ function Panel() {
 
   return (
     <form onSubmit={save} noValidate className="flex flex-col gap-8">
-      <AdminHeading title="AI" lead="Nexverse uses free AI tiers only, never a paid API. For each job the router tries the best free model first and falls back to the next one when a provider is missing, busy or at its daily cap.">
+      <AdminHeading title="AI" lead="Nexverse runs on free AI by default. For each job the router tries the strongest free model first (reasoning models for research and writing, fast ones for triage) and falls back across providers when one is missing, busy or at its daily cap. Paid models are opt-in, per job, with a monthly budget.">
         {live && (
           <Button type="button" variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCwIcon aria-hidden data-icon="inline-start" className={loading ? "motion-safe:animate-spin" : undefined} />
@@ -167,6 +174,24 @@ function Panel() {
         checked={value.enabled}
         onChange={(on) => change({ ...value, enabled: on })}
       />
+
+      <section aria-labelledby="ai-jobs" className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 id="ai-jobs" className="text-xl font-semibold tracking-[-0.02em]">
+            Jobs
+          </h2>
+          <p className="max-w-[68ch] text-sm text-muted-foreground">What each AI job answers with right now and how it did over the last 7 days. A test runs a small real question through the job&apos;s whole chain.</p>
+        </div>
+        {loading && !status ? (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-72 rounded-2xl" />
+            ))}
+          </div>
+        ) : (
+          <JobsOverview status={status} settings={value} />
+        )}
+      </section>
 
       <section aria-labelledby="ai-providers" className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
@@ -234,10 +259,33 @@ function Panel() {
                 onChange={(next) => change({ ...value, chains: { ...value.chains, [j.id as AiJob]: next } })}
                 configured={configured}
                 playground={j.id === "playground"}
+                models={allModels(value)}
               />
             </TabsContent>
           ))}
         </Tabs>
+      </section>
+
+      <section aria-labelledby="ai-premium" className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 id="ai-premium" className="text-xl font-semibold tracking-[-0.02em]">
+            Premium slot (paid, optional)
+          </h2>
+          <p className="max-w-[68ch] text-sm text-muted-foreground">
+            Off by default. Pick a paid model for a job only where the free ones are not good enough (for example the newsroom&apos;s editor). It is tried first while the month&apos;s spend is under the budget; the free chain stays as the fallback.
+          </p>
+        </div>
+        <PremiumSlots status={status} settings={value} onChange={change} />
+      </section>
+
+      <section aria-labelledby="ai-catalog" className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 id="ai-catalog" className="text-xl font-semibold tracking-[-0.02em]">
+            Live model catalogue
+          </h2>
+          <p className="max-w-[68ch] text-sm text-muted-foreground">Read straight from each provider. New free models show up here before this site knows them; add one and put it in a job&apos;s order.</p>
+        </div>
+        <CatalogBrowser status={status} settings={value} onChange={change} canRefresh={live} />
       </section>
 
       <section aria-labelledby="ai-quotas" className="flex flex-col gap-4">
@@ -317,7 +365,7 @@ function NoKeysNotice() {
         </div>
       </div>
       <ol className="flex flex-col gap-2 text-sm">
-        {PROVIDERS.map((p, i) => (
+        {PROVIDERS.filter((p) => !p.premium).map((p, i) => (
           <li key={p.id} className="flex flex-col gap-0.5 rounded-xl border border-border bg-card/50 px-3 py-2 sm:flex-row sm:items-center sm:gap-3">
             <span className="font-medium">
               {i + 1}. {p.label}

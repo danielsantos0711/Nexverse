@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function ForumPage() {
   return (
-    <div className="shell pb-16">
+    <div className="sd-flow shell pb-16">
       <ForumHeader k="forum.header" title="Forum" lead="Discussions for people building with AI, organised by category. Anyone can read; members start threads and reply, in whatever language they think in." />
       <ForumIndex />
       {/* Old links (/forum?c=<slug>) read the query in the browser and move to /forum/c/<slug>. */}

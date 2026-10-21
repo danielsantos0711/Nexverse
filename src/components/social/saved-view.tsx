@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import Link from "next/link"
+import { EmptySky } from "@/components/motion/empty-sky"
 import { useEffect, useMemo, useState } from "react"
 import { BookmarkIcon, SearchIcon, Undo2Icon } from "lucide-react"
 import { useItemInfo, type ItemInfo } from "@/components/collections/describe-item"
@@ -237,24 +238,23 @@ export function SavedView() {
 }
 
 function EmptySaved() {
+  // the empty sky: a planet with a moon in orbit and stars that brighten under the pointer (round 11)
   return (
-    <div className="spotlight glass flex flex-col items-center gap-4 rounded-2xl px-6 py-16 text-center">
-      <span className="grid size-14 place-items-center rounded-full bg-ion/10 text-ion shadow-[0_0_40px_-6px_rgb(143_180_255/0.6)]">
-        <BookmarkIcon aria-hidden className="size-6" />
-      </span>
-      <div className="flex max-w-md flex-col gap-1.5">
-        <h2 className="text-lg font-semibold"><Copy k="saved.saved-view.nothing-saved-yet">Nothing saved yet</Copy></h2>
-        <p className="text-muted-foreground"><Copy k="saved.saved-view.tap-the-bookmark-on-any" multiline>Tap the bookmark on any model, dataset, tool, repo, thread or story and it lands here, ready when you are.</Copy></p>
-      </div>
-      <div className="flex flex-wrap justify-center gap-2">
-        <Link href="/explore" className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground">
-          <Copy k="saved.saved-view.explore-the-hub">Explore the hub</Copy>
-        </Link>
-        <Link href="/forum" className="pressable inline-flex h-10 items-center rounded-full border border-border bg-secondary/60 px-5 text-sm hover:bg-secondary">
-          <Copy k="saved.saved-view.browse-the-forum">Browse the forum</Copy>
-        </Link>
-      </div>
-    </div>
+    <EmptySky
+      className="py-16"
+      title={<Copy k="saved.saved-view.nothing-saved-yet">Nothing saved yet</Copy>}
+      body={<Copy k="saved.saved-view.tap-the-bookmark-on-any" multiline>Tap the bookmark on any model, dataset, tool, repo, thread or story and it lands here, ready when you are.</Copy>}
+      action={
+        <div className="flex flex-wrap justify-center gap-2">
+          <Link href="/explore" className="pressable inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground">
+            <Copy k="saved.saved-view.explore-the-hub">Explore the hub</Copy>
+          </Link>
+          <Link href="/forum" className="pressable inline-flex h-10 items-center rounded-full border border-border bg-secondary/60 px-5 text-sm hover:bg-secondary">
+            <Copy k="saved.saved-view.browse-the-forum">Browse the forum</Copy>
+          </Link>
+        </div>
+      }
+    />
   )
 }
 

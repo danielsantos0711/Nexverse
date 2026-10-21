@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function ForYouPage() {
   return (
-    <div className="shell pb-16">
+    <div data-flow="tilt" className="sd-flow shell pb-16">
       <PageTitle k="for-you.header" title="For you" lead="Your corner of the universe: what the people and categories you follow made, events and missions coming up, and people worth following. Every card says why it is here." />
       <ForYouFeed />
     </div>

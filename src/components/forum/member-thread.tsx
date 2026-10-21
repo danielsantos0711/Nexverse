@@ -296,6 +296,7 @@ export function MemberThread({ id }: { id: string }) {
           <ThreadSummary
             threadId={q.id}
             title={q.title}
+            accepted={answers.find((a) => a.id === accepted)?.body}
             posts={[{ author: author.name, body: q.body ?? "" }, ...answers.map((a) => ({ author: replyPoster(a).name, body: a.body }))]}
           />
           <SimilarThreads topics={similar} categoryName={cat?.name} />

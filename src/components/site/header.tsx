@@ -4,7 +4,7 @@ import Link from "next/link"
 import type { Route } from "next"
 import { usePathname, useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { ArrowRightIcon, ChevronDownIcon, CompassIcon, HomeIcon, MailIcon, MenuIcon, PlusIcon, SearchIcon, ShieldIcon } from "lucide-react"
 import { AccountButton } from "@/components/account/account-button"
 import { NotificationBell } from "@/components/social/notification-bell"
@@ -17,7 +17,8 @@ import { GlassDefs } from "@/components/glass/glass"
 import { CreateSheet, openCreate } from "@/components/site/create-sheet"
 import { GO_KEYS, isTyping } from "@/components/site/shortcuts"
 import { Toaster } from "@/components/site/toaster"
-import { shortcutsOn, UiPrefsApplier } from "@/components/settings/ui-prefs"
+import { shortcutsOn, UiPrefsApplier, useUiPrefs } from "@/components/settings/ui-prefs"
+import { usePhoneBar, useScrollFacts } from "@/components/motion/scroll-state"
 import { GlassKeys } from "@/components/glass/glass-keys"
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useRole } from "@/lib/roles"
@@ -112,36 +113,27 @@ export function SiteHeader() {
   const openSearch = useOpenCommandMenu()
   const { menus, mobile, direct, hide, name } = useMenus()
   const { isStaff } = useRole()
-  const [scrolled, setScrolled] = useState(false)
   const searchLabel = useCopy("header.search", "Search")
   const createLabel = useCopy("header.create", "Create")
   useSiteShortcuts(openSearch)
-
-  // A passive listener that only re-renders when the header crosses the 8px line, never per scroll event.
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8)
-    onScroll()
-    window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
+  const away = useHeaderAway()
+  const scrolled = !useScrollFacts().atTop
 
   return (
-    <header className="sticky top-0 z-40 h-16">
+    // No full-width bar of blur any more (Daniel, round 11): the page shows through between the controls, and only
+    // the floating pieces (the brand, the menu pill and its panel, the tools on the right) carry their own blur once
+    // the page moves. The header slides away while you read down and comes back when you scroll up; on phones it
+    // takes turns with the tab bar so only one bar is ever on screen (src/components/motion/scroll-state.ts).
+    <header data-away={away ? "" : undefined} className="nx-header nx-bar-slide sticky top-0 z-40 h-16" onFocusCapture={(e) => headerFocus.set((e.target as Element).matches(":focus-visible"))} onBlurCapture={() => headerFocus.set(false)}>
       <GlassDefs />
       <div className="shell relative flex h-full items-center gap-3 lg:gap-6">
-        {/* Once the page moves, the bar becomes a floating pane of plain blur. It fades in by opacity; the blur
-            covers this 52px strip, never the page. */}
-        <div
-          aria-hidden
-          className={cn(
-            "liquid-glass pointer-events-none absolute inset-x-[max(0.25rem,calc(var(--gutter)-0.9rem))] inset-y-1.5 rounded-[1.4rem] transition-opacity duration-(--dur-slow)",
-            scrolled ? "opacity-100" : "opacity-0"
-          )}
-        />
         <Link
           href="/"
           aria-label={`${name} home`}
-          className="pressable relative -mx-1.5 flex shrink-0 items-center rounded-lg px-1.5 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className={cn(
+            "pressable relative -mx-1.5 flex shrink-0 items-center rounded-full px-1.5 py-1 transition-[background-color,box-shadow,padding] duration-(--dur-slow) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+            scrolled && "liquid-glass mx-0 px-3 py-1.5"
+          )}
         >
           <Lockup size="sm" priority alt="" className="sm:hidden" />
           <Lockup size="md" priority alt="" className="hidden sm:block" />
@@ -149,7 +141,7 @@ export function SiteHeader() {
 
         <MainNav pathname={pathname} menus={menus} direct={direct} />
 
-        <div className="relative ml-auto flex items-center gap-1.5 sm:gap-2 lg:ml-0">
+        <div className={cn("relative ml-auto flex items-center gap-1.5 rounded-full transition-[background-color,box-shadow,padding] duration-(--dur-slow) sm:gap-2 lg:ml-0", scrolled && "liquid-glass p-1")}>
           <button
             type="button"
             onClick={openSearch}
@@ -190,6 +182,46 @@ export function SiteHeader() {
       <UiPrefsApplier />
     </header>
   )
+}
+
+/** Whether keyboard focus is inside the header (someone tabbing through the menus): it never slides away from them. */
+const headerFocus = (() => {
+  let on = false
+  const ls = new Set<() => void>()
+  return {
+    set(v: boolean) {
+      if (v === on) return
+      on = v
+      ls.forEach((l) => l())
+    },
+    subscribe(l: () => void) {
+      ls.add(l)
+      return () => ls.delete(l)
+    },
+    get: () => on,
+  }
+})()
+
+/**
+ * When the header steps aside. Phones and tablets: whenever the tab bar has the screen (usePhoneBar). Desktop:
+ * while reading down, unless the member pinned it (Settings › Your experience), and never while focus is in it.
+ */
+function useHeaderAway() {
+  const { header } = useUiPrefs()
+  const facts = useScrollFacts()
+  const phoneBar = usePhoneBar(header === "pinned")
+  const focused = useSyncExternalStore(headerFocus.subscribe, headerFocus.get, () => false)
+  const [wide, setWide] = useState(false)
+  useEffect(() => {
+    const mq = matchMedia("(min-width: 1024px)")
+    const on = () => setWide(mq.matches)
+    on()
+    mq.addEventListener("change", on)
+    return () => mq.removeEventListener("change", on)
+  }, [])
+  if (focused) return false
+  if (!wide) return phoneBar === "tabs"
+  return header !== "pinned" && facts.dir === "down" && !facts.atTop
 }
 
 /**

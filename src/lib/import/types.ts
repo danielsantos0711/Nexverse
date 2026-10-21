@@ -6,7 +6,7 @@
 export type ImportSite = "huggingface" | "openrouter"
 export type ImportType = "model" | "dataset"
 
-export type ImportRequest = { site: ImportSite; type: ImportType; id: string; preview?: boolean; publish?: boolean; copyFiles?: boolean }
+export type ImportRequest = { site: ImportSite; type: ImportType; id: string; preview?: boolean; publish?: boolean; copyFiles?: boolean; images?: boolean }
 
 /** What an import would create, shown before anything is written. */
 export type ImportPreview = {
@@ -24,7 +24,7 @@ export type ImportPreview = {
   files: { name: string; bytes: number | null }[]
 }
 
-export type ImportResult = { id: string; kind: "model" | "dataset"; href: string; files: number; skipped: string[] }
+export type ImportResult = { id: string; kind: "model" | "dataset"; href: string; files: number; skipped: string[]; cover?: string | null }
 
 export const SITE_NAMES: Record<ImportSite, string> = { huggingface: "Hugging Face", openrouter: "OpenRouter" }
 

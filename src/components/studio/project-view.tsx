@@ -17,6 +17,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "
 import { ActivityPanel, ApiPanel, AppsPanel, CodePanel, DiscussionsPanel, FilesPanel, OverviewPanel, SettingsPanel, type PanelProps } from "@/components/studio/project-panels"
 import { BenchmarksPanel, ModelFacts, ProvidersPanel } from "@/components/studio/model-panels"
 import { DatasetViewer } from "@/components/studio/dataset-panels"
+import { ExplainItem } from "@/components/ai/inline-ai"
 import { compact, KINDS } from "@/lib/data"
 import { formatBytes } from "@/lib/editor/media"
 import { listFiles, type HostedFile } from "@/lib/publish/files"
@@ -285,6 +286,17 @@ function Page({ p, rest, mine, owner, onProject }: { p: Project; rest: string[];
               </Link>
             )}
           </motion.div>
+
+          {!draft && tab === "overview" && (
+            <ExplainItem
+              kind={type}
+              name={p.name}
+              summary={p.summary}
+              readme={p.readme}
+              details={[`Kind: ${typeLabel(type)}`, `License: ${p.license}`, p.tags.length ? `Tags: ${p.tags.join(", ")}` : "", p.langs.length ? `Languages: ${p.langs.join(", ")}` : ""].filter(Boolean).join("\n")}
+              url={base}
+            />
+          )}
 
           <TabBar tabs={tabs} current={tab} base={base} />
         </div>
