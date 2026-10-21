@@ -5,13 +5,17 @@ import { ReportButton } from "@/components/moderation/report-button"
 import { hostname } from "@/lib/live/http"
 import { discussItemHref } from "@/lib/live/ids"
 import { readingMinutes, storyHref, type CategoryNames, type Story } from "@/lib/newsroom"
-import { relatedStories } from "@/lib/newsroom/public"
+import { relatedStories, storyExtras } from "@/lib/newsroom/public"
+import { NO_EXTRAS } from "@/lib/newsroom/engine/types"
 import { ArticleBody, storyHeadings } from "./article-body"
 import { AiNote, CategoryTag, CoverCreditLine, StoryCover, storyDate, storyDateTime, UnconfirmedBadge } from "./bits"
 import { ShareStory } from "./share-story"
 import { NewsTldr } from "@/components/ai/inline-ai"
 import { StoryCard } from "./story-card"
 import { ReadingProgress, StoryToc, StoryTocMobile } from "./toc"
+import { AiIllustrationLabel, AvailabilityTag, EvidenceBadge, LeakMeter, SourceBadges, StoryMedia, StoryTimeline } from "./evidence"
+import { ReadPing } from "./read-ping"
+import { StoryHero } from "./story-hero"
 
 /*
  * One newsroom story in long-form reading mode: the cover across the top with its credit, the headline,
@@ -89,7 +93,9 @@ function Sources({ story }: { story: Story }) {
 }
 
 export async function StoryView({ story, names }: { story: Story; names: CategoryNames }) {
-  const related = await relatedStories(story.category, story.id, 3)
+  const [related, extrasMap] = await Promise.all([relatedStories(story.category, story.id, 3), storyExtras([story.id])])
+  const extras = extrasMap[story.id] ?? NO_EXTRAS
+  const leak = extras.leakConfidence !== null && (story.unconfirmed || story.category === "rumor")
   const path = storyHref(story)
   const discuss = discussItemHref(story.title, `${story.dek}\n\nRead the story on Nexverse: ${path}`)
   const headings = storyHeadings(story.body)
@@ -99,6 +105,7 @@ export async function StoryView({ story, names }: { story: Story; names: Categor
   return (
     <article className="pb-24">
       <ReadingProgress target="story-body" />
+      <ReadPing storyId={story.id} />
       <div className="shell">
         <div className="mx-auto max-w-[72rem] pt-6 md:pt-10">
           <Link href="/news" className="inline-flex items-center gap-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
@@ -114,6 +121,8 @@ export async function StoryView({ story, names }: { story: Story; names: Categor
                   <BookOpenTextIcon aria-hidden className="size-3" /> <Copy k="news.story.inDepth">In depth</Copy>
                 </span>
               )}
+              {extras.evidence && <EvidenceBadge level={extras.evidence} />}
+              {extras.availability && <AvailabilityTag value={extras.availability} />}
               {story.aiGenerated && <AiNote />}
             </p>
             <h1 className="font-display text-[1.85rem] leading-[1.12] font-semibold tracking-[-0.03em] text-balance md:text-[2.5rem]">{story.title}</h1>
@@ -139,15 +148,16 @@ export async function StoryView({ story, names }: { story: Story; names: Categor
             </p>
           </header>
 
-          <figure className="mt-8">
-            <div className="relative aspect-[16/9] overflow-hidden rounded-3xl ring-1 ring-white/10 md:aspect-[21/9]">
-              <StoryCover story={story} variant="art" priority />
-              <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/40 via-transparent to-transparent" />
-            </div>
-            <figcaption className="mt-2 flex justify-end">
-              <CoverCreditLine story={story} />
-            </figcaption>
-          </figure>
+          <StoryHero
+            caption={
+              <>
+                {extras.coverAi && <AiIllustrationLabel />}
+                <CoverCreditLine story={story} />
+              </>
+            }
+          >
+            <StoryCover story={story} variant="art" priority />
+          </StoryHero>
         </div>
 
         <div className={long ? "mx-auto mt-10 grid max-w-[72rem] gap-12 lg:grid-cols-[13rem_minmax(0,44rem)] lg:justify-center xl:gap-16" : "mx-auto mt-10 max-w-[44rem]"}>
@@ -177,12 +187,18 @@ export async function StoryView({ story, names }: { story: Story; names: Categor
                   </p>
                 </div>
               )}
+              {leak && <LeakMeter confidence={extras.leakConfidence ?? 0} level={extras.evidence} />}
+              {story.sources.length > 0 && <SourceBadges sources={story.sources} />}
               <StoryTocMobile headings={headings} />
               <NewsTldr id={String(story.id)} title={story.title} body={story.body} />
               <KeyFacts story={story} />
             </div>
 
             <ArticleBody body={story.body} sources={story.sources} pullQuote={story.pullQuote} className="mt-8 text-[17px] leading-[1.78] text-foreground/90" />
+
+            <StoryMedia media={extras.media} />
+
+            <StoryTimeline entries={extras.timeline} sources={story.sources} />
 
             <Sources story={story} />
 

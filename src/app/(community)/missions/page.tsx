@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function MissionsPage() {
   return (
-    <div className="shell max-w-5xl pb-16">
+    <div data-flow="clip" className="sd-flow shell max-w-5xl pb-16">
       <ForumHeader k="missions.header"
         title="Missions"
         lead="Challenges members post for each other. Accept one, build it, submit your entry; the poster picks the winner, who gets the points and a badge."

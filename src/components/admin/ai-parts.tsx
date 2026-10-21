@@ -161,7 +161,7 @@ export function ProviderCard({
             className="inline-flex items-center gap-1.5 text-sm text-ion underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             <KeyRoundIcon aria-hidden className="size-4" />
-            Create a free key
+            {p.premium ? "Create a paid key" : "Create a free key"}
             <ExternalLinkIcon aria-hidden className="size-3.5" />
           </a>
         )}

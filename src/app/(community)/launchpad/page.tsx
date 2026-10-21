@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function LaunchpadPage() {
   return (
-    <div className="shell max-w-6xl pb-16">
+    <div data-flow="zoom" className="sd-flow shell max-w-6xl pb-16">
       <ForumHeader k="launchpad.header"
         title="Launchpad"
         lead="Schedule a launch for your project. A countdown builds up to it, then for 24 hours members boost it once each. The most boosted launch of each day becomes Launch of the day."

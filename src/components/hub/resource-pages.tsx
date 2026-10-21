@@ -41,7 +41,7 @@ export function ResourceListPage({ kind }: { kind?: ResourceKind }) {
   const Icon = kind ? KIND_ICONS[kind] : null
   const live = LIVE[kind ?? "all"]
   return (
-    <div className="shell pb-16">
+    <div data-flow="tilt" className="sd-flow shell pb-16">
       <PageTitle
         k={`${kind ?? "explore"}.header`}
         backdrop="warp"

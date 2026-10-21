@@ -40,12 +40,14 @@ const SECTIONS = [
 
 function Section({ id, title, lead, href, action, tint, children }: { id: string; title: string; lead: string; href?: string; action?: string; tint?: "ion" | "gold" | "repo"; children: React.ReactNode }) {
   return (
+    <div data-sky={tint === "gold" ? "gold" : tint === "repo" ? "nova" : "ion"}>
     <Reveal id={id} tint={tint} className="border-t border-border pt-10">
       <SectionHead id={`${id}-title`} title={title} href={href} action={action}>
         <p className="text-sm text-muted-foreground">{lead}</p>
       </SectionHead>
       {children}
     </Reveal>
+    </div>
   )
 }
 
@@ -102,7 +104,7 @@ async function Newsroom() {
 
 export default function TrendingPage() {
   return (
-    <div className="shell pb-16">
+    <div data-flow="tilt" className="sd-flow shell pb-16">
       <PageTitle k="trending.header"
         eyebrow={<span className="flex flex-wrap items-center gap-x-2.5 gap-y-1"><AreaCrumbs /><span aria-hidden className="opacity-40">·</span><Copy k="trending.header.eyebrow">Nexverse first, then the rest of the open AI world</Copy></span>}
         title="Trending"

@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function CodePage() {
   return (
-    <div className="shell max-w-6xl pb-16">
+    <div data-flow="clip" className="sd-flow shell max-w-6xl pb-16">
       <CodeHero />
       <Suspense fallback={<Skeleton className="h-96 w-full rounded-xl" />}>
         <CodeExplore />

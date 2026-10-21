@@ -46,6 +46,11 @@ const ROUTE_TONE: [string, SkyTone][] = [
   ["/code", "nova"],
   ["/repos", "nova"],
   ["/tools", "gold"],
+  ["/news", "gold"],
+  ["/trending", "nova"],
+  ["/for-you", "rose"],
+  ["/people", "aurora"],
+  ["/crews", "aurora"],
 ]
 const toneFor = (path: string): SkyTone => ROUTE_TONE.find(([p]) => path === p || path.startsWith(p + "/"))?.[1] ?? "ion"
 

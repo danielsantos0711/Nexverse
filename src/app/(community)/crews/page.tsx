@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function CrewsPage() {
   return (
-    <div className="shell max-w-6xl pb-16">
+    <div data-flow="fan" className="sd-flow shell max-w-6xl pb-16">
       <ForumHeader k="crews.header"
         title="Crews"
         lead="Labs, study groups and project teams. Each crew has a wall, its own chat room, shared collections and a members list."
