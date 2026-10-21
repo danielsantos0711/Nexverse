@@ -1390,12 +1390,12 @@ html[data-calm] *::after {
 /* The page is no longer painted flat black: <html> holds the deep colour, the body lets the sky
    (AmbientSky, fixed behind everything) show through, and cards are lighter panels of tinted glass. */
 :root {
-  --background: #060811;
-  --card: rgb(19 23 36 / 0.78);
-  --raised: #171c29;
-  --secondary: #171b27;
-  --muted: #141925;
-  --accent: #1c2130;
+  --background: #0b0c10;
+  --card: rgb(22 24 31 / 0.8);
+  --raised: #1a1c23;
+  --secondary: #181a21;
+  --muted: #15171d;
+  --accent: #1d2028;
   /* surfaces that sit on the sky: a soft top light and a nebula tint at the corner */
   --surface-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.035), transparent 42%);
   /* how far scroll motion travels: Settings › Your experience › Motion while scrolling */
@@ -1422,17 +1422,17 @@ html[data-scroll-fx="cinematic"] {
 @property --sky-1 {
   syntax: "<color>";
   inherits: true;
-  initial-value: rgb(70 100 200 / 0.3);
+  initial-value: rgb(150 162 190 / 0.075);
 }
 @property --sky-2 {
   syntax: "<color>";
   inherits: true;
-  initial-value: rgb(140 100 220 / 0.2);
+  initial-value: rgb(175 180 196 / 0.05);
 }
 @property --sky-3 {
   syntax: "<color>";
   inherits: true;
-  initial-value: rgb(216 197 158 / 0.1);
+  initial-value: rgb(205 205 215 / 0.035);
 }
 .nx-sky {
   position: fixed;
@@ -1441,36 +1441,17 @@ html[data-scroll-fx="cinematic"] {
   overflow: hidden;
   pointer-events: none;
   contain: strict;
-  background: radial-gradient(120% 80% at 50% -10%, #0c1122 0%, #070914 45%, #05060c 100%);
+  background: radial-gradient(120% 80% at 50% -10%, #15171e 0%, #0e1015 45%, #0a0b0f 100%);
   transition:
     --sky-1 1.4s var(--ease-out),
     --sky-2 1.4s var(--ease-out),
     --sky-3 1.4s var(--ease-out);
 }
-.nx-sky[data-tone="ion"] {
-  --sky-1: rgb(70 110 230 / 0.32);
-  --sky-2: rgb(120 90 220 / 0.2);
-  --sky-3: rgb(90 200 230 / 0.1);
-}
-.nx-sky[data-tone="gold"] {
-  --sky-1: rgb(200 160 90 / 0.24);
-  --sky-2: rgb(220 110 90 / 0.14);
-  --sky-3: rgb(110 140 230 / 0.14);
-}
-.nx-sky[data-tone="aurora"] {
-  --sky-1: rgb(60 200 150 / 0.22);
-  --sky-2: rgb(70 120 230 / 0.2);
-  --sky-3: rgb(160 230 200 / 0.1);
-}
-.nx-sky[data-tone="nova"] {
-  --sky-1: rgb(150 100 240 / 0.3);
-  --sky-2: rgb(90 110 240 / 0.2);
-  --sky-3: rgb(230 120 200 / 0.1);
-}
-.nx-sky[data-tone="rose"] {
-  --sky-1: rgb(220 110 170 / 0.22);
-  --sky-2: rgb(130 100 230 / 0.2);
-  --sky-3: rgb(216 197 158 / 0.12);
+/* One sober sky everywhere (Daniel, round 11): dark graphite with faint neutral light, no colour per area. */
+.nx-sky {
+  --sky-1: rgb(150 162 190 / 0.075);
+  --sky-2: rgb(175 180 196 / 0.05);
+  --sky-3: rgb(205 205 215 / 0.035);
 }
 .nx-sky-cloud {
   position: absolute;
@@ -1548,7 +1529,7 @@ html[data-scroll-fx="cinematic"] {
   opacity: 0.35;
 }
 .nx-sky[data-backdrop="deep"] {
-  background: #05060b;
+  background: #07080b;
 }
 .nx-sky[data-still] *,
 html[data-fx="off"] .nx-sky *,
