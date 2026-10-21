@@ -9,6 +9,7 @@ export const SETTING_SECTIONS: { key: SettingKey; label: string; blurb: string }
   { key: "brand", label: "Brand", blurb: "Site name, tagline and the description search engines and footers use" },
   { key: "announcement", label: "Announcement", blurb: "A line above the header for news, launches or maintenance" },
   { key: "theme", label: "Theme", blurb: "Accent colours, glass, background, text size, corners and motion" },
+  { key: "experience", label: "Experience", blurb: "How scrolling, scroll motion, the sky and the header feel for everyone, and what members may change" },
   { key: "hero", label: "Home hero", blurb: "The first words and button visitors see on the home page" },
   { key: "home", label: "Home sections", blurb: "Order the home page sections and choose which ones show" },
   { key: "nav", label: "Navigation", blurb: "Hide links from the header menus, footer and search" },

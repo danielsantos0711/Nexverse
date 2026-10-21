@@ -36,7 +36,7 @@ function frames(kind: string, i: number): { from: Keyframe; to: Keyframe; durati
     case "iris":
       return { from: { opacity: 0.3, clipPath: "circle(10% at 50% 50%)" }, to: { opacity: 1, clipPath: "circle(80% at 50% 50%)" }, duration: 1100, easing: EASE }
     default:
-      return { from: { opacity: 0, transform: `translateY(${22 * a}px)` }, to: { opacity: 1, transform: "none" }, duration: 700, easing: EASE }
+      return { from: { opacity: 0, transform: `translateY(${40 * a}px) scale(${1 - 0.03 * a})` }, to: { opacity: 1, transform: "none" }, duration: 900, easing: EASE }
   }
 }
 
@@ -50,17 +50,26 @@ function frames(kind: string, i: number): { from: Keyframe; to: Keyframe; durati
 export function RiseObserver() {
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.hasAttribute("data-calm") || !("adoptedStyleSheets" in document)) return
+    // Pages with .sd-flow animate their rows with CSS scroll timelines. Browsers without them (older Safari,
+    // Firefox) get the same entrances here instead, so every visitor sees the motion.
+    const flow = !CSS.supports("animation-timeline: view()")
+    const SELECTOR = flow ? ".rise, .sd-flow [data-nav-item]" : ".rise"
     const sheet = new CSSStyleSheet()
-    sheet.replaceSync(".rise:not([data-risen]) { opacity: 0; transform: translateY(22px); } .rise .momentum { transform: scaleX(0); }")
+    sheet.replaceSync(
+      ".rise:not([data-risen]) { opacity: 0; transform: translateY(22px); } .rise .momentum { transform: scaleX(0); }" +
+        (flow ? " html:not([data-calm]) .sd-flow [data-nav-item]:not([data-risen]) { opacity: 0; }" : "")
+    )
     const done = new WeakSet<Element>()
     const animations: Animation[] = []
 
     const reveal = (el: Element, instant = false) => {
       if (done.has(el)) return
       done.add(el)
-      const i = Number.parseFloat(getComputedStyle(el).getPropertyValue("--i")) || 0
+      const row = !el.classList.contains("rise")
+      const i = row ? Array.prototype.indexOf.call(el.parentElement?.children ?? [], el) % 4 : Number.parseFloat(getComputedStyle(el).getPropertyValue("--i")) || 0
       const delay = instant ? 0 : i * 70
-      const f = frames((el as HTMLElement).dataset.rise ?? "up", i)
+      const kind = row ? ({ tilt: "tilt", fan: "fan", clip: "clip", zoom: "warp" } as Record<string, string>)[(el.closest(".sd-flow") as HTMLElement | null)?.dataset.flow ?? ""] ?? "up" : (el as HTMLElement).dataset.rise ?? "up"
+      const f = frames(kind, i)
       const anim = el.animate([f.from, f.to], { duration: instant ? 0 : f.duration, delay, easing: f.easing, fill: "forwards" })
       // once it has arrived, mark it (an attribute React does not manage, so a re-render keeps it) and drop the
       // animation, which hands the element back to its own styles: hover lifts and tilts work again
@@ -86,7 +95,7 @@ export function RiseObserver() {
     )
     const watched = new WeakSet<Element>()
     const scan = () => {
-      for (const el of document.querySelectorAll(".rise")) {
+      for (const el of document.querySelectorAll(SELECTOR)) {
         if (watched.has(el)) continue
         watched.add(el)
         // already scrolled past (a restored scroll position): show it without a show

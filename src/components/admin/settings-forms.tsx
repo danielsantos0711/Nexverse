@@ -184,6 +184,7 @@ const VALIDATE: { [K in SettingKey]: (v: SiteSettings[K]) => Errors } = {
       ["customAccent", v.accent === "custom" && !HEX.test(v.customAccent) ? "Write the colour as #rrggbb, for example #8fb4ff." : null],
       ["secondary", v.secondary && !HEX.test(v.secondary) ? "Write the colour as #rrggbb, or leave it empty." : null],
     ]),
+  experience: () => ({}),
   hero: (v) =>
     collect([
       ["badge", len(v.badge, 80, "The badge")],
@@ -306,6 +307,7 @@ function SectionForm({ section }: { section: SettingKey }) {
         {section === "brand" && <BrandFields {...(fields as FieldsProps<"brand">)} />}
         {section === "announcement" && <AnnouncementFields {...(fields as FieldsProps<"announcement">)} />}
         {section === "theme" && <ThemeFields {...(fields as FieldsProps<"theme">)} />}
+        {section === "experience" && <ExperienceFields {...(fields as FieldsProps<"experience">)} />}
         {section === "hero" && <HeroFields {...(fields as FieldsProps<"hero">)} />}
         {section === "home" && <HomeFields {...(fields as FieldsProps<"home">)} />}
         {section === "nav" && <NavFields {...(fields as FieldsProps<"nav">)} features={settings.features} />}
@@ -484,6 +486,65 @@ function ThemeFields({ value, change, errors }: FieldsProps<"theme">) {
       <ChoiceCards name="hero" label="Home page backdrop" value={value.heroEffect} options={HERO_EFFECTS} onChange={(heroEffect) => change({ ...value, heroEffect })} />
       <ChoiceCards name="fontScale" label="Text size" columns={2} value={value.fontScale} options={FONT_SCALES} onChange={(fontScale) => change({ ...value, fontScale })} />
       <ChoiceCards name="radius" label="Corners" value={value.radius} options={RADII} onChange={(radius) => change({ ...value, radius })} />
+    </FieldGroup>
+  )
+}
+
+type Feel = SiteSettings["experience"]
+type FeelKey = Feel["locked"][number]
+const FEEL_FIELDS: { key: FeelKey; label: string; options: { id: string; label: string; blurb: string }[] }[] = [
+  { key: "scroll", label: "Scrolling", options: [
+    { id: "smooth", label: "Smooth", blurb: "Each wheel step eases into place" },
+    { id: "silk", label: "Silk", blurb: "A longer, softer glide" },
+    { id: "native", label: "Native", blurb: "The browser's own scrolling" },
+  ] },
+  { key: "scrollFx", label: "Motion while scrolling", options: [
+    { id: "subtle", label: "Subtle", blurb: "Small, quiet movements" },
+    { id: "lively", label: "Lively", blurb: "Clear entrances and parallax" },
+    { id: "cinematic", label: "Cinematic", blurb: "Deep parallax, big entrances" },
+  ] },
+  { key: "backdrop", label: "Background", options: [
+    { id: "nebula", label: "Graphite sky", blurb: "Dark graphite with faint light and stars" },
+    { id: "starfield", label: "Starfield", blurb: "Mostly stars" },
+    { id: "deep", label: "Deep space", blurb: "Darker and calmer" },
+  ] },
+  { key: "density", label: "Stars", options: [
+    { id: "sparse", label: "Few", blurb: "A quiet sky" },
+    { id: "normal", label: "Some", blurb: "Balanced" },
+    { id: "dense", label: "Many", blurb: "A crowded galaxy" },
+  ] },
+  { key: "header", label: "Header on scroll", options: [
+    { id: "auto", label: "Steps aside", blurb: "Hides while reading down, back on scroll up" },
+    { id: "pinned", label: "Always there", blurb: "Stays at the top" },
+  ] },
+]
+
+function ExperienceFields({ value, change }: FieldsProps<"experience">) {
+  const locked = new Set(value.locked ?? [])
+  return (
+    <FieldGroup>
+      <p className="text-sm text-muted-foreground">
+        What every visitor gets. Members can change each one in Settings › Your experience, unless you lock it. Visitors who ask their device for reduced motion always get less.
+      </p>
+      {FEEL_FIELDS.map((f) => (
+        <div key={f.key} className="flex flex-col gap-2">
+          <ChoiceCards
+            name={f.key}
+            label={f.label}
+            columns={f.options.length === 2 ? 2 : 3}
+            value={value[f.key] as string}
+            options={f.options}
+            onChange={(v) => change({ ...value, [f.key]: v } as Feel)}
+          />
+          <label className="-mt-1 inline-flex items-center gap-2 self-start text-sm text-muted-foreground">
+            <Switch
+              checked={locked.has(f.key)}
+              onCheckedChange={(on) => change({ ...value, locked: on ? [...locked, f.key] : [...locked].filter((k) => k !== f.key) })}
+            />
+            Lock it: members cannot change this
+          </label>
+        </div>
+      ))}
     </FieldGroup>
   )
 }
