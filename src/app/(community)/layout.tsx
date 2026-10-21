@@ -1,4 +1,5 @@
 import { Suspense } from "react"
+import { RiseObserver } from "@/components/home/rise"
 import { ViewTransition } from "react"
 import { ContentEditor } from "@/components/content/editor"
 import { ContentProvider } from "@/components/content/provider"
@@ -24,6 +25,7 @@ export default function CommunityLayout({ children }: LayoutProps<"/">) {
           {/* the sky behind every page (nebula, stars at three depths) and the eased wheel scrolling: round 11 */}
           <AmbientSky />
           <SmoothScroll />
+          <RiseObserver />
           <AnnouncementBar />
           <ViewTransition name="site-header" default="none">
             <SiteHeader />

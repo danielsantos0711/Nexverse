@@ -3,14 +3,13 @@ import { Hero } from "@/components/hero/hero"
 import { HomeSections } from "@/components/home/home-sections"
 import { BuilderWorlds, Close, Constellations, DoToday, Head, HotInForum } from "@/components/home/sections"
 import { Signal, SignalSkeleton } from "@/components/home/signal"
-import { RiseObserver } from "@/components/home/rise"
 import { ArenaToday, MissionsToday } from "@/components/home/today-widgets"
 import { TrendingBoard } from "@/components/home/trending-board"
 import { LaunchOfTheDay } from "@/components/launchpad/launch-of-the-day"
 import { OnlineNow } from "@/components/presence/online-now"
 import { LANGUAGES } from "@/lib/data"
-import { SkySection, WarpDivider } from "@/components/motion/sections"
-import { DeepFieldPortal, DriftMarquee } from "@/components/home/scroll-moments"
+import { SkySection } from "@/components/motion/sections"
+import { DriftMarquee } from "@/components/home/scroll-moments"
 
 /*
  * The home page. Under the hero (the official N in its galaxy), one focus per section, in the order and with
@@ -25,9 +24,8 @@ import { DeepFieldPortal, DriftMarquee } from "@/components/home/scroll-moments"
  * Everything the community makes is read live from the database; with nothing there yet, each section says so
  * and offers to make the first one. Nothing on this page is an example.
  *
- * Round 11 motion: each section tints the sky behind the page while it is in view (data-sky), warp dividers
- * stretch into light-speed streaks between sections, the languages drift with the scroll, and before the
- * closing band the Hubble deep field opens from a small window to the full screen (src/components/motion).
+ * Round 11 motion: sections arrive with scroll-driven entrances (RiseObserver, src/components/motion) and the
+ * languages drift with the scroll.
  */
 export default function Home() {
   const langs = Object.values(LANGUAGES)
@@ -35,7 +33,6 @@ export default function Home() {
 
   return (
     <>
-      <RiseObserver />
       <Hero />
 
       {/* the languages the forum and its translations speak; scrolling pushes them along */}
@@ -57,13 +54,10 @@ export default function Home() {
             </Suspense>
           ),
           trending: (
-            <>
-              <WarpDivider className="mt-16 md:mt-24" />
-              <SkySection tone="nova" aria-labelledby="trend-h" className="shell mt-8 md:mt-10">
-                <Head id="trend-h" k="home.trending" title="New in the hub" lead="Projects members published and links they shared, newest first." href="/explore" action="Explore all" />
-                <TrendingBoard />
-              </SkySection>
-            </>
+            <SkySection tone="nova" aria-labelledby="trend-h" className={`shell ${gap}`}>
+              <Head id="trend-h" k="home.trending" title="New in the hub" lead="Projects members published and links they shared, newest first." href="/explore" action="Explore all" />
+              <TrendingBoard />
+            </SkySection>
           ),
           forum: (
             <div data-sky="ion" className={gap}>
@@ -71,12 +65,9 @@ export default function Home() {
             </div>
           ),
           today: (
-            <>
-              <WarpDivider className="mt-16 md:mt-24" />
-              <div data-sky="gold" className="mt-8 md:mt-10">
-                <DoToday missions={<MissionsToday />} arena={<ArenaToday />} />
-              </div>
-            </>
+            <div data-sky="gold" className={gap}>
+              <DoToday missions={<MissionsToday />} arena={<ArenaToday />} />
+            </div>
           ),
           constellations: (
             <div data-sky="nova" className="mt-16 md:mt-24">
@@ -89,12 +80,9 @@ export default function Home() {
             </div>
           ),
           close: (
-            <>
-              <DeepFieldPortal className="mt-16 md:mt-24" />
-              <div data-sky="gold">
-                <Close />
-              </div>
-            </>
+            <div data-sky="gold" className="mt-16 md:mt-24">
+              <Close />
+            </div>
           ),
         }}
       />

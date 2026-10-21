@@ -7,7 +7,7 @@ import { useEffect, useId, useRef, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 import { BellIcon, CheckCircle2Icon, ImageUpIcon, LogOutIcon, PaletteIcon, ShieldCheckIcon, SparklesIcon, Trash2Icon, UserIcon, type LucideIcon } from "lucide-react"
 import { GlassKeys } from "@/components/glass/glass-keys"
-import { ACCENTS, saveUiPrefs, useUiPrefs, type UiAccent, type UiMotion, type UiPrefs } from "@/components/settings/ui-prefs"
+import { ACCENTS, FEEL_KEYS, resetUiPrefs, saveUiPrefs, useOwnUiPrefs, useSiteFeel, useUiPrefs, type UiAccent, type UiMotion, type UiPrefs } from "@/components/settings/ui-prefs"
 import { GO_KEYS } from "@/components/site/shortcuts"
 import { toast } from "@/components/site/toaster"
 import { InterestPicker } from "@/components/settings/interest-picker"
@@ -528,7 +528,7 @@ const FEEL: [Choice<"scroll">, Choice<"scrollFx">, Choice<"backdrop">, Choice<"d
     label: "Background",
     lead: "The sky behind every page.",
     options: [
-      { id: "nebula", label: "Nebula", hint: "Coloured clouds and stars that follow each part of the site" },
+      { id: "nebula", label: "Graphite sky", hint: "Dark graphite with faint light and stars" },
       { id: "starfield", label: "Starfield", hint: "Mostly stars, fainter clouds" },
       { id: "deep", label: "Deep space", hint: "Darker and calmer, a few stars" },
     ],
@@ -555,14 +555,14 @@ const FEEL: [Choice<"scroll">, Choice<"scrollFx">, Choice<"backdrop">, Choice<"d
 ]
 
 /** One choice of the experience section: a row of radio cards with a highlight that glides to the chosen one. */
-function FeelChoice<K extends keyof UiPrefs>({ c, value, onPick }: { c: Choice<K>; value: UiPrefs[K]; onPick: (v: UiPrefs[K]) => void }) {
+function FeelChoice<K extends keyof UiPrefs>({ c, value, onPick, locked }: { c: Choice<K>; value: UiPrefs[K]; onPick: (v: UiPrefs[K]) => void; locked?: boolean }) {
   const reduce = useReducedMotion()
   const id = `ux-${c.key}`
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-col">
         <span id={id} className="text-sm font-medium">{c.label}</span>
-        <span className="text-xs text-muted-foreground">{c.lead}</span>
+        <span className="text-xs text-muted-foreground">{locked ? "Set by Nexverse for everyone." : c.lead}</span>
       </div>
       <div role="radiogroup" aria-labelledby={id} className={cn("grid gap-2", c.options.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
         {c.options.map((o) => {
@@ -573,8 +573,9 @@ function FeelChoice<K extends keyof UiPrefs>({ c, value, onPick }: { c: Choice<K
               type="button"
               role="radio"
               aria-checked={on}
+              disabled={locked}
               onClick={() => onPick(o.id)}
-              className={cn("nx-lift relative flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left", on ? "border-ion/50" : "border-border bg-card/60")}
+              className={cn("nx-lift relative flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left disabled:cursor-not-allowed disabled:opacity-60", on ? "border-ion/50" : "border-border bg-card/60")}
             >
               {on && <motion.span layoutId={`${id}-on`} aria-hidden transition={reduce ? { duration: 0 } : { type: "spring", duration: 0.35, bounce: 0.15 }} className="absolute inset-0 rounded-xl bg-ion/[0.07]" />}
               <span className="relative text-sm font-medium">{o.label}</span>
@@ -590,7 +591,18 @@ function FeelChoice<K extends keyof UiPrefs>({ c, value, onPick }: { c: Choice<K
 /** The member's own motion, accent and shortcuts: applied at once, saved to their account. */
 function ExperienceSection({ userId }: { userId: string | null }) {
   const p = useUiPrefs()
+  const mine = useOwnUiPrefs()
+  const { locked } = useSiteFeel()
+  const custom = FEEL_KEYS.some((k) => k in mine)
   const reduce = useReducedMotion()
+  async function backToSite() {
+    try {
+      await resetUiPrefs([...FEEL_KEYS], userId)
+      toast("You now follow the site's own feel.")
+    } catch (e) {
+      toast((e as Error).message, { tone: "error" })
+    }
+  }
   async function save(patch: Parameters<typeof saveUiPrefs>[0]) {
     try {
       await saveUiPrefs(patch, userId)
@@ -625,8 +637,13 @@ function ExperienceSection({ userId }: { userId: string | null }) {
         </div>
       </div>
       {FEEL.map((c) => (
-        <FeelChoice key={c.key} c={c as Choice<keyof UiPrefs>} value={p[c.key]} onPick={(v) => void save({ [c.key]: v })} />
+        <FeelChoice key={c.key} c={c as Choice<keyof UiPrefs>} value={p[c.key]} locked={(locked as string[]).includes(c.key)} onPick={(v) => void save({ [c.key]: v })} />
       ))}
+      {custom && (
+        <button type="button" onClick={() => void backToSite()} className="pressable self-start text-sm text-ion hover:underline">
+          Use the site&apos;s scrolling, sky and header again
+        </button>
+      )}
       <div className="flex flex-col gap-2">
         <span id="ux-accent" className="text-sm font-medium">Accent colour</span>
         <div role="radiogroup" aria-labelledby="ux-accent" className="flex flex-wrap gap-2">

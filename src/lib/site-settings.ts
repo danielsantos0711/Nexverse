@@ -53,6 +53,15 @@ export type SiteSettings = {
   features: Record<FeatureKey, boolean>
   footer: { note: string; links: { label: string; href: string }[] }
   access: { guestsCanBrowse: boolean; signupOpen: boolean }
+  /** The feel every visitor starts with (members may change each one unless it is in `locked`). */
+  experience: {
+    scroll: "smooth" | "silk" | "native"
+    scrollFx: "subtle" | "lively" | "cinematic"
+    backdrop: "nebula" | "starfield" | "deep"
+    density: "sparse" | "normal" | "dense"
+    header: "auto" | "pinned"
+    locked: ("scroll" | "scrollFx" | "backdrop" | "density" | "header")[]
+  }
 }
 
 export type SettingKey = keyof SiteSettings
@@ -102,6 +111,7 @@ export const DEFAULTS: SiteSettings = {
   features: Object.fromEntries(FEATURES.map(({ key }) => [key, true])) as Record<FeatureKey, boolean>,
   footer: { note: "", links: [] },
   access: { guestsCanBrowse: true, signupOpen: true },
+  experience: { scroll: "smooth", scrollFx: "cinematic", backdrop: "nebula", density: "normal", header: "auto", locked: [] },
 }
 
 /** Merges a saved section over its defaults, one level deep, so new fields keep working with old rows. */

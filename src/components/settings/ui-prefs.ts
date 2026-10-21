@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useSyncExternalStore } from "react"
+import { useEffect, useMemo, useSyncExternalStore } from "react"
 import { useSession } from "@/lib/store"
+import { useSiteSettings } from "@/lib/site-settings"
 import { db } from "@/lib/supabase"
 
 /*
@@ -26,9 +27,17 @@ export type UiDensity = "sparse" | "normal" | "dense"
 export type UiHeader = "auto" | "pinned"
 export type UiPrefs = { motion: UiMotion; accent: UiAccent; shortcuts: boolean; scroll: UiScroll; scrollFx: UiScrollFx; backdrop: UiBackdrop; density: UiDensity; header: UiHeader }
 
-export const DEFAULT_UI: UiPrefs = { motion: "site", accent: "site", shortcuts: true, scroll: "smooth", scrollFx: "lively", backdrop: "nebula", density: "normal", header: "auto" }
+/** The built-in feel, before the admins or the member choose anything. */
+export const DEFAULT_UI: UiPrefs = { motion: "site", accent: "site", shortcuts: true, scroll: "smooth", scrollFx: "cinematic", backdrop: "nebula", density: "normal", header: "auto" }
 
-const pick = <T extends string>(v: unknown, ok: readonly T[], fallback: T): T => (ok.includes(v as T) ? (v as T) : fallback)
+/** The parts of the feel the admins set for everyone in Admin › Site settings › Experience (and may lock). */
+export const FEEL_KEYS = ["scroll", "scrollFx", "backdrop", "density", "header"] as const
+export type FeelKey = (typeof FEEL_KEYS)[number]
+
+/** What round 11 shipped as the default. Older saved prefs stored every field; a value equal to this was never a choice. */
+const LEGACY: UiPrefs = { motion: "site", accent: "site", shortcuts: true, scroll: "smooth", scrollFx: "lively", backdrop: "nebula", density: "normal", header: "auto" }
+
+const pick = <T extends string>(v: unknown, ok: readonly T[]): T | undefined => (ok.includes(v as T) ? (v as T) : undefined)
 export const ACCENTS: Record<Exclude<UiAccent, "site">, { label: string; color: string; fg: string }> = {
   ion: { label: "Ion blue", color: "#8fb4ff", fg: "#061026" },
   gold: { label: "Champagne", color: "#d8c59e", fg: "#1b160c" },
@@ -36,38 +45,48 @@ export const ACCENTS: Record<Exclude<UiAccent, "site">, { label: string; color: 
   nova: { label: "Nova", color: "#c3a6ff", fg: "#130a26" },
 }
 
-const KEY = "nexverse.ui"
-let prefs: UiPrefs = DEFAULT_UI
+const KEY = "nexverse.ui.own"
+const LEGACY_KEY = "nexverse.ui"
+/** Only what this member chose. Everything else follows the site (the admins' experience settings). */
+let own: Partial<UiPrefs> = {}
 let loadedFor: string | null | undefined
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((l) => l())
 
-function clean(v: unknown): UiPrefs {
+/** The member's own choices from a saved value. Values from before round 11's fix that equal the old defaults are dropped. */
+function clean(v: unknown): Partial<UiPrefs> {
   const r = v && typeof v === "object" ? (v as Record<string, unknown>) : {}
-  return {
-    motion: ["site", "calm", "full"].includes(r.motion as string) ? (r.motion as UiMotion) : "site",
-    accent: ["site", "ion", "gold", "aurora", "nova"].includes(r.accent as string) ? (r.accent as UiAccent) : "site",
-    shortcuts: r.shortcuts !== false,
-    scroll: pick(r.scroll, ["smooth", "silk", "native"], DEFAULT_UI.scroll),
-    scrollFx: pick(r.scrollFx, ["subtle", "lively", "cinematic"], DEFAULT_UI.scrollFx),
-    backdrop: pick(r.backdrop, ["nebula", "starfield", "deep"], DEFAULT_UI.backdrop),
-    density: pick(r.density, ["sparse", "normal", "dense"], DEFAULT_UI.density),
-    header: pick(r.header, ["auto", "pinned"], DEFAULT_UI.header),
+  const legacy = r.v !== 2
+  const out: Partial<UiPrefs> = {
+    motion: pick(r.motion, ["site", "calm", "full"] as const),
+    accent: pick(r.accent, ["site", "ion", "gold", "aurora", "nova"] as const),
+    shortcuts: typeof r.shortcuts === "boolean" ? r.shortcuts : undefined,
+    scroll: pick(r.scroll, ["smooth", "silk", "native"] as const),
+    scrollFx: pick(r.scrollFx, ["subtle", "lively", "cinematic"] as const),
+    backdrop: pick(r.backdrop, ["nebula", "starfield", "deep"] as const),
+    density: pick(r.density, ["sparse", "normal", "dense"] as const),
+    header: pick(r.header, ["auto", "pinned"] as const),
   }
+  for (const k of Object.keys(out) as (keyof UiPrefs)[]) {
+    if (out[k] === undefined || (legacy && out[k] === LEGACY[k])) delete out[k]
+  }
+  return out
 }
 
-function readLocal(): UiPrefs {
+function readLocal(): Partial<UiPrefs> {
   try {
-    return clean(JSON.parse(localStorage.getItem(KEY) ?? "{}"))
+    const now = localStorage.getItem(KEY)
+    if (now) return clean(JSON.parse(now))
+    return clean(JSON.parse(localStorage.getItem(LEGACY_KEY) ?? "{}"))
   } catch {
-    return DEFAULT_UI
+    return {}
   }
 }
 
-function set(next: UiPrefs) {
-  prefs = next
+function set(next: Partial<UiPrefs>) {
+  own = next
   try {
-    localStorage.setItem(KEY, JSON.stringify(next))
+    localStorage.setItem(KEY, JSON.stringify({ ...next, v: 2 }))
   } catch {}
   emit()
 }
@@ -77,19 +96,50 @@ const subscribe = (l: () => void) => {
   return () => listeners.delete(l)
 }
 
-export function useUiPrefs(): UiPrefs {
-  return useSyncExternalStore(subscribe, () => prefs, () => DEFAULT_UI)
+/** The site's feel as the admins set it: their defaults over the built-in ones, and which choices they locked. */
+export function useSiteFeel(): { defaults: UiPrefs; locked: FeelKey[] } {
+  const exp = useSiteSettings().settings.experience
+  return useMemo(() => {
+    const defaults = { ...DEFAULT_UI }
+    for (const k of FEEL_KEYS) {
+      const v = exp?.[k]
+      if (v) (defaults as Record<string, unknown>)[k] = v
+    }
+    return { defaults, locked: (exp?.locked ?? []).filter((k): k is FeelKey => (FEEL_KEYS as readonly string[]).includes(k)) }
+  }, [exp])
 }
 
-/** Save for this member (and this browser). Throws when the database refuses, after the browser copy is kept. */
-export async function saveUiPrefs(patch: Partial<UiPrefs>, userId: string | null) {
-  const next = { ...prefs, ...patch }
+/** The feel in effect for this visitor: their own choices over the site's, except where the admins locked one. */
+export function useUiPrefs(): UiPrefs {
+  const mine = useSyncExternalStore(subscribe, () => own, () => own)
+  const { defaults, locked } = useSiteFeel()
+  return useMemo(() => {
+    const out = { ...defaults, ...mine }
+    for (const k of locked) (out as Record<string, unknown>)[k] = defaults[k]
+    return out
+  }, [mine, defaults, locked])
+}
+
+/** Only the member's own choices (for Settings: what differs from the site). */
+export const useOwnUiPrefs = () => useSyncExternalStore(subscribe, () => own, () => own)
+
+async function persist(next: Partial<UiPrefs>, userId: string | null) {
   set(next)
   const c = db()
   if (!c || !userId) return
-  const { error } = await c.from("profiles").update({ ui_prefs: next }).eq("id", userId)
+  const { error } = await c.from("profiles").update({ ui_prefs: { ...next, v: 2 } }).eq("id", userId)
   // A missing column (migration not applied yet) keeps the browser copy without complaining.
   if (error && !/ui_prefs|column/i.test(error.message)) throw new Error("Could not save to your account. It is kept in this browser.")
+}
+
+/** Save for this member (and this browser). Throws when the database refuses, after the browser copy is kept. */
+export const saveUiPrefs = (patch: Partial<UiPrefs>, userId: string | null) => persist({ ...own, ...patch }, userId)
+
+/** Forget the member's own choices for these keys, so they follow the site again. */
+export function resetUiPrefs(keys: (keyof UiPrefs)[], userId: string | null) {
+  const next = { ...own }
+  for (const k of keys) delete next[k]
+  return persist(next, userId)
 }
 
 /** Applies the prefs to the page: data-calm, data-keys, data-scroll, data-scroll-fx, data-backdrop, data-stars and data-header on <html>, the accent on <body> (it wins over the site's). */
