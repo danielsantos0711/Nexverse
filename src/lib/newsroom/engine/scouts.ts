@@ -151,7 +151,7 @@ function cardSummary(md: string): string {
   const body = md.replace(/^---[\s\S]*?---/, "")
   const para = body
     .split(/\n{2,}/)
-    .map((p) => p.replace(/<[^>]+>/g, " ").replace(/!\[[^\]]*\]\([^)]*\)/g, "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[#*_`>|]/g, " ").replace(/\s+/g, " ").trim())
+    .map((p) => p.replace(/&(?:nbsp|ensp|emsp|thinsp|zwj|zwnj);|&#\d+;|&#x[0-9a-f]+;/gi, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/<[^>]+>/g, " ").replace(/!\[[^\]]*\]\([^)]*\)/g, "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[#*_`>|]/g, " ").replace(/\s+/g, " ").trim())
     .find((p) => p.length > 80 && !/^(license|citation|bibtex|@)/i.test(p))
   return (para ?? "").slice(0, 600)
 }
@@ -233,7 +233,7 @@ export async function arxivSearch(desk: Desk, { budget, queries }: { budget: Bud
 
 /** Matches signals about AI and the tools around it, for scouts that see everything. */
 export const AI_WORDS =
-  /\b(ai|a\.i\.|llms?|gpt[-\w]*|claude|gemini|llama|mistral|qwen|deepseek|transformer|neural|model weights?|open[- ]weights?|inference|fine[- ]tun\w*|agents?|agentic|rag|embedding\w*|diffusion|machine learning|deep learning|openai|anthropic|deepmind|hugging ?face|cuda|gpu|tpu|nvidia|benchmark|dataset|mcp)\b/i
+  /\b(ai|a\.i\.|artificial intelligence|llms?|gpt[-\w]*|claude|gemini|llama|mistral|qwen|deepseek|transformer|neural|model weights?|open[- ]weights?|inference|fine[- ]tun\w*|agents?|agentic|rag|embedding\w*|diffusion|machine learning|deep learning|openai|anthropic|deepmind|hugging ?face|cuda|gpu|tpu|nvidia|benchmark|dataset|mcp)\b/i
 
 export function matchesDesk(text: string, desk: Desk): boolean {
   const kw = desk.methods.keywords ?? []
@@ -291,6 +291,8 @@ export async function federalRegister(desk: Desk, { budget, days = 10, terms }: 
       const url = cleanUrl(str(r.html_url, 500))
       const title = str(r.title, 300)
       if (!url || !title) continue
+      // The term search reads the full text: keep only documents whose title or summary is about AI.
+      if (!AI_WORDS.test(`${title} ${str(r.abstract, 1000)}`)) continue
       const agencies = Array.isArray(r.agencies) ? (r.agencies as unknown[]).map((a) => str(rec(a).name, 80)).filter(Boolean) : []
       found.push({
         url,

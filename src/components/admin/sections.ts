@@ -26,6 +26,7 @@ export const ADMIN_PAGES = [
   { href: "/admin/content", label: "Content", admin: false },
   { href: "/admin/log", label: "Moderation log", admin: false },
   { href: "/admin/newsroom", label: "Newsroom", admin: false },
+  { href: "/admin/newsroom/control", label: "Newsroom control", admin: false },
   { href: "/admin/forum", label: "Forum", admin: false },
   { href: "/admin/chat", label: "Chat rooms", admin: false },
   { href: "/admin/site", label: "Site editor", admin: false },

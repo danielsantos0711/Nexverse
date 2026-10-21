@@ -134,7 +134,7 @@ function EmptyNewsroom({ unavailable }: { unavailable: boolean }) {
           </Copy>
         ) : (
           <Copy k="news.empty.body" multiline>
-            Nexverse&apos;s newsroom reads official blogs, changelogs and releases every day and researches sourced stories from them. Each one is checked by an editor before it appears here. Nothing has been published yet.
+            Nexverse&apos;s research desks scout official blogs, releases, repositories, papers and public records around the clock and research sourced stories from what they find. Stories appear here when they pass the editors&apos; rules or an editor approves them. Nothing has been published yet.
           </Copy>
         )}
       </p>

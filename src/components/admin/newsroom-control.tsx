@@ -86,11 +86,14 @@ function Control() {
 
   useEffect(() => {
     if (!live) return
-    void refresh()
+    const first = window.setTimeout(() => void refresh(), 0)
     const t = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh()
     }, 15_000)
-    return () => window.clearInterval(t)
+    return () => {
+      window.clearTimeout(first)
+      window.clearInterval(t)
+    }
   }, [refresh])
 
   const act = async (body: Record<string, unknown>, done: string) => {
@@ -201,7 +204,7 @@ function Pulse({ state }: { state: EngineState }) {
   const lastRun = state.runs[0]
   const sched = state.scheduler
   const scheduled = Boolean(sched?.vault.url && sched.vault.secret && sched.jobs.some((j) => j.active))
-  const published24 = state.articles.filter((a) => a.status === "published" && a.ai_generated && a.published_at && Date.now() - Date.parse(a.published_at) < 864e5).length
+  const published24 = state.articles.filter((a) => a.status === "published" && a.ai_generated && a.published_at && Date.parse(state.now) - Date.parse(a.published_at) < 864e5).length
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
       <Stat
@@ -231,7 +234,7 @@ function Pulse({ state }: { state: EngineState }) {
 
 // ─── Live ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-function JobRow({ job, act, busy, desks }: { job: Job; act?: Act; busy?: boolean; desks: Map<string, string> }) {
+function JobRow({ job, act, busy, desks, now }: { job: Job; act?: Act; busy?: boolean; desks: Map<string, string>; now: number }) {
   const tone = job.status === "running" ? "text-ion" : job.status === "done" ? "text-ok" : job.status === "dead" || job.status === "failed" ? "text-destructive" : "text-muted-foreground"
   const what = [JOB_LABELS[job.kind], job.desk ? desks.get(job.desk) ?? job.desk : null, typeof job.payload.query === "string" ? `“${job.payload.query}”` : null, typeof job.payload.lead === "number" ? `lead #${job.payload.lead}` : null].filter(Boolean).join(" · ")
   const result = job.result ? Object.entries(job.result).filter(([, v]) => typeof v !== "object").map(([k, v]) => `${k}: ${String(v)}`).slice(0, 4).join(", ") : ""
@@ -246,7 +249,7 @@ function JobRow({ job, act, busy, desks }: { job: Job; act?: Act; busy?: boolean
         {(job.lastError || result) && <span className={cn("block truncate text-xs", job.lastError ? "text-destructive" : "text-muted-foreground")}>{job.lastError || result}</span>}
       </span>
       <span className="text-xs text-muted-foreground tabular-nums">
-        {job.status === "queued" && Date.parse(job.runAfter) > Date.now() ? `from ${new Date(job.runAfter).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : when(job.finishedAt ?? job.startedAt ?? job.createdAt)}
+        {job.status === "queued" && Date.parse(job.runAfter) > now ? `from ${new Date(job.runAfter).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : when(job.finishedAt ?? job.startedAt ?? job.createdAt)}
         {job.attempts > 1 ? ` · try ${job.attempts}/${job.maxAttempts}` : ""}
       </span>
       {act && (job.status === "failed" || job.status === "dead" || job.status === "cancelled") && (
@@ -268,7 +271,8 @@ function LivePanel({ state, act, busy }: { state: EngineState; act: Act; busy: b
   const active = state.jobs.filter((j) => j.status === "running" || j.status === "queued")
   const recent = state.jobs.filter((j) => j.status !== "running" && j.status !== "queued").slice(0, 25)
   // Each desk's last hour: discoveries kept and dropped.
-  const hour = Date.now() - 36e5 * 6
+  const now = Date.parse(state.now)
+  const hour = now - 36e5 * 6
   const perDesk = state.desks
     .filter((d) => d.enabled)
     .map((d) => {
@@ -307,7 +311,7 @@ function LivePanel({ state, act, busy }: { state: EngineState; act: Act; busy: b
         {active.length ? (
           <ul className="mt-2 divide-y divide-border">
             {active.map((j) => (
-              <JobRow key={j.id} job={j} act={act} busy={busy} desks={desks} />
+              <JobRow key={j.id} job={j} act={act} busy={busy} desks={desks} now={Date.parse(state.now)} />
             ))}
           </ul>
         ) : (
@@ -320,7 +324,7 @@ function LivePanel({ state, act, busy }: { state: EngineState; act: Act; busy: b
         </h3>
         <ul className="mt-2 divide-y divide-border">
           {recent.map((j) => (
-            <JobRow key={j.id} job={j} act={act} busy={busy} desks={desks} />
+            <JobRow key={j.id} job={j} act={act} busy={busy} desks={desks} now={Date.parse(state.now)} />
           ))}
         </ul>
       </section>
@@ -651,7 +655,7 @@ function RunsPanel({ state, act, busy }: { state: EngineState; act: Act; busy: b
         {dead.length ? (
           <ul className="mt-2 divide-y divide-border">
             {dead.map((j) => (
-              <JobRow key={j.id} job={j} act={act} busy={busy} desks={desks} />
+              <JobRow key={j.id} job={j} act={act} busy={busy} desks={desks} now={Date.parse(state.now)} />
             ))}
           </ul>
         ) : (
