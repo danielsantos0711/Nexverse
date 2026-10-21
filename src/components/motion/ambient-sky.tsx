@@ -79,9 +79,9 @@ function drawTile(layer: (typeof LAYERS)[number], scale: number, seed: number): 
     const y = rnd() * layer.tile
     const r = layer.size[0] + rnd() * (layer.size[1] - layer.size[0])
     const a = layer.alpha[0] + rnd() * (layer.alpha[1] - layer.alpha[0])
-    // most stars are white; a few lean blue or champagne
-    const hue = rnd()
-    const col = hue > 0.85 ? `rgba(216,197,158,${a})` : hue > 0.65 ? `rgba(160,190,255,${a})` : `rgba(235,240,255,${a})`
+    // all stars are neutral white; the draw is kept so the sky's layout stays the same
+    rnd()
+    const col = `rgba(232,234,240,${a})`
     if (r > 1.3) {
       const halo = g.createRadialGradient(x, y, 0, x, y, r * 4)
       halo.addColorStop(0, col)
