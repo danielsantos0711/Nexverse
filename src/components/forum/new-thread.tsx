@@ -11,7 +11,7 @@ import { clearDraft } from "@/lib/editor/drafts"
 import { Gate } from "@/components/moderation/gate"
 import { PollBuilder } from "@/components/forum/poll"
 import { TagInput } from "@/components/forum/tags"
-import { SuggestTitleTags } from "@/components/ai/inline-ai"
+import { SuggestTitleTags, DraftHelper } from "@/components/ai/inline-ai"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -192,6 +192,7 @@ function NewThreadForm() {
             onMention={(c) => setPicked((p) => (p.some((x) => x.key === c.key) ? p : [...p, c]))}
             onSubmit={() => void submit()}
           />
+          <DraftHelper kind="forum thread" title={title} text={body} onInsert={(t, mode) => setBody((mode === "polish" ? t : body.trimEnd() + (body.trim() ? "\n\n" : "") + t).slice(0, 20000))} className="mt-1" />
         </Field>
 
         <Field>
@@ -202,6 +203,7 @@ function NewThreadForm() {
           <SuggestTitleTags
             title={title}
             body={body}
+            category={findCategory(map, cat)?.name ?? cat}
             className="mt-1"
             onApply={(sug) => {
               if (sug.title) setTitle(sug.title.slice(0, 300))

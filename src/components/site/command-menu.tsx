@@ -1,5 +1,6 @@
 "use client"
 
+import { SmartAnswer } from "@/components/ai/inline-ai"
 import { useRouter } from "next/navigation"
 import { createContext, use, useCallback, useEffect, useState } from "react"
 import { FileTextIcon, FolderGit2Icon, LinkIcon, MessageSquareIcon, NewspaperIcon, PlusIcon, ShieldIcon, UserIcon, type LucideIcon } from "lucide-react"
@@ -131,6 +132,7 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
         <Command>
           <CommandInput placeholder={placeholder} value={query} onValueChange={setQuery} />
           <CommandList className="max-h-[60vh]">
+            <SmartAnswer query={query} className="px-2 pt-2" />
             <CommandEmpty>{empty}</CommandEmpty>
             <CommandGroup heading={goTo}>
               <CommandItem
