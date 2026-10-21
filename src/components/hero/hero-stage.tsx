@@ -226,13 +226,10 @@ export function HeroStage({ film, orbit, slow = 1, className }: { film: boolean;
   return (
     <div className={cn("relative", className)}>
       {/* the film, framed 16:9 and centred, as wide as the screen (up to FILM_MAX) or as tall as the stage */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden [mask-image:radial-gradient(ellipse_75%_90%_at_50%_45%,#000_55%,transparent_100%),linear-gradient(to_bottom,#000_60%,transparent)] [mask-composite:intersect]">
         <div className="absolute top-1/2 left-1/2 aspect-video w-[max(min(100%,120rem),calc(var(--stage-h)*16/9))] -translate-x-1/2 -translate-y-1/2">
           <LoopVideo name="brand" still={!film} eager />
         </div>
-        {/* the film's dark ground melts into the page: at the sides on wide screens, and below */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_90%_at_50%_45%,transparent_55%,var(--background)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-b from-transparent to-background" />
       </div>
 
       <nav
