@@ -42,6 +42,7 @@ export const ACTION_LABELS: Record<string, string> = {
   hide: "Hid",
   edit: "Edited",
   reset: "Reset",
+  mass_import: "Ran a mass import",
   unhide: "Unhid",
   feature: "Featured",
   unfeature: "Unfeatured",

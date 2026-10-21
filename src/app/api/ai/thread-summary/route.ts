@@ -4,29 +4,42 @@ import { field, isObject, str } from "@/lib/ai/json"
 import { readThreadSummary, threadSummaryRequest } from "@/lib/ai/prompts"
 import { aiRoute } from "@/lib/ai/route"
 
-const MAX_POSTS = 60
-const MAX_TOTAL = 40_000
+const MAX_POSTS = 200
+const MAX_TOTAL = 120_000
 
-/** A short TL;DR and key points for a forum thread. */
+/**
+ * A TL;DR, key points, open questions and the consensus for a forum thread, or a catch-up for a chat room
+ * (`kind: "chat"`, or a title that starts with "Chat room"). Long threads keep the opening post and the most
+ * recent replies that fit, and say how many were left out. `regenerate: true` skips the cache.
+ */
 export const POST = aiRoute({
   prepare(body) {
     const title = field(body, "title", { max: 300, label: "Title" })
+    const accepted = field(body, "accepted", { max: 6000, optional: true, label: "Accepted answer" })
+    const kind = body.kind === "chat" || /^chat room\b/i.test(title) ? "chat" : "thread"
     if (!Array.isArray(body.posts) || body.posts.length === 0) throw new AiError(400, "bad_request", "Send the thread's posts.")
-    let total = 0
-    const posts: { author: string; body: string }[] = []
-    // Keep the opening post and as many replies as fit, oldest first.
-    for (const p of body.posts.slice(0, MAX_POSTS)) {
-      if (!isObject(p)) continue
-      const text = str(p.body, 6000)
-      if (!text) continue
-      if (total + text.length > MAX_TOTAL) break
-      total += text.length
-      posts.push({ author: str(p.author, 60) || "someone", body: text })
+    const all = body.posts
+      .slice(0, MAX_POSTS)
+      .filter(isObject)
+      .map((p) => ({ author: str(p.author, 60) || "someone", body: str(p.body, 8000) }))
+      .filter((p) => p.body)
+    if (!all.length) throw new AiError(400, "bad_request", "Those posts are empty.")
+    // The opening post frames everything, so it always stays; then the newest replies, as many as fit.
+    const [first, ...rest] = kind === "chat" ? [null, ...all] : all
+    let total = first?.body.length ?? 0
+    const kept: typeof all = []
+    for (let i = rest.length - 1; i >= 0; i--) {
+      const p = rest[i]!
+      if (total + p.body.length > MAX_TOTAL) break
+      total += p.body.length
+      kept.unshift(p)
     }
-    if (!posts.length) throw new AiError(400, "bad_request", "Those posts are empty.")
+    const skipped = rest.length - kept.length
+    const posts = [...(first ? [first] : []), ...(skipped ? [{ author: "(note)", body: `${skipped} earlier ${kind === "chat" ? "messages" : "replies"} left out for length.` }] : []), ...kept]
+    const fresh = body.regenerate === true ? { cache: false } : {}
     return async () => {
-      const { json, model } = await askJson(threadSummaryRequest({ title, posts }))
-      return { data: { ...readThreadSummary(json), postsRead: posts.length }, model }
+      const { json, model } = await askJson({ ...threadSummaryRequest({ title, posts, kind, accepted }), ...fresh })
+      return { data: { ...readThreadSummary(json), postsRead: posts.length - (skipped ? 1 : 0) }, model }
     }
   },
 })

@@ -32,7 +32,25 @@ import { readStory, storyRequest, type Material, type WrittenStory } from "./wri
  * written one depth shorter rather than padded.
  */
 
-export type AskFn = (o: LlmOptions & { schema: JsonSchema }) => Promise<{ json: unknown; model: string }>
+export type ResearchStep = "research" | "write" | "factcheck"
+export type AskFn = (o: LlmOptions & { schema: JsonSchema; step?: ResearchStep }) => Promise<{ json: unknown; model: string }>
+
+/** The desk a story is researched for: its name, scope and readers replace the AI-only wording of the prompts. */
+export type DeskBrief = { label: string; scope: string; audience: string }
+
+/** The prompts were written for the AI desks; other desks get their own readers and scope. */
+export function localize<T extends { system: string; prompt: string }>(req: T, desk?: DeskBrief | null): T {
+  if (!desk) return req
+  const sub = (s: string) =>
+    s
+      .replaceAll("people who build with AI: engineers, researchers and founders", desk.audience)
+      .replaceAll("people who build with AI", desk.audience)
+      .replaceAll("people building with AI", desk.audience)
+      .replaceAll("builders would ask", "readers would ask")
+      .replaceAll("what builders must change", "what readers must know or change")
+      .replace(/,? or (is )?not about AI\b/g, `, or outside the ${desk.label} desk's scope`)
+  return { ...req, system: `${sub(req.system)}\n\nYou work for the ${desk.label} desk. Its scope, in the editors' words: ${desk.scope.slice(0, 1200)}`, prompt: sub(req.prompt) }
+}
 
 export type CheckReport = {
   verified: number
@@ -55,14 +73,14 @@ export type Researched = WrittenStory & {
   report: CheckReport
 }
 
-export type ResearchResult = { ok: true; story: Researched; model: string } | { ok: false; reason: string; skipped?: boolean }
+export type ResearchResult = { ok: true; story: Researched; model: string; docs: Doc[]; facts: Fact[]; openQuestions: string[] } | { ok: false; reason: string; skipped?: boolean }
 
 const RELATED: Record<Depth, number> = { short: 1, standard: 2, deep: 4 }
 
 /** Asks once; an AI that is not configured at all stops the whole run, any other failure is this story's. */
-async function call(ask: AskFn, req: Omit<LlmOptions, "job"> & { schema: JsonSchema }, models: Set<string>): Promise<{ ok: true; json: unknown } | { ok: false; reason: string }> {
+async function call(ask: AskFn, req: Omit<LlmOptions, "job"> & { schema: JsonSchema }, models: Set<string>, step: ResearchStep, desk?: DeskBrief | null): Promise<{ ok: true; json: unknown } | { ok: false; reason: string }> {
   try {
-    const res = await ask({ ...req, job: "news" })
+    const res = await ask({ ...localize(req, desk), job: "news", step })
     models.add(res.model)
     return { ok: true, json: res.json }
   } catch (err) {
@@ -98,6 +116,8 @@ export async function research(o: {
   extraUrls?: string[]
   /** Stop starting optional steps after this time (ms since epoch). */
   deadline?: number
+  /** The desk it is for (its readers and scope); the AI desks' wording when left out. */
+  desk?: DeskBrief | null
 }): Promise<ResearchResult> {
   const { settings, ask, note = "" } = o
   const deadline = o.deadline ?? Date.now() + 240_000
@@ -115,20 +135,22 @@ export async function research(o: {
   const main = docs[0]
   if (main.text.length < 200 && !main.description) return { ok: false, reason: "the main page has almost no readable text (it may need JavaScript)" }
 
+  let facts: Fact[] = []
+  let openQuestions: string[] = []
   const finish = async (s: Omit<Researched, "cover" | "candidates" | "report">, model: string): Promise<ResearchResult> => {
     // Cover: the free photo search is skipped when time is short; the source image and the generated cover still work.
     const policy = Date.now() > deadline - 20_000 ? { ...settings.cover, order: settings.cover.order.filter((t) => t !== "free") } : settings.cover
     const covers = await findCovers({ docs, title: s.title, query: coverQuery(s.title, imageQuery), policy }).catch(() => null)
     steps.push(covers ? `cover: ${covers.chosen.kind}, ${covers.candidates.length} candidate${covers.candidates.length === 1 ? "" : "s"}` : "cover: generated (search failed)")
     const generated = { url: "", kind: "generated" as const, width: 1200, height: 630, alt: `Nexverse cover for “${s.title}”`, credit: null }
-    return { ok: true, model, story: { ...s, cover: covers?.chosen ?? generated, candidates: covers?.candidates ?? [generated], report } }
+    return { ok: true, model, docs, facts, openQuestions, story: { ...s, cover: covers?.chosen ?? generated, candidates: covers?.candidates ?? [generated], report } }
   }
 
   let imageQuery = ""
 
   // A short story: one call, the original single-pass writer, from the gathered pages.
   const writeShort = async (): Promise<ResearchResult> => {
-    const res = await call(ask, storyRequest(materialOf(docs), note), models)
+    const res = await call(ask, storyRequest(materialOf(docs), note), models, "write", o.desk)
     steps.push("write: short, one pass")
     if (!res.ok) return res
     const v = readStory(res.json, materialOf(docs))
@@ -147,10 +169,9 @@ export async function research(o: {
   // 2. Brief: facts tied to quoted passages, then the outline. One call when the material fits one request.
   const { groups, leftOut } = groupMaterial(docs)
   if (leftOut) steps.push(`material: ${Math.round(leftOut / 1000)}k characters left out to stay within one story's free quota`)
-  let facts: Fact[] = []
   let plan: Plan | null = null
   if (groups.length === 1) {
-    const res = await call(ask, briefRequest(groups[0], docs, { depth, sections: settings.sections, note }), models)
+    const res = await call(ask, briefRequest(groups[0], docs, { depth, sections: settings.sections, note }), models, "research", o.desk)
     steps.push("brief: facts and outline in one call")
     if (!res.ok) return res
     const f = readFacts(res.json, docs)
@@ -163,7 +184,7 @@ export async function research(o: {
   } else {
     const found: Fact[] = []
     for (let i = 0; i < groups.length; i++) {
-      const res = await call(ask, factsRequest(groups[i], docs, i + 1, groups.length), models)
+      const res = await call(ask, factsRequest(groups[i], docs, i + 1, groups.length), models, "research", o.desk)
       if (!res.ok) {
         steps.push(`facts ${i + 1}/${groups.length}: failed (${res.reason})`)
         continue
@@ -175,7 +196,7 @@ export async function research(o: {
     steps.push(`brief: facts from ${groups.length} chunks`)
     facts = renumber(found).facts
     if (facts.length < MIN_FACTS.standard) return facts.length >= 3 ? writeShort() : { ok: false, reason: `only ${facts.length} facts could be verified in the pages` }
-    const res = await call(ask, planRequest(facts, docs, { sections: settings.sections, note }), models)
+    const res = await call(ask, planRequest(facts, docs, { sections: settings.sections, note }), models, "research", o.desk)
     steps.push("brief: outline")
     if (!res.ok) return res
     const p = readPlan(res.json, facts, settings.sections)
@@ -184,6 +205,7 @@ export async function research(o: {
   }
   report.verified = facts.length
   imageQuery = plan.imageQuery
+  openQuestions = plan.openQuestions
 
   // Thin material: write one depth shorter instead of padding.
   if (depth === "deep" && facts.length < MIN_FACTS.deep) {
@@ -198,7 +220,7 @@ export async function research(o: {
 
   // 3. Write from the verified facts only.
   const d = depth
-  const wrote = await call(ask, writeRequest(facts, plan, docs, { depth: d, targetWords: d === o.depth ? settings.targetWords : DEPTH_WORDS[d].target, sections: settings.sections, tone: settings.tone, styleNote: settings.styleNote, note }), models)
+  const wrote = await call(ask, writeRequest(facts, plan, docs, { depth: d, targetWords: d === o.depth ? settings.targetWords : DEPTH_WORDS[d].target, sections: settings.sections, tone: settings.tone, styleNote: settings.styleNote, note }), models, "write", o.desk)
   steps.push(`write: ${d}`)
   if (!wrote.ok) return wrote
   const v = readDraft(wrote.json, facts, docs, { depth: d })
@@ -209,7 +231,7 @@ export async function research(o: {
   if (!settings.factCheck) report.note = "The fact-check pass is switched off in the newsroom settings."
   else if (Date.now() > deadline - 45_000) report.note = "The fact-check pass was skipped to stay within the run's time limit."
   else {
-    const checked = await call(ask, checkRequest(draft, facts, docs), models)
+    const checked = await call(ask, checkRequest(draft, facts, docs), models, "factcheck", o.desk)
     steps.push("check: second pass")
     if (!checked.ok) report.note = `The fact-check pass could not run (${checked.reason}).`
     else {

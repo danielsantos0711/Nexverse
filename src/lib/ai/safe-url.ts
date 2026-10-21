@@ -244,3 +244,59 @@ export function htmlToText(html: string, maxChars = 20_000): { title: string; de
     .trim()
   return { title: title.slice(0, 300), description: description.slice(0, 600), text: text.slice(0, maxChars) }
 }
+
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024
+const IMAGE_TYPES = /^image\/(png|jpe?g|webp|gif|heic|heif)$/
+
+/**
+ * Fetch a public image for a vision model that cannot fetch it itself (Gemini wants inline bytes). The same
+ * locks as pages (https only, public addresses on every hop, a time limit), images only, at most 5 MB. Images
+ * from any public host are allowed: reading an image is not linking to its site.
+ */
+export async function fetchPublicImage(raw: string): Promise<{ mime: string; base64: string }> {
+  let u: URL
+  try {
+    u = new URL(raw.trim())
+  } catch {
+    throw new AiError(400, "blocked_url", "That image link is not a full https:// link.")
+  }
+  if (u.protocol !== "https:" || u.username || u.password || (u.port && u.port !== "443")) throw new AiError(400, "blocked_url", "Only public https:// images can be read.")
+  const deadline = AbortSignal.timeout(TIMEOUT_MS)
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const host = u.hostname.replace(/^\[|\]$/g, "").toLowerCase()
+    if (isIP(host) ? isPrivateAddress(host) : !host.includes(".")) throw new AiError(400, "blocked_url", "That address is not on the public internet.")
+    await checkDns(host)
+    let res: Response
+    try {
+      res = await fetch(u, { redirect: "manual", signal: deadline, cache: "no-store", headers: { accept: "image/*", "user-agent": "NexverseBot/1.0 (image check)" } })
+    } catch {
+      throw new AiError(502, "fetch_failed", "That image could not be loaded.")
+    }
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get("location")
+      if (!loc) throw new AiError(502, "fetch_failed", "That image redirects nowhere.")
+      u = new URL(loc, u)
+      if (u.protocol !== "https:") throw new AiError(400, "blocked_url", "Only public https:// images can be read.")
+      continue
+    }
+    if (!res.ok || !res.body) throw new AiError(502, "fetch_failed", `That image answered with an error (${res.status}).`)
+    const mime = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase()
+    if (!IMAGE_TYPES.test(mime)) throw new AiError(415, "fetch_failed", "That link is not an image.")
+    if (Number(res.headers.get("content-length") ?? "0") > IMAGE_MAX_BYTES) throw new AiError(413, "fetch_failed", "That image is larger than 5 MB.")
+    const reader = res.body.getReader()
+    const chunks: Uint8Array[] = []
+    let total = 0
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      if (total > IMAGE_MAX_BYTES) {
+        await reader.cancel().catch(() => {})
+        throw new AiError(413, "fetch_failed", "That image is larger than 5 MB.")
+      }
+      chunks.push(value)
+    }
+    return { mime: mime === "image/jpg" ? "image/jpeg" : mime, base64: Buffer.concat(chunks).toString("base64") }
+  }
+  throw new AiError(502, "fetch_failed", "That image redirects too many times.")
+}

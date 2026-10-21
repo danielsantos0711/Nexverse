@@ -1,6 +1,7 @@
 import { LICENSE_LIST } from "@/lib/publish/licenses"
 import type { DatasetSpecs, ModelSpecs, ProjectSource, ProjectSpecs } from "@/lib/projects"
 import { getBytes, getJson, getText, ImportError } from "./fetch"
+import { cardImages, hfAvatar, hfSocial, type CoverCandidate } from "./images"
 import type { ImportSite, ImportType } from "./types"
 
 /*
@@ -23,6 +24,22 @@ export type Draft = {
   source: ProjectSource
   files: ImportFile[]
   facts: { label: string; value: string }[]
+  /** Cover picture candidates, best first (read only when the import runs, never for a preview). */
+  covers: () => Promise<CoverCandidate[]>
+}
+
+/** Hugging Face candidates for one item: its card thumbnail, the pictures in its card, extra ones, the owner's avatar, the social card. */
+async function hfCovers(type: "model" | "dataset", id: string, card: string, thumbnail: unknown, extra: CoverCandidate[] = []): Promise<CoverCandidate[]> {
+  const base = `${HF}/${type === "dataset" ? "datasets/" : ""}${hfPath(id)}`
+  const out: CoverCandidate[] = []
+  const thumb = typeof thumbnail === "string" ? cardImages(`![](${thumbnail})`, base, 1)[0] : undefined
+  if (thumb) out.push({ url: thumb, origin: "thumbnail" })
+  for (const url of cardImages(card, base, 4)) out.push({ url, origin: "readme" })
+  out.push(...extra)
+  const avatar = await hfAvatar(id.includes("/") ? id.split("/")[0] : id)
+  if (avatar) out.push({ url: avatar, origin: "avatar" })
+  out.push({ url: hfSocial(type, id), origin: "social" })
+  return out
 }
 
 const HF = "https://huggingface.co"
@@ -132,7 +149,7 @@ type HfModel = {
   pipeline_tag?: string
   library_name?: string
   tags?: string[]
-  cardData?: { license?: unknown; language?: unknown; base_model?: unknown; tags?: unknown }
+  cardData?: { license?: unknown; language?: unknown; base_model?: unknown; tags?: unknown; thumbnail?: unknown }
   config?: { architectures?: string[]; model_type?: string }
   safetensors?: { total?: number; parameters?: Record<string, number> }
   siblings?: { rfilename: string; size?: number }[]
@@ -146,6 +163,7 @@ async function hfModel(id: string): Promise<Draft> {
   const m = await getJson<HfModel>(`${HF}/api/models/${hfPath(id)}`, { maxBytes: 4 * 1024 * 1024 })
   if (!m || m.private || m.disabled) throw new ImportError(404, "Hugging Face has no public model with that id.")
   const card = stripFrontMatter((await getText(`${HF}/${hfPath(m.id)}/raw/main/README.md`, { maxBytes: 600_000 }).catch(() => null)) ?? "")
+  const thumbnail = m.cardData?.thumbnail
   const total = m.safetensors?.total
   const base = m.cardData?.base_model
   const specs: ModelSpecs = {
@@ -182,6 +200,7 @@ async function hfModel(id: string): Promise<Draft> {
     source: { site: "huggingface", type: "model", ref: m.id, importedAt: new Date().toISOString(), revision: m.sha },
     files,
     facts,
+    covers: () => hfCovers("model", m.id, card, thumbnail),
   }
 }
 
@@ -194,7 +213,7 @@ type HfDataset = {
   private?: boolean
   disabled?: boolean
   tags?: string[]
-  cardData?: { license?: unknown; language?: unknown; task_categories?: unknown; pretty_name?: unknown; size_categories?: unknown }
+  cardData?: { license?: unknown; language?: unknown; task_categories?: unknown; pretty_name?: unknown; size_categories?: unknown; thumbnail?: unknown }
 }
 type HfSize = { size?: { dataset?: { num_rows?: number; num_bytes_original_files?: number; num_bytes_parquet_files?: number }; splits?: { config: string; split: string; num_rows?: number; num_bytes_parquet_files?: number }[] } }
 type HfFirstRows = { features?: { name: string; type: Record<string, unknown> }[]; rows?: { row: Record<string, unknown> }[] }
@@ -217,6 +236,17 @@ function featureType(t: Record<string, unknown> | undefined): string {
 function sampleJsonl(rows: { row: Record<string, unknown> }[], features: { name: string; type: Record<string, unknown> }[]): string {
   const media = new Set(features.filter((f) => ["Image", "Audio", "Video"].includes(String(f.type?._type))).map((f) => f.name))
   return rows.map(({ row }) => JSON.stringify(Object.fromEntries(Object.entries(row).filter(([k]) => !media.has(k))))).join("\n") + "\n"
+}
+
+/** The first picture in the dataset's own rows (an Image column), as the viewer serves it. */
+function sampleImages(rows: HfFirstRows | null): CoverCandidate[] {
+  const col = rows?.features?.find((f) => f.type?._type === "Image")?.name
+  if (!col) return []
+  for (const { row } of rows?.rows ?? []) {
+    const v = row[col] as { src?: unknown } | null
+    if (v && typeof v.src === "string" && v.src.startsWith("https://datasets-server.huggingface.co/")) return [{ url: v.src, origin: "sample" }]
+  }
+  return []
 }
 
 async function hfDataset(id: string): Promise<Draft> {
@@ -269,6 +299,7 @@ async function hfDataset(id: string): Promise<Draft> {
     source: { site: "huggingface", type: "dataset", ref: d.id, importedAt: new Date().toISOString(), revision: d.sha },
     files,
     facts,
+    covers: () => hfCovers("dataset", d.id, readme, d.cardData?.thumbnail, sampleImages(rows)),
   }
 }
 
@@ -303,6 +334,50 @@ function pricingOf(p?: OrPricing) {
   const prompt = perMillion(p.prompt)
   const completion = perMillion(p.completion)
   return { free: prompt === 0 && completion === 0 ? true : undefined, prompt, completion, request: perMillion(p.request) || undefined, image: perMillion(p.image) || undefined }
+}
+
+/** OpenRouter authors whose organisation on Hugging Face is known to be the same lab (for its avatar). */
+const OR_ORGS: Record<string, string> = {
+  openai: "openai",
+  google: "google",
+  "meta-llama": "meta-llama",
+  mistralai: "mistralai",
+  qwen: "Qwen",
+  deepseek: "deepseek-ai",
+  anthropic: "Anthropic",
+  "x-ai": "xai-org",
+  microsoft: "microsoft",
+  nvidia: "nvidia",
+  cohere: "CohereLabs",
+  amazon: "amazon",
+  moonshotai: "moonshotai",
+  "z-ai": "zai-org",
+  minimax: "MiniMaxAI",
+  baidu: "baidu",
+  tencent: "tencent",
+  "ibm-granite": "ibm-granite",
+  allenai: "allenai",
+  nousresearch: "NousResearch",
+}
+
+/**
+ * OpenRouter has no pictures of its own. When the model names its weights on Hugging Face, that card's pictures
+ * are used; otherwise the lab's avatar, for the labs we can match with certainty.
+ */
+async function openRouterCovers(author: string, hfId: string | null): Promise<CoverCandidate[]> {
+  const out: CoverCandidate[] = []
+  if (hfId && /^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\/[A-Za-z0-9][A-Za-z0-9._-]{0,95}$/.test(hfId)) {
+    const card = stripFrontMatter((await getText(`${HF}/${hfPath(hfId)}/raw/main/README.md`, { maxBytes: 600_000 }).catch(() => null)) ?? "")
+    for (const url of cardImages(card, `${HF}/${hfPath(hfId)}`, 3)) out.push({ url, origin: "readme" })
+    const avatar = await hfAvatar(hfId.split("/")[0])
+    if (avatar) out.push({ url: avatar, origin: "avatar" })
+  }
+  const org = OR_ORGS[author.toLowerCase()]
+  if (org) {
+    const avatar = await hfAvatar(org)
+    if (avatar) out.push({ url: avatar, origin: "avatar" })
+  }
+  return out
 }
 
 async function openRouterModel(id: string): Promise<Draft> {
@@ -354,6 +429,7 @@ async function openRouterModel(id: string): Promise<Draft> {
     source: { site: "openrouter", type: "model", ref: m.id, importedAt: new Date().toISOString() },
     files: [],
     facts,
+    covers: () => openRouterCovers(author, m.hugging_face_id ?? null),
   }
 }
 

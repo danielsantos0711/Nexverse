@@ -1382,3 +1382,531 @@ html[data-calm] *::after {
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * Round 11: depth and scroll motion (src/components/motion).
+ * ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* The page is no longer painted flat black: <html> holds the deep colour, the body lets the sky
+   (AmbientSky, fixed behind everything) show through, and cards are lighter panels of tinted glass. */
+:root {
+  --background: #060811;
+  --card: rgb(19 23 36 / 0.78);
+  --raised: #171c29;
+  --secondary: #171b27;
+  --muted: #141925;
+  --accent: #1c2130;
+  /* surfaces that sit on the sky: a soft top light and a nebula tint at the corner */
+  --surface-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.035), transparent 42%);
+  /* how far scroll motion travels: Settings › Your experience › Motion while scrolling */
+  --sd-amp: 1;
+}
+html[data-scroll-fx="subtle"] {
+  --sd-amp: 0.45;
+}
+html[data-scroll-fx="cinematic"] {
+  --sd-amp: 1.7;
+}
+@layer base {
+  body {
+    background: transparent;
+  }
+}
+@layer components {
+  .bg-card {
+    background-image: var(--surface-sheen);
+  }
+}
+
+/* ─── The sky ─────────────────────────────────────────────────────────────────────────────────────────── */
+@property --sky-1 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgb(70 100 200 / 0.3);
+}
+@property --sky-2 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgb(140 100 220 / 0.2);
+}
+@property --sky-3 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgb(216 197 158 / 0.1);
+}
+.nx-sky {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+  background: radial-gradient(120% 80% at 50% -10%, #0c1122 0%, #070914 45%, #05060c 100%);
+  transition:
+    --sky-1 1.4s var(--ease-out),
+    --sky-2 1.4s var(--ease-out),
+    --sky-3 1.4s var(--ease-out);
+}
+.nx-sky[data-tone="ion"] {
+  --sky-1: rgb(70 110 230 / 0.32);
+  --sky-2: rgb(120 90 220 / 0.2);
+  --sky-3: rgb(90 200 230 / 0.1);
+}
+.nx-sky[data-tone="gold"] {
+  --sky-1: rgb(200 160 90 / 0.24);
+  --sky-2: rgb(220 110 90 / 0.14);
+  --sky-3: rgb(110 140 230 / 0.14);
+}
+.nx-sky[data-tone="aurora"] {
+  --sky-1: rgb(60 200 150 / 0.22);
+  --sky-2: rgb(70 120 230 / 0.2);
+  --sky-3: rgb(160 230 200 / 0.1);
+}
+.nx-sky[data-tone="nova"] {
+  --sky-1: rgb(150 100 240 / 0.3);
+  --sky-2: rgb(90 110 240 / 0.2);
+  --sky-3: rgb(230 120 200 / 0.1);
+}
+.nx-sky[data-tone="rose"] {
+  --sky-1: rgb(220 110 170 / 0.22);
+  --sky-2: rgb(130 100 230 / 0.2);
+  --sky-3: rgb(216 197 158 / 0.12);
+}
+.nx-sky-cloud {
+  position: absolute;
+  border-radius: 50%;
+  will-change: translate;
+}
+.nx-sky-cloud-a {
+  top: -24vmax;
+  left: -14vmax;
+  width: 80vmax;
+  height: 64vmax;
+  background: radial-gradient(closest-side, var(--sky-1), transparent);
+  animation: sky-drift-a 48s ease-in-out infinite alternate;
+}
+.nx-sky-cloud-b {
+  top: 34vh;
+  right: -26vmax;
+  width: 76vmax;
+  height: 70vmax;
+  background: radial-gradient(closest-side, var(--sky-2), transparent);
+  animation: sky-drift-b 60s ease-in-out infinite alternate;
+}
+.nx-sky-cloud-c {
+  top: 18vh;
+  left: 10vw;
+  width: 60vmax;
+  height: 44vmax;
+  background: radial-gradient(closest-side, var(--sky-3), transparent);
+  animation: sky-drift-a 72s ease-in-out infinite alternate-reverse;
+}
+@keyframes sky-drift-a {
+  to {
+    transform: translate3d(6vw, 4vh, 0) scale(1.08);
+  }
+}
+@keyframes sky-drift-b {
+  to {
+    transform: translate3d(-8vw, -5vh, 0) scale(0.94);
+  }
+}
+.nx-sky-stars {
+  position: absolute;
+  inset: 0;
+}
+.nx-sky-stars i {
+  position: absolute;
+  inset: 0 0 -700px 0;
+  background-repeat: repeat;
+  will-change: transform;
+}
+.nx-sky-twinkle {
+  animation: sky-twinkle-layer 5s ease-in-out infinite alternate;
+}
+@keyframes sky-twinkle-layer {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.nx-sky-glow {
+  position: absolute;
+  inset: auto -10% -30vh -10%;
+  height: 60vh;
+  background: radial-gradient(50% 50% at 30% 100%, var(--sky-1), transparent 70%), radial-gradient(40% 50% at 80% 100%, var(--sky-2), transparent 70%);
+  opacity: 0.5;
+  transition: opacity 400ms linear;
+}
+/* the style a member picked */
+.nx-sky[data-backdrop="starfield"] .nx-sky-cloud {
+  opacity: 0.45;
+}
+.nx-sky[data-backdrop="deep"] .nx-sky-cloud {
+  opacity: 0.35;
+}
+.nx-sky[data-backdrop="deep"] {
+  background: #05060b;
+}
+.nx-sky[data-still] *,
+html[data-fx="off"] .nx-sky *,
+html[data-fx="low"] .nx-sky * {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nx-sky * {
+    animation: none !important;
+  }
+}
+
+/* ─── The header and the phone tab bar take turns ──────────────────────────────────────────────────────── */
+.nx-bar-slide {
+  transition:
+    transform 420ms var(--ease-drawer),
+    opacity 300ms var(--ease-out);
+}
+.nx-header[data-away] {
+  transform: translate3d(0, calc(-100% - 8px), 0);
+}
+.nx-tabbar[data-away] {
+  transform: translate3d(0, calc(100% + 1.5rem), 0);
+  opacity: 0;
+  pointer-events: none;
+}
+/* anchors land below the header */
+:target,
+[id] {
+  scroll-margin-top: 5rem;
+}
+
+/* ─── Scroll-driven motion, in CSS (progressive: browsers without scroll timelines show everything still) ──
+ *   .sd-rise      rises and sharpens as it enters
+ *   .sd-zoom      grows from 92% as it enters
+ *   .sd-clip      wipes in from the bottom edge (clip-path)
+ *   .sd-iris      opens as a circle from its centre (clip-path)
+ *   .sd-parallax  drifts against the scroll while in view (set --sd-depth, default 60px)
+ *   .sd-fan       its children fan in from a tilt, one after another (set --i on each)
+ *   .sd-horizon   a section edge: its top fades in through a widening mask, like dawn over a planet
+ *   .sd-shrink    leaves smaller and dimmer as it scrolls out of the top
+ * All scale with --sd-amp (the member's "Motion while scrolling") and switch off with reduced motion or Calm.
+ */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    html:not([data-calm]) .sd-rise {
+      animation: sd-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 28%;
+    }
+    html:not([data-calm]) .sd-zoom {
+      animation: sd-zoom linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 35%;
+    }
+    html:not([data-calm]) .sd-clip {
+      animation: sd-clip linear both;
+      animation-timeline: view();
+      animation-range: entry 5% cover 35%;
+    }
+    html:not([data-calm]) .sd-iris {
+      animation: sd-iris linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 45%;
+    }
+    html:not([data-calm]) .sd-parallax {
+      animation: sd-parallax linear both;
+      animation-timeline: view();
+    }
+    html:not([data-calm]) .sd-fan > * {
+      animation: sd-fan linear both;
+      animation-timeline: view();
+      animation-range: entry calc(var(--i, 0) * 6%) cover calc(28% + var(--i, 0) * 4%);
+      transform-origin: 50% 120%;
+    }
+    html:not([data-calm]) .sd-horizon {
+      animation: sd-horizon linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+    html:not([data-calm]) .sd-shrink {
+      animation: sd-shrink linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 100%;
+    }
+  }
+}
+@keyframes sd-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--sd-amp) * 48px), 0) scale(calc(1 - var(--sd-amp) * 0.02));
+  }
+}
+@keyframes sd-zoom {
+  from {
+    opacity: 0.2;
+    transform: scale(calc(1 - var(--sd-amp) * 0.08));
+  }
+}
+@keyframes sd-clip {
+  from {
+    clip-path: inset(calc(var(--sd-amp) * 30%) 0 0 0 round 1.5rem);
+    opacity: 0.3;
+    transform: translate3d(0, calc(var(--sd-amp) * 24px), 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 0);
+  }
+}
+@keyframes sd-iris {
+  from {
+    clip-path: circle(12% at 50% 50%);
+    opacity: 0.4;
+  }
+  to {
+    clip-path: circle(75% at 50% 50%);
+  }
+}
+@keyframes sd-parallax {
+  from {
+    transform: translate3d(0, calc(var(--sd-amp) * var(--sd-depth, 60px)), 0);
+  }
+  to {
+    transform: translate3d(0, calc(var(--sd-amp) * var(--sd-depth, 60px) * -1), 0);
+  }
+}
+@keyframes sd-fan {
+  from {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--sd-amp) * 56px), 0) rotate(calc(var(--sd-amp) * (var(--i, 0) - 1.5) * 3deg)) scale(0.94);
+  }
+}
+@keyframes sd-horizon {
+  from {
+    mask-image: radial-gradient(60% 0% at 50% 0%, #000 60%, transparent 100%);
+    opacity: 0.2;
+  }
+  to {
+    mask-image: radial-gradient(160% 140% at 50% 0%, #000 60%, transparent 100%);
+  }
+}
+@keyframes sd-shrink {
+  to {
+    opacity: 0.25;
+    transform: scale(calc(1 - var(--sd-amp) * 0.08)) translate3d(0, calc(var(--sd-amp) * -30px), 0);
+  }
+}
+
+/* ─── Pointer-aware surfaces (Tilt, Magnetic, Spotlight in src/components/motion) ─────────────────────────── */
+.nx-tilt {
+  transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translate3d(0, var(--tilt-lift, 0px), 0);
+  transition: transform 500ms var(--ease-out);
+  transform-style: preserve-3d;
+}
+.nx-tilt[data-tilting] {
+  transition: transform 90ms linear;
+}
+.nx-tilt-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(380px circle at var(--glare-x, 50%) var(--glare-y, 0%), rgb(190 210 255 / 0.13), transparent 60%);
+  opacity: 0;
+  transition: opacity 300ms var(--ease-out);
+}
+.nx-tilt[data-tilting] .nx-tilt-glare {
+  opacity: 1;
+}
+.nx-magnetic {
+  transform: translate3d(var(--mag-x, 0px), var(--mag-y, 0px), 0);
+  transition: transform 450ms var(--ease-spring);
+}
+.nx-magnetic[data-pulling] {
+  transition: transform 120ms var(--ease-out);
+}
+/* the press on touch screens: a sink and a ring of light from where the finger landed */
+.nx-ripple {
+  position: absolute;
+  left: var(--rx, 50%);
+  top: var(--ry, 50%);
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: rgb(143 180 255 / 0.35);
+  animation: nx-ripple 600ms var(--ease-out) forwards;
+}
+@keyframes nx-ripple {
+  to {
+    transform: scale(28);
+    opacity: 0;
+  }
+}
+/* rolling digits */
+.nx-roll {
+  display: inline-flex;
+  font-variant-numeric: tabular-nums;
+}
+.nx-roll-col {
+  display: inline-block;
+  height: 1.1em;
+  overflow: hidden;
+  line-height: 1.1;
+}
+.nx-roll-strip {
+  display: flex;
+  flex-direction: column;
+  transform: translate3d(0, calc(var(--d, 0) * -1.1em), 0);
+  transition: transform calc(900ms + var(--k, 0) * 120ms) var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nx-tilt,
+  .nx-magnetic,
+  .nx-roll-strip {
+    transition: none;
+    transform: none;
+  }
+  .nx-roll-strip {
+    transform: translate3d(0, calc(var(--d, 0) * -1.1em), 0);
+  }
+  .nx-ripple {
+    display: none;
+  }
+}
+html[data-calm] .nx-tilt,
+html[data-calm] .nx-magnetic {
+  transform: none;
+}
+
+/* WarpDivider: stars that stretch into streaks while the divider crosses the screen */
+.nx-warp i {
+  position: absolute;
+  width: 3px;
+  height: 1px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, transparent, #cfe0ff, transparent);
+  transform-origin: 50% 50%;
+}
+.nx-warp-line {
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(143 180 255 / 0.35), rgb(216 197 158 / 0.3), transparent);
+  transform-origin: 50% 50%;
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    html:not([data-calm]) .nx-warp i {
+      animation: warp-streak linear both;
+      animation-timeline: view();
+    }
+    html:not([data-calm]) .nx-warp-line {
+      animation: warp-line linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 50%;
+    }
+  }
+}
+@keyframes warp-streak {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(calc(6 + var(--w, 1) * 30 * var(--sd-amp)));
+  }
+}
+@keyframes warp-line {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+}
+/* EmptySky */
+.nx-empty-orbit {
+  animation: nx-orbit-turn 9s linear infinite;
+}
+.nx-empty-star {
+  opacity: 0.3;
+  animation: nx-empty-twinkle 2.8s ease-in-out infinite alternate;
+  transition: transform 400ms var(--ease-out);
+}
+.nx-empty-sky:hover .nx-empty-star,
+.nx-empty-sky:active .nx-empty-star {
+  transform: scale(2.2);
+}
+@keyframes nx-orbit-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes nx-empty-twinkle {
+  to {
+    opacity: 0.9;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nx-empty-orbit,
+  .nx-empty-star {
+    animation: none;
+  }
+}
+
+
+
+/* ─── .sd-flow: scroll motion for a whole page in one class ─────────────────────────────────────────────────
+ * Put .sd-flow on a page's wrapper. Its list items (anything marked data-nav-item, the rows J and K walk) arrive
+ * as they scroll in, in the way data-flow names: rise (default), tilt (cards tip up), fan (alternating swing),
+ * clip (wipe from the bottom), zoom (grow from far). The page's first block (its title) recedes as it leaves
+ * the top. Pure CSS scroll timelines on the compositor; browsers without them show everything still.
+ */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    html:not([data-calm]) .sd-flow [data-nav-item] {
+      animation: sd-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 22%;
+    }
+    html:not([data-calm]) .sd-flow[data-flow="tilt"] [data-nav-item] {
+      animation-name: sd-tilt;
+      transform-origin: 50% 100%;
+    }
+    html:not([data-calm]) .sd-flow[data-flow="fan"] [data-nav-item] {
+      animation-name: sd-swing;
+      transform-origin: 50% 160%;
+    }
+    html:not([data-calm]) .sd-flow[data-flow="fan"] [data-nav-item]:nth-child(3n + 1) {
+      --swing: -1;
+    }
+    html:not([data-calm]) .sd-flow[data-flow="fan"] [data-nav-item]:nth-child(3n) {
+      --swing: 1;
+    }
+    html:not([data-calm]) .sd-flow[data-flow="clip"] [data-nav-item] {
+      animation-name: sd-clip;
+    }
+    html:not([data-calm]) .sd-flow[data-flow="zoom"] [data-nav-item] {
+      animation-name: sd-zoom;
+    }
+    html:not([data-calm]) .sd-flow > :first-child {
+      animation: sd-shrink linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 100%;
+      transform-origin: 50% 0%;
+    }
+  }
+}
+@keyframes sd-tilt {
+  from {
+    opacity: 0;
+    transform: perspective(900px) rotateX(calc(var(--sd-amp) * 24deg)) translate3d(0, calc(var(--sd-amp) * 40px), 0);
+  }
+}
+@keyframes sd-swing {
+  from {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--sd-amp) * 50px), 0) rotate(calc(var(--sd-amp) * var(--swing, 0) * 5deg)) scale(0.95);
+  }
+}
+

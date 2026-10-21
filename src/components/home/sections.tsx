@@ -18,6 +18,7 @@ import { useQuality } from "@/lib/perf"
 import { PlasmaOrb } from "./fx"
 import { loadBuilders, loadCollections, loadHotThreads, since, useLoad, type HotThread } from "./hub-data"
 import { Slot } from "./slot"
+import { Tilt } from "@/components/motion/pointer"
 
 /**
  * A section heading: title and one plain sentence, an optional way onward on the right. Each text is editable
@@ -73,7 +74,7 @@ export function FirstLight({
   const body = useCopy(`${k}.body`, bodyDefault)
   const action = useCopy(`${k}.action`, actionDefault)
   return (
-    <div className={cn("rise relative isolate flex flex-col items-start gap-4 overflow-hidden rounded-2xl border border-dashed border-white/[0.1] bg-white/[0.015] p-6 sm:flex-row sm:items-center md:p-7", className)}>
+    <div data-rise="clip" className={cn("rise relative isolate flex flex-col items-start gap-4 overflow-hidden rounded-2xl border border-dashed border-white/[0.1] bg-white/[0.015] p-6 sm:flex-row sm:items-center md:p-7", className)}>
       <span aria-hidden className="relative grid size-16 shrink-0 place-items-center">
         <span className="absolute inset-0 rounded-full border border-ion/25" />
         <span className="absolute inset-2.5 rounded-full border border-dashed border-white/15" />
@@ -198,12 +199,12 @@ export function DoToday({ missions, arena }: { missions?: React.ReactNode; arena
     <section aria-labelledby="today-h" className="shell">
       <Head id="today-h" k="home.today" title="Take part today" lead="Take on a mission someone posted, or judge a duel between two models without knowing which is which." />
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rise relative flex min-w-0 flex-col overflow-hidden rounded-3xl border border-white/[0.06] bg-card p-5 md:p-7" style={{ "--i": 1 } as React.CSSProperties}>
+        <Tilt max={3} lift={-3} data-rise="tilt" className="rise flex min-w-0 flex-col rounded-3xl border border-white/[0.08] bg-card p-5 md:p-7" style={{ "--i": 1 } as React.CSSProperties}>
           <Slot name="Missions">{missions}</Slot>
-        </div>
-        <div className="rise relative flex min-w-0 flex-col overflow-hidden rounded-3xl border border-white/[0.06] bg-card p-5 md:p-7" style={{ "--i": 2 } as React.CSSProperties}>
+        </Tilt>
+        <Tilt max={3} lift={-3} data-rise="tilt" className="rise flex min-w-0 flex-col rounded-3xl border border-white/[0.08] bg-card p-5 md:p-7" style={{ "--i": 2 } as React.CSSProperties}>
           <Slot name="Arena">{arena}</Slot>
-        </div>
+        </Tilt>
       </div>
     </section>
   )
@@ -240,11 +241,11 @@ export function Constellations() {
         ) : list.length ? (
           <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {list.map((c, i) => (
-              <li key={c.id} className="rise" style={{ "--i": i } as React.CSSProperties}>
+              <li key={c.id} data-rise="fan" className="rise" style={{ "--i": i } as React.CSSProperties}>
                 <GlowCard className="h-full rounded-2xl">
                   <Link
                     href={`/collections/${c.id}` as Route}
-                    className="press group relative z-[1] flex h-full flex-col gap-3 rounded-2xl border border-white/[0.07] bg-[#080a12]/85 p-4 hover:border-white/15 hover:bg-[#0a0d16]"
+                    className="press group relative z-[1] flex h-full flex-col gap-3 rounded-2xl border border-white/[0.07] bg-[#111628]/75 p-4 hover:border-white/15 hover:bg-[#151b30]/85"
                   >
                     <StarMap seed={c.id} count={Math.min(c.items, 7)} />
                     <span className="font-medium group-hover:text-ion">{c.title}</span>
@@ -266,7 +267,7 @@ export function Constellations() {
             body="Gather the models, datasets, tools and threads that belong together into a public collection. It becomes the first constellation in this sky."
             href="/collections"
             action="Draw a constellation"
-            className="bg-[#080a12]/80"
+            className="bg-[#111628]/75"
           />
         )}
       </div>
@@ -372,7 +373,7 @@ export function BuilderWorlds() {
             )
             const cls = "press group flex flex-col items-center gap-1 rounded-2xl px-1 pt-1 pb-3 text-center hover:bg-white/[0.03]"
             return (
-              <li key={b.id} className="rise w-[9rem] shrink-0 snap-start md:w-auto" style={{ "--i": i } as React.CSSProperties}>
+              <li key={b.id} data-rise="warp" className="rise w-[9rem] shrink-0 snap-start md:w-auto" style={{ "--i": i } as React.CSSProperties}>
                 {b.handle ? (
                   <Link href={`/people/${b.handle}` as Route} className={cls}>
                     {body}
@@ -384,7 +385,7 @@ export function BuilderWorlds() {
             )
           })}
           {builders.length < 8 && !builders.some((b) => b.id === member?.id) && (
-            <li className="rise w-[9rem] shrink-0 snap-start md:w-auto" style={{ "--i": builders.length } as React.CSSProperties}>
+            <li data-rise="warp" className="rise w-[9rem] shrink-0 snap-start md:w-auto" style={{ "--i": builders.length } as React.CSSProperties}>
               <Link href={member ? "/you" : "/sign-in"} className="press group flex flex-col items-center gap-1 rounded-2xl px-1 pt-1 pb-3 text-center hover:bg-white/[0.03]">
                 <span aria-hidden className="relative grid size-[140px] place-items-center">
                   {/* HorizonX Halftone Orbit: the orbit waiting for a planet */}
@@ -422,7 +423,7 @@ export function BuilderWorlds() {
 export function Close() {
   return (
     <section aria-labelledby="join-h" className="shell">
-      <div className="relative isolate overflow-hidden rounded-3xl border border-white/[0.06] bg-[#05060a] shadow-[0_40px_120px_-60px_rgb(143_180_255/0.35)]">
+      <div data-rise="clip" className="rise relative isolate overflow-hidden rounded-3xl border border-white/[0.08] bg-[radial-gradient(120%_90%_at_80%_50%,#0d1430,#070914_60%)] shadow-[0_40px_120px_-60px_rgb(143_180_255/0.35)]">
         <div aria-hidden className="relative mx-auto aspect-square w-[min(100%,22rem)] md:absolute md:top-1/2 md:right-[6%] md:w-[min(46%,30rem)] md:-translate-y-1/2">
           {/* a soft glow stands in before the orb draws, and where WebGL2 is not available */}
           <div className="absolute inset-[20%] rounded-full bg-[radial-gradient(closest-side,rgb(143_180_255/0.4),rgb(42_79_214/0.18)_60%,transparent)]" />

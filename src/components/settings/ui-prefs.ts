@@ -5,7 +5,9 @@ import { useSession } from "@/lib/store"
 import { db } from "@/lib/supabase"
 
 /*
- * A member's own feel for the site: calmer motion, their own accent colour, single-key shortcuts on or off.
+ * A member's own feel for the site: calmer motion, their own accent colour, single-key shortcuts on or off, and
+ * (round 11) how scrolling feels, how much moves while they scroll, the sky behind every page and what the
+ * header does on scroll.
  * Saved on their profile (profiles.ui_prefs, migration 20261020130000_shell.sql) and mirrored in this browser so
  * it applies on the first paint of the next visit. Guests keep it in this browser only. Until the column exists
  * the browser copy is the only one and nothing breaks.
@@ -13,9 +15,20 @@ import { db } from "@/lib/supabase"
 
 export type UiMotion = "site" | "calm" | "full"
 export type UiAccent = "site" | "ion" | "gold" | "aurora" | "nova"
-export type UiPrefs = { motion: UiMotion; accent: UiAccent; shortcuts: boolean }
+/** Scrolling: eased wheel scrolling (smooth), a longer glide (silk), or the browser's own (native). */
+export type UiScroll = "smooth" | "silk" | "native"
+/** How much moves as you scroll: parallax depth, tilts, reveals. */
+export type UiScrollFx = "subtle" | "lively" | "cinematic"
+/** The sky behind every page. */
+export type UiBackdrop = "nebula" | "starfield" | "deep"
+export type UiDensity = "sparse" | "normal" | "dense"
+/** The header on scroll: slides away while you read down and comes back when you scroll up, or stays. */
+export type UiHeader = "auto" | "pinned"
+export type UiPrefs = { motion: UiMotion; accent: UiAccent; shortcuts: boolean; scroll: UiScroll; scrollFx: UiScrollFx; backdrop: UiBackdrop; density: UiDensity; header: UiHeader }
 
-export const DEFAULT_UI: UiPrefs = { motion: "site", accent: "site", shortcuts: true }
+export const DEFAULT_UI: UiPrefs = { motion: "site", accent: "site", shortcuts: true, scroll: "smooth", scrollFx: "lively", backdrop: "nebula", density: "normal", header: "auto" }
+
+const pick = <T extends string>(v: unknown, ok: readonly T[], fallback: T): T => (ok.includes(v as T) ? (v as T) : fallback)
 export const ACCENTS: Record<Exclude<UiAccent, "site">, { label: string; color: string; fg: string }> = {
   ion: { label: "Ion blue", color: "#8fb4ff", fg: "#061026" },
   gold: { label: "Champagne", color: "#d8c59e", fg: "#1b160c" },
@@ -35,6 +48,11 @@ function clean(v: unknown): UiPrefs {
     motion: ["site", "calm", "full"].includes(r.motion as string) ? (r.motion as UiMotion) : "site",
     accent: ["site", "ion", "gold", "aurora", "nova"].includes(r.accent as string) ? (r.accent as UiAccent) : "site",
     shortcuts: r.shortcuts !== false,
+    scroll: pick(r.scroll, ["smooth", "silk", "native"], DEFAULT_UI.scroll),
+    scrollFx: pick(r.scrollFx, ["subtle", "lively", "cinematic"], DEFAULT_UI.scrollFx),
+    backdrop: pick(r.backdrop, ["nebula", "starfield", "deep"], DEFAULT_UI.backdrop),
+    density: pick(r.density, ["sparse", "normal", "dense"], DEFAULT_UI.density),
+    header: pick(r.header, ["auto", "pinned"], DEFAULT_UI.header),
   }
 }
 
@@ -74,7 +92,7 @@ export async function saveUiPrefs(patch: Partial<UiPrefs>, userId: string | null
   if (error && !/ui_prefs|column/i.test(error.message)) throw new Error("Could not save to your account. It is kept in this browser.")
 }
 
-/** Applies the prefs to the page: data-calm and data-keys on <html>, the accent on <body> (it wins over the site's). */
+/** Applies the prefs to the page: data-calm, data-keys, data-scroll, data-scroll-fx, data-backdrop, data-stars and data-header on <html>, the accent on <body> (it wins over the site's). */
 export function UiPrefsApplier() {
   const { ready, user } = useSession()
   const p = useUiPrefs()
@@ -102,6 +120,12 @@ export function UiPrefsApplier() {
     root.toggleAttribute("data-calm", p.motion === "calm")
     root.toggleAttribute("data-full-motion", p.motion === "full")
     root.dataset.keys = p.shortcuts ? "on" : "off"
+    // read by CSS (globals.css: the sky, scroll-driven motion) and by src/components/motion
+    root.dataset.scroll = p.scroll
+    root.dataset.scrollFx = p.scrollFx
+    root.dataset.backdrop = p.backdrop
+    root.dataset.stars = p.density
+    root.dataset.header = p.header
     const body = document.body
     if (p.accent === "site") {
       body.style.removeProperty("--ion")

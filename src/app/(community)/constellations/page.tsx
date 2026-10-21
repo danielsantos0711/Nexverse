@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function ConstellationsPage() {
   return (
-    <div className="shell pb-16">
+    <div data-flow="zoom" className="sd-flow shell pb-16">
       <PageTitle
         k="constellations.header"
         backdrop="warp"

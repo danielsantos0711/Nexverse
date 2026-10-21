@@ -11,6 +11,8 @@ import { SiteFooter } from "@/components/site/footer"
 import { HideOnChat } from "@/components/site/hide-on-chat"
 import { SiteHeader } from "@/components/site/header"
 import { ScrollProgress } from "@/components/site/scroll-progress"
+import { AmbientSky } from "@/components/motion/ambient-sky"
+import { SmoothScroll } from "@/components/motion/smooth-scroll"
 
 export default function CommunityLayout({ children }: LayoutProps<"/">) {
   return (
@@ -19,6 +21,9 @@ export default function CommunityLayout({ children }: LayoutProps<"/">) {
       {/* Editable content: the admins' text and list overrides, and the "Edit this page" switch for page editors. */}
       <ContentProvider>
         <CommandMenu>
+          {/* the sky behind every page (nebula, stars at three depths) and the eased wheel scrolling: round 11 */}
+          <AmbientSky />
+          <SmoothScroll />
           <AnnouncementBar />
           <ViewTransition name="site-header" default="none">
             <SiteHeader />

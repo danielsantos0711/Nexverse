@@ -35,18 +35,25 @@ export type Menus = {
   areas: Partial<Record<FeatureKey, AreaText>>
   /** The Create sheet (the header's Create button, the tab bar's middle button, C anywhere). */
   create?: CreateLink[]
+  /**
+   * The default links that existed when this row was saved ("header:/forum", "footer:/saved", "bar:/explore").
+   * A default link added to the code later is not in it, so it shows up in a saved menu on its own (in the
+   * group with the same id) without touching what the admins changed; a default they removed stays removed.
+   */
+  known?: string[]
 }
 
 const L = (label: string, href: string, description: string, icon: string, accent: CategoryAccent = "ion"): MenuLink => ({ label, href, description, icon, accent })
 const C = (label: string, href: string, description: string, icon: string, accent: CategoryAccent, cap?: string): CreateLink => ({ ...L(label, href, description, icon, accent), cap })
 
 /*
- * Round 10 layout, for newcomers: three places, each named by what you do there.
- *   Discover   find things: the map, what is trending, the news, curated collections
- *   Build      make things: projects (with their code), the hub's kinds, the Lab, evals
- *   Community  meet people: talk, crews, missions, events, launches
- * "Projects" is one entry: a project page carries its code, so Code and "Publish a project" are not separate.
- * Making anything starts from the Create button, never from a menu link.
+ * The layout, for newcomers: three places, each named by what you do there.
+ *   Discover   find things: the map, what is trending and rising on GitHub, the news, what is new for you
+ *   Build      make things: code and projects, the hub's kinds (models, datasets, tools, repos), the Lab, evals
+ *   Community  meet people: talk, messages, crews, missions, events, launches
+ * Round 11: round 10's regrouping had dropped Messages, For you, GitHub topics, Repos, Code, the Explore link and
+ * the "Start a thread" / "Publish a project" shortcuts from the header (Daniel: "perdi items nos menus"). Every
+ * destination the round 9 menus had is back, inside the three groups; the Create sheet keeps making things.
  */
 export const DEFAULT_MENUS: Menus = {
   header: [
@@ -56,7 +63,9 @@ export const DEFAULT_MENUS: Menus = {
       blurb: "Find what is new and worth your time",
       links: [
         L("Explore the map", "/explore", "Every part of Nexverse on one page", "compass", "ion"),
-        L("Trending", "/trending", "Rising on GitHub and the hub this week", "flame", "gold"),
+        L("For you", "/for-you", "New from what you follow and save", "heart", "gold"),
+        L("Trending", "/trending", "Rising on Nexverse and GitHub this week", "flame", "gold"),
+        L("GitHub topics", "/gh/topics", "LLMs, agents, RAG and more, rising", "git-branch", "repo"),
         L("News", "/news", "The AI newsroom: what happened and why", "newspaper", "model"),
         L("Collections", "/collections", "Lists members curated, with notes", "library", "repo"),
         L("Constellations", "/constellations", "Stacks drawn as star maps", "sparkles", "gold"),
@@ -69,10 +78,12 @@ export const DEFAULT_MENUS: Menus = {
       label: "Build",
       blurb: "Make, test and ship AI work",
       links: [
-        L("Projects", "/code", "Projects with their code, issues and releases", "folder-git-2", "repo"),
+        L("Code", "/code", "Nexverse projects with their code, issues and releases", "code", "repo"),
+        L("Publish a project", "/new/project", "A model, dataset, tool or repo page", "plus", "ion"),
         L("Models", "/models", "Weights you can run, tune and ship", "box", "model"),
         L("Datasets", "/datasets", "Open data with its licence up front", "database", "dataset"),
         L("Tools", "/tools", "Apps and libraries builders rely on", "wrench", "tool"),
+        L("Repos", "/repos", "Code worth reading and forking", "folder-git-2", "repo"),
         L("Lab", "/lab", "Calculators, cards and builders for AI work", "flask-conical", "dataset"),
         L("Arena", "/arena", "Blind duels between models: vote, then see", "swords", "model"),
         L("Benchmarks", "/benchmarks", "Eval results, verified by reproduction", "gauge", "dataset"),
@@ -85,16 +96,19 @@ export const DEFAULT_MENUS: Menus = {
       blurb: "Talk, team up and take on challenges",
       links: [
         L("Forum", "/forum", "Discussions organised by category", "message-square", "ion"),
+        L("Start a thread", "/forum/new", "Ask, share or start a debate", "message-square", "model"),
         L("Chat", "/chat", "Live rooms for every corner of AI", "messages-square", "gold"),
+        L("Messages", "/messages", "Direct messages with other members", "mail", "ion"),
         L("Crews", "/crews", "Teams with a wall, a chat and goals", "users-round", "repo"),
         L("Missions", "/missions", "Challenges with reputation rewards", "target", "gold"),
         L("Events", "/events", "Reading clubs, meetups and live demos", "calendar-days", "model"),
         L("Launchpad", "/launchpad", "Launches, countdowns, Launch of the day", "rocket", "repo"),
         L("People", "/people", "Builders and labs to follow", "users", "dataset"),
+        L("Share a link", "/share", "A model, tool, paper or story from elsewhere", "link", "ion"),
       ],
     },
   ],
-  headerLinks: [],
+  headerLinks: [L("Explore", "/explore", "Search everything", "search", "ion")],
   footer: [
     {
       id: "discover",
@@ -102,22 +116,24 @@ export const DEFAULT_MENUS: Menus = {
       links: [
         L("Explore the map", "/explore", "", "compass"),
         L("Trending", "/trending", "", "flame"),
+        L("GitHub topics", "/gh/topics", "", "git-branch"),
         L("News", "/news", "", "newspaper"),
         L("Collections", "/collections", "", "library"),
         L("Constellations", "/constellations", "", "sparkles"),
         L("Cosmos", "/cosmos", "", "orbit"),
-        L("GitHub topics", "/gh/topics", "", "git-branch"),
+        L("Leaderboard", "/leaderboard", "", "trophy"),
       ],
     },
     {
       id: "build",
       label: "Build",
       links: [
-        L("Projects", "/code", "", "folder-git-2"),
+        L("Code", "/code", "", "code"),
+        L("Publish a project", "/new/project", "", "plus"),
         L("Models", "/models", "", "box"),
         L("Datasets", "/datasets", "", "database"),
         L("Tools", "/tools", "", "wrench"),
-        L("Repos", "/repos", "", "git-branch"),
+        L("Repos", "/repos", "", "folder-git-2"),
         L("Lab", "/lab", "", "flask-conical"),
         L("Arena", "/arena", "", "swords"),
         L("Benchmarks", "/benchmarks", "", "gauge"),
@@ -128,13 +144,14 @@ export const DEFAULT_MENUS: Menus = {
       label: "Community",
       links: [
         L("Forum", "/forum", "", "message-square"),
-        L("Chat", "/chat", "", "messages-square"),
+        L("Start a thread", "/forum/new", "", "message-square"),
+        L("Chat rooms", "/chat", "", "messages-square"),
         L("Crews", "/crews", "", "users-round"),
         L("Missions", "/missions", "", "target"),
         L("Events", "/events", "", "calendar-days"),
         L("Launchpad", "/launchpad", "", "rocket"),
         L("People", "/people", "", "users"),
-        L("Leaderboard", "/leaderboard", "", "trophy"),
+        L("Share a link", "/share", "", "link"),
       ],
     },
     {
@@ -200,10 +217,46 @@ function cleanGroups(v: unknown): MenuGroup[] {
     })
 }
 
+// ─── New defaults inside an older saved row ─────────────────────────────────────────────────────────────────
+
+/** Every default link, keyed by where it sits. Saved with the row (saveMenus) as `known`. */
+export function defaultKeys(): string[] {
+  return [
+    ...DEFAULT_MENUS.header.flatMap((g) => g.links.map((l) => `header:${l.href}`)),
+    ...DEFAULT_MENUS.footer.flatMap((g) => g.links.map((l) => `footer:${l.href}`)),
+    ...DEFAULT_MENUS.headerLinks.map((l) => `bar:${l.href}`),
+  ]
+}
+
+/** What round 10's defaults held: a row saved before `known` existed had seen exactly these. */
+const ROUND_10_KEYS = [
+  ...["/explore", "/trending", "/news", "/collections", "/constellations", "/cosmos", "/leaderboard", "/code", "/models", "/datasets", "/tools", "/lab", "/arena", "/benchmarks", "/studio", "/forum", "/chat", "/crews", "/missions", "/events", "/launchpad", "/people"].map((h) => `header:${h}`),
+  ...["/explore", "/trending", "/news", "/collections", "/constellations", "/cosmos", "/gh/topics", "/code", "/models", "/datasets", "/tools", "/repos", "/lab", "/arena", "/benchmarks", "/forum", "/chat", "/crews", "/missions", "/events", "/launchpad", "/people", "/leaderboard", "/you", "/for-you", "/studio", "/messages", "/saved", "/notifications", "/settings"].map((h) => `footer:${h}`),
+]
+
+/** Adds the default links a saved row has never seen to the group with the same id (when that group is still there). */
+function withNewDefaults(m: Menus, known: Set<string>): Menus {
+  const add = (where: "header" | "footer", saved: MenuGroup[], defaults: MenuGroup[]) =>
+    saved.map((g) => {
+      const d = defaults.find((x) => x.id === g.id)
+      if (!d) return g
+      const have = new Set(saved.flatMap((x) => x.links.map((l) => l.href)))
+      const fresh = d.links.filter((l) => !known.has(`${where}:${l.href}`) && !have.has(l.href))
+      return fresh.length ? { ...g, links: [...g.links, ...fresh].slice(0, LIMITS.links) } : g
+    })
+  const bar = DEFAULT_MENUS.headerLinks.filter((l) => !known.has(`bar:${l.href}`) && !m.headerLinks.some((x) => x.href === l.href))
+  return { ...m, header: add("header", m.header, DEFAULT_MENUS.header), footer: add("footer", m.footer, DEFAULT_MENUS.footer), headerLinks: [...m.headerLinks, ...bar].slice(0, 4) }
+}
+
 /** A saved menus row, cleaned; anything missing or broken falls back to the defaults. */
 export function cleanMenus(raw: unknown): Menus {
   const r = rec(raw)
   if (!Object.keys(r).length) return DEFAULT_MENUS
+  const known = new Set(Array.isArray(r.known) ? arr(r.known).filter((k): k is string => typeof k === "string") : ROUND_10_KEYS)
+  return withNewDefaults(cleanSaved(r), known)
+}
+
+function cleanSaved(r: Record<string, unknown>): Menus {
   const m = rec(r.mobile)
   const areas: Menus["areas"] = {}
   for (const f of FEATURES) {
@@ -326,5 +379,6 @@ export function useMenus() {
 export async function saveMenus(m: Menus) {
   const problems = menuProblems(m)
   if (problems.length) throw new Error(problems[0])
-  await saveSettingRow("menus", m)
+  // remember which defaults this save has seen, so only links added to the code later appear on their own
+  await saveSettingRow("menus", { ...m, known: defaultKeys() })
 }

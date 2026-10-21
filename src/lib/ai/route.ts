@@ -73,3 +73,94 @@ export function aiRoute<T>(task: AiTask<T>) {
     }
   }
 }
+
+// Streaming
+
+export type StreamIO = {
+  /** Send the next piece of text to the reader. */
+  onText: (delta: string) => void
+  /** The model failed mid-answer and the next one starts over: the reader clears what it shows. */
+  onReset: () => void
+  /** Aborted when the reader goes away, so the model call stops too. */
+  signal: AbortSignal
+}
+
+export type StreamDone = {
+  model: string
+  label?: string
+  /** Sources to show as chips: Nexverse items first, then web pages. */
+  sources?: { url: string; title: string; kind?: string }[]
+  /** Anything else the interface needs (for example a structured part of the answer). */
+  extra?: Record<string, unknown>
+}
+
+export type AiStreamTask = {
+  staffOnly?: boolean
+  /** Validate the body (costs nothing on failure) and return the function that streams the answer. */
+  prepare: (body: Record<string, unknown>, caller: Caller) => Promise<(io: StreamIO) => Promise<StreamDone>> | ((io: StreamIO) => Promise<StreamDone>)
+}
+
+const SSE_HEADERS = { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store, no-transform", "x-accel-buffering": "no" }
+
+/**
+ * Like aiRoute, but the answer streams as server-sent events: `token` ({ t }) for each piece of text,
+ * `reset` when a fallback model starts over, then `done` ({ model, label, sources, extra, remaining }) or
+ * `error` ({ code, message }). Checks that fail before the stream starts answer with the usual JSON error.
+ */
+export function aiStreamRoute(task: AiStreamTask) {
+  return async function POST(request: Request): Promise<Response> {
+    let run: (io: StreamIO) => Promise<StreamDone>
+    let caller: Caller
+    let remaining: number
+    try {
+      caller = await requireMember(request)
+      if (!aiEnabled()) throw new AiError(503, "not_configured", NOT_CONFIGURED)
+      const settings = await loadAiSettings()
+      if (!settings.enabled) throw new AiError(503, "not_configured", "AI is switched off on this site right now.")
+      if (task.staffOnly && !caller.staff) throw new AiError(403, "forbidden", "Only moderators and admins can use this.")
+      if (!(await mayUseAi(caller))) throw new AiError(403, "forbidden", "Your account cannot use AI assist yet.")
+      const body = await readBody(request)
+      run = await task.prepare(body, caller)
+      remaining = await consume(caller, settings)
+    } catch (err) {
+      return errorResponse(err)
+    }
+    const enc = new TextEncoder()
+    const ctrl = new AbortController()
+    request.signal.addEventListener("abort", () => ctrl.abort(), { once: true })
+    const stream = new ReadableStream<Uint8Array>({
+      async start(out) {
+        let open = true
+        const send = (event: string, data: unknown) => {
+          if (!open) return
+          try {
+            out.enqueue(enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+          } catch {
+            open = false
+          }
+        }
+        // A first byte at once, so proxies start forwarding and the reader knows the request was accepted.
+        send("start", { remaining })
+        try {
+          const done = await withCaller({ token: caller.token }, () =>
+            run({ onText: (t) => send("token", { t }), onReset: () => send("reset", {}), signal: ctrl.signal })
+          )
+          send("done", { ...done, remaining, aiGenerated: true })
+        } catch (err) {
+          const e = err instanceof AiError ? err : new AiError(500, "upstream", "Something went wrong on our side. Try again.")
+          if (!(err instanceof AiError)) console.error("[ai] unexpected stream error:", (err as Error)?.message ?? err)
+          send("error", { code: e.code, message: e.message })
+        } finally {
+          open = false
+          try {
+            out.close()
+          } catch {}
+        }
+      },
+      cancel() {
+        ctrl.abort()
+      },
+    })
+    return new Response(stream, { headers: SSE_HEADERS })
+  }
+}

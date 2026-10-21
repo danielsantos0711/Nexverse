@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function BenchmarksPage() {
   return (
-    <div className="shell max-w-5xl pb-16">
+    <div data-flow="clip" className="sd-flow shell max-w-5xl pb-16">
       <ForumHeader k="benchmarks.header"
         title="Benchmarks"
         lead="Evaluation results from members, with the settings and logs to run them again. A result is verified once other members reproduce it."

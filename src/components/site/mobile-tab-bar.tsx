@@ -3,10 +3,11 @@
 import Link from "next/link"
 import type { Route } from "next"
 import { usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
 import { motion, useReducedMotion } from "motion/react"
 import { CompassIcon, HomeIcon, MessageSquareIcon, PlusIcon, UserIcon, type LucideIcon } from "lucide-react"
 import { openCreate } from "@/components/site/create-sheet"
+import { usePhoneBar } from "@/components/motion/scroll-state"
+import { useUiPrefs } from "@/components/settings/ui-prefs"
 import { useCopy } from "@/lib/content"
 import { useSession } from "@/lib/store"
 import { isLinkVisible, useSiteSettings } from "@/lib/site-settings"
@@ -15,8 +16,9 @@ import { cn } from "@/lib/utils"
 /*
  * The phone's tab bar: a floating capsule of plain blur at the bottom of the screen, with the four places people
  * go most and Create in the middle (the same sheet as the header's Create button). The current tab carries a
- * light that glides between tabs, like the highlight in the desktop menu. It slides away while you scroll down
- * to read and comes back when you scroll up (transform only). Phones and tablets; the desktop has the header.
+ * light that glides between tabs, like the highlight in the desktop menu. It takes turns with the header so only
+ * one bar is ever on screen (Daniel, round 11): the header at the top and while scrolling up, this bar while
+ * reading down and at the end of a page (usePhoneBar). Transform only. Phones and tablets; the desktop has the header.
  */
 
 const isOn = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/"))
@@ -26,26 +28,14 @@ export function MobileTabBar() {
   const { settings } = useSiteSettings()
   const { user } = useSession()
   const reduce = useReducedMotion()
-  const [hidden, setHidden] = useState(false)
+  const { header } = useUiPrefs()
+  const hidden = usePhoneBar(header === "pinned") !== "tabs"
   const home = useCopy("tabbar.home", "Home")
   const explore = useCopy("tabbar.explore", "Explore")
   const create = useCopy("tabbar.create", "Create")
   const forum = useCopy("tabbar.forum", "Forum")
   const you = useCopy("tabbar.you", "You")
   const signIn = useCopy("tabbar.sign-in", "Sign in")
-
-  // One passive listener; state changes only when the direction flips.
-  useEffect(() => {
-    let last = window.scrollY
-    const onScroll = () => {
-      const y = window.scrollY
-      if (Math.abs(y - last) < 8) return
-      setHidden(y > last && y > 120)
-      last = y
-    }
-    window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
 
   const links: { href: string; label: string; icon: LucideIcon }[] = [
     { href: "/", label: home, icon: HomeIcon },
@@ -77,10 +67,9 @@ export function MobileTabBar() {
   return (
     <nav
       aria-label="Quick links"
-      className={cn(
-        "fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex justify-center px-4 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] lg:hidden",
-        hidden && "translate-y-[calc(100%+1.5rem)]"
-      )}
+      data-away={hidden ? "" : undefined}
+      inert={hidden}
+      className="nx-tabbar nx-bar-slide fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex justify-center px-4 lg:hidden"
     >
       <div className="liquid-glass flex w-full max-w-md items-center gap-1 rounded-full p-1.5">
         {first && item(first)}

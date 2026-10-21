@@ -123,6 +123,82 @@ export async function noteFailure(provider: ProviderId, model: string, job: AiJo
   await rpc("ai_provider_fail", { p_provider: provider, p_model: model.slice(0, 120), p_job: job })
 }
 
+export type CallRecord = { provider: ProviderId; model: string; job: AiJob; ok: boolean; ms: number; tokensIn: number; tokensOut: number; costUsd: number; error?: string }
+
+/** One call's outcome for /admin/ai (latency, success rate, tokens, cost). Best effort; never throws. */
+export async function recordCall(c: CallRecord) {
+  await rpc("ai_call_record", {
+    p_provider: c.provider,
+    p_model: c.model.slice(0, 120),
+    p_job: c.job,
+    p_ok: c.ok,
+    p_ms: Math.round(c.ms),
+    p_tokens_in: Math.round(c.tokensIn),
+    p_tokens_out: Math.round(c.tokensOut),
+    p_cost: Math.round(c.costUsd * 1e6) / 1e6,
+    p_error: c.error ?? null,
+  })
+}
+
+let spentMemo: { at: number; value: number } | null = null
+const memorySpend = { month: "", usd: 0 }
+
+/** Premium spend this calendar month (UTC), cached for a minute. Falls back to this instance's own count. */
+export async function premiumSpent(): Promise<number> {
+  if (spentMemo && Date.now() - spentMemo.at < 60_000) return spentMemo.value
+  const r = await rpc("ai_premium_spent", {})
+  const month = new Date().toISOString().slice(0, 7)
+  const local = memorySpend.month === month ? memorySpend.usd : 0
+  const value = r.ok && (typeof r.value === "number" || typeof r.value === "string") ? Math.max(Number(r.value) || 0, local) : local
+  spentMemo = { at: Date.now(), value }
+  return value
+}
+
+/** Count premium spend locally at once, so a burst cannot overshoot the budget while the database catches up. */
+export function notePremiumSpend(usd: number) {
+  const month = new Date().toISOString().slice(0, 7)
+  if (memorySpend.month !== month) Object.assign(memorySpend, { month, usd: 0 })
+  memorySpend.usd += usd
+  if (spentMemo) spentMemo.value += usd
+}
+
+// Live catalogue snapshot (public data)
+
+let catalogMemo: { at: number; value: Map<string, Set<string>> } | null = null
+
+/** The model ids each provider listed at the last catalogue refresh, read from ai_catalog (10 minute memo). */
+export async function loadCatalogIds(): Promise<Map<string, Set<string>>> {
+  if (catalogMemo && Date.now() - catalogMemo.at < 600_000) return catalogMemo.value
+  const env = supabaseEnv()
+  const value = new Map<string, Set<string>>()
+  if (env) {
+    try {
+      const res = await fetch(`${env.url}/rest/v1/ai_catalog?select=provider,models,fetched_at`, {
+        headers: { apikey: env.key, authorization: `Bearer ${env.key}`, accept: "application/json" },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        cache: "no-store",
+      })
+      if (res.ok) {
+        const rows = (await res.json()) as { provider: string; models: { id?: unknown }[]; fetched_at: string }[]
+        for (const row of rows) {
+          // A snapshot older than a week says little about what is gone today.
+          if (Date.now() - new Date(row.fetched_at).getTime() > 7 * 86_400_000) continue
+          const ids = new Set(row.models.map((x) => (typeof x.id === "string" ? x.id : "")).filter(Boolean))
+          if (ids.size) value.set(row.provider, ids)
+        }
+      }
+    } catch {
+      // No catalogue yet: nothing is known to be gone.
+    }
+  }
+  catalogMemo = { at: Date.now(), value }
+  return value
+}
+
+export function forgetCatalog() {
+  catalogMemo = null
+}
+
 // Response cache
 
 const memoryCache = new Map<string, { value: unknown; expires: number }>()
@@ -133,14 +209,15 @@ export function cacheKey(parts: unknown[]): string {
   return createHmac("sha256", cacheSecret()).update(JSON.stringify(parts)).digest("hex")
 }
 
-export type CachedAnswer = { text?: string; json?: unknown; model: string; provider: string }
+export type CachedAnswer = { text?: string; json?: unknown; model: string; provider: string; sources?: { url: string; title: string }[] }
 
 function readCached(v: unknown): CachedAnswer | null {
   if (!v || typeof v !== "object") return null
   const o = v as Record<string, unknown>
   const value = o.value as Record<string, unknown> | undefined
   if (!value || typeof value !== "object") return null
-  return { text: typeof value.text === "string" ? value.text : undefined, json: value.json, model: String(o.model ?? ""), provider: String(o.provider ?? "") }
+  const sources = Array.isArray(value.sources) ? (value.sources as { url: string; title: string }[]).filter((x) => x && typeof x.url === "string" && typeof x.title === "string") : undefined
+  return { text: typeof value.text === "string" ? value.text : undefined, json: value.json, model: String(o.model ?? ""), provider: String(o.provider ?? ""), sources }
 }
 
 export async function cacheGet(key: string): Promise<CachedAnswer | null> {
@@ -152,7 +229,7 @@ export async function cacheGet(key: string): Promise<CachedAnswer | null> {
 }
 
 export async function cachePut(key: string, job: AiJob, answer: CachedAnswer, ttlSeconds: number) {
-  const value = answer.json !== undefined ? { json: answer.json } : { text: answer.text ?? "" }
+  const value = { ...(answer.json !== undefined ? { json: answer.json } : { text: answer.text ?? "" }), ...(answer.sources?.length ? { sources: answer.sources } : {}) }
   const r = await rpc("ai_cache_put", { k: key, p_job: job, p_value: value, p_model: answer.model, p_provider: answer.provider, ttl_seconds: ttlSeconds })
   if (r.ok) return
   if (memoryCache.size >= MEMORY_CACHE_MAX) memoryCache.delete(memoryCache.keys().next().value as string)

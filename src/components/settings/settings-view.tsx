@@ -7,7 +7,7 @@ import { useEffect, useId, useRef, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 import { BellIcon, CheckCircle2Icon, ImageUpIcon, LogOutIcon, PaletteIcon, ShieldCheckIcon, SparklesIcon, Trash2Icon, UserIcon, type LucideIcon } from "lucide-react"
 import { GlassKeys } from "@/components/glass/glass-keys"
-import { ACCENTS, saveUiPrefs, useUiPrefs, type UiAccent, type UiMotion } from "@/components/settings/ui-prefs"
+import { ACCENTS, saveUiPrefs, useUiPrefs, type UiAccent, type UiMotion, type UiPrefs } from "@/components/settings/ui-prefs"
 import { GO_KEYS } from "@/components/site/shortcuts"
 import { toast } from "@/components/site/toaster"
 import { InterestPicker } from "@/components/settings/interest-picker"
@@ -500,6 +500,93 @@ const MOTION: { id: UiMotion; label: string; hint: string }[] = [
   { id: "full", label: "Full", hint: "Every animation, even on slower devices" },
 ]
 
+/** Round 11: how scrolling feels, how much moves on scroll, the sky behind the pages and the header on scroll. */
+type Choice<K extends keyof UiPrefs> = { key: K; label: string; lead: string; options: { id: UiPrefs[K]; label: string; hint: string }[] }
+const FEEL: [Choice<"scroll">, Choice<"scrollFx">, Choice<"backdrop">, Choice<"density">, Choice<"header">] = [
+  {
+    key: "scroll",
+    label: "Scrolling",
+    lead: "How the page moves under a mouse wheel or trackpad. Touch screens always keep their own scrolling.",
+    options: [
+      { id: "smooth", label: "Smooth", hint: "Each wheel step eases into place" },
+      { id: "silk", label: "Silk", hint: "A longer, softer glide" },
+      { id: "native", label: "Native", hint: "Your browser's own scrolling" },
+    ],
+  },
+  {
+    key: "scrollFx",
+    label: "Motion while scrolling",
+    lead: "How far things travel as they arrive: parallax, tilting cards, wipes and rolling numbers.",
+    options: [
+      { id: "subtle", label: "Subtle", hint: "Small, quiet movements" },
+      { id: "lively", label: "Lively", hint: "The site as designed" },
+      { id: "cinematic", label: "Cinematic", hint: "Deeper parallax, bigger entrances" },
+    ],
+  },
+  {
+    key: "backdrop",
+    label: "Background",
+    lead: "The sky behind every page.",
+    options: [
+      { id: "nebula", label: "Nebula", hint: "Coloured clouds and stars that follow each part of the site" },
+      { id: "starfield", label: "Starfield", hint: "Mostly stars, fainter clouds" },
+      { id: "deep", label: "Deep space", hint: "Darker and calmer, a few stars" },
+    ],
+  },
+  {
+    key: "density",
+    label: "Stars",
+    lead: "How many stars the sky holds.",
+    options: [
+      { id: "sparse", label: "Few", hint: "A quiet sky" },
+      { id: "normal", label: "Some", hint: "The default" },
+      { id: "dense", label: "Many", hint: "A crowded galaxy" },
+    ],
+  },
+  {
+    key: "header",
+    label: "Header",
+    lead: "On phones the header and the bottom bar take turns, so only one is on screen.",
+    options: [
+      { id: "auto", label: "Steps aside", hint: "Hides while you read down, back when you scroll up" },
+      { id: "pinned", label: "Always there", hint: "Stays at the top (phones keep the header, not the bottom bar)" },
+    ],
+  },
+]
+
+/** One choice of the experience section: a row of radio cards with a highlight that glides to the chosen one. */
+function FeelChoice<K extends keyof UiPrefs>({ c, value, onPick }: { c: Choice<K>; value: UiPrefs[K]; onPick: (v: UiPrefs[K]) => void }) {
+  const reduce = useReducedMotion()
+  const id = `ux-${c.key}`
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col">
+        <span id={id} className="text-sm font-medium">{c.label}</span>
+        <span className="text-xs text-muted-foreground">{c.lead}</span>
+      </div>
+      <div role="radiogroup" aria-labelledby={id} className={cn("grid gap-2", c.options.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
+        {c.options.map((o) => {
+          const on = value === o.id
+          return (
+            <button
+              key={String(o.id)}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => onPick(o.id)}
+              className={cn("nx-lift relative flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left", on ? "border-ion/50" : "border-border bg-card/60")}
+            >
+              {on && <motion.span layoutId={`${id}-on`} aria-hidden transition={reduce ? { duration: 0 } : { type: "spring", duration: 0.35, bounce: 0.15 }} className="absolute inset-0 rounded-xl bg-ion/[0.07]" />}
+              <span className="relative text-sm font-medium">{o.label}</span>
+              <span className="relative text-xs text-muted-foreground">{o.hint}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 /** The member's own motion, accent and shortcuts: applied at once, saved to their account. */
 function ExperienceSection({ userId }: { userId: string | null }) {
   const p = useUiPrefs()
@@ -537,6 +624,9 @@ function ExperienceSection({ userId }: { userId: string | null }) {
           })}
         </div>
       </div>
+      {FEEL.map((c) => (
+        <FeelChoice key={c.key} c={c as Choice<keyof UiPrefs>} value={p[c.key]} onPick={(v) => void save({ [c.key]: v })} />
+      ))}
       <div className="flex flex-col gap-2">
         <span id="ux-accent" className="text-sm font-medium">Accent colour</span>
         <div role="radiogroup" aria-labelledby="ux-accent" className="flex flex-wrap gap-2">

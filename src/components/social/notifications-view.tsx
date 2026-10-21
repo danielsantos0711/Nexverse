@@ -1,6 +1,7 @@
 "use client"
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
+import { EmptySky } from "@/components/motion/empty-sky"
 import Link from "next/link"
 import { useState } from "react"
 import { BellIcon, CheckCheckIcon, CircleIcon, CircleDotIcon, Trash2Icon } from "lucide-react"
@@ -213,16 +214,6 @@ function IconAction({ label, onClick, icon: Icon }: { label: string; onClick: ()
 }
 
 function Quiet({ title, body, children }: { title: React.ReactNode; body: React.ReactNode; children?: React.ReactNode }) {
-  return (
-    <div className="glass flex flex-col items-center gap-4 rounded-2xl px-6 py-16 text-center">
-      <span className="grid size-14 place-items-center rounded-full bg-ion/10 text-ion shadow-[0_0_40px_-6px_rgb(143_180_255/0.6)]">
-        <BellIcon aria-hidden className="size-6" />
-      </span>
-      <div className="flex max-w-md flex-col gap-1.5">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-muted-foreground">{body}</p>
-      </div>
-      {children}
-    </div>
-  )
+  // the empty sky (round 11): a planet with its moon in orbit, stars that brighten under the pointer
+  return <EmptySky className="py-16" title={title} body={body} action={children} />
 }

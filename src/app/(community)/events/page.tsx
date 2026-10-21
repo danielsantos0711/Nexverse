@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function EventsPage() {
   return (
-    <div className="shell max-w-5xl pb-16">
+    <div data-flow="tilt" className="sd-flow shell max-w-5xl pb-16">
       <ForumHeader k="events.header"
         title="Events"
         lead="Paper clubs, meetups, office hours and AMAs, online and in person. Times are shown in your own time zone."

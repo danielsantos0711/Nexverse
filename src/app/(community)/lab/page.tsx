@@ -19,7 +19,7 @@ export default async function Page() {
   const LAB_TOOLS = await getLabTools()
   const local = LAB_TOOLS.filter((t) => !t.usesAi).length
   return (
-    <div className="shell pb-16">
+    <div data-flow="zoom" className="sd-flow shell pb-16">
       <div className="relative isolate">
         <LabHeroFx />
         <PageTitle k="lab.header"

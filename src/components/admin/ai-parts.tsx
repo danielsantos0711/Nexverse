@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { aiAdmin, AiRequestError, type AiAdminStatus } from "@/lib/ai-client"
-import { MODELS, PROVIDERS, type ProviderId } from "@/lib/ai/models"
+import { MODELS, PROVIDERS, type ModelInfo, type ProviderId } from "@/lib/ai/models"
 import { cn } from "@/lib/utils"
 
 /*
@@ -178,22 +178,25 @@ export function ChainEditor({
   onChange,
   configured,
   playground,
+  models = MODELS,
 }: {
   label: string
   chain: string[]
   onChange: (next: string[]) => void
   configured: Set<string>
   playground: boolean
+  /** Every model this site knows (built in plus added from the catalogue). Premium models are left out here. */
+  models?: ModelInfo[]
 }) {
   const reduce = useReducedMotion()
-  const pool = MODELS.filter((m) => !playground || m.playground)
+  const pool = models.filter((m) => !m.premium && (!playground || m.playground))
   const off = pool.filter((m) => !chain.includes(m.id))
   const move = (i: number, d: -1 | 1) => {
     const next = [...chain]
     ;[next[i], next[i + d]] = [next[i + d], next[i]]
     onChange(next)
   }
-  const firstReady = chain.find((id) => configured.has(MODELS.find((m) => m.id === id)?.provider ?? ""))
+  const firstReady = chain.find((id) => configured.has(models.find((m) => m.id === id)?.provider ?? ""))
 
   return (
     <div className="flex flex-col gap-4">
@@ -201,7 +204,7 @@ export function ChainEditor({
         {playground
           ? "Members choose one of these in the Lab. Only models with a key show up there."
           : firstReady
-            ? `Right now ${label.toLowerCase()} use ${MODELS.find((m) => m.id === firstReady)?.label}. When it fails or reaches its cap, the next one with a key takes over.`
+            ? `Right now ${label.toLowerCase()} use ${models.find((m) => m.id === firstReady)?.label}. When it fails or reaches its cap, the next one with a key takes over.`
             : "None of these models has a key yet, so this job is off."}
       </p>
       {chain.length === 0 ? (
@@ -209,7 +212,8 @@ export function ChainEditor({
       ) : (
         <ol className="flex flex-col gap-1.5" aria-label={`${label}: model order`}>
           {chain.map((id, i) => {
-            const m = MODELS.find((x) => x.id === id)!
+            const m = models.find((x) => x.id === id)
+            if (!m) return null
             const ready = configured.has(m.provider)
             return (
               <motion.li

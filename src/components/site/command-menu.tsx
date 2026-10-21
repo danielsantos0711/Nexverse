@@ -106,7 +106,8 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
   const you = footer.find((g) => g.id === "you")
   const placeGroups: { id: string; label: string; items: Place[] }[] = [
     ...header.map((g) => ({ id: g.id, label: g.label, items: g.links.map((l) => ({ label: l.label, href: l.href, icon: l.icon, blurb: l.description })) })),
-    ...(you ? [{ id: "you", label: you.label, items: you.links.map((l) => ({ label: l.label, href: l.href, icon: l.icon })) }] : []),
+    // You's links that a header group already lists (Messages, For you, Your studio) show once, in that group
+    ...(you ? [{ id: "you", label: you.label, items: you.links.filter((l) => !header.some((g) => g.links.some((h) => h.href === l.href))).map((l) => ({ label: l.label, href: l.href, icon: l.icon })) }] : []),
   ]
   const seen = new Set(placeGroups.flatMap((g) => g.items.map((i) => i.href)))
   for (const x of EXTRA) {

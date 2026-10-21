@@ -300,6 +300,8 @@ export function logTargetHref(e: Pick<LogEntry, "targetKind" | "targetId">): str
       return `/p/${e.targetId}`
     case "event":
       return `/events/${e.targetId}`
+    case "import":
+      return "/admin/import"
     default:
       return null
   }

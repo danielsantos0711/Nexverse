@@ -2,11 +2,13 @@
 
 import Link from "next/link"
 import type { Route } from "next"
-import { AnimatePresence, motion } from "motion/react"
-import { useEffect, useState } from "react"
+import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from "motion/react"
+import { useEffect, useRef, useState } from "react"
 import { ArrowRightIcon, SearchIcon } from "lucide-react"
 import { HeroStage } from "@/components/hero/hero-stage"
-import { CountUp } from "@/components/hub/motion"
+import { RollingNumber } from "@/components/motion/rolling-number"
+import { Magnetic } from "@/components/motion/pointer"
+import { useUiPrefs } from "@/components/settings/ui-prefs"
 import { loadCounts, useLoad, type HubCounts } from "@/components/home/hub-data"
 import { Kbd } from "@/components/ui/kbd"
 import { useBlock, useCopy } from "@/lib/content"
@@ -46,6 +48,18 @@ export function Hero() {
   const secondaryLabel = useCopy("home.hero.secondary", "Ask the community")
   const primaryHref = (hero.primaryHref.trim().startsWith("/") ? hero.primaryHref.trim() : DEFAULTS.hero.primaryHref) as Route
 
+  // Round 11, scrolling out of the hero: the galaxy sinks slower than the page and grows a little (uniformly: the N
+  // is never stretched) as it fades, and the words lift away faster, so the page seems to fly forward into the sky.
+  const ref = useRef<HTMLElement>(null)
+  const reduce = useReducedMotion()
+  const { scrollFx, motion: mine } = useUiPrefs()
+  const k = still || reduce || mine === "calm" ? 0 : scrollFx === "subtle" ? 0.5 : scrollFx === "cinematic" ? 1.6 : 1
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] })
+  const stageY = useTransform(scrollYProgress, [0, 1], [0, 220 * k])
+  const stageScale = useTransform(scrollYProgress, [0, 1], [1, 1 + 0.12 * k])
+  const stageFade = useTransform(scrollYProgress, [0, 0.85], [1, k ? 0.15 : 1])
+  const wordsY = useTransform(scrollYProgress, [0, 1], [0, -90 * k])
+
   const rise = (delay: number) =>
     still
       ? {}
@@ -56,15 +70,17 @@ export function Hero() {
         }
 
   return (
-    <section aria-labelledby="hero-h" className="relative isolate -mt-16 flex flex-col overflow-hidden">
-      <HeroStage
-        film={!still && effect !== "still"}
-        orbit={!still && effect !== "still"}
-        slow={settings.theme.motion === "calm" ? 2 : 1}
-        className="h-[var(--stage-h)] [--stage-h:clamp(25rem,62svh,46rem)] max-sm:[--stage-h:clamp(21rem,46svh,26rem)]"
-      />
+    <section ref={ref} aria-labelledby="hero-h" data-sky="ion" className="relative isolate -mt-16 flex flex-col overflow-hidden">
+      <motion.div style={{ y: stageY, scale: stageScale, opacity: stageFade }} className="origin-center will-change-transform">
+        <HeroStage
+          film={!still && effect !== "still"}
+          orbit={!still && effect !== "still"}
+          slow={settings.theme.motion === "calm" ? 2 : 1}
+          className="h-[var(--stage-h)] [--stage-h:clamp(25rem,62svh,46rem)] max-sm:[--stage-h:clamp(21rem,46svh,26rem)]"
+        />
+      </motion.div>
 
-      <div className="shell relative z-10 -mt-14 flex flex-col items-center pb-14 text-center sm:-mt-20">
+      <motion.div style={{ y: wordsY }} className="shell relative z-10 -mt-14 flex flex-col items-center pb-14 text-center sm:-mt-20">
         <div className="flex w-full max-w-2xl flex-col items-center gap-5">
           <motion.p {...rise(0.05)} className="inline-flex items-center gap-2 rounded-full border border-border bg-[#080a10]/80 px-3 py-1 text-xs text-muted-foreground">
             <span className="pulse-dot" aria-hidden /> {badge}
@@ -94,6 +110,7 @@ export function Hero() {
           </motion.form>
 
           <motion.div {...rise(0.36)} className="flex flex-wrap items-center justify-center gap-3">
+            <Magnetic strength={0.25}>
             <Link
               href={primaryHref}
               className="pressable group inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 font-medium text-primary-foreground shadow-[0_10px_40px_-12px_rgb(255_255_255/0.45)] transition-[box-shadow] hover:shadow-[0_10px_50px_-6px_rgb(143_180_255/0.7)]"
@@ -101,12 +118,13 @@ export function Hero() {
               {primaryLabel}
               <ArrowRightIcon aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
+            </Magnetic>
             <Link href="/forum" className="pressable inline-flex h-11 items-center rounded-full border border-border bg-[#080a10]/70 px-5 text-sm hover:border-white/25">
               {secondaryLabel}
             </Link>
           </motion.div>
         </div>
-      </div>
+      </motion.div>
 
       <HubTotals />
     </section>
@@ -128,7 +146,7 @@ function HubTotals() {
   const shown = counts ? TOTALS.filter((t) => counts[t.key] > 0) : []
   if (!shown.length) return null
   return (
-    <div className="relative border-t border-white/[0.06] bg-background/85">
+    <div className="relative border-t border-white/[0.06] bg-[#070a14]/60">
       <div className="shell flex flex-wrap items-center justify-center gap-x-10 gap-y-3 py-4 sm:justify-start">
         <p className="text-xs text-muted-foreground">
           <span className="pulse-dot mr-2 align-middle" aria-hidden />
@@ -140,7 +158,7 @@ function HubTotals() {
             return (
               <li key={t.key}>
                 <Link href={t.href} className="group flex items-baseline gap-2 rounded-sm">
-                  <CountUp value={n} className="font-display text-xl font-semibold tracking-tight group-hover:text-ion" />
+                  <RollingNumber value={n} className="font-display text-xl font-semibold tracking-tight transition-colors group-hover:text-ion" />
                   <span className="text-sm text-muted-foreground">{n === 1 ? t.one : t.many}</span>
                 </Link>
               </li>
