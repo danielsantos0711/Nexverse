@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function SavedPage() {
   return (
     <div data-flow="tilt" className="sd-flow shell max-w-5xl">
-      <PageTitle k="saved.header" title="Saved" lead="Models, datasets, tools, repos, threads, stories and constellations you bookmarked, in one place." />
+      <PageTitle k="saved.header" title="Saved" lead="Everything you bookmarked, in one place." />
       <SavedView />
     </div>
   )

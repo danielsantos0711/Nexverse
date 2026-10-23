@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { BellRingIcon, FileTextIcon, GiftIcon, LayoutGridIcon, ListIcon, PlusIcon, SearchIcon, TargetIcon, UserIcon, UsersIcon, UsersRoundIcon, XIcon } from "lucide-react"
+import { BellRingIcon, FileTextIcon, GiftIcon, LayoutGridIcon, ListIcon, PlusIcon, SearchIcon, SlidersHorizontalIcon, TargetIcon, UserIcon, UsersIcon, UsersRoundIcon, XIcon } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { GlowCard } from "@/components/hub/glow-card"
 import { SpaceCover } from "@/components/missions/mission-cover"
@@ -56,6 +56,8 @@ export function MissionsView() {
   const [only, setOnly] = useState<"" | "following" | "mine" | "team">("")
   const [followed, setFollowed] = useState<string[]>([])
   const [view, setView] = useState<"board" | "list">("board")
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreActive = [only !== "", difficulty !== "all", sort !== "newest", tag !== ""].filter(Boolean).length
   const reduce = useReducedMotion()
   const search = useRef<HTMLInputElement>(null)
 
@@ -173,7 +175,8 @@ export function MissionsView() {
 
   return (
     <div className="flex flex-col gap-5">
-      <MissionControl counts={counts} status={status} onStatus={setStatus} live={!loading && !error} />
+      {/* mission control's counters only once there is something to count (a strip of zeros says nothing) */}
+      {(missions?.length ?? 0) > 0 && <MissionControl counts={counts} status={status} onStatus={setStatus} live={!loading && !error} />}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className="relative flex min-w-0 flex-1 items-center">
@@ -202,6 +205,33 @@ export function MissionsView() {
         </div>
       </div>
 
+      {/* Round 12: the finer filters (who, rank, order, tags) fold behind one button, so the list starts sooner. */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((o) => !o)}
+          className={cn("pressable inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors", moreOpen || moreActive ? "border-ion/40 text-foreground" : "border-border text-muted-foreground hover:text-foreground")}
+        >
+          <SlidersHorizontalIcon aria-hidden className="size-3.5" /> Filters
+          {moreActive > 0 && <span className="tabular text-xs text-ion">{moreActive}</span>}
+        </button>
+        <div role="radiogroup" aria-label="View" className="ml-auto flex rounded-full border border-border bg-card p-0.5">
+          {(
+            [
+              ["board", "Board", LayoutGridIcon],
+              ["list", "List", ListIcon],
+            ] as const
+          ).map(([v, label, Icon]) => (
+            <button key={v} type="button" role="radio" aria-checked={view === v} aria-label={label} title={label} onClick={() => pickView(v)} className={cn("pressable grid size-8 place-items-center rounded-full transition-colors", view === v ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
+              <Icon aria-hidden className="size-4" />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {moreOpen && (
+      <>
       <div className="flex flex-wrap items-center gap-1.5">
         {(
           [
@@ -227,18 +257,6 @@ export function MissionsView() {
             </button>
           )
         })}
-        <div role="radiogroup" aria-label="View" className="ml-auto flex rounded-full border border-border bg-card p-0.5">
-          {(
-            [
-              ["board", "Board", LayoutGridIcon],
-              ["list", "List", ListIcon],
-            ] as const
-          ).map(([v, label, Icon]) => (
-            <button key={v} type="button" role="radio" aria-checked={view === v} aria-label={label} title={label} onClick={() => pickView(v)} className={cn("pressable grid size-8 place-items-center rounded-full transition-colors", view === v ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
-              <Icon aria-hidden className="size-4" />
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -279,9 +297,6 @@ export function MissionsView() {
             ))}
           </select>
         </div>
-        <Link href="/missions/new" className={cn(primaryButton, "w-fit")}>
-          <PlusIcon aria-hidden className="size-4" /> <Copy k="missions.missions-view.post-a-mission">Post a mission</Copy>
-        </Link>
       </div>
 
       {tags.length > 0 && (
@@ -305,6 +320,8 @@ export function MissionsView() {
             )
           })}
         </div>
+      )}
+      </>
       )}
 
       {error && (

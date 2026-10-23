@@ -16,7 +16,7 @@ export default function CrewsPage() {
     <div data-flow="fan" className="sd-flow shell max-w-6xl pb-16">
       <ForumHeader k="crews.header"
         title="Crews"
-        lead="Labs, study groups and project teams. Each crew has a wall, its own chat room, shared collections and a members list."
+        lead="Labs, study groups and teams, each with a wall and a chat room."
         icon={
           <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl border border-ion/20 bg-ion/10 text-ion">
             <UsersIcon aria-hidden className="size-5" />

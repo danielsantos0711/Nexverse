@@ -21,11 +21,18 @@ export default function LeaderboardPage() {
           </span>
         }
         title="Leaderboard"
-        lead="Every member starts as stardust. Points come from helping and building: threads and replies, projects and releases, events, missions, benchmarks and more. Shine long enough and you become a galaxy."
+        lead="Points come from helping and building. Every member starts as stardust."
       />
       <LeaderboardView />
-      <HowToRise className="mt-10" />
-      <LevelsShowcase />
+      <details className="group mt-10 rounded-xl border border-border bg-card/30">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
+          How points and levels work
+        </summary>
+        <div className="flex flex-col gap-6 border-t border-border p-4">
+          <HowToRise />
+          <LevelsShowcase />
+        </div>
+      </details>
     </div>
   )
 }

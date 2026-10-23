@@ -19,7 +19,7 @@ export default function ArenaPage() {
     <div data-flow="fan" className="sd-flow shell max-w-5xl pb-16">
       <ForumHeader k="arena.header"
         title="Arena"
-        lead="Two answers to the same prompt, model names hidden. Vote for the better one, then see who wrote them. Every vote moves the ratings."
+        lead="Two answers, model names hidden. Vote, then see who wrote them."
         icon={
           <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl border border-ion/20 bg-ion/10 text-ion">
             <SwordsIcon aria-hidden className="size-5" />

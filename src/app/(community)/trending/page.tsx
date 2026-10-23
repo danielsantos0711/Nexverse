@@ -108,7 +108,7 @@ export default function TrendingPage() {
       <PageTitle k="trending.header"
         eyebrow={<span className="flex flex-wrap items-center gap-x-2.5 gap-y-1"><AreaCrumbs /><span aria-hidden className="opacity-40">·</span><Copy k="trending.header.eyebrow">Nexverse first, then the rest of the open AI world</Copy></span>}
         title="Trending"
-        lead="What members are viewing, liking and discussing on Nexverse right now, the newsroom’s latest stories, then the open-source AI projects gaining stars fastest on GitHub and the releases that just shipped."
+        lead="What is gaining attention on Nexverse, in the news and on GitHub right now."
       />
 
       <div className="mb-6">

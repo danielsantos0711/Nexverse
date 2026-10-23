@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
-import { AreaCrumbs } from "@/components/site/area-crumbs"
-import { LockIcon, SparklesIcon } from "lucide-react"
+import { LockIcon } from "lucide-react"
 import { PageTitle } from "@/components/hub/bits"
 import { LabHeroFx, LabIndex } from "@/components/lab/lab-index"
 import { getLabTools } from "@/lib/lists/server"
@@ -23,20 +22,13 @@ export default async function Page() {
       <div className="relative isolate">
         <LabHeroFx />
         <PageTitle k="lab.header"
-          eyebrow={<AreaCrumbs />}
-          title="Tools for building with AI"
-          lead="Quick, honest answers to the questions that come up every week: what will it cost, will it fit, how should I split it, can I use it. Run prompts on free models and compare them side by side."
+          title="Lab"
+          lead="Free tools for building with AI: cost, VRAM, tokens, prompts and more."
         >
-          <div className="flex flex-col gap-1.5 text-xs text-muted-foreground">
-            <p className="flex items-center gap-1.5">
-              <LockIcon aria-hidden className="size-3.5" />
-              {local} of {LAB_TOOLS.length} tools run entirely in your browser; nothing you type is sent anywhere.
-            </p>
-            <p className="flex items-center gap-1.5">
-              <SparklesIcon aria-hidden className="size-3.5" />
-              The prompt playground uses the site&rsquo;s free AI models and needs a free account to run.
-            </p>
-          </div>
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground" title="The prompt playground uses the site's free AI models and needs a free account.">
+            <LockIcon aria-hidden className="size-3.5" />
+            {local} of {LAB_TOOLS.length} run in your browser only
+          </p>
         </PageTitle>
       </div>
       <LabIndex />
