@@ -196,7 +196,7 @@ export function GithubRising({ repos, topics, fetchedAt }: { repos: GhRepo[]; to
             {more ? "Show fewer" : `Show ${Math.min(24, list.length) - 9} more`}
           </button>
         )}
-        <Link href={topic === "all" ? "/gh/topics" : ghTopicHref(topic)} className="text-ion hover:underline">
+        <Link href={topic === "all" ? "/code?from=github" : ghTopicHref(topic)} className="text-ion hover:underline">
           {topic === "all" ? "Browse every topic" : `More on #${topic}`} →
         </Link>
       </div>

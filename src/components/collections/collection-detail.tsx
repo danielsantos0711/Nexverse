@@ -212,7 +212,7 @@ function CollectionPage({ initial }: { initial: Collection }) {
                 {[
                   ["/models", "Models"],
                   ["/datasets", "Datasets"],
-                  ["/repos", "Repos"],
+                  ["/code", "Code"],
                   ["/forum", "Forum"],
                 ].map(([href, label]) => (
                   <Link key={href} href={href} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 hover:bg-white/[0.04]">

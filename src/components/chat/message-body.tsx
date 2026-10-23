@@ -7,6 +7,7 @@ import { CheckIcon, CopyIcon, FileTextIcon, GitBranchIcon } from "lucide-react"
 import { handleOf } from "@/components/chat/format"
 import { highlightLines, TOKEN_CLASS } from "@/lib/code/highlight"
 import { langOf } from "@/lib/code/lang"
+import { internalHref } from "@/lib/live/ids"
 import { cn } from "@/lib/utils"
 
 /**
@@ -139,8 +140,14 @@ function Rich({ text, me }: { text: string; me?: string }) {
     if (m[1]) {
       // Punctuation that ends a sentence is not part of the link.
       const url = m[1].replace(/[.,:;!?)\]}'"]+$/, "")
+      // A GitHub repo or file opens in its Nexverse view rather than on github.com.
+      const inside = internalHref(url)
       out.push(
-        <a key={start} href={url} target="_blank" rel="noopener noreferrer nofollow ugc" className="text-ion underline decoration-ion/40 hover:decoration-ion">
+        inside ? (
+          <Link key={start} href={inside as Route} className="text-ion underline decoration-ion/40 hover:decoration-ion">
+            {url}
+          </Link>
+        ) : <a key={start} href={url} target="_blank" rel="noopener noreferrer nofollow ugc" className="text-ion underline decoration-ion/40 hover:decoration-ion">
           {url}
         </a>
       )

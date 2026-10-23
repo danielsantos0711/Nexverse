@@ -846,7 +846,7 @@ function EntryForm({ m, crew, now, reload }: { m: Mission; crew: MissionCrew; no
           ) : (
             <p id="entry-url" tabIndex={-1} className="text-sm text-muted-foreground">
               You have no published projects yet.{" "}
-              <Link href="/studio" className="text-ion hover:underline">
+              <Link href="/you" className="text-ion hover:underline">
                 <Copy k="mission.mission-detail.publish-one-in-the-studio">Publish one in the studio</Copy>
               </Link>{" "}
               or submit a repo or paper.

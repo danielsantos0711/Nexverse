@@ -1,7 +1,8 @@
 "use client"
 
+import type { Route } from "next"
 import Link from "next/link"
-import { ArrowUpRightIcon, NewspaperIcon } from "lucide-react"
+import { NewspaperIcon } from "lucide-react"
 import { Cover } from "@/components/hub/bits"
 import { Skeleton } from "@/components/ui/skeleton"
 import { live } from "@/lib/supabase"
@@ -37,11 +38,11 @@ export function FromTheHub() {
       {items.map((n) => {
         let host = ""
         try {
-          host = new URL(n.href).hostname.replace(/^www\./, "")
+          host = new URL(n.url ?? "").hostname.replace(/^www\./, "")
         } catch {}
         return (
           <li key={n.id}>
-            <a href={n.href} target="_blank" rel="noopener noreferrer nofollow" className="press group flex h-full gap-3 rounded-xl bg-white/[0.025] p-2.5 hover:bg-white/[0.05]">
+            <Link href={n.href as Route} className="press group flex h-full gap-3 rounded-xl bg-white/[0.025] p-2.5 hover:bg-white/[0.05]">
               <span className="relative size-16 shrink-0 overflow-hidden rounded-lg">
                 <Cover seed={n.id} kind="news" />
               </span>
@@ -51,12 +52,10 @@ export function FromTheHub() {
                 </span>
                 <span className="line-clamp-2 text-sm leading-snug font-medium">
                   {n.name}
-                  <ArrowUpRightIcon aria-hidden className="ml-1 inline size-3.5 text-muted-foreground" />
-                  <span className="sr-only"> (opens in a new tab)</span>
                 </span>
                 <span className="truncate text-xs text-muted-foreground">Shared by {n.by}</span>
               </span>
-            </a>
+            </Link>
           </li>
         )
       })}

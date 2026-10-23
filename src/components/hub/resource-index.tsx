@@ -265,14 +265,7 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
               <XIcon aria-hidden className="size-3" /> Clear
             </button>
           )}
-          <span className="ml-auto flex gap-2">
-            <Link href={kind ? `/new/project?kind=${kind}` : "/new/project"} className="inline-flex items-center gap-1 text-xs text-ion hover:underline">
-              <PlusIcon aria-hidden className="size-3.5" /> Publish
-            </Link>
-            <Link href={kind ? `/share?kind=${kind}` : "/share"} className="inline-flex items-center gap-1 text-xs text-ion hover:underline">
-              <LinkIcon aria-hidden className="size-3.5" /> Share a link
-            </Link>
-          </span>
+          {/* publishing and sharing are the page header's actions; not repeated here */}
         </div>
         {data.errors.length > 0 && <p className="text-xs text-muted-foreground">Part of the hub could not be loaded just now, so this list may be incomplete.</p>}
 

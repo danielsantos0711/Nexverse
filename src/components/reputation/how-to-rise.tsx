@@ -162,7 +162,7 @@ export function HowToRise({ className, id = "how-points" }: { className?: string
             Nothing you do to your own work counts, hidden posts earn nothing, and daily caps reset at midnight UTC. Mission rewards are set by whoever posts the mission.
           </Copy>{" "}
           {user && (
-            <Link href="/you#points" className="text-ion hover:underline">
+            <Link href="/you#progress" className="text-ion hover:underline">
               <Copy k="rise.history">See your points history</Copy>
             </Link>
           )}

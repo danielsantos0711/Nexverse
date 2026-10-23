@@ -1,40 +1,23 @@
 import type { Metadata } from "next"
-import { AreaCrumbs } from "@/components/site/area-crumbs"
-import Link from "next/link"
 import { Suspense } from "react"
-import { LayersIcon } from "lucide-react"
 import { CollectionsView } from "@/components/collections/collections-view"
 import { PageTitle } from "@/components/hub/bits"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export const metadata: Metadata = {
   title: "Collections",
-  description: "Lists of models, datasets, tools, repos and threads, curated by members with a note on why each one matters.",
+  description: "Lists of models, datasets, tools, repos and threads, curated by members with a note on why each one matters, as lists or as star maps.",
 }
 
+/*
+ * Collections (round 12): one page, two views. "List" is the cards; "Star map" (?show=map) is what /constellations
+ * was, every public collection drawn as a constellation. /constellations redirects here.
+ */
 export default function CollectionsPage() {
   return (
     <div data-flow="fan" className="sd-flow shell pb-16">
-      <PageTitle
-        k="collections.header"
-        eyebrow={
-          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <AreaCrumbs />
-            <span aria-hidden className="opacity-40">·</span>
-            <span className="inline-flex items-center gap-2">
-              <LayersIcon aria-hidden className="size-4 text-ion" /> Star charts drawn by members
-            </span>
-          </span>
-        }
-        title="Collections"
-        lead="Reading lists and starter kits curated by members: the models, datasets, tools, repos and threads worth charting, each with a note on why it matters. Two or more and a collection becomes a constellation."
-        backdrop="warp"
-      >
-        <Link href="/constellations" className="mt-1 w-fit text-sm text-ion hover:underline">
-          See them drawn as constellations →
-        </Link>
-      </PageTitle>
-      {/* The tab lives in the query string (?view=mine), which is read in the browser. */}
+      <PageTitle k="collections.header" title="Collections" lead="Lists members curate, with a note on why each thing matters." />
+      {/* The tab and the view live in the query string (?view=mine, ?show=map), which is read in the browser. */}
       <Suspense fallback={<ListSkeleton />}>
         <CollectionsView />
       </Suspense>

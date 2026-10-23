@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import type { ResourceKind } from "@/lib/data"
+import { sharePath } from "@/lib/hub"
 import { db } from "@/lib/supabase"
 
 /*
@@ -51,9 +52,11 @@ export type HubItem = {
   summary: string
   by: string
   at: string
-  /** A Nexverse page (projects) or the shared address (links, which open in a new tab). */
+  /** The Nexverse page: a project, or the page a shared link gets. */
   href: string
   external: boolean
+  /** The original address of a shared link, for showing its host. */
+  url?: string
 }
 
 type ProjectRow = { id: string; kind: ResourceKind; name: string; summary: string; published_at: string | null; created_at: string; owner: { name: string } | null }
@@ -85,7 +88,7 @@ export async function loadHubItems(limit = 40): Promise<HubItem[]> {
     })),
     ...(links.data ?? [])
       .filter((s): s is SubmissionRow & { kind: ResourceKind } => s.kind !== "news")
-      .map((s) => ({ id: `link:${s.id}`, kind: s.kind, name: s.title, summary: s.summary, by: s.author?.name ?? "A member", at: s.created_at, href: s.url, external: true })),
+      .map((s) => ({ id: `link:${s.id}`, kind: s.kind, name: s.title, summary: s.summary, by: s.author?.name ?? "A member", at: s.created_at, href: sharePath(s as { id: string; kind: ResourceKind }), external: false })),
   ]
   return items.sort((a, b) => b.at.localeCompare(a.at))
 }
@@ -98,7 +101,7 @@ export async function loadSharedNews(limit = 3): Promise<HubItem[]> {
     const q = c.from("submissions").select("id, kind, title, url, summary, created_at, author:profiles(name)").eq("kind", "news").order("created_at", { ascending: false }).limit(limit)
     return h ? q.is("hidden_at", null) : q
   })
-  return (data ?? []).map((s) => ({ id: `link:${s.id}`, kind: "repo", name: s.title, summary: s.summary, by: s.author?.name ?? "A member", at: s.created_at, href: s.url, external: true }))
+  return (data ?? []).map((s) => ({ id: `link:${s.id}`, kind: "repo", name: s.title, summary: s.summary, by: s.author?.name ?? "A member", at: s.created_at, href: `/news/${s.id}`, url: s.url, external: false }))
 }
 
 // ─── Forum ──────────────────────────────────────────────────────────────────────────────────────────────────

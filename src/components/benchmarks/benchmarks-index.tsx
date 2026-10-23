@@ -67,8 +67,8 @@ export function BenchmarksIndex() {
       )}
 
       <section aria-labelledby="bench-list" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="bench-list" className="text-base font-semibold">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <h2 id="bench-list" className="sr-only">
             <Copy k="benchmarks.benchmarks-index.benchmarks">Benchmarks</Copy>
           </h2>
           <SubmitResult onSubmitted={(r) => setResults((list) => [r, ...list])} />

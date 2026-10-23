@@ -28,8 +28,12 @@ export function AreaCrumbs({ extra = [], className }: { extra?: AreaCrumb[]; cla
       if (!best || h.length > best.href.length) best = { group: g.label, groupId: g.id, label: l.label, href: h, icon: l.icon }
     }
   }
-  const items: AreaCrumb[] = best ? [{ label: best.group, href: `/explore#${best.groupId}` }, { label: best.label, href: best.href }, ...extra] : extra
+  // On the place itself only the group is named ("Community" over the Forum's title): the title already says
+  // "Forum", so a trail of "Community › Forum" above it would say it twice. Deeper pages get the whole trail.
+  const exact = best !== null && pathname === best.href && !extra.length
+  const items: AreaCrumb[] = best ? (exact ? [{ label: best.group }] : [{ label: best.group }, { label: best.label, href: best.href }, ...extra]) : extra
   if (!items.length) return null
+  if (exact) return <p className={cn("text-sm text-muted-foreground", className)}>{best?.group}</p>
   const Icon = best ? iconFor(best.icon) : null
   return (
     <nav aria-label="Breadcrumb" className={cn("min-w-0 text-sm text-muted-foreground", className)}>

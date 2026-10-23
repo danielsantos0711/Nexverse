@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
-import { TargetIcon } from "lucide-react"
+import Link from "next/link"
+import { PlusIcon } from "lucide-react"
 import { ForumHeader } from "@/components/forum/forum-header"
+import { primaryButton } from "@/components/forum/forum-ui"
 import { MissionsView } from "@/components/missions/missions-view"
 import { seoMetadata } from "@/lib/content-server"
 
@@ -16,13 +18,12 @@ export default function MissionsPage() {
     <div data-flow="clip" className="sd-flow shell max-w-5xl pb-16">
       <ForumHeader k="missions.header"
         title="Missions"
-        lead="Challenges members post for each other. Accept one, build it, submit your entry; the poster picks the winner, who gets the points and a badge."
-        icon={
-          <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl border border-ion/20 bg-ion/10 text-ion">
-            <TargetIcon aria-hidden className="size-5" />
-          </span>
-        }
-      />
+        lead="Challenges members post for each other, with points and a badge for the winner."
+      >
+        <Link href="/missions/new" className={primaryButton}>
+          <PlusIcon aria-hidden className="size-4" /> Post a mission
+        </Link>
+      </ForumHeader>
       <MissionsView />
     </div>
   )

@@ -145,7 +145,7 @@ export function ProjectEditor({ id, embedded = false, onSaved }: { id?: string; 
   return <Editor key={kind} initialKind={kind} prefill={prefill} wantCode={params.get("code") === "1"} />
 }
 
-function Problem({ title, detail, href = "/studio", action = "Back to your studio" }: { title: string; detail: string; href?: string; action?: string }) {
+function Problem({ title, detail, href = "/you", action = "Back to your page" }: { title: string; detail: string; href?: string; action?: string }) {
   return (
     <Empty className="mx-auto max-w-xl py-24">
       <EmptyHeader>
@@ -322,7 +322,7 @@ function Editor({
     if (!current) return
     await deleteProject(current.id)
     setSaved({ form, project: null })
-    router.push("/studio")
+    router.push("/you")
   }
 
   const errorList = FIELD_IDS.filter(([k]) => errors[k])
@@ -334,8 +334,8 @@ function Editor({
       {!embedded && (
       <StudioHead
         eyebrow={
-          <Link href="/studio" className="inline-flex items-center gap-1.5 rounded-sm hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
-            <ArrowLeftIcon aria-hidden className="size-3.5" /> Your studio
+          <Link href="/you" className="inline-flex items-center gap-1.5 rounded-sm hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+            <ArrowLeftIcon aria-hidden className="size-3.5" /> Your page
           </Link>
         }
         title={current ? `Edit ${current.name}` : "New project"}
