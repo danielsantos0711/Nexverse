@@ -168,7 +168,7 @@ export function SiteHeader() {
     <header data-away={away ? "" : undefined} className="nx-header nx-bar-slide sticky top-0 z-40 h-16" onFocusCapture={(e) => headerFocus.set((e.target as Element).matches(":focus-visible"))} onBlurCapture={() => headerFocus.set(false)}>
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 border-b border-white/[0.07] bg-[color-mix(in_oklab,var(--background)_72%,transparent)] shadow-[0_8px_24px_-18px_rgb(0_0_0/0.8)] backdrop-blur-[14px] backdrop-saturate-[140%] [:root.light_&]:border-black/[0.07] [:root[data-glass=low]_&]:bg-background [:root[data-glass=low]_&]:backdrop-filter-none [:root[data-glass=off]_&]:bg-background [:root[data-glass=off]_&]:backdrop-filter-none"
+        className="pointer-events-none absolute inset-0 -z-10 border-b border-white/[0.08] bg-[linear-gradient(180deg,rgb(255_255_255/0.06),rgb(255_255_255/0.02))] shadow-[inset_0_1px_0_rgb(255_255_255/0.07),0_12px_30px_-22px_rgb(0_0_0/0.6)] backdrop-blur-[14px] backdrop-saturate-[140%] [:root.light_&]:border-black/[0.07] [:root[data-glass=low]_&]:bg-background [:root[data-glass=low]_&]:backdrop-filter-none [:root[data-glass=off]_&]:bg-background [:root[data-glass=off]_&]:backdrop-filter-none"
       />
       <GlassDefs />
       <div className="shell relative flex h-full items-center gap-3 lg:gap-6">
@@ -476,7 +476,7 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
       }}
       onPointerEnter={() => clearTimeout(closeTimer.current)}
     >
-      <ul className="flex items-center gap-1 rounded-full bg-white/[0.035] p-1 ring-1 ring-white/[0.06] [:root.light_&]:bg-black/[0.03] [:root.light_&]:ring-black/[0.06]">
+      <ul className="liquid-glass flex items-center gap-1 rounded-full p-1">
         {menus.map((m) => {
           const current = m.links.some((l) => isOn(l.href))
           const lit = (hot ?? open) === m.id || (!hot && !open && current)
