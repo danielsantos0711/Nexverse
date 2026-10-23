@@ -83,3 +83,8 @@ html[data-fx="low"] .nx-logo-word::after {
     display: none;
   }
 }
+
+/* The hero's big N: a soft neutral halo instead of the small header shadow. */
+.nx-hero-n {
+  filter: drop-shadow(0 0 24px rgb(220 228 240 / 0.18)) drop-shadow(0 18px 30px rgb(0 0 0 / 0.55));
+}
