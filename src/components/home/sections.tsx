@@ -245,7 +245,7 @@ export function Constellations() {
                 <GlowCard className="h-full rounded-2xl">
                   <Link
                     href={`/collections/${c.id}` as Route}
-                    className="press group relative z-[1] flex h-full flex-col gap-3 rounded-2xl border border-white/[0.07] bg-[#111628]/75 p-4 hover:border-white/15 hover:bg-[#151b30]/85"
+                    className="press group relative z-[1] flex h-full flex-col gap-3 rounded-2xl border border-white/[0.07] bg-card p-4 hover:border-white/15 hover:bg-raised/85"
                   >
                     <StarMap seed={c.id} count={Math.min(c.items, 7)} />
                     <span className="font-medium group-hover:text-ion">{c.title}</span>
@@ -267,7 +267,7 @@ export function Constellations() {
             body="Gather the models, datasets, tools and threads that belong together into a public collection. It becomes the first constellation in this sky."
             href="/collections"
             action="Draw a constellation"
-            className="bg-[#111628]/75"
+            className="bg-card"
           />
         )}
       </div>
@@ -301,17 +301,17 @@ function SkyField({ className }: { className?: string }) {
     <svg aria-hidden viewBox="0 0 1600 700" preserveAspectRatio="xMidYMid slice" className={cn("pointer-events-none size-full", className)}>
       <defs>
         <radialGradient id="sky-glow" cx="0.3" cy="0.75" r="0.6">
-          <stop offset="0" stopColor="#8fb4ff" stopOpacity="0.07" />
-          <stop offset="1" stopColor="#8fb4ff" stopOpacity="0" />
+          <stop offset="0" stopColor="#d6d8dd" stopOpacity="0.05" />
+          <stop offset="1" stopColor="#d6d8dd" stopOpacity="0" />
         </radialGradient>
       </defs>
       <rect width="1600" height="700" fill="url(#sky-glow)" />
       {field.map((s, i) => (
-        <circle key={i} cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={s.r.toFixed(2)} fill={i % 11 === 0 ? "#d8c59e" : "#e9ebf1"} opacity={s.o.toFixed(2)} className={i % 9 === 0 ? "sky-twinkle" : undefined} style={i % 9 === 0 ? ({ "--d": `${(i % 5) * 0.9}s` } as React.CSSProperties) : undefined} />
+        <circle key={i} cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={s.r.toFixed(2)} fill={i % 11 === 0 ? "#f4f4f6" : "#e9ebf1"} opacity={s.o.toFixed(2)} className={i % 9 === 0 ? "sky-twinkle" : undefined} style={i % 9 === 0 ? ({ "--d": `${(i % 5) * 0.9}s` } as React.CSSProperties) : undefined} />
       ))}
-      <polyline points={figure.map((p) => p.join(",")).join(" ")} fill="none" stroke="#8fb4ff" strokeOpacity="0.22" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      <polyline points={figure.map((p) => p.join(",")).join(" ")} fill="none" stroke="#e4e6ea" strokeOpacity="0.18" strokeWidth="1" vectorEffect="non-scaling-stroke" />
       {figure.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r={i === 0 ? 2.6 : 1.9} fill={i === 0 ? "#d8c59e" : "#ffffff"} opacity="0.85" />
+        <circle key={i} cx={x} cy={y} r={i === 0 ? 2.6 : 1.9} fill="#ffffff" opacity="0.85" />
       ))}
     </svg>
   )
@@ -323,10 +323,10 @@ function StarMap({ seed, count }: { seed: string; count: number }) {
   const n = Math.max(2, count)
   const stars = Array.from({ length: n }, (_, i) => ({ x: 20 + ((i + 0.1 + rand() * 0.8) / n) * 260, y: 16 + rand() * 48, r: 1.4 + rand() * 1.6 }))
   return (
-    <svg aria-hidden viewBox="0 0 300 80" preserveAspectRatio="xMidYMid meet" className="h-20 w-full rounded-xl bg-[radial-gradient(ellipse_at_30%_20%,rgb(143_180_255/0.12),transparent_60%)]">
-      <polyline points={stars.map((s) => `${s.x.toFixed(1)},${s.y.toFixed(1)}`).join(" ")} fill="none" stroke="rgb(143 180 255 / 0.4)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+    <svg aria-hidden viewBox="0 0 300 80" preserveAspectRatio="xMidYMid meet" className="h-20 w-full rounded-xl bg-[radial-gradient(ellipse_at_30%_20%,rgb(220_222_228/0.06),transparent_60%)]">
+      <polyline points={stars.map((s) => `${s.x.toFixed(1)},${s.y.toFixed(1)}`).join(" ")} fill="none" stroke="rgb(220 222 228 / 0.35)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
       {stars.map((s, i) => (
-        <circle key={i} cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={s.r.toFixed(2)} fill={i === 0 ? "#d8c59e" : "#e9ebf1"} />
+        <circle key={i} cx={s.x.toFixed(1)} cy={s.y.toFixed(1)} r={s.r.toFixed(2)} fill={i === 0 ? "#ffffff" : "#e9ebf1"} />
       ))}
     </svg>
   )
@@ -423,10 +423,12 @@ export function BuilderWorlds() {
 export function Close() {
   return (
     <section aria-labelledby="join-h" className="shell">
-      <div data-rise="clip" className="rise relative isolate overflow-hidden rounded-3xl border border-white/[0.08] bg-[radial-gradient(120%_90%_at_80%_50%,#0d1430,#070914_60%)] shadow-[0_40px_120px_-60px_rgb(143_180_255/0.35)]">
+      {/* No painted ground of its own (round 12b): the band is a thin veil of the site's own background token over
+          the sky, so it follows whatever backdrop the admins pick in Appearance (space, starfield, deep). */}
+      <div data-rise="clip" className="rise relative isolate overflow-hidden rounded-3xl border border-white/[0.08] bg-background/35 bg-[image:var(--surface-sheen)] shadow-[0_40px_120px_-60px_rgb(0_0_0/0.8)]">
         <div aria-hidden className="relative mx-auto aspect-square w-[min(100%,22rem)] md:absolute md:top-1/2 md:right-[6%] md:w-[min(46%,30rem)] md:-translate-y-1/2">
           {/* a soft glow stands in before the orb draws, and where WebGL2 is not available */}
-          <div className="absolute inset-[20%] rounded-full bg-[radial-gradient(closest-side,rgb(143_180_255/0.4),rgb(42_79_214/0.18)_60%,transparent)]" />
+          <div className="absolute inset-[20%] rounded-full bg-[radial-gradient(closest-side,rgb(225_227_232/0.22),rgb(160_164_172/0.08)_60%,transparent)]" />
           <PlasmaOrb className="absolute inset-0" />
         </div>
         <div className="relative flex max-w-lg flex-col justify-center gap-5 px-6 pt-0 pb-10 md:min-h-[30rem] md:px-14 md:py-14">
@@ -442,7 +444,7 @@ export function Close() {
           <div className="rise flex flex-wrap items-center gap-4" style={{ "--i": 3 } as React.CSSProperties}>
             <Link
               href="/share"
-              className="pressable group inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 font-medium text-primary-foreground shadow-[0_10px_40px_-12px_rgb(255_255_255/0.45)] transition-[box-shadow] hover:shadow-[0_10px_50px_-6px_rgb(143_180_255/0.7)]"
+              className="pressable group inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 font-medium text-primary-foreground shadow-[0_10px_40px_-12px_rgb(255_255_255/0.45)] transition-[box-shadow] hover:shadow-[0_10px_50px_-6px_rgb(255_255_255/0.5)]"
             >
               <Copy k="home.close.primary">Share what you built</Copy>
               <ArrowRightIcon aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />

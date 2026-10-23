@@ -44,6 +44,7 @@ export function ResourceListPage({ kind, searchParams }: { kind: ResourceKind; s
   return (
     <div data-flow="tilt" className="sd-flow shell pb-16">
       <PageHead
+        backdrop="warp"
         k={`${kind}.header`}
         crumbs={<AreaCrumbs />}
         title={KINDS[kind].plural}
