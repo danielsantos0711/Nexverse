@@ -1,6 +1,6 @@
 import { requireMember, type Caller } from "./auth"
 import { aiEnabled, MAX_BODY_BYTES, supabaseEnv } from "./config"
-import { AiError, NOT_CONFIGURED } from "./errors"
+import { AiError, messageFor, NOT_CONFIGURED } from "./errors"
 import { isObject } from "./json"
 import { consume } from "./quota"
 import { loadAiSettings, rpc, withCaller } from "./store"
@@ -21,10 +21,11 @@ export type AiTask<T> = {
 
 const NO_STORE = { "cache-control": "no-store" }
 
-export function errorResponse(err: unknown): Response {
+/** `staff`: moderators and admins also learn which environment variable turns AI on. */
+export function errorResponse(err: unknown, staff = false): Response {
   const e = err instanceof AiError ? err : new AiError(500, "upstream", "Something went wrong on our side. Try again.")
   if (!(err instanceof AiError)) console.error("[ai] unexpected error:", (err as Error)?.message ?? err)
-  return Response.json({ error: { code: e.code, message: e.message } }, { status: e.status, headers: NO_STORE })
+  return Response.json({ error: { code: e.code, message: messageFor(e, staff) } }, { status: e.status, headers: NO_STORE })
 }
 
 async function readBody(request: Request): Promise<Record<string, unknown>> {
@@ -55,8 +56,10 @@ async function mayUseAi(caller: Caller): Promise<boolean> {
 
 export function aiRoute<T>(task: AiTask<T>) {
   return async function POST(request: Request): Promise<Response> {
+    let staff = false
     try {
       const caller = await requireMember(request)
+      staff = caller.staff
       if (!aiEnabled()) throw new AiError(503, "not_configured", NOT_CONFIGURED)
       const settings = await loadAiSettings()
       if (!settings.enabled) throw new AiError(503, "not_configured", "AI is switched off on this site right now.")
@@ -69,7 +72,7 @@ export function aiRoute<T>(task: AiTask<T>) {
       const { data, model } = await withCaller({ token: caller.token }, run)
       return Response.json({ data, model, remaining, aiGenerated: true }, { headers: NO_STORE })
     } catch (err) {
-      return errorResponse(err)
+      return errorResponse(err, staff)
     }
   }
 }
@@ -112,8 +115,10 @@ export function aiStreamRoute(task: AiStreamTask) {
     let run: (io: StreamIO) => Promise<StreamDone>
     let caller: Caller
     let remaining: number
+    let staff = false
     try {
       caller = await requireMember(request)
+      staff = caller.staff
       if (!aiEnabled()) throw new AiError(503, "not_configured", NOT_CONFIGURED)
       const settings = await loadAiSettings()
       if (!settings.enabled) throw new AiError(503, "not_configured", "AI is switched off on this site right now.")
@@ -123,7 +128,7 @@ export function aiStreamRoute(task: AiStreamTask) {
       run = await task.prepare(body, caller)
       remaining = await consume(caller, settings)
     } catch (err) {
-      return errorResponse(err)
+      return errorResponse(err, staff)
     }
     const enc = new TextEncoder()
     const ctrl = new AbortController()
@@ -149,7 +154,7 @@ export function aiStreamRoute(task: AiStreamTask) {
         } catch (err) {
           const e = err instanceof AiError ? err : new AiError(500, "upstream", "Something went wrong on our side. Try again.")
           if (!(err instanceof AiError)) console.error("[ai] unexpected stream error:", (err as Error)?.message ?? err)
-          send("error", { code: e.code, message: e.message })
+          send("error", { code: e.code, message: messageFor(e, staff) })
         } finally {
           open = false
           try {

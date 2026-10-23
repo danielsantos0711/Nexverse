@@ -14,7 +14,7 @@ export function HostedBand() {
   const off = list.error instanceof CodeUnavailable
   return (
     <section aria-labelledby="hosted-title" className="shell pt-8">
-      <div className="relative overflow-hidden rounded-2xl border border-ion/20 bg-gradient-to-br from-ion/[0.08] via-card/40 to-transparent p-5 sm:p-6">
+      <div className="relative overflow-hidden rounded-2xl bg-card p-5 sm:p-6">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-0 flex-1">
             <p className="inline-flex items-center gap-1.5 text-xs font-medium tracking-wide text-ion uppercase">

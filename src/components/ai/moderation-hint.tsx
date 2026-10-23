@@ -5,6 +5,7 @@ import { ShieldCheckIcon, SparklesIcon } from "lucide-react"
 import { AiErrorText, AiLoading } from "@/components/ai/ai-bits"
 import { Button } from "@/components/ui/button"
 import { ai, useAiStatus, type ModerationHintResult, type ModerationVerdict } from "@/lib/ai-client"
+import { SETUP_HINT } from "@/lib/ai/errors"
 import { useRole } from "@/lib/roles"
 import { cn } from "@/lib/utils"
 
@@ -97,7 +98,8 @@ export function AiSetupNotice({ compact = false, className }: { compact?: boolea
   if (!ready || !isStaff || !status.ready) return null
 
   if (compact) {
-    return <p className={cn("text-xs text-muted-foreground", className)}>AI triage is not set up on this site yet.</p>
+    if (status.enabled) return null
+    return <p className={cn("text-xs text-muted-foreground", className)}>AI is not set up yet: add GEMINI_API_KEY (or GROQ_API_KEY, CEREBRAS_API_KEY, OPENROUTER_API_KEY) in Vercel and redeploy.</p>
   }
 
   return (
@@ -108,7 +110,7 @@ export function AiSetupNotice({ compact = false, className }: { compact?: boolea
         <p className="text-muted-foreground">
           {status.enabled
             ? "Members can rewrite and translate drafts, summarize threads and draft news; staff get AI triage in the reports queue. Each member has a daily limit."
-            : "It runs on free AI providers only. An admin adds at least one free key (Gemini, Groq, OpenRouter, Cloudflare or Mistral) in the Vercel project settings and redeploys; /admin/ai lists exactly which keys and where to get them. Until then, no AI buttons are shown to members."}
+            : `It runs on free AI providers only. ${SETUP_HINT.replace(/^Admin: s/, "S")} Until then, no AI buttons are shown to members.`}
         </p>
       </div>
     </div>

@@ -39,7 +39,9 @@ export type GhEntry = { name: string; path: string; type: "file" | "dir" | "syml
 
 export type GhCommit = { sha: string; message: string; author: string; login: string; avatar: string; date: string }
 
-export type GhRelease = { tag: string; name: string; publishedAt: string; prerelease: boolean; body: string; author: string }
+export type GhReleaseAsset = { name: string; size: number; downloads: number }
+
+export type GhRelease = { tag: string; name: string; publishedAt: string; prerelease: boolean; body: string; author: string; assets: GhReleaseAsset[] }
 
 export type GhReadme = { path: string; text: string }
 
@@ -62,7 +64,14 @@ function apiHeaders(): Record<string, string> {
 const enc = (path: string) => path.split("/").map(encodeURIComponent).join("/")
 
 async function api(path: string): Promise<{ ok: true; data: unknown } | { ok: false; reason: FailReason }> {
-  const res = await fetchSafe(`${API}${path}`, { accept: "application/vnd.github+json", headers: apiHeaders(), maxBytes: 3_000_000 })
+  const headers = apiHeaders()
+  let res = await fetchSafe(`${API}${path}`, { accept: "application/vnd.github+json", headers, maxBytes: 3_000_000 })
+  if (!res.ok && res.status === 401 && headers.Authorization) {
+    // An expired or revoked GITHUB_TOKEN must not take every GitHub page down: ask again without it.
+    console.warn("[live] GITHUB_TOKEN was rejected by GitHub (401); falling back to unauthenticated requests. Replace the token in Vercel.")
+    delete headers.Authorization
+    res = await fetchSafe(`${API}${path}`, { accept: "application/vnd.github+json", headers, maxBytes: 3_000_000 })
+  }
   if (!res.ok) return res
   const data = parseJson(res.text)
   return data === undefined ? { ok: false, reason: "error" } : { ok: true, data }
@@ -175,6 +184,11 @@ export function normalizeReleases(raw: unknown): GhRelease[] {
         // Markdown; rendered by our own renderer, which never outputs raw HTML.
         body: typeof r.body === "string" ? r.body.slice(0, 20_000) : "",
         author: isRecord(r.author) ? str(r.author.login, 40) : "",
+        // Downloaded through Nexverse (/api/gh/download), never linked to GitHub.
+        assets: asArray(r.assets)
+          .map((a) => (isRecord(a) && a.state !== "starter" ? { name: str(a.name, 255), size: typeof a.size === "number" ? a.size : 0, downloads: typeof a.download_count === "number" ? a.download_count : 0 } : null))
+          .filter((a): a is GhReleaseAsset => Boolean(a && a.name))
+          .slice(0, 50),
       }
     })
     .filter((r): r is GhRelease => r !== null)

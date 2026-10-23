@@ -51,19 +51,7 @@ const LOOK_CSS = `
   backdrop-filter: none !important;
   background-color: var(--popover) !important;
 }
-:root[data-backdrop="nebula"] body {
-  background-image:
-    radial-gradient(60% 45% at 0% 0%, rgb(185 167 255 / 0.10), transparent 70%),
-    radial-gradient(50% 40% at 100% 30%, rgb(143 180 255 / 0.08), transparent 70%),
-    radial-gradient(60% 50% at 30% 100%, rgb(255 159 198 / 0.05), transparent 70%);
-  background-attachment: fixed;
-}
-:root[data-backdrop="aurora"] body {
-  background-image:
-    radial-gradient(70% 35% at 50% -5%, rgb(127 224 196 / 0.12), transparent 70%),
-    radial-gradient(40% 30% at 85% 0%, rgb(143 180 255 / 0.08), transparent 70%);
-  background-attachment: fixed;
-}
+/* "nebula" and "aurora" used to paint coloured light over the site; round 12 keeps every backdrop a sober graphite. */
 :root[data-backdrop="deep"] { --background: #000000; }
 :root[data-backdrop="deep"] .starfield { opacity: 0.45; }
 `

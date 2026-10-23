@@ -2,7 +2,8 @@
  * The models the router can use, and the default order it tries them in for each job. Plain data with no
  * secrets and no network, so the admin page (client) and the router (server) read the same list.
  *
- * Checked on 21 Oct 2026 against each provider's own catalogue:
+ * Checked on 23 Oct 2026 against each provider's own catalogue (OpenRouter's live list: MiniMax M3.1 Flash is no
+ * longer free there and was dropped; Inkling Small was added):
  *   Gemini     https://ai.google.dev/gemini-api/docs/pricing (free tier column), /docs/google-search
  *   Groq       https://console.groq.com/docs/models, /docs/rate-limits
  *   Cerebras   https://inference-docs.cerebras.ai/models/overview
@@ -221,7 +222,7 @@ export const MODELS: ModelInfo[] = [
   // OpenRouter ":free": frontier open models with a small daily allowance, kept for the hardest work.
   m({ provider: "openrouter", model: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "Nemotron 3 Ultra (OpenRouter)", context: 1_000_000, notes: "NVIDIA's open 550B frontier reasoning model, free on OpenRouter.", json: "prompt", playground: true, tier: 1, reasoning: "openrouter" }),
   m({ provider: "openrouter", model: "thinkingmachines/inkling:free", label: "Inkling (OpenRouter)", context: 1_048_576, notes: "Thinking Machines' open 975B multimodal model, free on OpenRouter. Reads images.", json: "prompt", playground: true, tier: 1, reasoning: "openrouter", vision: true }),
-  m({ provider: "openrouter", model: "minimax/minimax-m3.1-flash:free", label: "MiniMax M3.1 Flash (OpenRouter)", context: 1_000_000, notes: "MiniMax's multimodal model, free on OpenRouter. Reads images.", json: "object", playground: true, tier: 2, reasoning: "openrouter", vision: true }),
+  m({ provider: "openrouter", model: "thinkingmachines/inkling-small:free", label: "Inkling Small (OpenRouter)", context: 1_048_576, notes: "The smaller Inkling, free on OpenRouter. Reads images, quick for its size.", json: "prompt", playground: true, tier: 2, reasoning: "openrouter", vision: true }),
   m({ provider: "openrouter", model: "nvidia/nemotron-3.5-super-vl:free", label: "Nemotron 3.5 Super VL (OpenRouter)", context: 1_000_000, notes: "NVIDIA's open vision-language model with structured output, free on OpenRouter.", json: "schema", playground: true, tier: 2, reasoning: "openrouter", vision: true }),
   m({ provider: "openrouter", model: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B (OpenRouter)", context: 262_144, notes: "NVIDIA's open 120B model, free on OpenRouter. Structured output supported.", json: "schema", playground: true, tier: 2 }),
   m({ provider: "openrouter", model: "google/gemma-4-31b-it:free", label: "Gemma 4 31B (OpenRouter)", context: 262_144, notes: "Google's open Gemma 4, free on OpenRouter. Good across languages, reads images.", json: "object", playground: true, tier: 2, vision: true }),
@@ -263,7 +264,7 @@ const CB120 = "cerebras:gpt-oss-120b"
 const CBQWEN = "cerebras:qwen-3.8-27b"
 const ULTRA = "openrouter:nvidia/nemotron-3-ultra-550b-a55b:free"
 const INKLING = "openrouter:thinkingmachines/inkling:free"
-const MINIMAX = "openrouter:minimax/minimax-m3.1-flash:free"
+const INKSMALL = "openrouter:thinkingmachines/inkling-small:free"
 const SUPERVL = "openrouter:nvidia/nemotron-3.5-super-vl:free"
 const SUPER = "openrouter:nvidia/nemotron-3-super-120b-a12b:free"
 const GEMMA = "openrouter:google/gemma-4-31b-it:free"
@@ -289,11 +290,11 @@ export const DEFAULT_CHAINS: Record<AiJob, string[]> = {
   code: [G38, OSS120, CB120, LAGUNA, QWEN, ULTRA, NORTH, CFCODER],
   moderation: ["groq:openai/gpt-oss-safeguard-20b", GLITE, SAFETY, OSS20, MSMALL, CFLLAMA],
   news: [G38, G25P, ULTRA, OSS120, CB120, MLARGE, G36, SUPER, CFOSS],
-  research: [G38, G25P, G36, ULTRA, OSS120, CB120, MINIMAX, MLARGE],
+  research: [G38, G25P, G36, ULTRA, OSS120, CB120, INKSMALL, MLARGE],
   triage: [OSS20, CBQWEN, GLITE, LLAMA8, GLITE31, LIGHTNING, MSMALL],
   factcheck: [G25P, G38, ULTRA, OSS120, CB120, MLARGE, G36],
   editor: [G38, G25P, ULTRA, INKLING, MLARGE, OSS120, G36, CB120],
-  vision: [G38, G36, SUPERVL, INKLING, MINIMAX, GEMMA, GLITE],
+  vision: [G38, G36, SUPERVL, INKLING, INKSMALL, GEMMA, GLITE],
   // For the playground the list is the set members may choose from; the member's pick is the only model tried.
   playground: FREE_PLAYGROUND,
 }
