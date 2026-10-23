@@ -38,6 +38,6 @@ export const GO_KEYS: { key: string; href: string; label: string }[] = [
   { key: "n", href: "/news", label: "News" },
   { key: "l", href: "/lab", label: "Lab" },
   { key: "c", href: "/chat", label: "Chat" },
-  { key: "p", href: "/code", label: "Projects" },
+  { key: "p", href: "/code", label: "Code" },
   { key: "y", href: "/you", label: "Your page" },
 ]

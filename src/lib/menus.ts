@@ -12,7 +12,15 @@ import { FEATURES, isLinkVisible, isSafeHref, saveSettingRow, useSiteSettings, t
  * (or hidden in Navigation) drop out on their own, and areas can carry a new name and blurb everywhere at once.
  */
 
-export type MenuLink = { label: string; href: string; description: string; icon: string; accent: CategoryAccent }
+export type MenuLink = {
+  label: string
+  href: string
+  description: string
+  icon: string
+  accent: CategoryAccent
+  /** A short sub-heading inside the group's panel ("Talk", "Hub"). Links with the same section sit together. */
+  section?: string
+}
 export type MenuGroup = {
   id: string
   label: string
@@ -45,15 +53,19 @@ export type Menus = {
 
 const L = (label: string, href: string, description: string, icon: string, accent: CategoryAccent = "ion"): MenuLink => ({ label, href, description, icon, accent })
 const C = (label: string, href: string, description: string, icon: string, accent: CategoryAccent, cap?: string): CreateLink => ({ ...L(label, href, description, icon, accent), cap })
+/** Links under one sub-heading of a group's panel. */
+const S = (section: string, links: MenuLink[]) => links.map((l) => ({ ...l, section }))
 
 /*
- * The layout, for newcomers: three places, each named by what you do there.
- *   Discover   find things: the map, what is trending and rising on GitHub, the news, what is new for you
- *   Build      make things: code and projects, the hub's kinds (models, datasets, tools, repos), the Lab, evals
- *   Community  meet people: talk, messages, crews, missions, events, launches
- * Round 11: round 10's regrouping had dropped Messages, For you, GitHub topics, Repos, Code, the Explore link and
- * the "Start a thread" / "Publish a project" shortcuts from the header (Daniel: "perdi items nos menus"). Every
- * destination the round 9 menus had is back, inside the three groups; the Create sheet keeps making things.
+ * The layout, for newcomers: three places, each named by what you do there, and a fourth that is yours.
+ *   Discover   Browse: Explore (list or star map), Trending, News · Curated: Collections, For you
+ *   Build      Hub: Models, Datasets, Tools, Code · Try and measure: Lab, Arena, Benchmarks, Compare · Share: publish, link
+ *   Community  Talk: Forum, Chat · Together: Crews, Missions, Events, Launchpad · Members: People, Leaderboard
+ *   You        (the avatar menu, the phone menu and the footer) Your page, For you, Saved, Messages, Notifications,
+ *              Settings, Get started
+ * Round 12 (Daniel: "nao estao todos no menu ... categorizado e mais organizado"): every member page is in a menu,
+ * each group's panel is cut into short sub-headings of two to four links, and pages that did the same thing were
+ * merged (see MOVED below), so the menus are shorter than round 11's while reaching more places.
  */
 export const DEFAULT_MENUS: Menus = {
   header: [
@@ -62,15 +74,15 @@ export const DEFAULT_MENUS: Menus = {
       label: "Discover",
       blurb: "Find what is new and worth your time",
       links: [
-        L("Explore the map", "/explore", "Every part of Nexverse on one page", "compass", "ion"),
-        L("For you", "/for-you", "New from what you follow and save", "heart", "gold"),
-        L("Trending", "/trending", "Rising on Nexverse and GitHub this week", "flame", "gold"),
-        L("GitHub topics", "/gh/topics", "LLMs, agents, RAG and more, rising", "git-branch", "repo"),
-        L("News", "/news", "The AI newsroom: what happened and why", "newspaper", "model"),
-        L("Collections", "/collections", "Lists members curated, with notes", "library", "repo"),
-        L("Constellations", "/constellations", "Stacks drawn as star maps", "sparkles", "gold"),
-        L("Cosmos", "/cosmos", "The whole hub as one star map", "orbit", "ion"),
-        L("Leaderboard", "/leaderboard", "Who helped the most this week", "trophy", "gold"),
+        ...S("Browse", [
+          L("Explore", "/explore", "Everything members published, as a list or a star map", "compass", "ion"),
+          L("Trending", "/trending", "Rising on Nexverse and GitHub", "flame", "gold"),
+          L("News", "/news", "The AI newsroom, sourced and checked", "newspaper", "model"),
+        ]),
+        ...S("Curated", [
+          L("Collections", "/collections", "Lists and star maps members curate", "library", "repo"),
+          L("For you", "/for-you", "New from what you follow", "heart", "gold"),
+        ]),
       ],
     },
     {
@@ -78,16 +90,22 @@ export const DEFAULT_MENUS: Menus = {
       label: "Build",
       blurb: "Make, test and ship AI work",
       links: [
-        L("Code", "/code", "Nexverse projects with their code, issues and releases", "code", "repo"),
-        L("Publish a project", "/new/project", "A model, dataset, tool or repo page", "plus", "ion"),
-        L("Models", "/models", "Weights you can run, tune and ship", "box", "model"),
-        L("Datasets", "/datasets", "Open data with its licence up front", "database", "dataset"),
-        L("Tools", "/tools", "Apps and libraries builders rely on", "wrench", "tool"),
-        L("Repos", "/repos", "Code worth reading and forking", "folder-git-2", "repo"),
-        L("Lab", "/lab", "Calculators, cards and builders for AI work", "flask-conical", "dataset"),
-        L("Arena", "/arena", "Blind duels between models: vote, then see", "swords", "model"),
-        L("Benchmarks", "/benchmarks", "Eval results, verified by reproduction", "gauge", "dataset"),
-        L("Your studio", "/studio", "Everything you made, with its numbers", "layout-dashboard", "gold"),
+        ...S("Hub", [
+          L("Models", "/models", "Weights to run, tune and ship", "box", "model"),
+          L("Datasets", "/datasets", "Open data, licence up front", "database", "dataset"),
+          L("Tools", "/tools", "Apps and libraries builders use", "wrench", "tool"),
+          L("Code", "/code", "Nexverse repos and GitHub, read here", "code", "repo"),
+        ]),
+        ...S("Try and measure", [
+          L("Lab", "/lab", "Calculators, playground, builders", "flask-conical", "dataset"),
+          L("Arena", "/arena", "Blind duels between models", "swords", "model"),
+          L("Benchmarks", "/benchmarks", "Eval results, reproduced", "gauge", "dataset"),
+          L("Compare", "/compare", "Projects side by side", "scale", "ion"),
+        ]),
+        ...S("Share your work", [
+          L("Publish a project", "/new/project", "A model, dataset, tool or code", "plus", "ion"),
+          L("Share a link", "/share", "Something worth knowing, from elsewhere", "link", "ion"),
+        ]),
       ],
     },
     {
@@ -95,45 +113,39 @@ export const DEFAULT_MENUS: Menus = {
       label: "Community",
       blurb: "Talk, team up and take on challenges",
       links: [
-        L("Forum", "/forum", "Discussions organised by category", "message-square", "ion"),
-        L("Start a thread", "/forum/new", "Ask, share or start a debate", "message-square", "model"),
-        L("Chat", "/chat", "Live rooms for every corner of AI", "messages-square", "gold"),
-        L("Messages", "/messages", "Direct messages with other members", "mail", "ion"),
-        L("Crews", "/crews", "Teams with a wall, a chat and goals", "users-round", "repo"),
-        L("Missions", "/missions", "Challenges with reputation rewards", "target", "gold"),
-        L("Events", "/events", "Reading clubs, meetups and live demos", "calendar-days", "model"),
-        L("Launchpad", "/launchpad", "Launches, countdowns, Launch of the day", "rocket", "repo"),
-        L("People", "/people", "Builders and labs to follow", "users", "dataset"),
-        L("Share a link", "/share", "A model, tool, paper or story from elsewhere", "link", "ion"),
+        ...S("Talk", [
+          L("Forum", "/forum", "Discussions by category", "message-square", "ion"),
+          L("Chat", "/chat", "Live rooms for every corner of AI", "messages-square", "gold"),
+        ]),
+        ...S("Together", [
+          L("Crews", "/crews", "Teams with a wall and a chat", "users-round", "repo"),
+          L("Missions", "/missions", "Challenges with rewards", "target", "gold"),
+          L("Events", "/events", "Reading clubs, meetups, demos", "calendar-days", "model"),
+          L("Launchpad", "/launchpad", "Launches and countdowns", "rocket", "repo"),
+        ]),
+        ...S("Members", [
+          L("People", "/people", "Builders and labs to follow", "users", "dataset"),
+          L("Leaderboard", "/leaderboard", "Who helped most this week", "trophy", "gold"),
+        ]),
       ],
     },
   ],
-  headerLinks: [L("Explore", "/explore", "Search everything", "search", "ion")],
+  // The three menus are the whole map; Explore is the first link of Discover and the phone's tab bar.
+  headerLinks: [],
   footer: [
     {
       id: "discover",
       label: "Discover",
-      links: [
-        L("Explore the map", "/explore", "", "compass"),
-        L("Trending", "/trending", "", "flame"),
-        L("GitHub topics", "/gh/topics", "", "git-branch"),
-        L("News", "/news", "", "newspaper"),
-        L("Collections", "/collections", "", "library"),
-        L("Constellations", "/constellations", "", "sparkles"),
-        L("Cosmos", "/cosmos", "", "orbit"),
-        L("Leaderboard", "/leaderboard", "", "trophy"),
-      ],
+      links: [L("Explore", "/explore", "", "compass"), L("Trending", "/trending", "", "flame"), L("News", "/news", "", "newspaper"), L("Collections", "/collections", "", "library")],
     },
     {
       id: "build",
       label: "Build",
       links: [
-        L("Code", "/code", "", "code"),
-        L("Publish a project", "/new/project", "", "plus"),
         L("Models", "/models", "", "box"),
         L("Datasets", "/datasets", "", "database"),
         L("Tools", "/tools", "", "wrench"),
-        L("Repos", "/repos", "", "folder-git-2"),
+        L("Code", "/code", "", "code"),
         L("Lab", "/lab", "", "flask-conical"),
         L("Arena", "/arena", "", "swords"),
         L("Benchmarks", "/benchmarks", "", "gauge"),
@@ -144,27 +156,26 @@ export const DEFAULT_MENUS: Menus = {
       label: "Community",
       links: [
         L("Forum", "/forum", "", "message-square"),
-        L("Start a thread", "/forum/new", "", "message-square"),
-        L("Chat rooms", "/chat", "", "messages-square"),
+        L("Chat", "/chat", "", "messages-square"),
         L("Crews", "/crews", "", "users-round"),
         L("Missions", "/missions", "", "target"),
         L("Events", "/events", "", "calendar-days"),
         L("Launchpad", "/launchpad", "", "rocket"),
         L("People", "/people", "", "users"),
-        L("Share a link", "/share", "", "link"),
       ],
     },
     {
+      // Also the avatar menu and the phone menu's "You" group.
       id: "you",
       label: "You",
       links: [
-        L("Your page", "/you", "", "user"),
-        L("For you", "/for-you", "", "heart"),
-        L("Your studio", "/studio", "", "layout-dashboard"),
-        L("Messages", "/messages", "", "mail"),
-        L("Saved", "/saved", "", "bookmark"),
-        L("Notifications", "/notifications", "", "bell"),
-        L("Settings", "/settings", "", "settings"),
+        L("Your page", "/you", "Projects, threads and progress", "user", "ion"),
+        L("For you", "/for-you", "New from what you follow", "heart", "gold"),
+        L("Saved", "/saved", "Everything you bookmarked", "bookmark", "ion"),
+        L("Messages", "/messages", "Direct messages", "mail", "ion"),
+        L("Notifications", "/notifications", "Replies, follows and mentions", "bell", "ion"),
+        L("Settings", "/settings", "Profile, interests, experience", "settings", "ion"),
+        L("Get started", "/welcome", "Set up your Nexverse in four steps", "sparkles", "gold"),
       ],
     },
   ],
@@ -186,6 +197,32 @@ export const DEFAULT_MENUS: Menus = {
   ],
 }
 
+/*
+ * Pages merged in round 12, old address -> where it lives now. The old addresses still work (next.config.ts
+ * redirects them); saved menus are rewritten on read, so a menu saved before the merge never shows a dead or
+ * doubled link.
+ */
+export const MOVED: Record<string, string> = {
+  "/repos": "/code",
+  "/gh/topics": "/code?tab=github",
+  "/cosmos": "/explore?show=map",
+  "/constellations": "/collections?show=map",
+  "/studio": "/you",
+}
+
+/** The current address of a link saved before a merge (only exact paths move; /repos/<id> pages still exist). */
+export function movedHref(href: string): string {
+  const [path, rest = ""] = href.split(/(?=[?#])/)
+  const to = MOVED[path]
+  if (!to) return href
+  if (!rest) return to
+  // keep the old query (/cosmos?focus=...) on top of the new one
+  return rest.startsWith("?") ? `${to}${to.includes("?") ? "&" : "?"}${rest.slice(1)}` : `${to}${rest}`
+}
+
+/** Each default link's sub-heading, so links saved before sections existed still land under one. */
+const SECTION_OF = new Map(DEFAULT_MENUS.header.flatMap((g) => g.links.map((l) => [l.href, l.section] as const)))
+
 // ─── Reading and cleaning ───────────────────────────────────────────────────────────────────────────────────
 
 const ACCENT_IDS = ["ion", "gold", "model", "dataset", "tool", "repo"]
@@ -200,7 +237,30 @@ function cleanLink(v: unknown): MenuLink | null {
   const href = str(r.href, 400).trim()
   const label = str(r.label, LIMITS.label).trim()
   if (!label || !isSafeHref(href)) return null
-  return { label, href, description: str(r.description, LIMITS.description), icon: str(r.icon, 40) || "link", accent: (ACCENT_IDS.includes(r.accent as string) ? r.accent : "ion") as CategoryAccent }
+  const at = movedHref(href)
+  const section = str(r.section, LIMITS.groupLabel).trim() || SECTION_OF.get(at)
+  return {
+    label,
+    href: at,
+    description: str(r.description, LIMITS.description),
+    icon: str(r.icon, 40) || "link",
+    accent: (ACCENT_IDS.includes(r.accent as string) ? r.accent : "ion") as CategoryAccent,
+    ...(section ? { section } : {}),
+  }
+}
+
+const pathOf = (href: string) => href.split(/[?#]/)[0]
+
+/**
+ * One link per place in a group: two old pages merged into one must not show twice. A link that moved (Cosmos,
+ * now Explore's map view) goes when the group already links to the page it moved into.
+ */
+function oncePerHref(raw: unknown[], links: (MenuLink | null)[]): MenuLink[] {
+  const moved = (i: number) => movedHref(str(rec(raw[i]).href, 400).trim()) !== str(rec(raw[i]).href, 400).trim()
+  const kept = links.map((l, i) => (l ? { l, moved: moved(i) } : null)).filter((x): x is { l: MenuLink; moved: boolean } => x !== null)
+  return kept
+    .filter(({ l, moved }, i) => kept.findIndex((x) => x.l.href === l.href) === i && !(moved && kept.some((x) => !x.moved && pathOf(x.l.href) === pathOf(l.href))))
+    .map((x) => x.l)
 }
 
 function cleanGroups(v: unknown): MenuGroup[] {
@@ -208,11 +268,12 @@ function cleanGroups(v: unknown): MenuGroup[] {
     .slice(0, LIMITS.groups)
     .map((g, i) => {
       const r = rec(g)
+      const raw = arr(r.links).slice(0, LIMITS.links)
       return {
         id: str(r.id, 40) || `group-${i}`,
         label: str(r.label, LIMITS.groupLabel).trim(),
         blurb: str(r.blurb, LIMITS.description).trim() || undefined,
-        links: arr(r.links).slice(0, LIMITS.links).map(cleanLink).filter((l): l is MenuLink => l !== null),
+        links: oncePerHref(raw, raw.map(cleanLink)),
       }
     })
 }
@@ -365,11 +426,19 @@ export function useMenus() {
     const m = cleanMenus(raw)
     const header = visible(m.header, settings, m.areas)
     const pageGroup: MenuGroup[] = pages.length ? [{ id: "pages", label: "Pages", links: pages.map((p) => L(p.title, p.href, "", "file-text")) }] : []
+    const footer = visible(m.footer, settings, m.areas)
+    // "You" is the footer's column of that id (so the admins edit it in one place), shown in the avatar menu and
+    // the phone menu; a row saved without one keeps the default.
+    const youGroup = footer.find((g) => g.id === "you") ?? visible(DEFAULT_MENUS.footer.filter((g) => g.id === "you"), settings, m.areas)[0]
+    // descriptions of the You links come from the defaults when a saved row has none
+    const youLinks = (youGroup?.links ?? []).map((l) => (l.description ? l : { ...l, description: DEFAULT_MENUS.footer.flatMap((g) => g.links).find((d) => d.href === l.href)?.description ?? "" }))
+    const you: MenuGroup = { id: "you", label: youGroup?.label || "You", links: youLinks }
     return {
       header,
       headerLinks: visible([{ id: "bar", label: "", links: m.headerLinks }], settings, m.areas)[0]?.links ?? [],
-      footer: [...visible(m.footer, settings, m.areas), ...pageGroup].slice(0, 5),
-      mobile: m.mobile.sameAsHeader ? [...header, ...pageGroup] : [...visible(m.mobile.groups, settings, m.areas), ...pageGroup],
+      footer: [...footer, ...pageGroup].slice(0, 5),
+      you,
+      mobile: m.mobile.sameAsHeader ? [...header, ...(you.links.length ? [you] : []), ...pageGroup] : [...visible(m.mobile.groups, settings, m.areas), ...pageGroup],
       create: (m.create ?? DEFAULT_MENUS.create ?? []).filter((l) => !l.href.startsWith("/") || isLinkVisible(settings, l.href.split(/[?#]/)[0])),
       pages,
     }

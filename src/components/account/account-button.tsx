@@ -1,8 +1,11 @@
 "use client"
 
 import Link from "next/link"
+import type { Route } from "next"
 import { usePathname } from "next/navigation"
-import { BookmarkIcon, LayoutDashboardIcon, LogOutIcon, PlusIcon, SettingsIcon, SparklesIcon, UserIcon } from "lucide-react"
+import { LogOutIcon } from "lucide-react"
+import { iconFor } from "@/components/site/icons"
+import { useMenus } from "@/lib/menus"
 import { MemberAvatar } from "@/components/forum/discussion"
 import {
   DropdownMenu,
@@ -16,19 +19,14 @@ import {
 import { signOut, useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 
-const LINKS = [
-  { href: "/you", label: "Your page", icon: UserIcon },
-  { href: "/studio", label: "Studio", icon: LayoutDashboardIcon },
-  { href: "/new/project", label: "New project", icon: PlusIcon },
-  { href: "/for-you", label: "For you", icon: SparklesIcon },
-  { href: "/saved", label: "Saved", icon: BookmarkIcon },
-  { href: "/settings", label: "Settings", icon: SettingsIcon },
-] as const
-
-/** Sign in, or the signed-in member's initials opening their menu. Hidden when there are no accounts. */
+/**
+ * Sign in, or the signed-in member's initials opening their menu: the "You" links of the menus (lib/menus.ts,
+ * edited with the footer's You column in Admin › Menus). Hidden when there are no accounts.
+ */
 export function AccountButton() {
   const { ready, member } = useSession()
   const pathname = usePathname()
+  const { you } = useMenus()
   if (!live) return null
   if (!ready) return <span aria-hidden className="size-7" />
   if (member) {
@@ -40,12 +38,15 @@ export function AccountButton() {
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuGroup>
             <DropdownMenuLabel className="truncate">{member.name}</DropdownMenuLabel>
-            {LINKS.map(({ href, label, icon: Icon }) => (
-              <DropdownMenuItem key={href} render={<Link href={href} />}>
-                <Icon aria-hidden />
-                {label}
-              </DropdownMenuItem>
-            ))}
+            {you.links.map(({ href, label, icon }) => {
+              const Icon = iconFor(icon)
+              return (
+                <DropdownMenuItem key={href} render={<Link href={href as Route} />}>
+                  <Icon aria-hidden />
+                  {label}
+                </DropdownMenuItem>
+              )
+            })}
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>

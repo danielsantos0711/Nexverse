@@ -9,6 +9,7 @@ import { iconFor } from "@/components/site/icons"
 import { GO_KEYS } from "@/components/site/shortcuts"
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from "@/components/ui/command"
 import { useRole } from "@/lib/roles"
+import { sharePath } from "@/lib/hub"
 import { useMenus } from "@/lib/menus"
 import { isLinkVisible, useSiteSettings } from "@/lib/site-settings"
 import { db } from "@/lib/supabase"
@@ -26,9 +27,11 @@ const EXTRA: { label: string; href: string; icon: string; group: string }[] = [
   { label: "Lab: model card builder", href: "/lab/model-card", icon: "flask-conical", group: "Build" },
   { label: "Arena ratings", href: "/arena/ratings", icon: "trophy", group: "Build" },
   { label: "Compare side by side", href: "/compare", icon: "scale", group: "Build" },
-  { label: "Repos", href: "/repos", icon: "git-branch", group: "Build" },
-  { label: "GitHub topics", href: "/gh/topics", icon: "git-branch", group: "Discover" },
-  { label: "Messages", href: "/messages", icon: "mail", group: "Community" },
+  { label: "GitHub repositories, by topic", href: "/code?tab=github", icon: "git-branch", group: "Build" },
+  { label: "Import a repository from GitHub", href: "/code/import", icon: "git-branch", group: "Build" },
+  { label: "Explore as a star map", href: "/explore?show=map", icon: "orbit", group: "Discover" },
+  { label: "Collections as star maps", href: "/collections?show=map", icon: "sparkles", group: "Discover" },
+  { label: "Start a thread", href: "/forum/new", icon: "message-square", group: "Community" },
 ]
 
 type Hit = { key: string; label: string; hint?: string; href: string; icon: LucideIcon; group: string }
@@ -49,7 +52,8 @@ async function searchHub(q: string): Promise<Hit[]> {
   const hits: Hit[] = []
   for (const t of threads.data ?? []) hits.push({ key: `q${t.id}`, label: t.title, href: `/forum/${t.id}`, icon: MessageSquareIcon, group: "Forum" })
   for (const s of links.data ?? [])
-    hits.push({ key: `s${s.id}`, label: s.title, hint: s.kind, href: s.kind === "news" ? `/news/${s.id}` : `/explore?q=${encodeURIComponent(s.title)}`, icon: LinkIcon, group: "Shared links" })
+    // every shared link has its own page on Nexverse (with the link, likes and the discussion): open that
+    hits.push({ key: `s${s.id}`, label: s.title, hint: s.kind, href: sharePath(s), icon: LinkIcon, group: "Shared links" })
   for (const p of projects.data ?? []) hits.push({ key: `p${p.id}`, label: p.name, hint: p.kind, href: `/p/${p.id}`, icon: FolderGit2Icon, group: "Projects" })
   for (const p of people.data ?? []) hits.push({ key: `u${p.handle}`, label: p.name, hint: `@${p.handle}`, href: `/people/${p.handle}`, icon: UserIcon, group: "People" })
   for (const p of pages.data ?? []) hits.push({ key: `g${p.slug}`, label: p.title, href: `/pages/${p.slug}`, icon: FileTextIcon, group: "Pages" })
@@ -65,7 +69,7 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const { settings } = useSiteSettings()
   const { isStaff } = useRole()
-  const { pages: menuPages, header, footer, create } = useMenus()
+  const { pages: menuPages, header, you, create } = useMenus()
   const placeholder = useCopy("search.placeholder", "Search the universe…")
   const empty = useCopy("search.empty", "No star matches that yet. Try another word, or ask in the forum.")
   const goTo = useCopy("search.goto", "Jump to")
@@ -104,11 +108,10 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
 
   // Every place, grouped as the header groups it (so ⌘K teaches the same map), then You and the extras.
   type Place = { label: string; href: string; icon: string; blurb?: string }
-  const you = footer.find((g) => g.id === "you")
   const placeGroups: { id: string; label: string; items: Place[] }[] = [
     ...header.map((g) => ({ id: g.id, label: g.label, items: g.links.map((l) => ({ label: l.label, href: l.href, icon: l.icon, blurb: l.description })) })),
-    // You's links that a header group already lists (Messages, For you, Your studio) show once, in that group
-    ...(you ? [{ id: "you", label: you.label, items: you.links.filter((l) => !header.some((g) => g.links.some((h) => h.href === l.href))).map((l) => ({ label: l.label, href: l.href, icon: l.icon })) }] : []),
+    // You's links that a header group already lists (For you) show once, in that group
+    { id: "you", label: you.label, items: you.links.filter((l) => !header.some((g) => g.links.some((h) => h.href === l.href))).map((l) => ({ label: l.label, href: l.href, icon: l.icon, blurb: l.description })) },
   ]
   const seen = new Set(placeGroups.flatMap((g) => g.items.map((i) => i.href)))
   for (const x of EXTRA) {
