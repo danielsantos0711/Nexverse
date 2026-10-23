@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
  * The light behind a page's title: one of two HorizonX shaders, faded into the ground on every side.
  *
  *   "phosphor"  Phosphor Flow: folds of light drifting slowly (most pages)
+ *   "topo"      Topographic Flow: silver contour lines over a slow terrain (Code, People, Trending, Leaderboard)
  *   "warp"      Light Warp: an hourglass of streaking light, off to the right (the hub's lists, Collections)
  *
  * Round 12c (Daniel: "as animaçoes agora estao todas pequenas, quero como estava antes"): back to the pre-round-12
@@ -22,8 +23,9 @@ import { cn } from "@/lib/utils"
 
 const PhosphorFlow = dynamic(() => import("./hx/phosphor-flow"), { ssr: false })
 const LightWarp = dynamic(() => import("./hx/light-warp"), { ssr: false })
+const TopographicFlow = dynamic(() => import("./hx/topographic-flow"), { ssr: false })
 
-export type Backdrop = "phosphor" | "warp" | "none"
+export type Backdrop = "phosphor" | "warp" | "topo" | "none"
 
 const PHOSPHOR: Record<Exclude<Quality, "off">, { steps: number; budget: number; fps: number }> = {
   high: { steps: 56, budget: 180_000, fps: 40 },
@@ -65,8 +67,13 @@ export function PageBackdrop({ variant = "phosphor", className }: { variant?: Ba
           <PhosphorFlow {...PHOSPHOR[quality as "high" | "medium"]} />
         </div>
       )}
+      {live && variant === "topo" && (
+        <div className="absolute inset-0 opacity-45 mix-blend-screen [mask-image:radial-gradient(80%_100%_at_70%_30%,#000_30%,transparent_85%)]">
+          <TopographicFlow budget={quality === "high" ? 600_000 : 300_000} />
+        </div>
+      )}
       {live && variant === "warp" && (
-        <div className="absolute inset-y-0 right-[-6%] w-[min(78rem,92%)] opacity-75 [mask-image:radial-gradient(65%_85%_at_60%_42%,#000_40%,transparent_85%)] max-sm:right-[-30%] max-sm:w-[130%]">
+        <div className="absolute inset-y-0 right-[-6%] w-[min(78rem,92%)] opacity-40 [mask-image:radial-gradient(65%_85%_at_60%_42%,#000_40%,transparent_85%)] max-sm:right-[-30%] max-sm:w-[130%]">
           <LightWarp {...WARP[quality as "high" | "medium"]} />
         </div>
       )}
