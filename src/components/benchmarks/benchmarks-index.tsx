@@ -140,7 +140,7 @@ export function BenchmarksIndex() {
             <SubmitResult onSubmitted={(r) => setResults((list) => [r, ...list])} />
           </div>
         ) : (
-          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card/40">
+          <ul className="divide-y divide-border overflow-clip rounded-xl border border-border bg-card/40">
             {recent.map((r) => {
               const b = getBenchmark(r.benchmark)!
               return (

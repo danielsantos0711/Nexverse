@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils"
  *   "phosphor"  Phosphor Flow: folds of light drifting slowly (most pages)
  *   "warp"      Light Warp: an hourglass of streaking light, off to the right (the hub's lists, Collections)
  *
+ * Round 12c (Daniel: "as animaçoes agora estao todas pequenas, quero como estava antes"): back to the pre-round-12
+ * size and strength, a little taller.
  * Round 12 removed it (Daniel saw a coloured "strange light" behind /repos); round 12b brings the motion back in
  * monochrome: graphite ground, silver folds and white streaks, low opacity, no blue, gold or violet. A still
  * neutral gradient is always there first; the shader starts once the browser is idle, so it never delays the
@@ -56,15 +58,15 @@ export function PageBackdrop({ variant = "phosphor", className }: { variant?: Ba
   // software-drawn WebGL and slow machines ("low") keep the still gradient: the shader costs them too much
   const live = idle && (quality === "high" || quality === "medium")
   return (
-    <div aria-hidden className={cn("pointer-events-none absolute -top-16 left-1/2 -z-10 h-[19rem] w-screen -translate-x-1/2 overflow-hidden [mask-image:linear-gradient(to_bottom,#000_50%,transparent)]", className)}>
+    <div aria-hidden className={cn("pointer-events-none absolute -top-16 left-1/2 -z-10 h-[28rem] w-screen -translate-x-1/2 overflow-hidden [mask-image:linear-gradient(to_bottom,#000_58%,transparent)] max-sm:h-[22rem]", className)}>
       <div className="page-backdrop-still absolute inset-0" />
       {live && variant === "phosphor" && (
-        <div className="page-backdrop absolute inset-0 opacity-40 mix-blend-screen">
+        <div className="page-backdrop absolute inset-0 opacity-65 mix-blend-screen">
           <PhosphorFlow {...PHOSPHOR[quality as "high" | "medium"]} />
         </div>
       )}
       {live && variant === "warp" && (
-        <div className="absolute inset-y-0 right-[-8%] w-[min(60rem,80%)] opacity-45 [mask-image:radial-gradient(60%_80%_at_60%_40%,#000_30%,transparent_80%)] max-sm:right-[-30%] max-sm:w-[130%]">
+        <div className="absolute inset-y-0 right-[-6%] w-[min(78rem,92%)] opacity-75 [mask-image:radial-gradient(65%_85%_at_60%_42%,#000_40%,transparent_85%)] max-sm:right-[-30%] max-sm:w-[130%]">
           <LightWarp {...WARP[quality as "high" | "medium"]} />
         </div>
       )}

@@ -102,7 +102,7 @@ export function CategoryTopics({ slug, name }: { slug: string; name: string }) {
         </p>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card/40">
+      <div className="overflow-clip rounded-xl border border-border bg-card/40">
         <div aria-hidden className={cn("hidden gap-4 border-b border-border px-4 py-2 text-xs text-muted-foreground md:grid", COLS)}>
           <span><Copy k="forum.category-topics.thread">Thread</Copy></span>
           <span className="text-right"><Copy k="forum.category-topics.replies">Replies</Copy></span>

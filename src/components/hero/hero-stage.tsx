@@ -25,10 +25,10 @@ import {
   WrenchIcon,
   type LucideIcon,
 } from "lucide-react"
-import Image from "next/image"
 import { LoopVideo } from "@/components/fx/loop-video"
 import "@/components/brand.css"
 import { useBlock } from "@/lib/content"
+import { LiquidN } from "@/components/liquid-n"
 import { cn } from "@/lib/utils"
 
 /*
@@ -231,15 +231,10 @@ export function HeroStage({ film, orbit, slow = 1, className }: { film: boolean;
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden [mask-image:radial-gradient(ellipse_75%_90%_at_50%_45%,#000_55%,transparent_100%),linear-gradient(to_bottom,#000_60%,transparent)] [mask-composite:intersect]">
         <div className="absolute top-1/2 left-1/2 aspect-video w-[max(min(100%,120rem),calc(var(--stage-h)*16/9))] -translate-x-1/2 -translate-y-1/2">
           <LoopVideo name="brand" still={!film} eager />
-          {/* The film's own chrome N is veiled by a soft patch of night (no edge), and Daniel's liquid-metal N
-              (n-liquid.webp, only ever scaled uniformly) stands in its place, the same size, with the logo's slow
-              light sweep (brand.css; reduced motion and the low/off tiers keep the still metal). */}
-          <div className="absolute top-[52.2%] left-1/2 h-[46%] w-[30%] -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(closest-side,#05070d_0%,#05070d_62%,rgb(5_7_13/0.85)_74%,transparent_100%)]" />
+          {/* Daniel's N in live liquid metal (LiquidN) sits exactly on the film's own N, the same size, so the
+              galaxy's glow around it stays untouched; its nearly opaque body covers the film's chrome. */}
           <div className="absolute top-[52.2%] left-1/2 aspect-[551/512] h-[33%] -translate-x-1/2 -translate-y-1/2">
-            <span className="nx-logo-n nx-hero-n block size-full">
-              <Image src="/brand/n-liquid.webp" alt="" fill priority sizes="(max-width: 640px) 40vw, 560px" className="object-contain" draggable={false} />
-              <span aria-hidden className="nx-logo-sheen" />
-            </span>
+            <LiquidN priority className="nx-hero-n size-full" />
           </div>
         </div>
       </div>
