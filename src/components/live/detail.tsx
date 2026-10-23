@@ -1,7 +1,5 @@
-import Image from "next/image"
 import Link from "next/link"
 import { CircleAlertIcon, MessagesSquareIcon, SearchXIcon, TimerIcon } from "lucide-react"
-import { Cover } from "@/components/hub/bits"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { FailReason } from "@/lib/live/http"
 import { cn } from "@/lib/utils"
@@ -13,14 +11,13 @@ import { Copy } from "@/components/content/copy"
 type CoverKind = "model" | "dataset" | "tool" | "repo" | "news" | "thread"
 
 export function DetailBanner({
-  seed,
-  kind,
   crumbs,
   art,
   children,
 }: {
-  seed: string
-  kind: CoverKind
+  /** Kept for callers; the drawn cover these chose was removed in round 12. */
+  seed?: string
+  kind?: CoverKind
   crumbs: { href?: string; label: React.ReactNode }[]
   /** Replaces the drawn cover behind the header, e.g. a Space's own gradient. */
   art?: React.ReactNode
@@ -28,9 +25,13 @@ export function DetailBanner({
 }) {
   return (
     <div className="relative isolate overflow-hidden border-b border-border">
-      <div className="absolute inset-0 -z-10 opacity-60">{art ?? <Cover seed={`${seed}banner`} kind={kind} />}</div>
-      <Image src="/space/ring.webp" alt="" fill sizes="100vw" className="-z-10 object-cover opacity-[0.12] mix-blend-screen" />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background/30 via-background/70 to-background" />
+      {/* Sober graphite (round 12): no drawn nebula or ring of light behind the title, only a page's own art. */}
+      {art && (
+        <>
+          <div className="absolute inset-0 -z-10 opacity-60">{art}</div>
+          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background/30 via-background/70 to-background" />
+        </>
+      )}
       <div className="shell flex flex-col gap-5 pt-10 pb-8 md:pt-14">
         <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
           {crumbs.map((c, i) => (

@@ -9,10 +9,6 @@ import { AreaCrumbs } from "@/components/site/area-crumbs"
 export function ForumHeader({ title, lead, crumbs, icon, children, k }: { title: string; lead?: string; crumbs?: Crumb[]; icon?: React.ReactNode; children?: React.ReactNode; k?: string }) {
   return (
     <header className="relative isolate flex flex-col gap-3 pt-8 pb-6 md:pt-10">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-16 left-1/2 -z-10 h-56 w-screen -translate-x-1/2 bg-[radial-gradient(50%_70%_at_20%_0%,rgb(143_180_255/0.12),transparent_70%),radial-gradient(35%_60%_at_75%_10%,rgb(216_197_158/0.06),transparent_70%)]"
-      />
       {/* every quiet header names its place: the page's own trail, or where the menus put it ("Community › Events") */}
       {crumbs ? <Breadcrumbs items={crumbs} /> : <AreaCrumbs />}
       <div className="flex flex-wrap items-start justify-between gap-4">

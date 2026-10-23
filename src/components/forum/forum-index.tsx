@@ -49,7 +49,7 @@ export function ForumIndex() {
       )}
 
       {status === "ready" && topics.length === 0 && (
-        <section aria-labelledby="fresh-h" className="relative isolate overflow-hidden rounded-2xl border border-ion/20 bg-gradient-to-br from-ion/[0.08] via-card/40 to-transparent p-5 md:p-6">
+        <section aria-labelledby="fresh-h" className="relative isolate overflow-hidden rounded-2xl bg-card p-5 md:p-6">
           <div aria-hidden className="starfield -z-10 opacity-50 [mask-image:linear-gradient(to_left,black,transparent)]">
             <i />
             <i />

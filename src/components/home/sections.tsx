@@ -429,7 +429,6 @@ export function Close() {
           <div className="absolute inset-[20%] rounded-full bg-[radial-gradient(closest-side,rgb(143_180_255/0.4),rgb(42_79_214/0.18)_60%,transparent)]" />
           <PlasmaOrb className="absolute inset-0" />
         </div>
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_12%_85%,rgb(143_180_255/0.08),transparent_55%)]" />
         <div className="relative flex max-w-lg flex-col justify-center gap-5 px-6 pt-0 pb-10 md:min-h-[30rem] md:px-14 md:py-14">
           <p className="rise inline-flex items-center gap-2 text-xs tracking-[0.18em] text-ion/80 uppercase">
             <span aria-hidden className="h-px w-6 bg-ion/60" /> <Copy k="home.close.eyebrow">Join the universe</Copy>

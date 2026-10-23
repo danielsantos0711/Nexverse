@@ -149,7 +149,6 @@ export function StateIcon({ state, kind, className }: { state: "open" | "closed"
 export function EmptyState({ icon: Icon, title, children, action }: { icon: typeof CircleDotIcon; title: React.ReactNode; children?: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="relative isolate flex flex-col items-center gap-3 overflow-hidden px-6 py-14 text-center">
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40%_60%_at_50%_0%,rgb(143_180_255/0.10),transparent_70%)]" />
       <span className="grid size-11 place-items-center rounded-2xl border border-ion/20 bg-ion/10 text-ion">
         <Icon aria-hidden className="size-5" />
       </span>

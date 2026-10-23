@@ -12,10 +12,6 @@ export function CodeHero() {
         <i />
         <i />
       </div>
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-20 left-1/2 -z-10 h-72 w-screen -translate-x-1/2 bg-[radial-gradient(45%_70%_at_18%_0%,rgb(143_180_255/0.16),transparent_70%),radial-gradient(30%_55%_at_80%_10%,rgb(211_180_255/0.10),transparent_70%)]"
-      />
       <div className="flex items-start gap-3">
         <span className="mt-0.5 grid size-11 shrink-0 place-items-center rounded-xl border border-repo/25 bg-repo/10 text-repo">
           <FolderGit2Icon aria-hidden className="size-5" />
