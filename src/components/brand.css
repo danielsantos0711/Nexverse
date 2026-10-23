@@ -1,0 +1,85 @@
+/*
+ * The liquid-metal lockup (round 12b). Sizes come from --nh, the N's height, set inline by <Lockup>.
+ *   .nx-logo-n     Daniel's N (n-liquid-512.webp, made from n-chrome-alpha.webp: same outline, smoothed shading,
+ *          translucent body), with a slow light sweep clipped to the N by masking with the same file.
+ *   .nx-logo-word  the NEXVERSE glyphs (wordmark-liquid.png, the original glyphs re-spaced) as a mask over a chrome
+ *          gradient, with the same sweep a beat later.
+ * Display and layout live in Tailwind classes on the elements, so callers can still hide or show the lockup.
+ * Reduced motion and the low/off device tiers (html[data-fx]) keep the still metal and drop the sweep.
+ */
+.nx-logo-n {
+  position: relative;
+  /* a hair of depth under the glass N */
+  filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.35));
+}
+/* The N's sweep sits in a still layer masked by the N (a mask moves with its element, so the moving light is a
+   child of the mask). The image underneath is never masked, which would square its alpha. */
+.nx-logo-sheen,
+.nx-logo-word {
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+.nx-logo-sheen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: url("/brand/n-liquid-512.webp");
+  mask-image: url("/brand/n-liquid-512.webp");
+}
+.nx-logo-word {
+  position: relative;
+  overflow: hidden;
+  -webkit-mask-image: url("/brand/wordmark-liquid.png");
+  mask-image: url("/brand/wordmark-liquid.png");
+  /* polished silver: bright top, a dark horizon line through the middle, a soft lit bottom edge */
+  background: linear-gradient(180deg, #f7f8fa 0%, #d3d7de 28%, #9198a5 46%, #5b6270 54%, #868d9a 62%, #d6dae1 82%, #a3a9b5 100%);
+}
+.nx-logo-sheen::after,
+.nx-logo-word::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 28%, rgb(255 255 255 / 0.22) 41%, rgb(255 255 255 / 0.95) 50%, rgb(255 255 255 / 0.22) 59%, transparent 72%);
+  mix-blend-mode: plus-lighter;
+  transform: translate3d(-130%, 0, 0);
+  animation: nx-logo-sweep 9s cubic-bezier(0.45, 0, 0.25, 1) 1.2s infinite;
+  will-change: transform;
+}
+.nx-logo-word::after {
+  animation-delay: 1.75s;
+}
+@keyframes nx-logo-sweep {
+  0% {
+    transform: translate3d(-130%, 0, 0);
+  }
+  32%,
+  100% {
+    transform: translate3d(130%, 0, 0);
+  }
+}
+
+:root.light .nx-logo-word,
+:root[data-theme="light"] .nx-logo-word {
+  background: linear-gradient(180deg, #4a515e 0%, #2a2f38 45%, #10131a 55%, #3b414c 80%, #59606d 100%);
+}
+
+html[data-fx="off"] .nx-logo-sheen::after,
+html[data-fx="off"] .nx-logo-word::after,
+html[data-fx="low"] .nx-logo-sheen::after,
+html[data-fx="low"] .nx-logo-word::after {
+  animation: none;
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nx-logo-sheen::after,
+  .nx-logo-word::after {
+    animation: none;
+    display: none;
+  }
+}

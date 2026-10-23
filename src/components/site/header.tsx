@@ -46,6 +46,35 @@ function sectionsOf(links: NavLink[]): { title: string; links: NavLink[] }[] {
   return out
 }
 
+type Section = { title: string; links: NavLink[] }
+
+/**
+ * Lays a menu's sub-headings out in two columns with no hole under the shorter one (Daniel, round 12b: "ha um
+ * espaco muito grande nas categorias"). Each sub-heading goes to whichever column is shorter so far; when that
+ * still leaves one column much longer, the last sub-heading runs full width under both, its links side by side.
+ * Heights are counted in link rows, a sub-heading line being about half a row.
+ */
+function layoutOf(sections: Section[]): { cols: [Section[], Section[]]; wide: Section | null } {
+  const size = (s: Section) => s.links.length + (s.title ? 0.55 : 0)
+  const pack = (list: Section[]) => {
+    const cols: [Section[], Section[]] = [[], []]
+    const h = [0, 0]
+    for (const s of list) {
+      const i = h[1] < h[0] ? 1 : 0
+      cols[i].push(s)
+      h[i] += size(s)
+    }
+    return { cols, h }
+  }
+  const score = (h: number[], extra = 0) => Math.max(h[0], h[1]) + extra + 0.3 * Math.abs(h[0] - h[1])
+  const a = pack(sections)
+  if (sections.length < 3) return { cols: a.cols, wide: null }
+  const last = sections[sections.length - 1]
+  const b = pack(sections.slice(0, -1))
+  const wideH = Math.ceil(last.links.length / 2) + (last.title ? 0.55 : 0)
+  return score(b.h, wideH) < score(a.h) ? { cols: b.cols, wide: last } : { cols: a.cols, wide: null }
+}
+
 // Admin is built by the admin panel; typed routes learn it once that page exists.
 const ADMIN = "/admin" as Route
 
@@ -129,31 +158,32 @@ export function SiteHeader() {
   const createLabel = useCopy("header.create", "Create")
   useSiteShortcuts(openSearch)
   const away = useHeaderAway()
-  const scrolled = !useScrollFacts().atTop
 
   return (
-    // No full-width bar of blur any more (Daniel, round 11): the page shows through between the controls, and only
-    // the floating pieces (the brand, the menu pill and its panel, the tools on the right) carry their own blur once
-    // the page moves. The header slides away while you read down and comes back when you scroll up; on phones it
-    // takes turns with the tab bar so only one bar is ever on screen (src/components/motion/scroll-state.ts).
+    // One full-width bar of plain blur (Daniel, round 12b: "uma barra completa blur em vez de seccoes"), the same
+    // at the top of the page and while scrolling. The blur is a layer behind the controls rather than the header
+    // itself, so the menu panel (a child of the header) can still blur the page under it. The header slides away
+    // while you read down and comes back when you scroll up; on phones it takes turns with the tab bar so only one
+    // bar is ever on screen (src/components/motion/scroll-state.ts).
     <header data-away={away ? "" : undefined} className="nx-header nx-bar-slide sticky top-0 z-40 h-16" onFocusCapture={(e) => headerFocus.set((e.target as Element).matches(":focus-visible"))} onBlurCapture={() => headerFocus.set(false)}>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 border-b border-white/[0.07] bg-[color-mix(in_oklab,var(--background)_72%,transparent)] shadow-[0_8px_24px_-18px_rgb(0_0_0/0.8)] backdrop-blur-[14px] backdrop-saturate-[140%] [:root.light_&]:border-black/[0.07] [:root[data-glass=low]_&]:bg-background [:root[data-glass=low]_&]:backdrop-filter-none [:root[data-glass=off]_&]:bg-background [:root[data-glass=off]_&]:backdrop-filter-none"
+      />
       <GlassDefs />
       <div className="shell relative flex h-full items-center gap-3 lg:gap-6">
         <Link
           href="/"
           aria-label={`${name} home`}
-          className={cn(
-            "pressable relative -mx-1.5 flex shrink-0 items-center rounded-full px-1.5 py-1 transition-[background-color,box-shadow,padding] duration-(--dur-slow) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-            scrolled && "liquid-glass mx-0 px-3 py-1.5"
-          )}
+          className="pressable relative -mx-1.5 flex shrink-0 items-center rounded-full px-1.5 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <Lockup size="sm" priority alt="" className="sm:hidden" />
-          <Lockup size="md" priority alt="" className="hidden sm:block" />
+          <Lockup size="md" priority alt="" className="hidden sm:flex" />
         </Link>
 
         <MainNav pathname={pathname} menus={menus} direct={direct} />
 
-        <div className={cn("relative ml-auto flex items-center gap-1.5 rounded-full transition-[background-color,box-shadow,padding] duration-(--dur-slow) sm:gap-2 lg:ml-0", scrolled && "liquid-glass p-1")}>
+        <div className="relative ml-auto flex items-center gap-1.5 sm:gap-2 lg:ml-0">
           <button
             type="button"
             onClick={openSearch}
@@ -446,7 +476,7 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
       }}
       onPointerEnter={() => clearTimeout(closeTimer.current)}
     >
-      <ul className="liquid-glass flex items-center gap-1 rounded-full p-1">
+      <ul className="flex items-center gap-1 rounded-full bg-white/[0.035] p-1 ring-1 ring-white/[0.06] [:root.light_&]:bg-black/[0.03] [:root.light_&]:ring-black/[0.06]">
         {menus.map((m) => {
           const current = m.links.some((l) => isOn(l.href))
           const lit = (hot ?? open) === m.id || (!hot && !open && current)
@@ -523,19 +553,20 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
                 animate={{ opacity: 1, transform: "translateX(0px)" }}
                 exit={reduce ? { opacity: 0 } : { opacity: 0, transform: `translateX(${dir * -32}px)` }}
                 transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-                className="grid grid-cols-2 gap-x-2 gap-y-3 p-3"
+                className="flex flex-col gap-3 p-3"
               >
-                {/* Round 12: short sub-headings with two to four links each, two columns, one line per link. */}
+                {/* Short sub-headings with two to four links each, packed into two even columns (layoutOf). */}
                 {(() => {
                   let n = 0
-                  return sectionsOf(menu.links).map((s) => (
+                  const { cols, wide } = layoutOf(sectionsOf(menu.links))
+                  const block = (s: Section, two = false) => (
                     <div key={s.title || "links"} className="flex min-w-0 flex-col">
                       {s.title && <p className="px-2.5 pt-1 pb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase">{s.title}</p>}
-                      <ul aria-label={s.title || menu.label} className="flex flex-col">
+                      <ul aria-label={s.title || menu.label} className={cn("grid", two ? "grid-cols-2 gap-x-2" : "grid-cols-1")}>
                         {s.links.map((l, i) => {
                           const Icon = iconFor(l.icon)
                           return (
-                            <li key={`${l.href}-${i}`} className="nx-enter" style={{ "--i": n++ } as React.CSSProperties}>
+                            <li key={`${l.href}-${i}`} className="nx-enter min-w-0" style={{ "--i": n++ } as React.CSSProperties}>
                               <Link
                                 href={l.href as Route}
                                 prefetch={false}
@@ -558,7 +589,19 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
                         })}
                       </ul>
                     </div>
-                  ))
+                  )
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 gap-x-2">
+                        {cols.map((c, i) => (
+                          <div key={i} className="flex min-w-0 flex-col gap-3">
+                            {c.map((s) => block(s))}
+                          </div>
+                        ))}
+                      </div>
+                      {wide && block(wide, true)}
+                    </>
+                  )
                 })()}
               </motion.div>
             </AnimatePresence>
