@@ -11,8 +11,8 @@ import type { SettingKey } from "@/lib/site-settings"
 export const SETTING_SECTIONS: { key: SettingKey; label: string; blurb: string }[] = [
   { key: "brand", label: "Brand", blurb: "Site name, tagline and the description search engines use" },
   { key: "announcement", label: "Announcement", blurb: "A line above the header for news, launches or maintenance" },
-  { key: "theme", label: "Theme", blurb: "Accent colour, background, text size, corners and motion" },
-  { key: "experience", label: "Experience", blurb: "Scrolling, motion, the sky and the header, and what members may change" },
+  { key: "theme", label: "Look and feel", blurb: "Colours, background, stars, motion, header, glass, corners and text size, for everyone" },
+  { key: "experience", label: "Look and feel", blurb: "Colours, background, stars, motion, header, glass, corners and text size, for everyone" },
   { key: "hero", label: "Home hero", blurb: "The first words and button visitors see on the home page" },
   { key: "home", label: "Home sections", blurb: "Order the home page sections and choose which ones show" },
   { key: "nav", label: "Hidden links", blurb: "Hide links from the header, footer and search" },
@@ -153,7 +153,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
         id: "appearance",
         label: "Appearance",
         icon: "appearance",
-        tabs: [setting("brand", "name logo"), setting("theme", "colour color accent"), setting("experience", "scroll motion sky"), setting("hero", "home headline"), setting("home"), setting("announcement", "banner"), setting("footer")],
+        tabs: [setting("brand", "name logo"), setting("theme", "theme experience colour color accent background backdrop sky stars motion scrolling parallax header glass blur corners radius text size font"), setting("hero", "home headline"), setting("home"), setting("announcement", "banner"), setting("footer")],
       },
       {
         id: "access",

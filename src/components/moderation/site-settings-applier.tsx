@@ -11,6 +11,7 @@ import { accentColors, FONT_SCALES, HEX, RADII, useSiteSettings } from "@/lib/si
  */
 const MOTION_CSS = `
 html[data-motion="calm"] .starfield i,
+html[data-motion="calm"] .nx-sky *,
 html[data-motion="calm"] .marquee,
 html[data-motion="calm"] .pulse-dot::after,
 html[data-motion="calm"] .logo-aura,
@@ -57,7 +58,7 @@ const LOOK_CSS = `
 `
 
 /**
- * Applies the admins' theme to the whole site: the accent colours (through the same --ion and --gold tokens
+ * Applies the admins' look to the whole site, for every visitor (members cannot override it): the accent colours (through the same --ion and --gold tokens
  * every page already uses), glass, background, text size and corners, the motion level as data-motion on <html>, and the hero effect as data-hero-effect for the
  * home page to read. Wraps the page so animations made with motion/react follow the motion level too.
  */
@@ -65,7 +66,9 @@ export function SiteSettingsApplier({ children }: { children: React.ReactNode })
   const { settings } = useSiteSettings()
   const { motion, heroEffect } = settings.theme
 
-  const { accent, customAccent, secondary, glass, background, fontScale, radius } = settings.theme
+  const { accent, customAccent, secondary, glass, fontScale, radius } = settings.theme
+  // The sky behind every page (Admin › Look and feel › Background). The old theme.background choice is retired.
+  const backdrop = settings.experience.backdrop
 
   useEffect(() => {
     const root = document.documentElement
@@ -92,14 +95,14 @@ export function SiteSettingsApplier({ children }: { children: React.ReactNode })
   useEffect(() => {
     const root = document.documentElement
     root.dataset.glassLevel = glass ?? "standard"
-    root.dataset.backdrop = background ?? "space"
+    root.dataset.backdrop = backdrop ?? "nebula"
     const scale = FONT_SCALES.find((f) => f.id === fontScale)
     if (scale && scale.percent !== 100) root.style.fontSize = `${scale.percent}%`
     else root.style.removeProperty("font-size")
     const r = RADII.find((x) => x.id === radius)
     if (r && r.id !== "standard") root.style.setProperty("--radius", `${r.rem}rem`)
     else root.style.removeProperty("--radius")
-  }, [glass, background, fontScale, radius])
+  }, [glass, backdrop, fontScale, radius])
 
   useEffect(() => {
     const root = document.documentElement
