@@ -38,7 +38,7 @@ function Avatar({ repo: d, size = "lg" }: { repo: Pick<GhRepoDetail, "ownerAvata
 
 const crumbs = (owner: string) => [
   {
-    href: "/gh/topics",
+    href: "/code?from=github",
     label: (
       <>
         <FolderGit2Icon aria-hidden className="size-4" /> GitHub

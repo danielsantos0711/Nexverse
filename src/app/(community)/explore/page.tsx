@@ -1,28 +1,74 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { Suspense } from "react"
+import { ListIcon, OrbitIcon, PlusIcon } from "lucide-react"
+import { CosmosView } from "@/components/cosmos/cosmos-view"
 import { ResourceIndex } from "@/components/hub/resource-index"
 import { RowsSkeleton } from "@/components/live/skeletons"
-import { Copy } from "@/components/content/copy"
-import { ExploreMap } from "@/components/site/explore-map"
+import { AreaCrumbs } from "@/components/site/area-crumbs"
+import { LinkTabs } from "@/components/site/link-tabs"
+import { PageHead } from "@/components/site/page-head"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { githubTrendingAi } from "@/lib/live"
 import { seoMetadata } from "@/lib/content-server"
 
 export async function generateMetadata(): Promise<Metadata> {
-  return seoMetadata("/explore", { title: "Explore", description: "The map of Nexverse: every place to discover, build and meet people, with what members made in each." })
+  return seoMetadata("/explore", { title: "Explore", description: "Everything members published or shared on Nexverse: models, datasets, tools and repos, as a list or as a star map." })
 }
 
-export default function Page() {
+/*
+ * Explore (round 12): one page for everything members published or shared, in two views.
+ *   List      the hub's catalogue with search and filters (?q= from search lands here)
+ *   Star map  what was /cosmos: the whole hub drawn as stars (?show=map, /cosmos redirects here, ?focus= flies to one)
+ * The old map of the site's places is gone from here: the menus are that map now, grouped the same way.
+ */
+type Params = PageProps<"/explore">["searchParams"]
+
+export default function Page({ searchParams }: PageProps<"/explore">) {
   return (
-    <>
-      <ExploreMap />
-      {/* Everything members published or shared, filterable (the hub's own index, ?q= from search lands here). */}
-      <section aria-labelledby="everything-h" data-flow="clip" className="sd-flow shell flex flex-col gap-4 pb-16">
-        <h2 id="everything-h" className="section-glow text-xl font-semibold">
-          <Copy k="explore.members">Everything members published</Copy>
-        </h2>
-        <Suspense fallback={<RowsSkeleton rows={4} />}>
-          <ResourceIndex />
+    <div data-flow="clip" className="sd-flow shell pb-16">
+      <PageHead
+        k="explore.header"
+        crumbs={<AreaCrumbs />}
+        title="Explore"
+        lead="Every model, dataset, tool and repo members published or shared."
+        actions={
+          <Button nativeButton={false} render={<Link href="/new/project" />}>
+            <PlusIcon aria-hidden /> Publish
+          </Button>
+        }
+      >
+        <Suspense fallback={<Skeleton className="h-10 w-56 rounded-full" />}>
+          <Views searchParams={searchParams} />
         </Suspense>
-      </section>
-    </>
+      </PageHead>
+      <Suspense fallback={<RowsSkeleton rows={4} />}>
+        <Body searchParams={searchParams} />
+      </Suspense>
+    </div>
   )
+}
+
+const isMap = async (searchParams: Params) => (await searchParams).show === "map"
+
+async function Views({ searchParams }: { searchParams: Params }) {
+  const map = await isMap(searchParams)
+  return (
+    <LinkTabs
+      label="View"
+      current={map ? "/explore?show=map" : "/explore"}
+      tabs={[
+        { href: "/explore", label: "List", icon: ListIcon },
+        { href: "/explore?show=map", label: "Star map", icon: OrbitIcon },
+      ]}
+    />
+  )
+}
+
+async function Body({ searchParams }: { searchParams: Params }) {
+  if (!(await isMap(searchParams))) return <ResourceIndex />
+  // Rising GitHub repositories are fetched on the server (cached); members' data loads in the browser.
+  const feed = await githubTrendingAi(40)
+  return <CosmosView github={feed.items} embedded />
 }

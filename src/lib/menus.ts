@@ -204,7 +204,7 @@ export const DEFAULT_MENUS: Menus = {
  */
 export const MOVED: Record<string, string> = {
   "/repos": "/code",
-  "/gh/topics": "/code?tab=github",
+  "/gh/topics": "/code?from=github",
   "/cosmos": "/explore?show=map",
   "/constellations": "/collections?show=map",
   "/studio": "/you",

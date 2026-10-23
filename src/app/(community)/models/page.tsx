@@ -4,6 +4,6 @@ import { KINDS } from "@/lib/data"
 
 export const metadata: Metadata = { title: KINDS.model.plural, description: KINDS.model.blurb }
 
-export default function Page() {
-  return <ResourceListPage kind="model" />
+export default function Page({ searchParams }: PageProps<"/models">) {
+  return <ResourceListPage kind="model" searchParams={searchParams} />
 }

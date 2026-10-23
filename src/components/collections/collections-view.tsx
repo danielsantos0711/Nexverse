@@ -3,10 +3,12 @@
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
-import { FolderPlusIcon, LayersIcon } from "lucide-react"
+import { FolderPlusIcon, LayersIcon, ListIcon, SparklesIcon } from "lucide-react"
 import { CollectionCard } from "@/components/collections/collection-card"
 import { CollectionForm } from "@/components/collections/collection-form"
-import { OrbitCards, type OrbitItem } from "@/components/collections/orbit-cards"
+import { ConstellationsGallery } from "@/components/collections/constellations-gallery"
+import { OrbitCards } from "@/components/collections/orbit-cards"
+import { LinkTabs } from "@/components/site/link-tabs"
 import { primaryButton, rise, riseDelay } from "@/components/forum/forum-ui"
 import { GlassTabs } from "@/components/glass/glass-tabs"
 import { Gate } from "@/components/moderation/gate"
@@ -23,23 +25,6 @@ const VIEWS: { value: View; label: string }[] = [
   { value: "mine", label: "Yours" },
   { value: "following", label: "Following" },
 ]
-/*
- * Parts of the site to collect from, for the orbit while there are still few public collections: real pages,
- * each a world in the galaxy, never invented collections.
- */
-const WORLDS: OrbitItem[] = [
-  { id: "w-models", title: "Models", href: "/models", meta: "Planet of weights", kind: "model" },
-  { id: "w-datasets", title: "Datasets", href: "/datasets", meta: "Planet of data", kind: "dataset" },
-  { id: "w-tools", title: "Tools", href: "/tools", meta: "Planet of tools", kind: "tool" },
-  { id: "w-repos", title: "Repos", href: "/repos", meta: "Open-source moons", kind: "repo" },
-  { id: "w-forum", title: "Forum threads", href: "/forum", meta: "Signals from members", kind: "thread" },
-  { id: "w-news", title: "News", href: "/news", meta: "Today's transmissions", kind: "news" },
-  { id: "w-bench", title: "Benchmarks", href: "/benchmarks", meta: "Star charts", kind: "model" },
-  { id: "w-trending", title: "Trending", href: "/trending", meta: "Bright right now", kind: "thread" },
-  { id: "w-launch", title: "Launchpad", href: "/launchpad", meta: "New launches", kind: "tool" },
-  { id: "w-const", title: "Constellations", href: "/constellations", meta: "Collections as star maps", kind: "repo" },
-]
-
 const isView = (v: string | null): v is View => v === "discover" || v === "mine" || v === "following"
 
 type Lists = Record<View, Collection[] | null>
@@ -52,6 +37,7 @@ export function CollectionsView() {
   const { ready, user } = useSession()
   const raw = params.get("view")
   const view: View = isView(raw) ? raw : "discover"
+  const map = params.get("show") === "map"
   const [lists, setLists] = useState<Lists>({ discover: null, mine: null, following: null })
   const [error, setError] = useState("")
   // ?new=1 (from the Create sheet) opens the form straight away for members.
@@ -100,16 +86,31 @@ export function CollectionsView() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <GlassTabs
-          tabs={VIEWS.map((v) => ({ value: v.value, label: v.label, count: lists[v.value]?.length }))}
-          value={view}
-          onChange={setView}
-          label="Which collections"
-          controls="collections-panel"
-        />
-        <button type="button" onClick={startCreate} className={primaryButton}>
-          <FolderPlusIcon aria-hidden className="size-4" /> New collection
-        </button>
+        {map ? (
+          <p className="text-sm text-muted-foreground">Public collections with two or more things in them, drawn in their curator&rsquo;s order.</p>
+        ) : (
+          <GlassTabs
+            tabs={VIEWS.map((v) => ({ value: v.value, label: v.label, count: lists[v.value]?.length }))}
+            value={view}
+            onChange={setView}
+            label="Which collections"
+            controls="collections-panel"
+          />
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <LinkTabs
+            label="View"
+            size="sm"
+            current={map ? "/collections?show=map" : "/collections"}
+            tabs={[
+              { href: "/collections", label: "List", icon: ListIcon },
+              { href: "/collections?show=map", label: "Star map", icon: SparklesIcon },
+            ]}
+          />
+          <button type="button" onClick={startCreate} className={primaryButton}>
+            <FolderPlusIcon aria-hidden className="size-4" /> New collection
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -118,23 +119,23 @@ export function CollectionsView() {
         </p>
       )}
 
-      {view === "discover" && lists.discover && (
+      {/* The star map view (what /constellations was): every public collection drawn as a constellation. */}
+      {map && <ConstellationsGallery />}
+
+      {/* the orbit only once there are enough real collections to fill it (no filler worlds) */}
+      {!map && view === "discover" && lists.discover && lists.discover.length >= 6 && (
         <section aria-labelledby="collections-orbit" className="liquid-glass-flat relative overflow-hidden rounded-3xl px-4 pt-4">
-          <h2 id="collections-orbit" className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
-            {lists.discover.length >= 6 ? <Copy k="collections.orbit.title">In orbit now</Copy> : <Copy k="collections.orbit.worlds">Worlds to collect from</Copy>}
+          <h2 id="collections-orbit" className="text-xs font-medium text-muted-foreground">
+            <Copy k="collections.orbit.title">In orbit now</Copy>
           </h2>
           <OrbitCards
-            label={lists.discover.length >= 6 ? "Public collections" : "Parts of Nexverse to collect from"}
-            items={
-              lists.discover.length >= 6
-                ? lists.discover.slice(0, 14).map((c) => ({ id: c.id, title: c.title, href: `/collections/${c.id}` as const, meta: `${c.items.length} ${c.items.length === 1 ? "star" : "stars"}` }))
-                : WORLDS
-            }
+            label="Public collections"
+            items={lists.discover.slice(0, 14).map((c) => ({ id: c.id, title: c.title, href: `/collections/${c.id}` as const, meta: `${c.items.length} ${c.items.length === 1 ? "star" : "stars"}` }))}
           />
         </section>
       )}
 
-      <div id="collections-panel" role="tabpanel" aria-label={VIEWS.find((v) => v.value === view)?.label} aria-busy={list === null}>
+      <div hidden={map} id="collections-panel" role="tabpanel" aria-label={VIEWS.find((v) => v.value === view)?.label} aria-busy={list === null}>
         {list === null ? (
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-hidden>
             {[0, 1, 2].map((i) => (

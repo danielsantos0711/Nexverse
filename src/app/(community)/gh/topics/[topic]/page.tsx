@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 const crumbs = [
   {
-    href: "/gh/topics",
+    href: "/code?from=github",
     label: (
       <>
         <FolderGit2Icon aria-hidden className="size-4" /> GitHub topics

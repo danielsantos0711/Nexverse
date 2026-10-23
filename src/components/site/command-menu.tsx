@@ -27,7 +27,7 @@ const EXTRA: { label: string; href: string; icon: string; group: string }[] = [
   { label: "Lab: model card builder", href: "/lab/model-card", icon: "flask-conical", group: "Build" },
   { label: "Arena ratings", href: "/arena/ratings", icon: "trophy", group: "Build" },
   { label: "Compare side by side", href: "/compare", icon: "scale", group: "Build" },
-  { label: "GitHub repositories, by topic", href: "/code?tab=github", icon: "git-branch", group: "Build" },
+  { label: "GitHub repositories, by topic", href: "/code?from=github", icon: "git-branch", group: "Build" },
   { label: "Import a repository from GitHub", href: "/code/import", icon: "git-branch", group: "Build" },
   { label: "Explore as a star map", href: "/explore?show=map", icon: "orbit", group: "Discover" },
   { label: "Collections as star maps", href: "/collections?show=map", icon: "sparkles", group: "Discover" },

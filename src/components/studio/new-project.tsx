@@ -15,8 +15,8 @@ export function NewProject() {
     <div className="shell max-w-3xl pb-24">
       <StudioHead
         eyebrow={
-          <Link href="/studio" className="inline-flex items-center gap-1.5 rounded-sm hover:text-foreground">
-            <ArrowLeftIcon aria-hidden className="size-3.5" /> Your studio
+          <Link href="/you" className="inline-flex items-center gap-1.5 rounded-sm hover:text-foreground">
+            <ArrowLeftIcon aria-hidden className="size-3.5" /> Your page
           </Link>
         }
         title="Import a model or dataset"

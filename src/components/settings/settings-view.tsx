@@ -95,8 +95,8 @@ function Settings({ profile, user }: { profile: Profile; user: User | null }) {
               <s.icon aria-hidden className="size-4" /> {s.label}
             </a>
           ))}
-          <Link href="/studio" className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm text-ion hover:bg-secondary lg:mt-2">
-            <Copy k="settings.settings-view.your-studio">Your studio →</Copy>
+          <Link href="/you" className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm text-ion hover:bg-secondary lg:mt-2">
+            <Copy k="settings.settings-view.your-studio">Your page →</Copy>
           </Link>
         </nav>
         <div className="flex min-w-0 flex-col gap-8">

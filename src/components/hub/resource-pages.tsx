@@ -1,9 +1,9 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
-import { HashIcon, LinkIcon, PlusIcon } from "lucide-react"
+import { GitBranchIcon, HashIcon, LinkIcon, PlusIcon, SparklesIcon } from "lucide-react"
 import { PageSkeleton } from "@/components/app/page-skeleton"
-import { KIND_ICONS, PageTitle, SectionHead } from "@/components/hub/bits"
+import { SectionHead } from "@/components/hub/bits"
 import { Item, Stagger } from "@/components/hub/motion"
 import { ResourceIndex } from "@/components/hub/resource-index"
 import { RisingStrip } from "@/components/hub/rising-strip"
@@ -11,19 +11,14 @@ import { HubItem } from "@/components/hub/hub-item"
 import { FeedMeta, FeedUnavailable } from "@/components/live/bits"
 import { GitHubRepoCard } from "@/components/live/github-repo-card"
 import { CardsSkeleton, RowsSkeleton } from "@/components/live/skeletons"
+import { AreaCrumbs } from "@/components/site/area-crumbs"
+import { LinkTabs } from "@/components/site/link-tabs"
+import { PageHead } from "@/components/site/page-head"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { KINDS, type ResourceKind } from "@/lib/data"
-import { Copy } from "@/components/content/copy"
 import { isHubId } from "@/lib/refs"
 import { ghTopicHref, githubTopicRepos, githubTrendingAi, type Feed, type GhRepo } from "@/lib/live"
-
-/** Where each list sits in the Nexverse galaxy, for the eyebrow over its title. */
-const WORLD: Record<ResourceKind | "all", string> = {
-  model: "The planet of models",
-  dataset: "The planet of datasets",
-  tool: "The planet of tools",
-  repo: "The moons of open source",
-  all: "The whole galaxy",
-}
 
 /**
  * What each list shows from GitHub next to members' work: open-source repositories under a fitting topic, most
@@ -37,56 +32,79 @@ const LIVE: Record<ResourceKind | "all", { title: string; lead: string; topic: s
   all: { title: "Rising on GitHub", lead: "New open-source AI repositories from the last 30 days, ranked by stars per day.", topic: null, mode: "new" },
 }
 
-export function ResourceListPage({ kind }: { kind?: ResourceKind }) {
-  const Icon = kind ? KIND_ICONS[kind] : null
-  const live = LIVE[kind ?? "all"]
+type ListParams = Promise<{ [key: string]: string | string[] | undefined }>
+
+/*
+ * Models, Datasets and Tools (round 12): a compact header with one primary action (publish), two tabs and the
+ * list. "On Nexverse" is what members published or shared, with what is rising this week on top; "On GitHub"
+ * (?from=github) is the open-source code for that kind, read inside Nexverse. Nothing else on the page.
+ */
+export function ResourceListPage({ kind, searchParams }: { kind: ResourceKind; searchParams?: ListParams }) {
+  const base = KINDS[kind].path
   return (
     <div data-flow="tilt" className="sd-flow shell pb-16">
-      <PageTitle
-        k={`${kind ?? "explore"}.header`}
-        backdrop="warp"
-        eyebrow={
-          <span className="inline-flex items-center gap-1.5">
-            {Icon && <Icon aria-hidden className="size-4" />} {WORLD[kind ?? "all"]}
-          </span>
-        }
-        title={kind ? KINDS[kind].plural : "Explore the hub"}
-        lead={
-          kind
-            ? `${KINDS[kind].blurb} Published or shared by members, next to what is moving on GitHub.`
-            : "Every model, dataset, tool and repo members published or shared on Nexverse, in one place, next to what is rising on GitHub."
+      <PageHead
+        k={`${kind}.header`}
+        crumbs={<AreaCrumbs />}
+        title={KINDS[kind].plural}
+        lead={KINDS[kind].blurb}
+        actions={
+          <>
+            <Button nativeButton={false} render={<Link href={`/new/project?kind=${kind}`} />}>
+              <PlusIcon aria-hidden /> Publish {`a ${KINDS[kind].label.toLowerCase()}`}
+            </Button>
+            <Button variant="outline" nativeButton={false} render={<Link href={`/share?kind=${kind}`} />}>
+              <LinkIcon aria-hidden /> Share a link
+            </Button>
+          </>
         }
       >
-        <div className="mt-1 flex flex-wrap gap-2">
-          <Link href={kind ? `/new/project?kind=${kind}` : "/new/project"} className="halo-btn">
-            <PlusIcon aria-hidden className="size-4" /> Publish {kind ? `a ${KINDS[kind].label.toLowerCase()}` : "a project"}
-          </Link>
-          <Link href={kind ? `/share?kind=${kind}` : "/share"} className="liquid-glass-pill inline-flex h-9 items-center gap-1.5 px-4 text-sm focus-visible:outline-2 focus-visible:outline-ring">
-            <LinkIcon aria-hidden className="size-4" /> Share a link
-          </Link>
-        </div>
-      </PageTitle>
-
-      <RisingStrip kind={kind} />
-
-      <section aria-labelledby="members-h" className="flex flex-col gap-4">
-        <h2 id="members-h" className="section-glow text-xl font-semibold">
-          <Copy k={`${kind ?? "explore"}.members`}>{kind ? `${KINDS[kind].plural} charted by members` : "Charted by members"}</Copy>
-        </h2>
-        <Suspense fallback={<RowsSkeleton rows={4} />}>
-          <ResourceIndex kind={kind} />
+        <Suspense fallback={<Skeleton className="h-10 w-64 rounded-full" />}>
+          <ListTabs base={base} searchParams={searchParams} />
         </Suspense>
-      </section>
+      </PageHead>
+      <Suspense fallback={<RowsSkeleton rows={4} />}>
+        <ListBody kind={kind} searchParams={searchParams} />
+      </Suspense>
+    </div>
+  )
+}
 
-      <section aria-labelledby="gh-h" className="horizon-rule mt-14 pt-10">
-        <SectionHead id="gh-h" title={live.title} href={live.topic ? ghTopicHref(live.topic) : "/trending#repos"} action={live.topic ? `More on #${live.topic}` : "Trending"}>
+const fromGithub = async (searchParams?: ListParams) => (searchParams ? (await searchParams).from === "github" : false)
+
+async function ListTabs({ base, searchParams }: { base: string; searchParams?: ListParams }) {
+  const gh = await fromGithub(searchParams)
+  return (
+    <LinkTabs
+      label="Where it comes from"
+      current={gh ? `${base}?from=github` : base}
+      tabs={[
+        { href: base, label: "On Nexverse", icon: SparklesIcon },
+        { href: `${base}?from=github`, label: "On GitHub", icon: GitBranchIcon },
+      ]}
+    />
+  )
+}
+
+async function ListBody({ kind, searchParams }: { kind: ResourceKind; searchParams?: ListParams }) {
+  if (await fromGithub(searchParams)) {
+    const live = LIVE[kind]
+    return (
+      <section aria-labelledby="gh-h">
+        <SectionHead id="gh-h" title={live.title} href={live.topic ? ghTopicHref(live.topic) : "/code?from=github"} action={live.topic ? `More on #${live.topic}` : "All of GitHub"}>
           <p className="text-sm text-muted-foreground">{live.lead}</p>
         </SectionHead>
         <Suspense fallback={<CardsSkeleton cards={6} />}>
           <LiveRepos kind={kind} />
         </Suspense>
       </section>
-    </div>
+    )
+  }
+  return (
+    <>
+      <RisingStrip kind={kind} />
+      <ResourceIndex kind={kind} />
+    </>
   )
 }
 
@@ -107,7 +125,7 @@ async function LiveRepos({ kind }: { kind?: ResourceKind }) {
       ) : feed.ok ? (
         <p className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
           GitHub has nothing new under this topic this week.{" "}
-          <Link href="/gh/topics" className="text-ion hover:underline">
+          <Link href="/code?from=github" className="text-ion hover:underline">
             Browse other topics
           </Link>
         </p>

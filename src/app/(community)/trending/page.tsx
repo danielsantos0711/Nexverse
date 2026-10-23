@@ -131,7 +131,7 @@ export default function TrendingPage() {
         <Section id="hub" tint="ion" title="Fresh on Nexverse" lead="The newest projects and links members published, and the latest threads in the forum." href="/explore" action="Everything on the hub">
           <HubTrending />
         </Section>
-        <Section id="repos" tint="repo" title="Rising on GitHub" lead="New open-source AI repositories ranked by stars per day, across the topics Nexverse follows plus two that rotate every six hours." href="/gh/topics" action="All topics">
+        <Section id="repos" tint="repo" title="Rising on GitHub" lead="New open-source AI repositories ranked by stars per day, across the topics Nexverse follows plus two that rotate every six hours." href="/code?from=github" action="All topics">
           <Suspense fallback={<CardsSkeleton cards={6} />}>
             <Repos />
           </Suspense>

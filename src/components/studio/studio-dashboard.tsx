@@ -36,22 +36,25 @@ type Filter = "all" | "published" | "draft"
 const EASE = [0.23, 1, 0.32, 1] as const
 const ZERO: ProjectStats = { likes: 0, saves: 0, replies: 0 }
 
-/** "Your studio": your projects with their numbers, drafts to finish, and shortcuts to everything you can make. */
-export function StudioDashboard() {
+/**
+ * Your projects with their numbers and drafts to finish. Since round 12 it is the Projects tab of your page (/you,
+ * where /studio now leads): `embedded` leaves out the page header and the shortcuts column, which /you already has.
+ */
+export function StudioDashboard({ embedded = false }: { embedded?: boolean }) {
   const { ready, user } = useSession()
   if (live && !ready) return <DashboardSkeleton />
   if (live && !user) {
     return (
       <>
-        <StudioHead title="Your studio" lead="Publish models, datasets, tools and repos, and see how people respond to them." />
-        <SignInPrompt title="Sign in to open your studio" detail="It takes an email address and nothing else." next="/studio" />
+        {!embedded && <StudioHead title="Your projects" lead="Publish models, datasets, tools and repos, and see how people respond to them." />}
+        <SignInPrompt title="Sign in to see your projects" detail="It takes an email address and nothing else." next="/you" />
       </>
     )
   }
-  return <Dashboard key={user?.id ?? "local"} />
+  return <Dashboard key={user?.id ?? "local"} embedded={embedded} />
 }
 
-function Dashboard() {
+function Dashboard({ embedded }: { embedded: boolean }) {
   const reduce = useReducedMotion()
   const { profile } = useProfile()
   const [projects, setProjects] = useState<Project[] | null>(null)
@@ -114,20 +117,22 @@ function Dashboard() {
 
   return (
     <>
-      <StudioHead title="Your studio" lead={live ? "Everything you publish on Nexverse, how it is doing, and what is still a draft." : "This copy has no database, so your projects are kept in this browser."}>
-        <Link
-          href="/new/project"
-          className="pressable inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-        >
-          <PlusIcon aria-hidden className="size-4" /> New project
-        </Link>
-      </StudioHead>
+      {!embedded && (
+        <StudioHead title="Your projects" lead={live ? "Everything you publish on Nexverse, how it is doing, and what is still a draft." : "This copy has no database, so your projects are kept in this browser."}>
+          <Link
+            href="/new/project"
+            className="pressable inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          >
+            <PlusIcon aria-hidden className="size-4" /> New project
+          </Link>
+        </StudioHead>
+      )}
 
       <p role="status" aria-live="polite" className="sr-only">
         {status}
       </p>
 
-      <div className="grid grid-cols-1 gap-8 pb-16 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className={cn("grid grid-cols-1 gap-8", !embedded && "pb-16 lg:grid-cols-[minmax(0,1fr)_18rem]")}>
         <div className="flex min-w-0 flex-col gap-6">
           <dl className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
             <Tile label="Published" value={projects ? published.length : null} hint={projects ? `${drafts.length} ${drafts.length === 1 ? "draft" : "drafts"}` : undefined} icon={RocketIcon} />
@@ -208,7 +213,7 @@ function Dashboard() {
           )}
         </div>
 
-        <aside aria-label="Shortcuts" className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
+        <aside aria-label="Shortcuts" className={cn("flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start", embedded && "hidden")}>
           {profile && (
             <div className="glass flex flex-col gap-3 rounded-2xl p-4">
               <div className="flex items-center gap-3">
