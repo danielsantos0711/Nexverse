@@ -53,11 +53,11 @@ export function RiseObserver() {
     // Pages with .sd-flow animate their rows with CSS scroll timelines. Browsers without them (older Safari,
     // Firefox) get the same entrances here instead, so every visitor sees the motion.
     const flow = !CSS.supports("animation-timeline: view()")
-    const SELECTOR = flow ? ".rise, .sd-flow [data-nav-item]" : ".rise"
+    const SELECTOR = flow ? ".rise, .sd-flow li:has([data-nav-item]), .sd-flow [data-nav-item]:not(li [data-nav-item])" : ".rise"
     const sheet = new CSSStyleSheet()
     sheet.replaceSync(
       ".rise:not([data-risen]) { opacity: 0; transform: translateY(22px); } .rise .momentum { transform: scaleX(0); }" +
-        (flow ? " html:not([data-calm]) .sd-flow [data-nav-item]:not([data-risen]) { opacity: 0; }" : "")
+        (flow ? " html:not([data-calm]) .sd-flow :is(li:has([data-nav-item]), [data-nav-item]:not(li [data-nav-item])):not([data-risen]) { opacity: 0; }" : "")
     )
     const done = new WeakSet<Element>()
     const animations: Animation[] = []

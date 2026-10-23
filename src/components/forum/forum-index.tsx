@@ -61,7 +61,7 @@ export function ForumIndex() {
                 </h2>
                 <p className="text-xs text-muted-foreground">{g.blurb}</p>
               </div>
-              <div className="overflow-hidden rounded-xl border border-border bg-card/40">
+              <div className="overflow-clip rounded-xl border border-border bg-card/40">
                 <div aria-hidden className={cn("hidden gap-4 border-b border-border px-4 py-2 text-xs text-muted-foreground md:grid", COLS)}>
                   <span><Copy k="forum.forum-index.category">Category</Copy></span>
                   <span className="text-right"><Copy k="forum.forum-index.threads">Threads</Copy></span>

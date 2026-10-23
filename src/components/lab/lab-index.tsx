@@ -19,7 +19,7 @@ const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/\p{M}/gu, 
 
 export function LabHeroFx() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 -z-10 hidden w-[46%] [mask-image:radial-gradient(70%_80%_at_60%_50%,black,transparent)] md:block">
+    <div aria-hidden className="pointer-events-none absolute -top-20 -bottom-24 right-[-4%] -z-10 hidden w-[62%] [mask-image:radial-gradient(60%_60%_at_58%_50%,black_35%,transparent_75%)] md:block">
       <ParticleVeil className="h-full w-full" />
     </div>
   )

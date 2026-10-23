@@ -1,4 +1,5 @@
 import Image from "next/image"
+import { LiquidN } from "@/components/liquid-n"
 import { cn } from "@/lib/utils"
 import "./brand.css"
 
@@ -40,20 +41,8 @@ export function Lockup({ size = "md", className, priority = false, alt = "Nexver
       style={{ "--nh": `${LOCKUP_SIZES[size]}px` } as React.CSSProperties}
       className={cn("flex shrink-0 items-center select-none", className)}
     >
-      <span className="nx-logo-n" style={{ height: "var(--nh)", width: `calc(var(--nh) * ${N_RATIO})` }}>
-        <Image
-          src="/brand/n-liquid-512.webp"
-          alt=""
-          width={551}
-          height={512}
-          // the same file is the sweep's mask, so it is served as is and downloaded once
-          unoptimized
-          priority={priority}
-          draggable={false}
-          className="block size-full max-w-none"
-        />
-        <span aria-hidden className="nx-logo-sheen" />
-      </span>
+      {/* Daniel's N in live liquid metal (LiquidN); the still file shows first and on slow machines */}
+      <LiquidN priority={priority} className="nx-logo-n" style={{ height: "var(--nh)", width: `calc(var(--nh) * ${N_RATIO})` }} />
       <span
         aria-hidden
         className="nx-logo-word"

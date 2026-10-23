@@ -1840,35 +1840,36 @@ html[data-calm] .nx-magnetic {
 
 /* ─── .sd-flow: scroll motion for a whole page in one class ─────────────────────────────────────────────────
  * Put .sd-flow on a page's wrapper. Its list items (anything marked data-nav-item, the rows J and K walk) arrive
- * as they scroll in, in the way data-flow names: rise (default), tilt (cards tip up), fan (alternating swing),
+ * as they scroll in (round 12c: the whole row moves, never a small title link inside it, which slid under its
+ * own blurb), in the way data-flow names: rise (default), tilt (cards tip up), fan (alternating swing),
  * clip (wipe from the bottom), zoom (grow from far). The page's first block (its title) recedes as it leaves
  * the top. Pure CSS scroll timelines on the compositor; browsers without them show everything still.
  */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
-    html:not([data-calm]) .sd-flow [data-nav-item] {
+    html:not([data-calm]) .sd-flow :is(li:has([data-nav-item]), [data-nav-item]:not(li [data-nav-item])) {
       animation: sd-rise linear both;
       animation-timeline: view();
       animation-range: entry 0% cover 32%;
     }
-    html:not([data-calm]) .sd-flow[data-flow="tilt"] [data-nav-item] {
+    html:not([data-calm]) .sd-flow[data-flow="tilt"] :is(li:has([data-nav-item]), [data-nav-item]:not(li [data-nav-item])) {
       animation-name: sd-tilt;
       transform-origin: 50% 100%;
     }
-    html:not([data-calm]) .sd-flow[data-flow="fan"] [data-nav-item] {
+    html:not([data-calm]) .sd-flow[data-flow="fan"] :is(li:has([data-nav-item]), [data-nav-item]:not(li [data-nav-item])) {
       animation-name: sd-swing;
       transform-origin: 50% 160%;
     }
-    html:not([data-calm]) .sd-flow[data-flow="fan"] [data-nav-item]:nth-child(3n + 1) {
+    html:not([data-calm]) .sd-flow[data-flow="fan"] :is(li:has([data-nav-item]), [data-nav-item]:not(li [data-nav-item])):nth-child(3n + 1) {
       --swing: -1;
     }
-    html:not([data-calm]) .sd-flow[data-flow="fan"] [data-nav-item]:nth-child(3n) {
+    html:not([data-calm]) .sd-flow[data-flow="fan"] :is(li:has([data-nav-item]), [data-nav-item]:not(li [data-nav-item])):nth-child(3n) {
       --swing: 1;
     }
-    html:not([data-calm]) .sd-flow[data-flow="clip"] [data-nav-item] {
+    html:not([data-calm]) .sd-flow[data-flow="clip"] :is(li:has([data-nav-item]), [data-nav-item]:not(li [data-nav-item])) {
       animation-name: sd-clip;
     }
-    html:not([data-calm]) .sd-flow[data-flow="zoom"] [data-nav-item] {
+    html:not([data-calm]) .sd-flow[data-flow="zoom"] :is(li:has([data-nav-item]), [data-nav-item]:not(li [data-nav-item])) {
       animation-name: sd-zoom;
     }
     html:not([data-calm]) .sd-flow > :first-child {

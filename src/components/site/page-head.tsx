@@ -40,7 +40,7 @@ export function PageHead({
   const t = k && typeof title === "string" ? <Copy k={`${k}.title`}>{title}</Copy> : title
   const l = k && typeof lead === "string" ? <Copy k={`${k}.lead`} multiline>{lead}</Copy> : lead
   return (
-    <header className={cn("flex flex-col gap-4 pt-7 pb-6 md:pt-9", backdrop !== "none" && "relative isolate", className)}>
+    <header className={cn("flex flex-col gap-4 pt-7 pb-6 md:pt-9", backdrop !== "none" && "relative isolate pt-10 pb-8 md:pt-16 md:pb-10", className)}>
       {backdrop !== "none" && backdrop !== "stars" && <PageBackdrop variant={backdrop} />}
       {backdrop !== "none" && (
         <div aria-hidden className="starfield -top-16 left-1/2 -z-10 w-screen -translate-x-1/2 opacity-70 [mask-image:linear-gradient(to_bottom,black,transparent)]">
