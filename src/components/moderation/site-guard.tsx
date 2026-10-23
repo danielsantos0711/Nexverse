@@ -225,7 +225,6 @@ export function MemberWall({ path, siteClosed = false, compact = false, classNam
   return (
     <div className={cn(compact ? "flex w-full flex-1 items-center justify-center p-4 md:p-8" : "shell flex justify-center py-12 md:py-20", className)}>
       <section aria-labelledby="member-wall-title" className="liquid-glass-strong glass relative flex w-full max-w-lg flex-col items-center gap-6 overflow-hidden rounded-3xl px-6 py-10 text-center md:px-10">
-        <span aria-hidden className="pointer-events-none absolute -top-24 left-1/2 size-64 -translate-x-1/2 rounded-full bg-ion/10 blur-3xl" />
         <Orbit still={still} />
         <div className="relative flex flex-col items-center gap-3">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground">

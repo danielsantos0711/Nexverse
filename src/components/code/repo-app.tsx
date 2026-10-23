@@ -327,10 +327,6 @@ function RepoHeader({ parent, view }: { parent: Repo | null; view: RepoView }) {
   const counts: Record<string, number | undefined> = { issues: repo.openIssues, pulls: repo.openPulls }
   return (
     <header className="relative isolate flex flex-col gap-4 pt-6">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-16 left-1/2 -z-10 h-48 w-screen -translate-x-1/2 bg-[radial-gradient(40%_70%_at_15%_0%,rgb(143_180_255/0.12),transparent_70%),radial-gradient(30%_60%_at_85%_0%,rgb(211_180_255/0.08),transparent_70%)]"
-      />
       <Breadcrumbs items={[{ label: "Code", href: "/code" }, { label: ownerName, href: `/code/${ownerName}` }, { label: repo.slug }]} className="sr-only sm:not-sr-only" />
       <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
         <div className="flex min-w-0 flex-1 flex-col gap-1">

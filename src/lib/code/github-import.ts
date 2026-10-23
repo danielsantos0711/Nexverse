@@ -35,8 +35,15 @@ type GhRepo = { private: boolean; default_branch: string; description: string | 
 
 async function gh<T>(path: string, accept?: string): Promise<T> {
   let res: Response
+  const headers = ghHeaders(accept)
   try {
-    res = await fetch(`https://api.github.com${path}`, { headers: ghHeaders(accept), signal: AbortSignal.timeout(15_000), cache: "no-store" })
+    res = await fetch(`https://api.github.com${path}`, { headers, signal: AbortSignal.timeout(15_000), cache: "no-store" })
+    if (res.status === 401 && headers.authorization) {
+      // A rejected GITHUB_TOKEN must not stop imports of public repositories: ask again without it.
+      console.warn("[code-import] GITHUB_TOKEN was rejected by GitHub (401); retrying without it. Replace the token in Vercel.")
+      delete headers.authorization
+      res = await fetch(`https://api.github.com${path}`, { headers, signal: AbortSignal.timeout(15_000), cache: "no-store" })
+    }
   } catch {
     throw new CodeError(502, "Could not reach GitHub. Try again in a minute.")
   }

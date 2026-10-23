@@ -111,7 +111,6 @@ export function FeedCard({ item, big, onHide, onMute }: { item: FeedItem; big?: 
     return (
       <article className={card}>
         {menu}
-        <div aria-hidden className="pointer-events-none absolute -top-16 -right-10 size-44 rounded-full bg-[radial-gradient(closest-side,rgb(143_180_255/0.16),transparent)] transition-transform duration-500 ease-out group-hover:scale-110" />
         <div className="relative flex flex-1 flex-col gap-2 p-4">
           <span className="flex items-center gap-2 text-xs text-ion">
             <span className="grid size-7 place-items-center rounded-lg border border-ion/25 bg-ion/10">

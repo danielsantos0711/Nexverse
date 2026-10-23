@@ -12,7 +12,8 @@ import { db, live } from "@/lib/supabase"
 
 // Status
 
-export type AiJob = "news" | "summary" | "moderation" | "rewrite" | "translate" | "code" | "playground"
+/** Every router job, including the member-facing ones (answer, explain, draft). */
+export type AiJob = import("./ai/models").AiJob
 export type AiStatus = { enabled: boolean; ready: boolean; jobs: Partial<Record<AiJob, boolean>> }
 
 const OFF: AiStatus = { enabled: false, ready: false, jobs: {} }

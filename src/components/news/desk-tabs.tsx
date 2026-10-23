@@ -80,15 +80,6 @@ export function DeskTabs({ tabs, label }: { tabs: DeskTab[]; label: string }) {
       </div>
 
       <div className="relative">
-        <motion.div
-          aria-hidden
-          key={`${tab.id}-glow`}
-          initial={reduce ? false : { opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-          className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-64 w-[min(60rem,100%)] -translate-x-1/2 rounded-full blur-3xl"
-          style={{ background: `radial-gradient(closest-side, ${tab.tint ?? "#7aa2ff"}22, transparent)` }}
-        />
         <AnimatePresence mode="wait" initial={false} custom={dir}>
           <motion.div
             key={tab.id}

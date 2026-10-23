@@ -221,7 +221,7 @@ export function NexverseRising({ initialKind = "all", compactView = false, limit
       ) : !data.available ? (
         <p className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">Rising in Nexverse appears once the site’s database has the latest update.</p>
       ) : items.length === 0 ? (
-        <div className="relative flex flex-col items-start gap-3 overflow-hidden rounded-2xl border border-dashed border-border bg-[radial-gradient(ellipse_at_top_left,rgb(143_180_255/0.08),transparent_60%)] p-6 text-sm text-muted-foreground">
+        <div className="relative flex flex-col items-start gap-3 overflow-hidden rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
           <SparklesIcon aria-hidden className="size-5 text-ion" />
           <p className="max-w-prose">
             Nothing has gathered views, likes or replies {win === "1" ? "in the last 24 hours" : `in the last ${win} days`}
