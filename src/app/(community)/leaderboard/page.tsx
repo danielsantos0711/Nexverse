@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function LeaderboardPage() {
   return (
     <div className="sd-flow shell pb-16">
-      <PageTitle
+      <PageTitle backdrop="topo"
         k="leaderboard.header"
         eyebrow={
           <span className="inline-flex items-center gap-2">

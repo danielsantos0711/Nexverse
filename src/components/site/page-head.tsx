@@ -21,7 +21,7 @@ export function PageHead({
   actions,
   children,
   className,
-  backdrop = "none",
+  backdrop = "phosphor",
 }: {
   title: React.ReactNode
   lead?: React.ReactNode
@@ -34,7 +34,7 @@ export function PageHead({
   /** Under the title row: tabs, a search bar or a view toggle. */
   children?: React.ReactNode
   className?: string
-  /** The motion behind the title: a shader with stars, the stars alone, or nothing (the default). */
+  /** The motion behind the title: a shader with stars, the stars alone, or nothing. Every page has motion by default (round 12c: "ha paginas que nao têm animaçoes"). */
   backdrop?: Backdrop | "stars"
 }) {
   const t = k && typeof title === "string" ? <Copy k={`${k}.title`}>{title}</Copy> : title

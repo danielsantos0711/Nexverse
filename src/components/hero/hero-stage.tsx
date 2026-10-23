@@ -234,7 +234,7 @@ export function HeroStage({ film, orbit, slow = 1, className }: { film: boolean;
           {/* Daniel's N in live liquid metal (LiquidN) sits exactly on the film's own N, the same size, so the
               galaxy's glow around it stays untouched; its nearly opaque body covers the film's chrome. */}
           <div className="absolute top-[52.2%] left-1/2 aspect-[551/512] h-[33%] -translate-x-1/2 -translate-y-1/2">
-            <LiquidN priority className="nx-hero-n size-full" />
+            <LiquidN big className="nx-hero-n size-full" />
           </div>
         </div>
       </div>
