@@ -13,6 +13,8 @@ import { Orb } from "@/components/assistant/orb"
 import { toast } from "@/components/site/toaster"
 import { askAi, type AiSource } from "@/lib/ai/client"
 import type { AiJob } from "@/lib/ai-client"
+import { SETUP_HINT } from "@/lib/ai/errors"
+import { useRole } from "@/lib/roles"
 import { useSession } from "@/lib/store"
 import { cn } from "@/lib/utils"
 
@@ -363,7 +365,11 @@ export function SmartAnswer({ query, className, autoFocus }: { query: string; cl
   const s = useAiStream()
   const path = usePathname()
   const [asked, setAsked] = useState<string | null>(null)
+  const { ready: aiStatusReady } = useAiReady("answer")
+  const { isStaff, ready: roleReady } = useRole()
   const q = query.trim()
+  // Admins and moderators learn, in one quiet line, exactly what turns AI answers on. Members see nothing.
+  if (!shown && aiStatusReady && roleReady && isStaff && q.length >= 3) return <p className={cn("px-3 text-xs text-muted-foreground", className)}>AI answers are off. {SETUP_HINT}</p>
   if (!shown || q.length < 3) return null
   const go = (regenerate = false) => {
     const question = regenerate && asked ? asked : q
