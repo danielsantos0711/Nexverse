@@ -158,24 +158,34 @@ export function SiteHeader() {
   const createLabel = useCopy("header.create", "Create")
   useSiteShortcuts(openSearch)
   const away = useHeaderAway()
+  const scrolled = !useScrollFacts().atTop
 
   return (
-    // One full-width bar of plain blur (Daniel, round 12b: "uma barra completa blur em vez de seccoes"), the same
-    // at the top of the page and while scrolling. The blur is a layer behind the controls rather than the header
-    // itself, so the menu panel (a child of the header) can still blur the page under it. The header slides away
-    // while you read down and comes back when you scroll up; on phones it takes turns with the tab bar so only one
-    // bar is ever on screen (src/components/motion/scroll-state.ts).
+    // No bar and no box behind the logo (Daniel, after round 12b: "gostava mais sem a barra longa... nem fundo no
+    // logotipo"). The menu and the tools on the right are their own glass pills; once the page moves, a very soft
+    // fade of the page colour (masked, so it has no edge) sits behind the whole header area and the logo carries its own
+    // soft shadow, so it reads over anything. The header slides away while you read down and comes back when you
+    // scroll up; on phones it takes turns with the tab bar so only one bar is ever on screen
+    // (src/components/motion/scroll-state.ts).
     <header data-away={away ? "" : undefined} className="nx-header nx-bar-slide sticky top-0 z-40 h-16" onFocusCapture={(e) => headerFocus.set((e.target as Element).matches(":focus-visible"))} onBlurCapture={() => headerFocus.set(false)}>
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 border-b border-white/[0.08] bg-[linear-gradient(180deg,rgb(255_255_255/0.06),rgb(255_255_255/0.02))] shadow-[inset_0_1px_0_rgb(255_255_255/0.07),0_12px_30px_-22px_rgb(0_0_0/0.6)] backdrop-blur-[14px] backdrop-saturate-[140%] [:root.light_&]:border-black/[0.07] [:root[data-glass=low]_&]:bg-background [:root[data-glass=low]_&]:backdrop-filter-none [:root[data-glass=off]_&]:bg-background [:root[data-glass=off]_&]:backdrop-filter-none"
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 h-32 bg-[linear-gradient(180deg,var(--background)_0%,color-mix(in_oklab,var(--background)_92%,transparent)_42%,color-mix(in_oklab,var(--background)_50%,transparent)_70%,transparent_100%)] backdrop-blur-[10px] [mask-image:linear-gradient(180deg,#000_55%,transparent)] [:root[data-glass=low]_&]:backdrop-filter-none [:root[data-glass=off]_&]:backdrop-filter-none opacity-0 transition-opacity duration-(--dur-slow)",
+          // it is taller than the header, so it leaves with it
+          scrolled && !away && "opacity-100"
+        )}
       />
       <GlassDefs />
       <div className="shell relative flex h-full items-center gap-3 lg:gap-6">
         <Link
           href="/"
           aria-label={`${name} home`}
-          className="pressable relative -mx-1.5 flex shrink-0 items-center rounded-full px-1.5 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className={cn(
+            "pressable relative -mx-1.5 flex shrink-0 items-center rounded-full px-1.5 py-1 transition-[filter] duration-(--dur-slow) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+            // a soft shadow on the metal itself, no shape behind it
+            scrolled && "[filter:drop-shadow(0_1px_2px_rgb(0_0_0/0.7))_drop-shadow(0_0_10px_rgb(0_0_0/0.55))] [:root.light_&]:[filter:drop-shadow(0_0_8px_rgb(255_255_255/0.9))]"
+          )}
         >
           <Lockup size="sm" priority alt="" className="sm:hidden" />
           <Lockup size="md" priority alt="" className="hidden sm:flex" />
@@ -183,7 +193,7 @@ export function SiteHeader() {
 
         <MainNav pathname={pathname} menus={menus} direct={direct} />
 
-        <div className="relative ml-auto flex items-center gap-1.5 sm:gap-2 lg:ml-0">
+        <div className={cn("relative ml-auto flex items-center gap-1.5 rounded-full transition-[background-color,box-shadow,padding] duration-(--dur-slow) sm:gap-2 lg:ml-0", scrolled && "liquid-glass p-1")}>
           <button
             type="button"
             onClick={openSearch}

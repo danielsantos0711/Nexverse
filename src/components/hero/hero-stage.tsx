@@ -25,12 +25,14 @@ import {
   WrenchIcon,
   type LucideIcon,
 } from "lucide-react"
+import Image from "next/image"
 import { LoopVideo } from "@/components/fx/loop-video"
+import "@/components/brand.css"
 import { useBlock } from "@/lib/content"
 import { cn } from "@/lib/utils"
 
 /*
- * The hero's stage: the brand film (Daniel's N, untouched, in its turning galaxy) fills the top of the page,
+ * The hero's stage: the brand film's turning galaxy with Daniel's liquid-metal N at its heart fills the top of the page,
  * and the places of Nexverse orbit the N as links. The orbit is drawn in pixels from the stage's measured size
  * and the film's geometry, so the moons always circle the N in the film, on any screen.
  */
@@ -229,6 +231,16 @@ export function HeroStage({ film, orbit, slow = 1, className }: { film: boolean;
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden [mask-image:radial-gradient(ellipse_75%_90%_at_50%_45%,#000_55%,transparent_100%),linear-gradient(to_bottom,#000_60%,transparent)] [mask-composite:intersect]">
         <div className="absolute top-1/2 left-1/2 aspect-video w-[max(min(100%,120rem),calc(var(--stage-h)*16/9))] -translate-x-1/2 -translate-y-1/2">
           <LoopVideo name="brand" still={!film} eager />
+          {/* The film's own chrome N is veiled by a soft patch of night (no edge), and Daniel's liquid-metal N
+              (n-liquid.webp, only ever scaled uniformly) stands in its place, the same size, with the logo's slow
+              light sweep (brand.css; reduced motion and the low/off tiers keep the still metal). */}
+          <div className="absolute top-[52.2%] left-1/2 h-[46%] w-[30%] -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(closest-side,#05070d_0%,#05070d_62%,rgb(5_7_13/0.85)_74%,transparent_100%)]" />
+          <div className="absolute top-[52.2%] left-1/2 aspect-[551/512] h-[33%] -translate-x-1/2 -translate-y-1/2">
+            <span className="nx-logo-n nx-hero-n block size-full">
+              <Image src="/brand/n-liquid.webp" alt="" fill priority sizes="(max-width: 640px) 40vw, 560px" className="object-contain" draggable={false} />
+              <span aria-hidden className="nx-logo-sheen" />
+            </span>
+          </div>
         </div>
       </div>
 
