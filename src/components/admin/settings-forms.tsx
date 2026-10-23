@@ -1,11 +1,8 @@
 "use client"
 
-import type { Route } from "next"
-import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
-import { ArrowDownIcon, ArrowRightIcon, ArrowUpIcon, GripVerticalIcon, PlusIcon, Trash2Icon } from "lucide-react"
-import { ChoiceCards, Notice, StatusLine, Switch, SwitchRow } from "@/components/admin/controls"
-import { SETTING_SECTIONS } from "@/components/admin/sections"
+import { ArrowDownIcon, ArrowUpIcon, GripVerticalIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { ChoiceCards, Notice, SaveBar, Switch, SwitchRow } from "@/components/admin/controls"
 import { AnnouncementLine } from "@/components/moderation/announcement-bar"
 import { Gate } from "@/components/moderation/gate"
 import { Button } from "@/components/ui/button"
@@ -82,76 +79,9 @@ function SaveNotice({ state }: { state: { ok: boolean; reason?: string } | null 
   )
 }
 
-/** The list of settings sections. */
-export function SettingsIndex() {
-  const body = (
-    <section aria-labelledby="set-title" className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 id="set-title" className="text-xl font-semibold tracking-[-0.02em]">
-          Site settings
-        </h2>
-        <p className="max-w-[68ch] text-sm text-muted-foreground">Change how Nexverse looks and what it offers. Each section saves on its own and applies to every open page within seconds.</p>
-      </div>
-      <SaveNotice state={useCanSave()} />
-      <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-        {SETTING_SECTIONS.map((s) => (
-          <li key={s.key}>
-            <Link
-              href={`/admin/settings/${s.key}` as Route}
-              className="press group flex h-full flex-col gap-1 rounded-xl border border-border bg-card/50 p-4 hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              <span className="flex items-center gap-1.5 font-medium">
-                {s.label}
-                <ArrowRightIcon aria-hidden className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-              </span>
-              <span className="text-sm text-muted-foreground">{s.blurb}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
-  return live ? (
-    <Gate role="admin" action="change the site settings">
-      {body}
-    </Gate>
-  ) : (
-    body
-  )
-}
-
-/** One settings section with its form. */
+/** One settings section with its form. The frame shows its title, one line about it and the sibling tabs. */
 export function SettingsSection({ section }: { section: SettingKey }) {
-  const meta = SETTING_SECTIONS.find((s) => s.key === section)!
-  const body = (
-    <section aria-labelledby="sec-title" className="flex flex-col gap-4">
-      <nav aria-label="Settings sections" className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-        <ul className="flex gap-1">
-          {SETTING_SECTIONS.map((s) => (
-            <li key={s.key} className="shrink-0">
-              <Link
-                href={`/admin/settings/${s.key}` as Route}
-                aria-current={s.key === section ? "page" : undefined}
-                className={cn(
-                  "pressable inline-flex h-8 items-center rounded-full border px-3 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                  s.key === section ? "border-ion/60 bg-ion/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {s.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      <div className="flex flex-col gap-1">
-        <h2 id="sec-title" className="text-xl font-semibold tracking-[-0.02em]">
-          {meta.label}
-        </h2>
-        <p className="max-w-[68ch] text-sm text-muted-foreground">{meta.blurb}.</p>
-      </div>
-      <SectionForm section={section} />
-    </section>
-  )
+  const body = <SectionForm section={section} />
   return live ? (
     <Gate role="admin" action="change the site settings">
       {body}
@@ -303,7 +233,7 @@ function SectionForm({ section }: { section: SettingKey }) {
   return (
     <form onSubmit={save} noValidate className="flex flex-col gap-4">
       <SaveNotice state={canSave} />
-      <div className="glass rounded-2xl p-4 md:p-6">
+      <div className="rounded-xl bg-card p-4 md:p-6">
         {section === "brand" && <BrandFields {...(fields as FieldsProps<"brand">)} />}
         {section === "announcement" && <AnnouncementFields {...(fields as FieldsProps<"announcement">)} />}
         {section === "theme" && <ThemeFields {...(fields as FieldsProps<"theme">)} />}
@@ -316,40 +246,21 @@ function SectionForm({ section }: { section: SettingKey }) {
         {section === "access" && <AccessFields {...(fields as FieldsProps<"access">)} />}
       </div>
 
-      {/* The action bar stays in reach at the bottom of the screen while the form scrolls. */}
-      <div className="sticky bottom-3 z-10 flex flex-col gap-2 rounded-2xl border border-border bg-popover/95 p-3 shadow-lg backdrop-blur-sm sm:flex-row sm:items-center">
-        <div className="min-w-0 flex-1">
-          {status ? <StatusLine status={status} /> : <p className="text-sm text-muted-foreground">{dirty ? "You have unsaved changes." : "No changes."}</p>}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={isDefault}
-            onClick={() => change(structuredClone(DEFAULTS[section]))}
-            title="Fills the form with the defaults. Save to apply them."
-          >
-            Reset to defaults
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={!dirty}
-            onClick={() => {
-              setDraft(null)
-              setErrors({})
-              setStatus(null)
-            }}
-          >
-            Discard
-          </Button>
-          <Button type="submit" size="sm" disabled={!dirty || busy || disabledSave} title={disabledSave ? "Saving is not available here" : undefined}>
-            {busy ? "Saving…" : "Save"}
-          </Button>
-        </div>
-      </div>
+      <SaveBar
+        dirty={dirty}
+        busy={busy}
+        status={status}
+        disabled={disabledSave}
+        onDiscard={() => {
+          setDraft(null)
+          setErrors({})
+          setStatus(null)
+        }}
+      >
+        <Button type="button" variant="ghost" size="sm" disabled={isDefault} onClick={() => change(structuredClone(DEFAULTS[section]))} title="Fills the form with the defaults. Save to apply them.">
+          Reset to defaults
+        </Button>
+      </SaveBar>
     </form>
   )
 }

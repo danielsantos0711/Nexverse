@@ -3,7 +3,7 @@
 import type { Route } from "next"
 import Link from "next/link"
 import { ArrowRightIcon, BrainCircuitIcon, FlaskConicalIcon, GitBranchIcon, KeyRoundIcon, LayersIcon, MessageCircleIcon, MessagesSquareIcon, OrbitIcon, RadioTowerIcon, SwordsIcon, type LucideIcon } from "lucide-react"
-import { AdminHeading, Notice, when } from "@/components/admin/controls"
+import { Notice, when } from "@/components/admin/controls"
 import { Gate } from "@/components/moderation/gate"
 import { Skeleton } from "@/components/ui/skeleton"
 import { countOf, GROUPS, LISTS, resolveRows, type ListGroup } from "@/lib/lists/registry"
@@ -38,13 +38,7 @@ function Index() {
   const { ready, saved, availability } = useSavedLists()
   return (
     <section aria-label="Curated lists" className="flex flex-col gap-8">
-      <div className="flex flex-col gap-3">
-        <AdminHeading
-          title="Curated lists"
-          lead="Every list the site is built around: the GitHub topics it follows, languages, duel tasks, benchmarks, orbits and constellations, event kinds, tags and the Lab's tools. Each one saves on its own, shows a preview first, and can go back to its defaults at any time."
-        />
-        <AvailabilityNotice availability={availability} />
-      </div>
+      <AvailabilityNotice availability={availability} />
 
       {GROUPS.map((g) => {
         const Icon = GROUP_ICON[g.id]
