@@ -446,5 +446,9 @@ export async function readFindings(db: Db, { hours, limit = 200 }: { hours: numb
     for (const l of leads) for (const s of l.signal_ids ?? []) if (!byId.has(s)) byId.set(s, l.id)
     for (const f of list) f.leadId = byId.get(f.id) ?? null
   }
-  return list.sort((a, b) => b.score - a.score).slice(0, Math.min(400, limit))
+  // A dismissed finding is marked used with no story or lead behind it: it stays out of the list after a reload.
+  return list
+    .filter((f) => !f.used || f.storyId || f.leadId)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, Math.min(400, limit))
 }

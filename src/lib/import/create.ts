@@ -267,7 +267,8 @@ export async function refreshProjects(m: Member, { ids, all = false, limit = 4 }
       }
       if (d.repoUrl) patch.repo_url = d.repoUrl
       if (d.paperUrl) patch.paper_url = d.paperUrl
-      patch.source = { ...(r.source ?? {}), ...d.source, importedAt: r.source?.importedAt ?? d.source.importedAt, refreshedAt: new Date().toISOString(), ...(r.source?.curated ? { curated: true } : {}) }
+      // projects.source is the import credit, fixed at creation (no update grant, and a trigger keeps it); the
+      // refresh time lives in specs.imported.at.
       await rest(m, `projects?id=eq.${r.id}`, { method: "PATCH", body: patch, prefer: "return=minimal" })
       if (!r.cover_url) {
         const cover = await d.covers().then((c) => storeCover(m, c)).catch(() => null)

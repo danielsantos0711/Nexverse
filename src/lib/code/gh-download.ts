@@ -115,17 +115,22 @@ export function contentDisposition(filename: string): string {
 const UA = "Nexverse-Downloads (+https://nexverse.app)"
 
 /** GET with redirects followed by hand, only between GitHub's download hosts. */
-async function follow(url: string, signal: AbortSignal, fetcher: typeof fetch): Promise<Response> {
+async function follow(url: string, signal: AbortSignal | undefined, fetcher: typeof fetch): Promise<Response> {
   let current = url
   for (let hop = 0; hop < 6; hop++) {
     const host = new URL(current).hostname
     if (!HOSTS.has(host)) throw new GhDownloadError(502, "GitHub sent the download somewhere Nexverse does not fetch from.")
     let res: Response
+    // Only the wait for GitHub's headers is bounded: the timer is cleared once they arrive, so it never cuts the body.
+    const start = new AbortController()
+    const timer = setTimeout(() => start.abort(new DOMException("GitHub took too long", "TimeoutError")), START_TIMEOUT_MS)
     try {
-      res = await fetcher(current, { headers: { "user-agent": UA, accept: "*/*" }, redirect: "manual", signal, cache: "no-store" })
+      res = await fetcher(current, { headers: { "user-agent": UA, accept: "*/*" }, redirect: "manual", signal: signal ? AbortSignal.any([signal, start.signal]) : start.signal, cache: "no-store" })
     } catch (err) {
       if ((err as Error)?.name === "TimeoutError" || (err as Error)?.name === "AbortError") throw new GhDownloadError(504, "GitHub took too long to start the download. Try again.")
       throw new GhDownloadError(502, "Could not reach GitHub. Try again in a minute.")
+    } finally {
+      clearTimeout(timer)
     }
     if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
       await res.body?.cancel().catch(() => null)
@@ -137,6 +142,8 @@ async function follow(url: string, signal: AbortSignal, fetcher: typeof fetch): 
   throw new GhDownloadError(502, "GitHub redirected too many times.")
 }
 
+const START_TIMEOUT_MS = 30_000
+
 /** Git LFS keeps a small pointer in the repository; the real file lives on media.githubusercontent.com. */
 const LFS_POINTER = /^version https:\/\/git-lfs\.github\.com\/spec\/v1\s/
 
@@ -147,9 +154,8 @@ const LFS_POINTER = /^version https:\/\/git-lfs\.github\.com\/spec\/v1\s/
 export async function ghDownload(r: GhDownloadRequest, opts: { signal?: AbortSignal; fetcher?: typeof fetch; method?: "GET" | "HEAD" } = {}): Promise<Response> {
   const fetcher = opts.fetcher ?? fetch
   const src = ghSource(r)
-  // Only the wait for GitHub's first byte is bounded; the transfer itself may take as long as it needs.
-  const start = AbortSignal.timeout(30_000)
-  const signal = opts.signal ? AbortSignal.any([opts.signal, start]) : start
+  // follow() bounds the wait for GitHub to answer; the transfer itself may take as long as it needs.
+  const signal = opts.signal
   let res = await follow(src.url, signal, fetcher)
 
   if (res.status === 404) {
