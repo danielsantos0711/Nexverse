@@ -3,22 +3,14 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
+import { PageHead } from "@/components/site/page-head"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
 /** A page heading at reading size: the studio, settings and editor are tools, not landing pages. */
 export function StudioHead({ title, lead, eyebrow, children }: { title: string; lead?: React.ReactNode; eyebrow?: React.ReactNode; children?: React.ReactNode }) {
-  return (
-    <header className="flex flex-col gap-4 pt-8 pb-6 sm:flex-row sm:items-end sm:justify-between md:pt-10">
-      <div className="flex min-w-0 flex-col gap-1.5">
-        {eyebrow && <div className="text-sm text-muted-foreground">{eyebrow}</div>}
-        <h1 className="text-2xl font-semibold tracking-[-0.02em]">{title}</h1>
-        {lead && <p className="max-w-[62ch] text-[15px] text-muted-foreground">{lead}</p>}
-      </div>
-      {children && <div className="flex shrink-0 flex-wrap items-center gap-2">{children}</div>}
-    </header>
-  )
+  return <PageHead title={title} lead={lead} crumbs={eyebrow ? <div className="text-sm text-muted-foreground">{eyebrow}</div> : undefined} actions={children} />
 }
 
 /** Shown in place of a members-only tool to visitors who are not signed in. */
