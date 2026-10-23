@@ -28,7 +28,7 @@ export function AuthScene({ caption, className }: { caption: string; className?:
       {/* Keeps the lockup and the caption readable over the brightest dust. */}
       <div aria-hidden className="absolute inset-0 -z-10 bg-[radial-gradient(120%_70%_at_0%_0%,rgb(5_6_10/0.85),transparent_55%),linear-gradient(to_top,rgb(5_6_10/0.9),transparent_40%)]" />
       <div className="flex h-full flex-col justify-between gap-10 p-6 md:p-8">
-        <Lockup size="lg" alt="Nexverse" className="max-sm:w-[176px]!" />
+        <Lockup size="lg" alt="Nexverse" className="max-sm:[--nh:27px]!" />
         <p className="max-w-[36ch] text-sm text-pretty text-white/80 max-sm:sr-only md:text-base">{caption}</p>
       </div>
     </div>
