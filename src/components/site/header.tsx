@@ -162,20 +162,11 @@ export function SiteHeader() {
 
   return (
     // No bar and no box behind the logo (Daniel, after round 12b: "gostava mais sem a barra longa... nem fundo no
-    // logotipo"). The menu and the tools on the right are their own glass pills; once the page moves, a very soft
-    // fade of the page colour (masked, so it has no edge) sits behind the whole header area and the logo carries its own
-    // soft shadow, so it reads over anything. The header slides away while you read down and comes back when you
+    // logotipo"). The menu and the tools on the right are their own glass pills; once the page moves only the logo
+    // gets a soft shadow on the metal so it reads over anything; nothing covers the pills' blur (Daniel, round 12c). The header slides away while you read down and comes back when you
     // scroll up; on phones it takes turns with the tab bar so only one bar is ever on screen
     // (src/components/motion/scroll-state.ts).
     <header data-away={away ? "" : undefined} className="nx-header nx-bar-slide sticky top-0 z-40 h-16" onFocusCapture={(e) => headerFocus.set((e.target as Element).matches(":focus-visible"))} onBlurCapture={() => headerFocus.set(false)}>
-      <div
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 h-32 bg-[linear-gradient(180deg,var(--background)_0%,color-mix(in_oklab,var(--background)_92%,transparent)_42%,color-mix(in_oklab,var(--background)_50%,transparent)_70%,transparent_100%)] backdrop-blur-[10px] [mask-image:linear-gradient(180deg,#000_55%,transparent)] [:root[data-glass=low]_&]:backdrop-filter-none [:root[data-glass=off]_&]:backdrop-filter-none opacity-0 transition-opacity duration-(--dur-slow)",
-          // it is taller than the header, so it leaves with it
-          scrolled && !away && "opacity-100"
-        )}
-      />
       <GlassDefs />
       <div className="shell relative flex h-full items-center gap-3 lg:gap-6">
         <Link

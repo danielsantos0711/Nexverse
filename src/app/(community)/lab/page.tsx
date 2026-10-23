@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { LockIcon } from "lucide-react"
 import { PageTitle } from "@/components/hub/bits"
-import { LabHeroFx, LabIndex } from "@/components/lab/lab-index"
+import { LabIndex } from "@/components/lab/lab-index"
 import { getLabTools } from "@/lib/lists/server"
 import { seoMetadata } from "@/lib/content-server"
 
@@ -20,7 +20,6 @@ export default async function Page() {
   return (
     <div data-flow="zoom" className="sd-flow shell pb-16">
       <div className="relative isolate">
-        <LabHeroFx />
         <PageTitle k="lab.header"
           title="Lab"
           lead="Free tools for building with AI: cost, VRAM, tokens, prompts and more."
