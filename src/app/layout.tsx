@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono, Sora } from "next/font/google"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { rootMetadata } from "@/lib/content-server"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css"
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin", "latin-ext"] })
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         <TooltipProvider>{children}</TooltipProvider>
+        <SpeedInsights />
       </body>
     </html>
   )
