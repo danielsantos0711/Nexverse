@@ -498,9 +498,15 @@ export function BlobPage({ refName, path }: { refName: string; path: string }) {
 
   const open = async (download: boolean) => {
     if (!entry) return
-    const url = await blobUrl(repo.id, entry.sha, download ? path.split("/").pop() : undefined)
-    if (download) location.href = url
-    else window.open(url, "_blank", "noopener,noreferrer")
+    if (download) {
+      location.href = await blobUrl(repo.id, entry.sha, path.split("/").pop())
+      return
+    }
+    // "Raw" opens the bytes from a blob: address on Nexverse itself, as plain text (never rendered as a page).
+    const { bytes } = await readBlob(repo.id, entry.sha)
+    const url = URL.createObjectURL(new Blob([bytes.slice().buffer], { type: image && !image.includes("svg") ? image : "text/plain;charset=utf-8" }))
+    window.open(url, "_blank", "noopener")
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
   }
 
   const lines = text === null ? 0 : text.split("\n").length - (text.endsWith("\n") ? 1 : 0)
@@ -911,7 +917,7 @@ export function UploadPage({ refName, path }: { refName: string; path: string })
             over ? "scale-[1.01] border-ion bg-ion/10" : "border-border bg-card/30"
           )}
         >
-          <div aria-hidden className={cn("pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(40%_60%_at_50%_100%,rgb(143_180_255/0.14),transparent_70%)] transition-opacity", over ? "opacity-100" : "opacity-40")} />
+          <div aria-hidden className={cn("pointer-events-none absolute inset-0 -z-10 bg-secondary transition-opacity", over ? "opacity-100" : "opacity-0")} />
           <UploadIcon aria-hidden className={cn("size-8 transition-transform duration-300", over ? "-translate-y-1 text-ion" : "text-muted-foreground")} />
           <p className="font-medium"><Copy k="code-repo.files.drag-files-or-folders-here">Drag files or folders here</Copy></p>
           <div className="flex flex-wrap justify-center gap-2">
