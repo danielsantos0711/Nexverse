@@ -34,39 +34,63 @@ void main(){
   // studio: soft horizontal light bands that drift, a dark horizon, a cool sky
   float y=r.y+.18*sin(r.x*2.4+t*.35);
   float bands=.55+.45*sin(y*7.5-t*.5);
-  float env=mix(.06,1.,smoothstep(-.15,.55,y))*(.55+.45*bands);
+  float env=mix(.32,1.,smoothstep(-.15,.55,y))*(.55+.45*bands);
   env+=.9*pow(max(0.,1.-abs(y-.42)*6.),3.);           // key light
   env+=.35*pow(max(0.,1.-abs(r.x+.55)*4.),4.);          // side strip
-  env*=1.-.55*smoothstep(.0,-.35,y);                    // horizon
+  env*=1.-.35*smoothstep(.0,-.35,y);                    // horizon
   float fres=pow(1.-max(nrm.z,0.),2.2);
   vec3 col=vec3(env)*vec3(.93,.95,1.)+fres*vec3(.75,.8,.9);
-  col=mix(col,vec3(.02,.025,.035),.18*(1.-fres));
+  col=mix(col,vec3(.12,.13,.15),.1*(1.-fres));
   // a body you can almost see through, opaque at the rim
   float body=mix(.93,1.,clamp(fres*2.+(1.-s.g)*1.5,0.,1.));
   float A=a*body;
   gl_FragColor=vec4(col*A,A);
 }`
 
+/** Box blur of one channel, three passes (close to a Gaussian). Done by hand: Safari ignores canvas `filter`. */
+function blur(src: Float32Array, r: number): Float32Array {
+  let a: Float32Array = src
+  let b: Float32Array = new Float32Array(a.length)
+  for (let pass = 0; pass < 3; pass++) {
+    for (let y = 0; y < FH; y++) {
+      let acc = 0
+      for (let x = -r; x <= r; x++) acc += a[y * FW + Math.min(FW - 1, Math.max(0, x))]
+      for (let x = 0; x < FW; x++) {
+        b[y * FW + x] = acc / (2 * r + 1)
+        acc += a[y * FW + Math.min(FW - 1, x + r + 1)] - a[y * FW + Math.max(0, x - r)]
+      }
+    }
+    ;[a, b] = [b, a]
+    for (let x = 0; x < FW; x++) {
+      let acc = 0
+      for (let y = -r; y <= r; y++) acc += a[Math.min(FH - 1, Math.max(0, y)) * FW + x]
+      for (let y = 0; y < FH; y++) {
+        b[y * FW + x] = acc / (2 * r + 1)
+        acc += a[Math.min(FH - 1, y + r + 1) * FW + x] - a[Math.max(0, y - r) * FW + x]
+      }
+    }
+    ;[a, b] = [b, a]
+  }
+  return a
+}
+
 function buildField(img: HTMLImageElement) {
   const c = document.createElement("canvas")
   c.width = FW
   c.height = FH
   const g = c.getContext("2d", { willReadFrequently: true })!
-  const layer = (blur: number) => {
-    g.clearRect(0, 0, FW, FH)
-    g.filter = blur ? `blur(${blur}px)` : "none"
-    g.drawImage(img, 0, 36, 1000, 928, 0, 0, FW, FH)
-    return g.getImageData(0, 0, FW, FH).data
-  }
-  const a0 = layer(0)
-  const a1 = layer(FW / 90)
-  const a2 = layer(FW / 30)
+  g.drawImage(img, 0, 36, 1000, 928, 0, 0, FW, FH)
+  const px = g.getImageData(0, 0, FW, FH).data
+  const a0 = new Float32Array(FW * FH)
+  for (let i = 0; i < a0.length; i++) a0[i] = px[i * 4 + 3]
+  const a1 = blur(a0, Math.round(FW / 150))
+  const a2 = blur(a0, Math.round(FW / 50))
   const out = new Uint8Array(FW * FH * 4)
-  for (let i = 0; i < out.length; i += 4) {
-    out[i] = a0[i + 3]
-    out[i + 1] = a1[i + 3]
-    out[i + 2] = a2[i + 3]
-    out[i + 3] = 255
+  for (let i = 0; i < a0.length; i++) {
+    out[i * 4] = a0[i]
+    out[i * 4 + 1] = a1[i]
+    out[i * 4 + 2] = a2[i]
+    out[i * 4 + 3] = 255
   }
   return out
 }
