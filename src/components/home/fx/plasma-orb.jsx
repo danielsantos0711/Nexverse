@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
-// Vendored from HorizonX "Plasma Orb" (React export, Nexverse palette): a thick glass sphere ray-traced per
+// Vendored from HorizonX "Plasma Orb" (React export, Nexverse palette: silver and white since round 12b, no blue): a thick glass sphere ray-traced per
 // pixel around a plasma core, with electric webs on wobbling shells and a mip-chain bloom. Original HorizonX
 // code, HorizonX Tools License. Changes for Nexverse: fills a square parent on a transparent ground,
 // decorative (aria-hidden; a soft CSS orb stands in without WebGL2), ray-march samples, buffer size and pixel
@@ -11,7 +11,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import { frameInterval, pixelRatio, useFx } from '@/lib/perf';
 
 const CONFIG = {
-  size: 0.55, background: '#05060a', center: '#2a4fd6', glass: '#5f8fff', rim: '#bcd0ff', plasma: '#8fb4ff', accent: '#d8c59e',
+  size: 0.55, background: '#0b0c10', center: '#3a3d45', glass: '#8b9099', rim: '#dfe1e6', plasma: '#c9ccd3', accent: '#f1f1f3',
   energy: 0.4, swirl: 0, glow: 0.55, speed: 1,
 };
 const DETAIL = { high: { steps: 22, maxSide: 640 }, medium: { steps: 16, maxSide: 480 }, low: { steps: 12, maxSide: 360 }, off: { steps: 22, maxSide: 640 } };

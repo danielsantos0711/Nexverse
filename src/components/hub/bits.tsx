@@ -4,6 +4,7 @@ import { compact, KINDS, LANGUAGES, type LanguageCode, type ResourceKind } from 
 import { cn } from "@/lib/utils"
 import { AreaCrumbs } from "@/components/site/area-crumbs"
 import { PageHead } from "@/components/site/page-head"
+import type { Backdrop } from "@/components/glass/page-backdrop"
 
 export const KIND_ICONS: Record<ResourceKind, LucideIcon> = {
   model: BoxIcon,
@@ -208,7 +209,8 @@ export function SectionHead({
 
 /**
  * A list page's header. Round 12: compact and the same on every page (see PageHead). The old eyebrow lines and the
- * shader behind the title are gone; where the page sits in the menus is said once, above the title.
+ * shader behind the title went with them (back since round 12b, in monochrome); where the page sits in the
+ * menus is said once, above the title.
  */
 export function PageTitle({
   title,
@@ -216,6 +218,7 @@ export function PageTitle({
   children,
   k,
   crumbs,
+  backdrop = "phosphor",
 }: {
   /** Ignored since round 12 (kept so older callers still compile). */
   eyebrow?: React.ReactNode
@@ -225,10 +228,10 @@ export function PageTitle({
   children?: React.ReactNode
   /** Content key ("models.header"): the admins can then edit the title and lead from the site editor. */
   k?: string
-  /** Ignored since round 12: no shader behind titles. */
-  backdrop?: string
+  /** The motion behind the title (round 12b): a monochrome shader with stars by default, see PageHead. */
+  backdrop?: Backdrop | "stars"
   /** The trail above the title; by default the menu group this page sits in. */
   crumbs?: React.ReactNode
 }) {
-  return <PageHead k={k} title={title} lead={lead} crumbs={crumbs ?? <AreaCrumbs />} actions={children} />
+  return <PageHead k={k} title={title} lead={lead} crumbs={crumbs ?? <AreaCrumbs />} actions={children} backdrop={backdrop} />
 }
