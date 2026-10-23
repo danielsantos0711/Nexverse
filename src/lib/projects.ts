@@ -79,12 +79,48 @@ export type DatasetSpecs = {
   sizeCategory?: string
 }
 
-export type ProjectSpecs = { model?: ModelSpecs; dataset?: DatasetSpecs }
+/**
+ * What the source said about an imported item when it was read (round 12): its numbers at that moment, its
+ * dates, files, code languages, latest release, authors, and a few rows of a dataset. Shown on the page as
+ * "from the source"; the numbers are never mixed into Nexverse's own counts.
+ */
+export type ImportedFacts = {
+  /** When these were read. */
+  at: string
+  author?: string
+  createdAt?: string
+  updatedAt?: string
+  downloads?: number
+  likes?: number
+  stars?: number
+  forks?: number
+  openIssues?: number
+  gated?: boolean
+  fileCount?: number
+  totalBytes?: number
+  files?: { name: string; bytes?: number }[]
+  /** Code languages with their share of the code, in percent. */
+  languages?: { name: string; share: number }[]
+  topics?: string[]
+  release?: { tag: string; name?: string; date?: string; notes?: string }
+  /** Papers: the authors and arXiv categories. */
+  authors?: string[]
+  categories?: string[]
+  arxivId?: string
+  /** Models: the datasets they were trained on, as the card names them. */
+  datasets?: string[]
+  /** Datasets: a few rows, as text. */
+  sample?: { split?: string; columns: string[]; rows: string[][] }
+}
 
-/** The "imported from" credit, written once when an import creates the project. */
-export type ProjectSource = { site: "huggingface" | "openrouter"; ref: string; type: "model" | "dataset"; importedAt: string; revision?: string }
+export type ProjectSpecs = { model?: ModelSpecs; dataset?: DatasetSpecs; imported?: ImportedFacts }
 
-export const SOURCE_SITES = { huggingface: "Hugging Face", openrouter: "OpenRouter" } as const
+export type SourceSite = "huggingface" | "openrouter" | "github" | "arxiv"
+
+/** The "imported from" credit, written when an import creates the project (and refreshed by "Refresh details"). */
+export type ProjectSource = { site: SourceSite; ref: string; type: "model" | "dataset" | "repo" | "tool" | "paper"; importedAt: string; refreshedAt?: string; revision?: string; curated?: boolean }
+
+export const SOURCE_SITES: Record<SourceSite, string> = { huggingface: "Hugging Face", openrouter: "OpenRouter", github: "GitHub", arxiv: "arXiv" }
 
 export type Accent = "ion" | "gold" | "rose" | "mint" | "violet"
 export const ACCENTS: { id: Accent; label: string; hex: string }[] = [
@@ -346,7 +382,51 @@ export function cleanSpecs(v: unknown, type: ProjectType): ProjectSpecs {
       sizeCategory: str(d.sizeCategory, 30),
     })
   }
+  const imported = cleanImported(s.imported)
+  if (imported) out.imported = imported
   return out
+}
+
+const isoDate = (v: unknown) => (typeof v === "string" && Number.isFinite(Date.parse(v)) ? new Date(v).toISOString() : undefined)
+
+/** The imported facts with sane sizes (the specs column holds 32 KB at most). */
+export function cleanImported(v: unknown): ImportedFacts | undefined {
+  if (!v || typeof v !== "object") return undefined
+  const x = v as ImportedFacts
+  const at = isoDate(x.at)
+  if (!at) return undefined
+  const rel = x.release && typeof x.release === "object" && str(x.release.tag, 80) ? drop({ tag: str(x.release.tag, 80) ?? "", name: str(x.release.name, 120), date: isoDate(x.release.date), notes: str(x.release.notes, 1500) }) : undefined
+  const sample =
+    x.sample && Array.isArray(x.sample.columns) && Array.isArray(x.sample.rows)
+      ? {
+          split: str(x.sample.split, 40),
+          columns: x.sample.columns.slice(0, 8).map((c) => str(c, 60) ?? ""),
+          rows: x.sample.rows.slice(0, 5).map((r) => (Array.isArray(r) ? r.slice(0, 8).map((c) => (typeof c === "string" ? c.slice(0, 200) : "")) : [])),
+        }
+      : undefined
+  return drop({
+    at,
+    author: str(x.author, 80),
+    createdAt: isoDate(x.createdAt),
+    updatedAt: isoDate(x.updatedAt),
+    downloads: num(x.downloads),
+    likes: num(x.likes),
+    stars: num(x.stars),
+    forks: num(x.forks),
+    openIssues: num(x.openIssues),
+    gated: x.gated === true ? true : undefined,
+    fileCount: num(x.fileCount),
+    totalBytes: num(x.totalBytes),
+    files: Array.isArray(x.files) ? x.files.slice(0, 40).map((f) => drop({ name: str(f?.name, 160) ?? "", bytes: num(f?.bytes) })).filter((f) => f.name) : undefined,
+    languages: Array.isArray(x.languages) ? x.languages.slice(0, 8).map((l) => ({ name: str(l?.name, 40) ?? "", share: Math.round((num(l?.share, 100) ?? 0) * 10) / 10 })).filter((l) => l.name) : undefined,
+    topics: strs(x.topics, 20, 50),
+    release: rel,
+    authors: strs(x.authors, 40, 80),
+    categories: strs(x.categories, 12, 30),
+    arxivId: str(x.arxivId, 20),
+    datasets: strs(x.datasets, 12, 120),
+    sample: sample && sample.columns.length && sample.rows.length ? drop(sample) : undefined,
+  })
 }
 
 function cleanAppearance(v: unknown): Appearance {
@@ -361,7 +441,7 @@ function cleanAppearance(v: unknown): Appearance {
 
 const asSource = (v: unknown): ProjectSource | null => {
   const x = v as ProjectSource | null
-  return x && typeof x === "object" && (x.site === "huggingface" || x.site === "openrouter") && typeof x.ref === "string" ? x : null
+  return x && typeof x === "object" && typeof x.site === "string" && x.site in SOURCE_SITES && typeof x.ref === "string" ? x : null
 }
 
 function fail(error: { message: string; code?: string } | null): asserts error is null {

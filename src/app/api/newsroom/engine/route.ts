@@ -7,6 +7,7 @@ import { engineState } from "@/lib/newsroom/engine/state"
 import { DESK_ID, readEngineSettings, readMethods, readTimeline, type TimelineEntry } from "@/lib/newsroom/engine/types"
 import { fileTarget } from "@/lib/newsroom/engine/watch"
 import { insert, select, update, upsert } from "@/lib/newsroom/rest"
+import { clampHours, readFindings, scan, SCAN_KINDS, type ScanKind } from "@/lib/newsroom/scan"
 
 /*
  * Newsroom control (/admin/newsroom/control). Every call is the signed-in editor's own, so row level security
@@ -14,7 +15,10 @@ import { insert, select, update, upsert } from "@/lib/newsroom/rest"
  *
  *   state                       everything the page shows
  *   run                         start a research cycle now (the tick runs after the response)
- *   backfill {desks,days,perDesk}  the mass import: a wider window, a fixed number of stories per desk
+ *   scan {hours, kinds?}        ask every source what is new in the window, store and answer the findings
+ *   findings {hours}            the findings already stored for a window, best first
+ *   finding {id, op: research|dismiss}  write a story from one finding, or set it aside
+ *   backfill {desks,hours,perDesk}  the mass import: the scan over the window, then up to perDesk stories a desk
  *   job {id, op: retry|cancel}
  *   lead {id, op: research|reject|apply|dismiss, reason?}
  *   settings {settings}         frequency, limits, rules, models, scouts (news.publish)
@@ -42,6 +46,74 @@ async function handle(request: Request): Promise<Response> {
       case "state":
         return Response.json(await engineState(db), { headers: NO_STORE })
 
+      case "scan": {
+        if (limited(`scan:${editor.id}`, 12, 3_600_000)) throw new AuthError("That is many scans this hour. Wait a little.", 429)
+        const hours = clampHours(body.hours, 24)
+        const kinds = Array.isArray(body.kinds) ? body.kinds.filter((k): k is ScanKind => SCAN_KINDS.some((x) => x.id === k)) : undefined
+        const desks = await select<{ id: string }>(db, "news_desks", "enabled=is.true&select=id").catch(() => [])
+        const r = await scan({ db, hours, kinds, desks: desks.length ? new Set(desks.map((d) => d.id)) : undefined, deadline: Date.now() + 150_000 })
+        log.add({ agent: "human", action: "scan", outcome: `${r.stored} new`, reason: `Scan of the last ${hours} h: ${r.findings.length} findings, ${r.stored} not seen before. ${r.sources.map((x) => `${x.label}: ${x.ok ? x.count : "no answer"}`).join(", ")}.` })
+        await log.flush()
+        return Response.json({ hours: r.hours, since: r.since, ms: r.ms, stored: r.stored, sources: r.sources, notes: r.notes, findings: await readFindings(db, { hours, limit: 250 }) }, { headers: NO_STORE })
+      }
+
+      case "findings": {
+        const hours = clampHours(body.hours, 24)
+        return Response.json({ hours, findings: await readFindings(db, { hours, limit: 250 }) }, { headers: NO_STORE })
+      }
+
+      case "finding": {
+        const id = Number(body.id)
+        const op = str(body.op, 10)
+        if (!Number.isInteger(id)) throw new AuthError("Which finding?", 400)
+        const rows = await select<{ id: number; url: string; title: string; excerpt: string; publisher: string; published_at: string | null; desk: string | null; scout: string | null; metrics: Record<string, number | string> | null; story_id: string | null; via: string | null }>(db, "news_signals", `id=eq.${id}&select=id,url,title,excerpt,publisher,published_at,desk,scout,metrics,story_id,via`)
+        const f = rows[0]
+        if (!f) throw new AuthError("That finding is gone.", 404)
+        if (op === "dismiss") {
+          await update(db, "news_signals", `id=eq.${id}`, { used: true })
+          return Response.json({ ok: true }, { headers: NO_STORE })
+        }
+        if (op !== "research") throw new AuthError("Unknown finding action.", 400)
+        if (f.story_id) throw new AuthError("A story was already written from this finding.", 409)
+        if (limited(`finding:${editor.id}`, 30, 3_600_000)) throw new AuthError("That is many stories this hour. Wait a little.", 429)
+        const official = f.scout === "rss" || f.scout === "site" || f.scout === "federal" || f.scout === "github_releases"
+        const lead = await insert<{ id: number }>(db, "news_leads", {
+          desk: f.desk,
+          track: "news",
+          scout: (f.scout ?? "scan").slice(0, 40),
+          title: f.title.slice(0, 300),
+          url: f.url,
+          summary: f.excerpt.slice(0, 2000),
+          publisher: f.publisher.slice(0, 120),
+          published_at: f.published_at,
+          evidence_level: official ? "confirmed" : "observed",
+          score: Math.max(0, Math.min(100, Math.round(Number(f.metrics?.score) || 70))),
+          score_parts: {},
+          evidence: [{ url: f.url, kind: f.via ? "discovery" : (f.scout ?? "source"), note: `${f.publisher}: ${f.title.slice(0, 200)}${f.via ? ` (found through ${f.via}; not cited)` : ""}` }],
+          signal_ids: [f.id],
+          decision: "queued",
+          reason: "An editor picked this finding to be researched and written.",
+          decided_at: new Date().toISOString(),
+        })
+        const leadId = lead[0]?.id
+        if (!leadId) throw new AuthError("Could not queue the research.", 500)
+        await update(db, "news_signals", `id=eq.${id}`, { used: true }).catch(() => {})
+        await enqueue(db, { kind: "research", desk: f.desk, payload: { lead: leadId }, priority: 25, dedupe: `research:${leadId}` })
+        log.add({ agent: "human", action: "research finding", outcome: "queued", reason: f.title.slice(0, 200), leadId })
+        await log.flush()
+        // Work the queue now, so the story does not wait for the next scheduled tick.
+        const startedAt = Date.now()
+        after(async () => {
+          try {
+            const t = await tick({ db, trigger: "manual", canPublish: editor.canPublish, deadline: startedAt + 270_000 })
+            if (t.published > 0) revalidateTag("newsroom", "max")
+          } catch (err) {
+            console.error("[newsroom] finding tick:", err instanceof Error ? err.message : err)
+          }
+        })
+        return Response.json({ ok: true, lead: leadId }, { status: 202, headers: NO_STORE })
+      }
+
       case "run":
       case "backfill": {
         if (limited(`engine:${editor.id}`, 8, 3_600_000)) throw new AuthError("You started the engine many times this hour. Try again later.", 429)
@@ -50,7 +122,7 @@ async function handle(request: Request): Promise<Response> {
           action === "backfill"
             ? {
                 desks: Array.isArray(body.desks) ? body.desks.filter((d): d is string => typeof d === "string" && DESK_ID.test(d)).slice(0, 20) : undefined,
-                days: Math.min(30, Math.max(1, Number(body.days) || 7)),
+                hours: body.hours !== undefined ? clampHours(body.hours, 168) : Math.min(90, Math.max(1, Number(body.days) || 7)) * 24,
                 perDesk: Math.min(6, Math.max(1, Number(body.perDesk) || 2)),
               }
             : undefined

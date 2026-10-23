@@ -1,13 +1,16 @@
 import { sha256Hex } from "@/lib/code/hash"
 import { rest, supabase, type Member } from "@/lib/code/server"
 import { KINDS } from "@/lib/data"
-import { slugify } from "@/lib/projects"
+import { cleanSpecs, slugify, type SourceSite } from "@/lib/projects"
 import { legacyLicense } from "@/lib/publish/licenses"
 import { storageName } from "@/lib/publish/storage-name"
 import { ImportError } from "./fetch"
 import { creditCover, storeCover, type StoredCover } from "./images"
-import { readSource, type Draft } from "./sources"
-import type { ImportPreview, ImportRequest, ImportResult } from "./types"
+import { readSource, type Draft, type SourceType } from "./sources"
+import type { ImportPreview, ImportRequest, ImportResult, ImportType } from "./types"
+
+/** Any import: the members' form (Hugging Face, OpenRouter) or the admin mass import (also GitHub and arXiv). */
+export type AnyImport = { site: SourceSite; type: SourceType; id: string; publish?: boolean; copyFiles?: boolean; images?: boolean }
 
 /*
  * Creating the Nexverse project for an import, as the member: every write goes through Supabase with their own
@@ -34,7 +37,7 @@ export async function previewImport(req: ImportRequest): Promise<ImportPreview> 
   const d = await readSource(req.site, req.type, req.id)
   return {
     site: req.site,
-    type: d.type,
+    type: d.type as ImportType,
     ref: d.source.ref,
     name: d.name,
     summary: d.summary,
@@ -89,7 +92,7 @@ async function storeFile(m: Member, projectId: string, name: string, data: Uint8
  * Creates the project. `curated` is the admin mass import: it is logged in mass_imports by the caller instead of
  * the member's own import log (and its hourly limit), and the project is published straight away.
  */
-export async function runImport(m: Member, req: ImportRequest, { curated = false }: { curated?: boolean } = {}): Promise<ImportResult> {
+export async function runImport(m: Member, req: ImportRequest | AnyImport, { curated = false }: { curated?: boolean } = {}): Promise<ImportResult> {
   // The log row first: when the member is over the limit nothing is fetched at all.
   let logId: string | null = null
   if (!curated) {
@@ -101,7 +104,7 @@ export async function runImport(m: Member, req: ImportRequest, { curated = false
     }
   }
   const d: Draft = await readSource(req.site, req.type, req.id)
-  const kind = d.type
+  const kind = d.kind
   // The cover is copied into Nexverse storage before the project exists, so the project is born with it.
   const cover: StoredCover | null = req.images === false ? null : await d.covers().then((c) => storeCover(m, c)).catch(() => null)
   let id: string
@@ -113,7 +116,9 @@ export async function runImport(m: Member, req: ImportRequest, { curated = false
       body: {
         owner_id: m.id,
         kind,
-        project_type: kind,
+        project_type: d.projectType,
+        ...(d.repoUrl ? { repo_url: d.repoUrl } : {}),
+        ...(d.paperUrl ? { paper_url: d.paperUrl } : {}),
         name: d.name.trim().slice(0, 80),
         slug,
         summary: d.summary,
@@ -124,7 +129,7 @@ export async function runImport(m: Member, req: ImportRequest, { curated = false
         langs: d.langs,
         status: req.publish || curated ? "published" : "draft",
         visibility: "public",
-        specs: d.specs,
+        specs: cleanSpecs(d.specs, d.projectType),
         source: curated ? { ...d.source, curated: true } : d.source,
         ...(cover ? { cover_url: cover.url } : {}),
       },
@@ -174,12 +179,12 @@ export async function reimageProjects(m: Member, { ids, all = false, replace = f
     const site = r.source?.site
     const type = r.source?.type
     const ref = r.source?.ref
-    if ((site !== "huggingface" && site !== "openrouter") || (type !== "model" && type !== "dataset") || typeof ref !== "string") {
+    if (!site || !SITES.has(site) || !type || !TYPES.has(type) || typeof ref !== "string") {
       done.push({ id: r.id, ok: false, note: "Not an import Nexverse can read again." })
       continue
     }
     try {
-      const d = await readSource(site, type, ref)
+      const d = await readSource(site as SourceSite, type as SourceType, ref)
       const cover = await storeCover(m, await d.covers())
       if (!cover) {
         done.push({ id: r.id, ok: false, note: "The source has no picture Nexverse can use." })
@@ -193,5 +198,92 @@ export async function reimageProjects(m: Member, { ids, all = false, replace = f
     }
   }
   const left = await rest<{ id: string }[]>(m, `projects?source=not.is.null&cover_url=is.null&select=id&limit=200${all ? "" : `&owner_id=eq.${m.id}`}`).catch(() => [])
+  return { done, remaining: left.length }
+}
+
+// ─── Refresh details ────────────────────────────────────────────────────────────────────────────────────────
+
+type RefreshRow = { id: string; kind: string; project_type: string | null; readme: string; summary: string; tags: string[]; license: string; license_id: string | null; langs: string[]; cover_url: string | null; specs: Record<string, unknown> | null; source: { site?: string; type?: string; ref?: string; importedAt?: string; curated?: boolean } | null; created_at: string; updated_at: string }
+
+const SITES = new Set(["huggingface", "openrouter", "github", "arxiv"])
+const TYPES = new Set(["model", "dataset", "repo", "tool", "paper"])
+
+/**
+ * Reads imported projects from their source again and fills what is missing or out of date: the README or card
+ * when the page still has the imported one (or a thin one), the specs and the facts from the source (numbers,
+ * dates, files, release, a dataset preview), tags, licence and languages when empty, and the cover when there is
+ * none. Anything an owner wrote by hand stays. Up to `limit` projects a call, the least recently refreshed first.
+ */
+export async function refreshProjects(m: Member, { ids, all = false, limit = 4 }: { ids?: string[]; all?: boolean; limit?: number }) {
+  const n = Math.min(8, Math.max(1, limit))
+  let q = `projects?source=not.is.null&select=id,kind,project_type,readme,summary,tags,license,license_id,langs,cover_url,specs,source,created_at,updated_at&order=updated_at.asc&limit=${n}`
+  if (ids?.length) q += `&id=in.(${ids.filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 10).join(",")})`
+  else {
+    // Only what has not been refreshed in the last six hours, so repeated calls walk through the list.
+    q += `&or=${encodeURIComponent(`(specs->imported->>at.is.null,specs->imported->>at.lt.${new Date(Date.now() - 6 * 36e5).toISOString()})`)}`
+    if (!all) q += `&owner_id=eq.${m.id}`
+  }
+  const rows = await rest<RefreshRow[]>(m, q).catch(friendly)
+  const done: { id: string; ok: boolean; filled: string[]; note?: string }[] = []
+  for (const r of rows) {
+    const site = r.source?.site
+    const type = r.source?.type ?? (r.kind === "dataset" ? "dataset" : r.kind === "model" ? "model" : undefined)
+    const ref = r.source?.ref
+    if (!site || !SITES.has(site) || !type || !TYPES.has(type) || typeof ref !== "string") {
+      done.push({ id: r.id, ok: false, filled: [], note: "Not an import Nexverse can read again." })
+      continue
+    }
+    try {
+      const d = await readSource(site as SourceSite, type as SourceType, ref)
+      const patch: Record<string, unknown> = {}
+      const filled: string[] = []
+      // The README: replaced when the page still holds a thin card, or one shorter than the source's.
+      const current = r.readme ?? ""
+      if (d.readme && (current.trim().length < 400 || (current.length < d.readme.length && current.length < 50_000 && d.readme.startsWith(current.slice(0, 200))))) {
+        if (d.readme !== current) {
+          patch.readme = d.readme
+          filled.push("readme")
+        }
+      }
+      const specs = cleanSpecs({ ...(r.specs ?? {}), ...d.specs }, d.projectType)
+      patch.specs = specs
+      filled.push("facts")
+      if (!r.tags?.length && d.tags.length) {
+        patch.tags = d.tags
+        filled.push("tags")
+      }
+      if ((r.license === "unspecified" || !r.license) && !r.license_id && d.license !== "unspecified") {
+        patch.license = legacyLicense(d.license)
+        patch.license_id = d.license
+        filled.push("licence")
+      }
+      if (!r.langs?.length && d.langs.length) {
+        patch.langs = d.langs
+        filled.push("languages")
+      }
+      if (/imported from|on Nexverse$/i.test(r.summary) && d.summary && !/imported from/i.test(d.summary)) {
+        patch.summary = d.summary
+        filled.push("summary")
+      }
+      if (d.repoUrl) patch.repo_url = d.repoUrl
+      if (d.paperUrl) patch.paper_url = d.paperUrl
+      patch.source = { ...(r.source ?? {}), ...d.source, importedAt: r.source?.importedAt ?? d.source.importedAt, refreshedAt: new Date().toISOString(), ...(r.source?.curated ? { curated: true } : {}) }
+      await rest(m, `projects?id=eq.${r.id}`, { method: "PATCH", body: patch, prefer: "return=minimal" })
+      if (!r.cover_url) {
+        const cover = await d.covers().then((c) => storeCover(m, c)).catch(() => null)
+        if (cover) {
+          await rest(m, `projects?id=eq.${r.id}`, { method: "PATCH", body: { cover_url: cover.url }, prefer: "return=minimal" })
+          await creditCover(m, r.id, site, cover)
+          filled.push("cover")
+        }
+      }
+      done.push({ id: r.id, ok: true, filled })
+    } catch (e) {
+      done.push({ id: r.id, ok: false, filled: [], note: ((e as Error)?.message ?? "Failed.").slice(0, 160) })
+    }
+  }
+  const left = ids?.length
+    ? []
+    : await rest<{ id: string }[]>(m, `projects?source=not.is.null&select=id&limit=300&or=${encodeURIComponent(`(specs->imported->>at.is.null,specs->imported->>at.lt.${new Date(Date.now() - 6 * 36e5).toISOString()})`)}${all ? "" : `&owner_id=eq.${m.id}`}`).catch(() => [])
   return { done, remaining: left.length }
 }

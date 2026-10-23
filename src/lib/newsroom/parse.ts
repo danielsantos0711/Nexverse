@@ -87,6 +87,21 @@ export function parseFeed(xml: string, base: string, max = 30): RawItem[] {
   return out
 }
 
+/**
+ * The publication date an article page declares: its Open Graph or schema.org date, or the first <time datetime>.
+ * Null when it says none.
+ */
+export function pageDate(html: string): string | null {
+  const head = html.slice(0, 400_000)
+  const pick =
+    head.match(/<meta[^>]+(?:property|name|itemprop)=["'](?:article:published_time|og:article:published_time|datePublished|publish-date|pubdate|date)["'][^>]*content=["']([^"']{8,40})["']/i)?.[1] ??
+    head.match(/<meta[^>]+content=["']([^"']{8,40})["'][^>]*(?:property|name|itemprop)=["'](?:article:published_time|datePublished)["']/i)?.[1] ??
+    head.match(/"datePublished"\s*:\s*"([^"]{8,40})"/)?.[1] ??
+    head.match(/<time[^>]+datetime=["']([^"']{8,40})["']/i)?.[1] ??
+    null
+  return pick ? date(pick) : null
+}
+
 /** GitHub's releases feed: one item per release, the title made explicit ("ollama v0.12.3"). */
 export function parseReleases(xml: string, repo: string, max = 5): RawItem[] {
   const name = repo.split("/")[1] ?? repo
@@ -105,7 +120,11 @@ export function parseReleases(xml: string, repo: string, max = 5): RawItem[] {
 
 const MONTHS = "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|January|February|March|April|June|July|August|September|October|November|December"
 const LEADING_DATE = new RegExp(`^(?:(${MONTHS})\\.? (\\d{1,2}), (\\d{4}))\\s*`, "i")
+/** "Company · Oct 22, 2026 Title": a section word and a date in front of the headline. */
+const LABEL_DATE = new RegExp(`^([A-Z][\\w&' -]{1,30}?)\\s*[·|•–-]\\s*(${MONTHS})\\.? (\\d{1,2}), (\\d{4})\\s*`, "i")
 const SECTION_WORD = /^(Announcements|Policy|Product|Research|Societal Impacts|Interpretability|Alignment|Engineering|Company|News|Featured)\s+(?=[A-Z0-9])/
+/** Index pages that sit one level below a news path: /news/announcements is a section, not a story. */
+const SECTION_SLUG = /^(announcements?|product|products|research|policy|policies|company|engineering|events?|news|press|all|featured|customers?|customer-stories|case-studies|safety|science|blog|stories|updates|releases|page|tag|category|topics?)$/i
 
 /**
  * Article links from an official news page that has no feed: anchors whose path starts with `prefix` on the
@@ -145,21 +164,32 @@ export function parseSiteLinks(html: string, pageUrl: string, prefix: string, ma
     // Cards often hold the headline twice: alone, and with a date, a section word and the opening sentence.
     // Each text loses a leading date (kept as the publish date) and section word; the shortest real one wins.
     let publishedAt: string | null = null
+    const slugOf = new URL(url).pathname.replace(/\/+$/, "").split("/").pop() ?? ""
+    if (SECTION_SLUG.test(slugOf)) continue
     const cleaned = (texts.get(urlKey(url)) ?? []).map((raw) => {
       let t = raw
+      const l = t.match(LABEL_DATE)
+      if (l) {
+        publishedAt ??= date(`${l[2]} ${l[3]}, ${l[4]} 12:00 UTC`)
+        t = t.slice(l[0].length)
+      }
       const d = t.match(LEADING_DATE)
       if (d) {
         publishedAt ??= date(`${d[1]} ${d[2]}, ${d[3]} 12:00 UTC`)
         t = t.slice(d[0].length)
       }
-      return t.replace(SECTION_WORD, "").trim()
+      return t.replace(SECTION_WORD, "").replace(/\s*(Read more|Learn more)\s*$/i, "").trim()
     })
-    let best = cleaned.filter((t) => t.length >= 12 && !/^(read more|learn more|featured|new)$/i.test(t)).sort((a, b) => a.length - b.length)[0] ?? ""
+    const usable = cleaned.filter((t) => t.length >= 12 && !/^(read more|learn more|featured|new)$/i.test(t)).sort((a, b) => a.length - b.length)
+    let best = usable[0] ?? ""
     if (!best) {
       const slug = new URL(url).pathname.replace(/\/+$/, "").split("/").pop() ?? ""
       best = slug.replace(/[-_]+/g, " ").replace(/^\w/, (c) => c.toUpperCase())
     }
-    const item = { url, title: best.slice(0, 300), excerpt: "", publishedAt }
+    // The card's longer text, when it holds more than the headline, is the excerpt.
+    const longest = usable[usable.length - 1] ?? ""
+    const excerpt = longest.length > best.length + 20 ? longest.replace(best, "").trim().slice(0, 600) : ""
+    const item = { url, title: best.slice(0, 300), excerpt, publishedAt }
     if (keep(item)) out.push(item)
     if (out.length >= max) break
   }

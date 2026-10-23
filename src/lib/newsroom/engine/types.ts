@@ -394,7 +394,7 @@ export function readEngineSettings(v: unknown): EngineSettings {
     stages,
     premium: { dailyUsd: clamp(pr.dailyUsd, 0, 500, d.premium.dailyUsd), monthlyUsd: clamp(pr.monthlyUsd, 0, 5000, d.premium.monthlyUsd) },
     scouts,
-    backfill: { days: int(bf.days, 1, 30, d.backfill.days), perDesk: int(bf.perDesk, 1, 6, d.backfill.perDesk) },
+    backfill: { days: int(bf.days, 1, 90, d.backfill.days), perDesk: int(bf.perDesk, 1, 6, d.backfill.perDesk) },
     illustrations: r.illustrations === true,
   }
 }
