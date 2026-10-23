@@ -9,7 +9,7 @@ import { TimeAgo } from "@/components/live/time"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCaps } from "@/lib/caps"
-import { createPull, encPath, getCommit, getRepoById, history, listForks, listRefs, repoPath, ownerKey, type CommitMeta, type Repo } from "@/lib/code/api"
+import { createPull, encPath, getCommit, getRepoById, history, listForks, listRefs, repoPath, ownerLabel, type CommitMeta, type Repo } from "@/lib/code/api"
 import { compare } from "@/lib/code/compare"
 import { shortSha } from "@/lib/code/hash"
 import { compareTrees } from "@/lib/code/tree"
@@ -245,15 +245,15 @@ export function ComparePage() {
         <label className="flex items-center gap-1.5">
           <span className="text-muted-foreground"><Copy k="code-repo.history.from">from</Copy></span>
           <select value={headRepo.id} onChange={(e) => set({ fork: e.target.value === repo.id ? null : e.target.value, head: null })} className={cn(inputCls, "h-8 w-auto")} aria-label="Repository with the changes">
-            <option value={repo.id}>{ownerKey(repo.owner)}/{repo.slug}</option>
+            <option value={repo.id}>{ownerLabel(repo.owner)}/{repo.slug}</option>
             {(repos.data?.forks ?? []).map((f) => (
               <option key={f.id} value={f.id}>
-                {ownerKey(f.owner)}/{f.slug}
+                {ownerLabel(f.owner)}/{f.slug}
               </option>
             ))}
             {repos.data?.head && !repos.data.forks.some((f) => f.id === repos.data!.head!.id) && (
               <option value={repos.data.head.id}>
-                {ownerKey(repos.data.head.owner)}/{repos.data.head.slug}
+                {ownerLabel(repos.data.head.owner)}/{repos.data.head.slug}
               </option>
             )}
           </select>

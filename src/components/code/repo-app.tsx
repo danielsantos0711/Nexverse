@@ -23,7 +23,7 @@ import { ReportButton } from "@/components/moderation"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { canAdmin, canWrite, forkRepo, getMarks, getRepo, getRepoById, listRefs, myId, myRole, ownerKey, repoPath, setMark, type Ref, type Repo, type Role } from "@/lib/code/api"
+import { canAdmin, canWrite, forkRepo, getMarks, getRepo, getRepoById, listRefs, myId, myRole, ownerKey, ownerLabel, repoPath, setMark, type Ref, type Repo, type Role } from "@/lib/code/api"
 import { useCaps } from "@/lib/caps"
 import { projectForRepo, projectHref } from "@/lib/projects"
 import { parseView, type RepoView } from "@/lib/code/route"
@@ -224,12 +224,12 @@ function EmbedBar({ parent, view }: { parent: Repo | null; view: RepoView }) {
       <div className="flex min-w-0 items-center gap-2 text-sm">
         <FolderGit2Icon aria-hidden className="size-4 shrink-0 text-repo" />
         <span className="truncate font-mono text-muted-foreground">
-          {ownerKey(repo.owner)}/<span className="text-foreground">{repo.slug}</span>
+          {ownerLabel(repo.owner)}/<span className="text-foreground">{repo.slug}</span>
         </span>
         <VisibilityBadge visibility={repo.visibility} />
         {parent && (
           <span className="hidden text-xs text-muted-foreground sm:inline">
-            forked from {ownerKey(parent.owner)}/{parent.slug}
+            forked from {ownerLabel(parent.owner)}/{parent.slug}
           </span>
         )}
       </div>
@@ -352,7 +352,7 @@ function RepoHeader({ parent, view }: { parent: Repo | null; view: RepoView }) {
             <p className="text-xs text-muted-foreground">
               Forked from{" "}
               <Link href={href(repoPath(parent))} className="text-ion hover:underline">
-                {ownerKey(parent.owner)}/{parent.slug}
+                {ownerLabel(parent.owner)}/{parent.slug}
               </Link>
             </p>
           )}

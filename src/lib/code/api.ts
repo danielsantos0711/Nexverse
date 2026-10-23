@@ -239,6 +239,8 @@ const toRepo = (r: RepoRow): Repo => ({
 
 /** The owner segment of a repository URL: the member's handle, or their id when they have none. */
 export const ownerKey = (p: Pick<Person, "id" | "handle">) => p.handle ?? p.id
+/** What people read: the handle, else the display name (never the raw member id). */
+export const ownerLabel = (p: Pick<Person, "name" | "handle">) => p.handle ?? p.name
 export const repoPath = (r: Pick<Repo, "owner" | "slug">) => `/code/${ownerKey(r.owner)}/${r.slug}`
 export const fullName = (r: Pick<Repo, "owner" | "slug">) => `${ownerKey(r.owner)}/${r.slug}`
 

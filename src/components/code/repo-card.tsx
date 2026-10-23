@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { ArchiveIcon, CircleDotIcon, GitForkIcon, GitPullRequestIcon, StarIcon } from "lucide-react"
 import { TimeAgo } from "@/components/live/time"
-import { fullName, repoPath, type Repo } from "@/lib/code/api"
+import { ownerLabel, repoPath, type Repo } from "@/lib/code/api"
 import { cn } from "@/lib/utils"
 import { Avatar, href, VisibilityBadge } from "./ui"
 import { Copy } from "@/components/content/copy"
@@ -21,7 +21,7 @@ export function RepoCard({ repo, className, style }: { repo: Repo; className?: s
       <div className="flex min-w-0 items-center gap-2">
         <Avatar person={repo.owner} size={20} />
         <Link href={href(repoPath(repo))} className="min-w-0 truncate font-medium text-foreground after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none group-focus-within:underline">
-          <span className="text-muted-foreground">{fullName(repo).split("/")[0]}/</span>
+          <span className="text-muted-foreground">{ownerLabel(repo.owner)}/</span>
           {repo.slug}
         </Link>
         <VisibilityBadge visibility={repo.visibility} className="ml-auto shrink-0" />
