@@ -24,7 +24,7 @@ export type ImportPreview = {
   files: { name: string; bytes: number | null }[]
 }
 
-export type ImportResult = { id: string; kind: "model" | "dataset"; href: string; files: number; skipped: string[]; cover?: string | null }
+export type ImportResult = { id: string; kind: "model" | "dataset" | "tool" | "repo"; href: string; files: number; skipped: string[]; cover?: string | null }
 
 export const SITE_NAMES: Record<ImportSite, string> = { huggingface: "Hugging Face", openrouter: "OpenRouter" }
 

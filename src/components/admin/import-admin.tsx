@@ -3,14 +3,15 @@
 import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useRef, useState } from "react"
-import { BoxIcon, CheckIcon, CircleAlertIcon, DatabaseIcon, FileTextIcon, FolderGit2Icon, ImageIcon, Loader2Icon, NewspaperIcon, PlayIcon, ScanSearchIcon, SquareIcon, WrenchIcon, XIcon } from "lucide-react"
+import { BoxIcon, CheckIcon, ChevronDownIcon, CircleAlertIcon, DatabaseIcon, FileTextIcon, FolderGit2Icon, ImageIcon, Link2Icon, Loader2Icon, NewspaperIcon, PlayIcon, RefreshCwIcon, ScanSearchIcon, SquareIcon, WrenchIcon, XIcon } from "lucide-react"
 import { AdminHeading, Notice, StatusLine } from "@/components/admin/controls"
 import { Segmented } from "@/components/trending/segmented"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { accessToken } from "@/lib/code/api"
 import { compact } from "@/lib/data"
-import type { MassCandidate, MassSource } from "@/lib/import/mass"
+import { formatBytes } from "@/lib/editor/media"
+import type { Inspection, MassCandidate, MassSource } from "@/lib/import/mass"
 import { useRole } from "@/lib/roles"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -18,12 +19,12 @@ import { cn } from "@/lib/utils"
 type Icon = React.ComponentType<{ className?: string }>
 
 const SOURCES: { id: MassSource; title: string; lead: string; from: string; icon: Icon; tone: string }[] = [
-  { id: "hf-models", title: "Models", lead: "This week’s trending and most liked open models, with their cards, specs, config files and cover picture.", from: "Hugging Face", icon: BoxIcon, tone: "text-model" },
+  { id: "hf-models", title: "Models", lead: "This week’s trending and most liked open models, with their cards, parameters, files and sizes, numbers and cover picture.", from: "Hugging Face", icon: BoxIcon, tone: "text-model" },
   { id: "or-models", title: "API models", lead: "The newest models served through API providers, with context length, pricing and endpoints.", from: "OpenRouter", icon: BoxIcon, tone: "text-model" },
-  { id: "hf-datasets", title: "Datasets", lead: "Trending datasets with their cards, splits, columns, a sample file and a picture from the data.", from: "Hugging Face", icon: DatabaseIcon, tone: "text-dataset" },
-  { id: "gh-repos", title: "Repos", lead: "Notable open-source AI repositories (3,000+ stars, pushed to this week), shared as links that open on Nexverse.", from: "GitHub", icon: FolderGit2Icon, tone: "text-repo" },
-  { id: "gh-tools", title: "Tools", lead: "AI tools rising in the last 90 days: MCP servers, coding assistants, inference tools.", from: "GitHub", icon: WrenchIcon, tone: "text-tool" },
-  { id: "papers", title: "Papers", lead: "The research papers the community upvoted most in recent days, with abstract and authors, linked to arXiv.", from: "arXiv", icon: FileTextIcon, tone: "text-gold" },
+  { id: "hf-datasets", title: "Datasets", lead: "Trending datasets with their cards, splits, rows, columns, a preview of the first rows, files and a picture from the data.", from: "Hugging Face", icon: DatabaseIcon, tone: "text-dataset" },
+  { id: "gh-repos", title: "Repos", lead: "Notable open-source AI repositories (3,000+ stars, pushed to this week) as full pages: README, languages, topics, latest release and files.", from: "GitHub", icon: FolderGit2Icon, tone: "text-repo" },
+  { id: "gh-tools", title: "Tools", lead: "AI tools rising in the last 90 days (MCP servers, coding assistants, inference tools) as full pages with README and latest release.", from: "GitHub", icon: WrenchIcon, tone: "text-tool" },
+  { id: "papers", title: "Papers", lead: "The research papers upvoted most in recent days, read from arXiv: abstract, every author, categories, dates and a figure.", from: "arXiv", icon: FileTextIcon, tone: "text-gold" },
 ]
 
 const CAPS = [
@@ -60,6 +61,10 @@ export function ImportAdmin() {
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
   const stop = useRef(false)
   const [images, setImages] = useState<{ busy: boolean; text: string } | null>(null)
+  const [refresh, setRefresh] = useState<{ busy: boolean; text: string } | null>(null)
+  const [shares, setShares] = useState<{ busy: boolean; text: string } | null>(null)
+  const [open, setOpen] = useState<string | null>(null)
+  const [details, setDetails] = useState<Record<string, Inspection | { error: string } | "loading">>({})
 
   if (!live) return <Notice tone="warn" title="Imports need the database">This copy of the site has no database connected.</Notice>
   if (role.ready && !role.isAdmin) return <Notice tone="warn" title="Admins only">Mass imports write many items at once, so only admins can run them.</Notice>
@@ -133,6 +138,62 @@ export function ImportAdmin() {
       setImages({ busy: false, text: `${fixed} covers added. Run again for the rest.` })
     } catch (e) {
       setImages({ busy: false, text: (e as Error).message })
+    }
+  }
+
+  async function inspect(c: MassCandidate) {
+    if (open === c.ref) return setOpen(null)
+    setOpen(c.ref)
+    if (!run || details[c.ref]) return
+    setDetails((d) => ({ ...d, [c.ref]: "loading" }))
+    try {
+      const data = await call<Inspection>("/api/import/mass", { action: "inspect", source: run.source, ref: c.ref })
+      setDetails((d) => ({ ...d, [c.ref]: data }))
+    } catch (e) {
+      setDetails((d) => ({ ...d, [c.ref]: { error: (e as Error).message } }))
+    }
+  }
+
+  async function refreshAll() {
+    setRefresh({ busy: true, text: "Reading imported projects from their source again…" })
+    let ok = 0
+    let failed = 0
+    let last = ""
+    try {
+      for (let round = 0; round < 40; round++) {
+        const r = await call<{ done: { ok: boolean; note?: string }[]; remaining: number }>("/api/import/refresh", { all: true })
+        ok += r.done.filter((d) => d.ok).length
+        failed += r.done.filter((d) => !d.ok).length
+        last = r.done.find((d) => !d.ok)?.note ?? last
+        setRefresh({ busy: true, text: `${ok} refreshed${failed ? `, ${failed} failed` : ""}, ${r.remaining} still to read…` })
+        if (!r.remaining || !r.done.some((d) => d.ok)) {
+          setRefresh({ busy: false, text: `${ok} refreshed${failed ? `, ${failed} failed (${last})` : ""}. ${r.remaining ? `${r.remaining} left: run again later.` : "Every imported project is up to date."}` })
+          return
+        }
+      }
+      setRefresh({ busy: false, text: `${ok} refreshed. Run again for the rest.` })
+    } catch (e) {
+      setRefresh({ busy: false, text: (e as Error).message })
+    }
+  }
+
+  async function convert() {
+    setShares({ busy: true, text: "Turning shared links into pages…" })
+    let ok = 0
+    try {
+      for (let round = 0; round < 20; round++) {
+        const r = await call<{ done: { ok: boolean; note?: string }[]; remaining: number }>("/api/import/refresh", { shares: true })
+        ok += r.done.filter((d) => d.ok).length
+        if (!r.remaining || !r.done.some((d) => d.ok)) {
+          const note = r.done.find((d) => !d.ok)?.note
+          setShares({ busy: false, text: `${ok} links turned into pages.${r.remaining ? ` ${r.remaining} left${note ? ` (${note})` : ""}.` : " None left."}` })
+          return
+        }
+        setShares({ busy: true, text: `${ok} turned into pages, ${r.remaining} left…` })
+      }
+      setShares({ busy: false, text: `${ok} turned into pages. Run again for the rest.` })
+    } catch (e) {
+      setShares({ busy: false, text: (e as Error).message })
     }
   }
 
@@ -240,8 +301,9 @@ export function ImportAdmin() {
                     initial={reduce ? false : { opacity: 0, x: -10 }}
                     animate={{ opacity: c.exists ? 0.55 : 1, x: 0 }}
                     transition={{ duration: 0.25, delay: reduce ? 0 : Math.min(n, 12) * 0.02 }}
-                    className="flex items-center gap-3 px-3 py-2.5"
+                    className="flex flex-col"
                   >
+                    <div className="flex items-center gap-3 px-3 py-2.5">
                     <input
                       type="checkbox"
                       aria-label={`Import ${c.name}`}
@@ -304,6 +366,11 @@ export function ImportAdmin() {
                         </span>
                       )}
                     </span>
+                    <button type="button" aria-expanded={open === c.ref} aria-label={`Details of ${c.name}`} onClick={() => void inspect(c)} className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-white/[0.05] hover:text-foreground">
+                      <ChevronDownIcon aria-hidden className={cn("size-4 transition-transform", open === c.ref && "rotate-180")} />
+                    </button>
+                    </div>
+                    {open === c.ref && <InspectPanel value={details[c.ref]} />}
                   </motion.li>
                 )
               })}
@@ -325,6 +392,32 @@ export function ImportAdmin() {
       )}
 
       <section className="flex flex-col gap-3 border-t border-border pt-6">
+        <AdminHeading title="Refresh details" lead="Reads every imported project from its source again and fills what is thin: the full README, numbers, dates, files and sizes, latest release, languages, dataset preview, tags and licence. Text you edited by hand is kept.">
+          <Button size="sm" variant="secondary" disabled={refresh?.busy} onClick={() => void refreshAll()}>
+            {refresh?.busy ? <Loader2Icon aria-hidden className="animate-spin" /> : <RefreshCwIcon aria-hidden />} Refresh details
+          </Button>
+        </AdminHeading>
+        {refresh && (
+          <p role="status" className="text-sm text-muted-foreground">
+            {refresh.text}
+          </p>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3 border-t border-border pt-6">
+        <AdminHeading title="Shared links into pages" lead="Earlier imports shared GitHub repositories and tools as bare links. This turns each one into a full project page and removes the old link.">
+          <Button size="sm" variant="secondary" disabled={shares?.busy} onClick={() => void convert()}>
+            {shares?.busy ? <Loader2Icon aria-hidden className="animate-spin" /> : <Link2Icon aria-hidden />} Turn links into pages
+          </Button>
+        </AdminHeading>
+        {shares && (
+          <p role="status" className="text-sm text-muted-foreground">
+            {shares.text}
+          </p>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3 border-t border-border pt-6">
         <AdminHeading title="Covers for earlier imports" lead="Projects imported before covers were copied, or whose picture failed, get one now: the card’s thumbnail, the first real picture in its README, a sample from the data or the organisation’s avatar, copied into Nexverse storage with a credit.">
           <Button size="sm" variant="secondary" disabled={images?.busy} onClick={() => void fetchImages()}>
             {images?.busy ? <Loader2Icon aria-hidden className="animate-spin" /> : <ImageIcon aria-hidden />} Fetch missing covers
@@ -336,6 +429,48 @@ export function ImportAdmin() {
           </p>
         )}
       </section>
+    </div>
+  )
+}
+
+/** What one candidate's page would hold, read from the source without writing anything. */
+function InspectPanel({ value }: { value: Inspection | { error: string } | "loading" | undefined }) {
+  if (!value || value === "loading")
+    return (
+      <p className="flex items-center gap-2 px-10 pb-3 text-xs text-muted-foreground">
+        <Loader2Icon aria-hidden className="size-3.5 animate-spin" /> Reading the source…
+      </p>
+    )
+  if ("error" in value) return <p className="px-10 pb-3 text-xs text-destructive">{value.error}</p>
+  const f = value.imported
+  const rows: [string, string][] = [
+    ["Licence", value.license],
+    ["Tags", value.tags.join(", ") || "none"],
+    ["README", value.readmeChars ? `${value.readmeChars.toLocaleString("en")} characters` : "none at the source"],
+    ["Cover pictures found", String(value.covers)],
+    ...value.facts.map((x): [string, string] => [x.label, x.value]),
+  ]
+  if (f) {
+    const nums = [f.stars !== undefined && `${compact(f.stars)} stars`, f.downloads !== undefined && `${compact(f.downloads)} downloads`, f.likes !== undefined && `${compact(f.likes)} likes`].filter(Boolean)
+    if (nums.length) rows.push(["Numbers at the source", nums.join(", ")])
+    if (f.fileCount) rows.push(["Files", `${f.fileCount.toLocaleString("en")}${f.totalBytes ? `, ${formatBytes(f.totalBytes)}` : ""}`])
+    if (f.languages?.length) rows.push(["Languages", f.languages.slice(0, 4).map((l) => `${l.name} ${l.share}%`).join(", ")])
+    if (f.release) rows.push(["Latest release", f.release.tag])
+    if (f.sample) rows.push(["Preview", `${f.sample.rows.length} rows of ${f.sample.columns.join(", ")}`])
+    if (f.createdAt) rows.push(["Created", f.createdAt.slice(0, 10)])
+    if (f.updatedAt) rows.push(["Updated", f.updatedAt.slice(0, 10)])
+  }
+  return (
+    <div className="flex flex-col gap-2 px-3 pb-3 sm:px-10">
+      <p className="text-xs text-muted-foreground">{value.summary}</p>
+      <dl className="grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
+        {rows.map(([k, v]) => (
+          <div key={k} className="flex min-w-0 gap-2">
+            <dt className="shrink-0 text-muted-foreground">{k}</dt>
+            <dd className="min-w-0 truncate">{v}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   )
 }

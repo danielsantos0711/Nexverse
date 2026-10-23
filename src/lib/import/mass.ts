@@ -1,13 +1,14 @@
 import { rest, rpc, type Member } from "@/lib/code/server"
-import { slugify } from "@/lib/projects"
 import { isSafe } from "@/lib/live/http"
+import type { ImportedFacts } from "@/lib/projects"
 import { runImport } from "./create"
 import { getJson, ImportError } from "./fetch"
+import { readSource, type SourceType } from "./sources"
 
 /*
  * The admin mass import: seeds Nexverse with real, current items from public APIs, each one a normal Nexverse
- * project (models, datasets, papers) or shared link (GitHub repositories and tools) owned by the admin who runs
- * it, with its "imported from" credit. Nothing is invented: names, cards, numbers and pictures come from the
+ * project (models, datasets, repositories, tools and papers, with their full README, facts and cover) owned by
+ * the admin who runs it, with its "imported from" credit. Nothing is invented: names, cards, numbers and pictures come from the
  * source, and the numbers shown in the preview are the source's own (they are never copied into Nexverse stats).
  *
  * The flow: `preview` lists candidates and marks the ones already on Nexverse (a dry run, nothing written);
@@ -176,9 +177,10 @@ async function markExisting(m: Member, source: MassSource, list: MassCandidate[]
   const quoted = (xs: string[]) => xs.map((x) => `"${x.replace(/"/g, "")}"`).join(",")
   const have = new Set<string>()
   if (source === "gh-repos" || source === "gh-tools") {
+    // A full page for the repository (round 12) is what counts; an older shared link is turned into one by "Refresh".
     const urls = list.map((c) => `https://github.com/${c.ref}`)
-    const rows = await rest<{ url: string }[]>(m, `submissions?url=in.(${encodeURIComponent(quoted(urls))})&select=url`).catch(() => [])
-    for (const r of rows) have.add(r.url.replace("https://github.com/", "").toLowerCase())
+    const rows = await rest<{ repo_url: string }[]>(m, `projects?repo_url=in.(${encodeURIComponent(quoted(urls))})&select=repo_url`).catch(() => [])
+    for (const r of rows) have.add(r.repo_url.replace("https://github.com/", "").replace(/\/$/, "").toLowerCase())
   } else if (source === "papers") {
     const urls = list.map((c) => `https://arxiv.org/abs/${c.ref}`)
     const rows = await rest<{ paper_url: string }[]>(m, `projects?paper_url=in.(${encodeURIComponent(quoted(urls))})&select=paper_url`).catch(() => [])
@@ -188,8 +190,8 @@ async function markExisting(m: Member, source: MassSource, list: MassCandidate[]
     const rows = await rest<{ source: { ref?: string } | null }[]>(m, `projects?source->>site=eq.${site}&source->>ref=in.(${encodeURIComponent(quoted(list.map((c) => c.ref)))})&select=source`).catch(() => [])
     for (const r of rows) if (r.source?.ref) have.add(r.source.ref.toLowerCase())
   }
-  // Anything a mass import already handled (including ones that failed for good reasons) is skipped too.
-  const logged = await rest<{ ref: string }[]>(m, `mass_imports?status=eq.created&ref=in.(${encodeURIComponent(quoted(list.map((c) => c.ref)))})&select=ref`).catch(() => [])
+  // Anything a mass import already made a page for is skipped too.
+  const logged = await rest<{ ref: string }[]>(m, `mass_imports?status=eq.created&project_id=not.is.null&ref=in.(${encodeURIComponent(quoted(list.map((c) => c.ref)))})&select=ref`).catch(() => [])
   for (const r of logged) have.add(r.ref.toLowerCase())
   return list.map((c) => ({ ...c, exists: have.has(c.ref.toLowerCase()) }))
 }
@@ -219,67 +221,6 @@ async function log(m: Member, runId: string, source: MassSource, ref: string, ou
   })
 }
 
-async function githubShare(m: Member, source: "gh-repos" | "gh-tools", ref: string): Promise<{ id: string; href: string }> {
-  const r = await getJson<GhListed & { topics?: string[] }>(`${GH}/repos/${ref.split("/").map(encodeURIComponent).join("/")}`)
-  if (!r?.full_name || r.private || r.archived) throw new ImportError(404, "GitHub has no public repository with that name.")
-  const tags = (r.topics ?? []).filter((t) => /^[a-z0-9][a-z0-9-]{0,29}$/.test(t) && !/hugging/.test(t)).slice(0, 8)
-  const kind = source === "gh-tools" ? "tool" : "repo"
-  const rows = await rest<{ id: string }[]>(m, "submissions", {
-    method: "POST",
-    prefer: "return=representation",
-    body: {
-      author_id: m.id,
-      kind,
-      title: r.full_name.slice(0, 120),
-      url: `https://github.com/${r.full_name}`,
-      summary: clip(r.description, 480) || `Open-source ${kind === "tool" ? "tool" : "repository"} on GitHub.`,
-      tags,
-    },
-  })
-  return { id: rows[0].id, href: `/${kind === "tool" ? "tools" : "repos"}/${rows[0].id}` }
-}
-
-async function paperProject(m: Member, id: string): Promise<{ id: string; href: string }> {
-  const list = await getJson<DailyPaper[]>(`${HF}/api/daily_papers?limit=100`, { maxBytes: 8 * 1024 * 1024 })
-  const p = (list ?? []).map((x) => x.paper).find((x) => x?.id === id)
-  if (!p?.title) throw new ImportError(404, "That paper is no longer in the recent list.")
-  const abstract = clip(p.summary, 6000)
-  const authors = (p.authors ?? []).map((a) => clip(a.name, 80)).filter(Boolean)
-  const first = abstract.match(/^(.{20,157}?[.!?])(\s|$)/)?.[1] ?? `${abstract.slice(0, 150).replace(/\s\S*$/, "")}…`
-  const tags = [...new Set((p.ai_keywords ?? []).map((k) => slugify(k).slice(0, 30).replace(/-+$/, "")).filter((t) => /^[a-z0-9][a-z0-9-]{0,29}$/.test(t)))].slice(0, 8)
-  const url = `https://arxiv.org/abs/${id}`
-  const readme = [
-    `# ${clip(p.title, 200)}`,
-    authors.length ? `**Authors:** ${authors.slice(0, 30).join(", ")}${authors.length > 30 ? ", et al." : ""}` : "",
-    "## Abstract",
-    abstract,
-    `*Paper on arXiv: [arXiv:${id}](${url}). Added to Nexverse by the curators so it can be discussed here.*`,
-  ]
-    .filter(Boolean)
-    .join("\n\n")
-  const base = (slugify(p.title) || "paper").slice(0, 50).replace(/-+$/, "") || "paper"
-  const rows = await rest<{ id: string }[]>(m, "projects", {
-    method: "POST",
-    prefer: "return=representation",
-    body: {
-      owner_id: m.id,
-      kind: "repo",
-      project_type: "paper",
-      name: clip(p.title, 80).padEnd(2, "-"),
-      slug: `${base}-${id.replace(".", "-")}`.slice(0, 60).replace(/-+$/, ""),
-      summary: first.length >= 10 ? first.slice(0, 160) : `Research paper arXiv:${id}`,
-      readme,
-      tags,
-      license: "unspecified",
-      langs: ["en"],
-      paper_url: url,
-      status: "published",
-      visibility: "public",
-    },
-  })
-  return { id: rows[0].id, href: `/repos/${rows[0].id}` }
-}
-
 /** Imports one candidate as the admin and logs it. Never throws for a problem with the item itself. */
 export async function importCandidate(m: Member, runId: string, source: MassSource, ref: string): Promise<Logged> {
   const [existing] = await markExisting(m, source, [{ source, ref, name: ref, summary: "", metrics: [], date: null, exists: false }])
@@ -289,21 +230,7 @@ export async function importCandidate(m: Member, runId: string, source: MassSour
     return out
   }
   try {
-    if (source === "gh-repos" || source === "gh-tools") {
-      const s = await githubShare(m, source, ref)
-      const out: Logged = { status: "created", href: s.href }
-      await log(m, runId, source, ref, out, { share: s.id })
-      return out
-    }
-    if (source === "papers") {
-      const p = await paperProject(m, ref)
-      const out: Logged = { status: "created", href: p.href }
-      await log(m, runId, source, ref, out, { project: p.id })
-      return out
-    }
-    const site = source === "or-models" ? "openrouter" : "huggingface"
-    const type = source === "hf-datasets" ? "dataset" : "model"
-    const r = await runImport(m, { site, type, id: ref, publish: true, copyFiles: true }, { curated: true })
+    const r = await runImport(m, { site: siteOf(source), type: typeOf(source), id: ref, publish: true, copyFiles: true }, { curated: true })
     const out: Logged = { status: "created", href: r.href, cover: r.cover ?? null, note: r.cover ? `Cover from the ${r.cover}` : "No usable picture at the source" }
     await log(m, runId, source, ref, out, { project: r.id })
     return out
@@ -320,4 +247,71 @@ export async function importCandidate(m: Member, runId: string, source: MassSour
 /** One moderation log line per run, when it starts and when it ends. */
 export async function logRun(m: Member, runId: string, source: MassSource, note: string) {
   await rpc(m, "log_moderation", { action: "mass_import", target_kind: "import", target_id: runId, note: `${source}: ${note}`.slice(0, 500) }).catch(() => null)
+}
+
+// ─── Older shared links ─────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Earlier mass imports shared GitHub repositories and tools as bare links. Each becomes a full page now (README,
+ * languages, release, files, cover), and the old link is removed so the item is not listed twice. Up to `limit`
+ * a call; answers how many are left.
+ */
+export async function convertShares(m: Member, limit = 3): Promise<{ done: { ref: string; ok: boolean; href?: string; note?: string }[]; remaining: number }> {
+  const rows = await rest<{ ref: string; item_type: string; share_id: string }[]>(m, `mass_imports?share_id=not.is.null&status=eq.created&item_type=in.(repo,tool)&select=ref,item_type,share_id&order=created_at.asc&limit=200`).catch(() => [])
+  // Still listed as a link (not removed yet), and no page for it yet.
+  const shares = rows.length ? await rest<{ id: string }[]>(m, `submissions?id=in.(${rows.map((r) => r.share_id).join(",")})&select=id`).catch(() => []) : []
+  const live = new Set(shares.map((x) => x.id))
+  const todo = rows.filter((r) => live.has(r.share_id))
+  const done: { ref: string; ok: boolean; href?: string; note?: string }[] = []
+  for (const r of todo.slice(0, Math.min(5, Math.max(1, limit)))) {
+    const source: MassSource = r.item_type === "tool" ? "gh-tools" : "gh-repos"
+    const runId = crypto.randomUUID()
+    const out = await importCandidate(m, runId, source, r.ref).catch((e: unknown) => ({ status: "failed" as const, note: (e as Error)?.message ?? "Failed." }))
+    if (out.status === "created" || out.status === "skipped") {
+      await rest(m, `submissions?id=eq.${r.share_id}`, { method: "DELETE", prefer: "return=minimal" }).catch(() => null)
+      done.push({ ref: r.ref, ok: true, href: out.href })
+    } else done.push({ ref: r.ref, ok: false, note: out.note })
+  }
+  return { done, remaining: Math.max(0, todo.length - done.filter((d) => d.ok).length) }
+}
+
+// ─── Dry run of one item ────────────────────────────────────────────────────────────────────────────────────
+
+export type Inspection = {
+  name: string
+  summary: string
+  kind: string
+  license: string
+  tags: string[]
+  langs: string[]
+  readmeChars: number
+  readmeStart: string
+  facts: { label: string; value: string }[]
+  imported: ImportedFacts | null
+  specKeys: string[]
+  covers: number
+}
+
+const siteOf = (source: MassSource) => (source === "or-models" ? "openrouter" : source === "gh-repos" || source === "gh-tools" ? "github" : source === "papers" ? "arxiv" : "huggingface")
+const typeOf = (source: MassSource): SourceType => (source === "hf-datasets" ? "dataset" : source === "gh-repos" ? "repo" : source === "gh-tools" ? "tool" : source === "papers" ? "paper" : "model")
+
+/** Reads one candidate from its source and answers what its page would hold. Writes nothing. */
+export async function inspectCandidate(source: MassSource, ref: string): Promise<Inspection> {
+  const d = await readSource(siteOf(source), typeOf(source), ref)
+  const covers = await d.covers().catch(() => [])
+  const specKeys = [...Object.keys(d.specs.model ?? {}), ...Object.keys(d.specs.dataset ?? {})]
+  return {
+    name: d.name,
+    summary: d.summary,
+    kind: d.projectType,
+    license: d.license,
+    tags: d.tags,
+    langs: d.langs,
+    readmeChars: d.readme.length,
+    readmeStart: d.readme.slice(0, 280),
+    facts: d.facts,
+    imported: d.specs.imported ?? null,
+    specKeys,
+    covers: covers.length,
+  }
 }

@@ -3,14 +3,15 @@ import { CodeError } from "@/lib/code/server"
 /*
  * The only way the import routes reach the internet. Requests go to a short list of hosts and nowhere else: the
  * public Hugging Face API and file host (models, datasets and the daily papers list), its dataset viewer API,
- * OpenRouter's public model list, GitHub's public API (mass import), and, for cover pictures only, the CDNs those
+ * OpenRouter's public model list, GitHub's public API, file host and releases feeds, arXiv's API and HTML papers
+ * (mass import), and, for cover pictures only, the CDNs those
  * sites serve images from.
  * Addresses are built here from checked ids or read from the source's own card, redirects are followed by hand
  * and only to listed hosts, and every body is read with a size cap. Only GitHub gets a token (GITHUB_TOKEN, a
  * server-only variable, when set): public items only.
  */
 
-export const ALLOWED_HOSTS = new Set(["huggingface.co", "datasets-server.huggingface.co", "openrouter.ai", "api.github.com"])
+export const ALLOWED_HOSTS = new Set(["huggingface.co", "datasets-server.huggingface.co", "openrouter.ai", "api.github.com", "github.com", "raw.githubusercontent.com", "export.arxiv.org", "arxiv.org"])
 
 /** Where cover pictures may come from: the sites above and the CDNs they hand pictures out from. */
 const IMAGE_HOSTS = new Set([
@@ -24,6 +25,7 @@ const IMAGE_HOSTS = new Set([
   "avatars.githubusercontent.com",
   "repository-images.githubusercontent.com",
   "opengraph.githubassets.com",
+  "arxiv.org",
 ])
 /** Hugging Face's file CDNs (us.aws.cdn.hf.co, cas-bridge.xethub.hf.co, cdn-lfs.hf.co, …). */
 const IMAGE_SUFFIXES = [".hf.co", ".huggingface.co"]
@@ -43,7 +45,7 @@ function checkUrl(raw: string, image = false): URL {
   }
   const ok = image ? isImageHost(u.hostname) : ALLOWED_HOSTS.has(u.hostname)
   if (u.protocol !== "https:" || u.username || u.password || u.port || !ok) {
-    throw new ImportError(400, "Imports only read from Hugging Face, OpenRouter and GitHub.")
+    throw new ImportError(400, "Imports only read from Hugging Face, OpenRouter, GitHub and arXiv.")
   }
   return u
 }

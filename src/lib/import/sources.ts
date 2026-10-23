@@ -1,19 +1,30 @@
 import { LICENSE_LIST } from "@/lib/publish/licenses"
-import type { DatasetSpecs, ModelSpecs, ProjectSource, ProjectSpecs } from "@/lib/projects"
+import type { DatasetSpecs, ImportedFacts, ModelSpecs, ProjectKind, ProjectSource, ProjectSpecs, ProjectType, SourceSite } from "@/lib/projects"
+import { arxivPaper } from "./arxiv"
 import { getBytes, getJson, getText, ImportError } from "./fetch"
+import { githubRepo } from "./github"
 import { cardImages, hfAvatar, hfSocial, type CoverCandidate } from "./images"
-import type { ImportSite, ImportType } from "./types"
+
+/** What a source item becomes: the four kinds of import plus repositories, tools and papers (admin imports). */
+export type SourceType = "model" | "dataset" | "repo" | "tool" | "paper"
 
 /*
- * Reading a public model or dataset from Hugging Face or OpenRouter and turning it into the fields of a Nexverse
- * project: name, one-line summary, README (the model or dataset card), tags, licence, languages and the specs
- * the model and dataset pages show. Nothing is invented: a field the source does not give stays empty.
+ * Reading a public model or dataset from Hugging Face or OpenRouter (and, in ./github.ts and ./arxiv.ts, a
+ * repository or a paper) and turning it into the fields of a Nexverse project: name, owner, one-line summary,
+ * the full README or card as Markdown, tags, licence, languages, the specs the model and dataset pages show, and
+ * what the source said at that moment (numbers, dates, files with sizes, a few dataset rows). Nothing is
+ * invented: a field the source does not give stays empty.
  */
 
 export type ImportFile = { name: string; bytes: number | null; get: () => Promise<Uint8Array | null> }
 
 export type Draft = {
-  type: ImportType
+  type: SourceType
+  /** The hub list and the finer type the project gets. */
+  kind: ProjectKind
+  projectType: ProjectType
+  repoUrl?: string
+  paperUrl?: string
   name: string
   summary: string
   readme: string
@@ -52,9 +63,9 @@ const enc = encodeURIComponent
 const hfPath = (id: string) => id.split("/").map(enc).join("/")
 
 /** The YAML block at the top of a card, which the page shows as specs instead. */
-const stripFrontMatter = (md: string) => md.replace(/^﻿?---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").trim()
+export const stripFrontMatter = (md: string) => md.replace(/^﻿?---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").trim()
 
-function tagOf(raw: string): string {
+export function tagOf(raw: string): string {
   return raw
     .toLowerCase()
     .replace(/^[a-z_]+:/, "")
@@ -66,7 +77,7 @@ function tagOf(raw: string): string {
 }
 
 /** Up to 8 tags in the form Nexverse accepts, skipping the source's internal ones. */
-function tagsFrom(list: (string | null | undefined)[]): string[] {
+export function tagsFrom(list: (string | null | undefined)[]): string[] {
   const skip = /^(region|deploy|endpoints|autotrain|doi|arxiv|license|base_model|dataset|library|format|size_categories|modality|language|task_ids|annotations_creators|language_creators|multilinguality|source_datasets)[:_]/i
   const out = new Set<string>()
   for (const raw of list) {
@@ -97,7 +108,7 @@ const LICENSE_ALIASES: Record<string, string> = {
 }
 
 /** A source's licence id → an SPDX id Nexverse knows, or "unspecified" (named in the README instead). */
-function licenseFrom(raw: unknown): string {
+export function licenseFrom(raw: unknown): string {
   const id = (Array.isArray(raw) ? raw[0] : raw) as unknown
   if (typeof id !== "string" || !id.trim()) return "unspecified"
   const k = id.trim().toLowerCase()
@@ -108,37 +119,42 @@ const langsFrom = (raw: unknown): string[] =>
   (Array.isArray(raw) ? raw : typeof raw === "string" ? [raw] : []).filter((l): l is string => typeof l === "string" && /^[a-z]{2}$/.test(l)).slice(0, 12)
 
 /** The first sentence-like line of a card, for the one-line summary (10–160 characters). */
-function summaryFrom(readme: string, fallback: string): string {
+export function summaryFrom(readme: string, fallback: string): string {
   const lines = readme
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter((l) => l && !/^(#|!\[|<|\||```|>|-{3,}|\*{3,}|\[!)/.test(l))
-  for (const l of lines) {
-    const plain = l.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[*_`]/g, "").replace(/\s+/g, " ").trim()
-    if (plain.length >= 20) return fit(plain)
+    .filter((l) => l && !/^(#|!\[|<|\||```|>|-{3,}|\*{3,}|\[!|[-*+]\s|\d+[.)]\s)/.test(l))
+  // A real sentence first (40+ characters with a space), then anything readable.
+  for (const min of [40, 20]) {
+    for (const l of lines) {
+      const plain = l.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/<[^>]+>/g, "").replace(/[*_`]/g, "").replace(/\s+/g, " ").trim()
+      if (plain.length >= min && plain.includes(" ")) return fit(plain)
+    }
   }
   return fit(fallback)
 }
 
-function fit(s: string): string {
+export function fit(s: string): string {
   const t = s.replace(/\s+/g, " ").trim()
   if (t.length <= 160) return t.length >= 10 ? t : `${t} on Nexverse`.slice(0, 160)
   const cut = t.slice(0, 157)
   return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 100))}…`
 }
 
-const nameFrom = (id: string) => (id.split("/").pop() ?? id).slice(0, 80).padEnd(2, "-")
+export const nameFrom = (id: string) => (id.split("/").pop() ?? id).slice(0, 80).padEnd(2, "-")
 
-const human = (n: number) => (n >= 1e9 ? `${+(n / 1e9).toFixed(1)}B` : n >= 1e6 ? `${+(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${+(n / 1e3).toFixed(1)}K` : String(n))
+export const human = (n: number) => (n >= 1e9 ? `${+(n / 1e9).toFixed(1)}B` : n >= 1e6 ? `${+(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${+(n / 1e3).toFixed(1)}K` : String(n))
 
 const README_MAX = 50_000
 
-function clipReadme(md: string): string {
+export function clipReadme(md: string): string {
   if (md.length <= README_MAX) return md
   return `${md.slice(0, README_MAX - 120).replace(/\n[^\n]*$/, "")}\n\n*The rest of this card was longer than Nexverse keeps in one README.*`
 }
 
 // ─── Hugging Face models ────────────────────────────────────────────────────────────────────────────────────
+
+type HfSibling = { rfilename: string; size?: number }
 
 type HfModel = {
   id: string
@@ -146,21 +162,43 @@ type HfModel = {
   sha?: string
   private?: boolean
   disabled?: boolean
+  gated?: unknown
+  downloads?: number
+  likes?: number
+  createdAt?: string
+  lastModified?: string
+  usedStorage?: number
   pipeline_tag?: string
   library_name?: string
   tags?: string[]
-  cardData?: { license?: unknown; language?: unknown; base_model?: unknown; tags?: unknown; thumbnail?: unknown }
+  cardData?: { license?: unknown; language?: unknown; base_model?: unknown; tags?: unknown; thumbnail?: unknown; datasets?: unknown }
   config?: { architectures?: string[]; model_type?: string }
   safetensors?: { total?: number; parameters?: Record<string, number> }
-  siblings?: { rfilename: string; size?: number }[]
+  siblings?: HfSibling[]
 }
+
+/** The files list a page shows: top-level files first, then folders, by name; hidden files left out. */
+function filesFrom(siblings: HfSibling[] | undefined): Pick<ImportedFacts, "files" | "fileCount" | "totalBytes"> {
+  const list = (siblings ?? []).filter((f) => f.rfilename && !f.rfilename.split("/").some((p) => p.startsWith(".")))
+  const total = list.reduce((n, f) => n + (typeof f.size === "number" ? f.size : 0), 0)
+  return {
+    fileCount: list.length,
+    totalBytes: total || undefined,
+    files: [...list]
+      .sort((a, b) => (a.rfilename.includes("/") === b.rfilename.includes("/") ? a.rfilename.localeCompare(b.rfilename, "en", { numeric: true }) : a.rfilename.includes("/") ? 1 : -1))
+      .slice(0, 30)
+      .map((f) => ({ name: f.rfilename, bytes: typeof f.size === "number" ? f.size : undefined })),
+  }
+}
+
+const strList = (v: unknown, n = 12) => (Array.isArray(v) ? v : typeof v === "string" ? [v] : []).filter((x): x is string => typeof x === "string").slice(0, n)
 
 /** Small text files worth copying next to a model: its configuration, so people can read it on Nexverse. */
 const MODEL_FILES = ["config.json", "generation_config.json", "tokenizer_config.json", "special_tokens_map.json", "LICENSE", "LICENSE.md", "USE_POLICY.md"]
 const SMALL = 2 * 1024 * 1024
 
 async function hfModel(id: string): Promise<Draft> {
-  const m = await getJson<HfModel>(`${HF}/api/models/${hfPath(id)}`, { maxBytes: 4 * 1024 * 1024 })
+  const m = await getJson<HfModel>(`${HF}/api/models/${hfPath(id)}?blobs=true`, { maxBytes: 6 * 1024 * 1024 })
   if (!m || m.private || m.disabled) throw new ImportError(404, "Hugging Face has no public model with that id.")
   const card = stripFrontMatter((await getText(`${HF}/${hfPath(m.id)}/raw/main/README.md`, { maxBytes: 600_000 }).catch(() => null)) ?? "")
   const thumbnail = m.cardData?.thumbnail
@@ -188,15 +226,29 @@ async function hfModel(id: string): Promise<Draft> {
     m.library_name && { label: "Library", value: m.library_name },
     { label: "Files on the source", value: String(siblings.size) },
   ].filter((x): x is { label: string; value: string } => Boolean(x))
+  const imported: ImportedFacts = {
+    at: new Date().toISOString(),
+    author: m.author ?? m.id.split("/")[0],
+    createdAt: m.createdAt,
+    updatedAt: m.lastModified,
+    downloads: m.downloads,
+    likes: m.likes,
+    gated: m.gated === true || m.gated === "auto" || m.gated === "manual" ? true : undefined,
+    datasets: strList(m.cardData?.datasets),
+    ...filesFrom(m.siblings),
+  }
+  if (m.usedStorage && !imported.totalBytes) imported.totalBytes = m.usedStorage
   return {
     type: "model",
+    kind: "model",
+    projectType: "model",
     name: nameFrom(m.id),
     summary: summaryFrom(card, `${m.pipeline_tag ? m.pipeline_tag.replace(/-/g, " ") : "Open"} model by ${m.author ?? m.id.split("/")[0]}, imported from Hugging Face.`),
     readme: clipReadme(card || `# ${nameFrom(m.id)}\n\nThis model has no card on Hugging Face yet.`),
     tags: tagsFrom([m.pipeline_tag, m.library_name, ...((Array.isArray(m.cardData?.tags) ? m.cardData.tags : []) as string[]), ...(m.tags ?? [])]),
     license: licenseFrom(m.cardData?.license ?? m.tags?.find((t) => t.startsWith("license:"))?.slice(8)),
     langs: langsFrom(m.cardData?.language),
-    specs: { model: specs },
+    specs: { model: specs, imported },
     source: { site: "huggingface", type: "model", ref: m.id, importedAt: new Date().toISOString(), revision: m.sha },
     files,
     facts,
@@ -212,6 +264,13 @@ type HfDataset = {
   sha?: string
   private?: boolean
   disabled?: boolean
+  gated?: unknown
+  downloads?: number
+  likes?: number
+  createdAt?: string
+  lastModified?: string
+  usedStorage?: number
+  siblings?: HfSibling[]
   tags?: string[]
   cardData?: { license?: unknown; language?: unknown; task_categories?: unknown; pretty_name?: unknown; size_categories?: unknown; thumbnail?: unknown }
 }
@@ -250,7 +309,7 @@ function sampleImages(rows: HfFirstRows | null): CoverCandidate[] {
 }
 
 async function hfDataset(id: string): Promise<Draft> {
-  const d = await getJson<HfDataset>(`${HF}/api/datasets/${hfPath(id)}`, { maxBytes: 4 * 1024 * 1024 })
+  const d = await getJson<HfDataset>(`${HF}/api/datasets/${hfPath(id)}?blobs=true`, { maxBytes: 8 * 1024 * 1024 })
   if (!d || d.private || d.disabled) throw new ImportError(404, "Hugging Face has no public dataset with that id.")
   const q = `dataset=${enc(d.id)}`
   const [card, size, splitList] = await Promise.all([
@@ -287,15 +346,34 @@ async function hfDataset(id: string): Promise<Draft> {
     features.length > 0 && { label: "Columns", value: features.map((f) => f.name).slice(0, 8).join(", ") },
     spec.tasks?.length && { label: "Tasks", value: spec.tasks.join(", ") },
   ].filter((x): x is { label: string; value: string } => Boolean(x))
+  // A few rows as text for the page's preview (media columns are left out: they are pictures and sounds).
+  const media = new Set((rows?.features ?? []).filter((f) => ["Image", "Audio", "Video"].includes(String(f.type?._type))).map((f) => f.name))
+  const columns = features.map((f) => f.name).filter((c) => !media.has(c)).slice(0, 8)
+  const cell = (v: unknown) => (v === null || v === undefined ? "" : typeof v === "string" ? v : JSON.stringify(v)).replace(/\s+/g, " ").slice(0, 200)
+  const sampleRows = (rows?.rows ?? []).slice(0, 5).map(({ row }) => columns.map((c) => cell(row[c])))
+  const imported: ImportedFacts = {
+    at: new Date().toISOString(),
+    author: d.author ?? d.id.split("/")[0],
+    createdAt: d.createdAt,
+    updatedAt: d.lastModified,
+    downloads: d.downloads,
+    likes: d.likes,
+    gated: d.gated === true || d.gated === "auto" || d.gated === "manual" ? true : undefined,
+    ...filesFrom(d.siblings),
+    sample: columns.length && sampleRows.length ? { split: first?.split, columns, rows: sampleRows } : undefined,
+  }
+  if (d.usedStorage && !imported.totalBytes) imported.totalBytes = d.usedStorage
   return {
     type: "dataset",
+    kind: "dataset",
+    projectType: "dataset",
     name,
     summary: summaryFrom(readme, `${spec.tasks?.[0] ? `${spec.tasks[0].replace(/-/g, " ")} dataset` : "Dataset"} by ${d.author ?? d.id.split("/")[0]}, imported from Hugging Face.`),
     readme: clipReadme(readme || `# ${name}\n\nThis dataset has no card on Hugging Face yet.`),
     tags: tagsFrom([...(spec.tasks ?? []), ...pick("task_ids:"), ...tags.filter((t) => !t.includes(":"))]),
     license: licenseFrom(d.cardData?.license ?? pick("license:")[0]),
     langs: langsFrom(d.cardData?.language ?? pick("language:")),
-    specs: { dataset: spec },
+    specs: { dataset: spec, imported },
     source: { site: "huggingface", type: "dataset", ref: d.id, importedAt: new Date().toISOString(), revision: d.sha },
     files,
     facts,
@@ -318,6 +396,7 @@ type OrModel = {
   top_provider?: { context_length?: number | null; max_completion_tokens?: number | null }
   supported_parameters?: string[]
   knowledge_cutoff?: string | null
+  created?: number
 }
 type OrEndpoints = {
   data?: { endpoints?: { name?: string; provider_name?: string; context_length?: number; max_completion_tokens?: number | null; pricing?: OrPricing; quantization?: string | null; status?: number | string }[] }
@@ -417,15 +496,18 @@ async function openRouterModel(id: string): Promise<Draft> {
     specs.inputModalities?.length && { label: "Input", value: specs.inputModalities.join(", ") },
     specs.endpoints?.length && { label: "Endpoints", value: String(specs.endpoints.length) },
   ].filter((x): x is { label: string; value: string } => Boolean(x))
+  const imported: ImportedFacts = { at: new Date().toISOString(), author: provider, createdAt: m.created ? new Date(m.created * 1000).toISOString() : undefined }
   return {
     type: "model",
+    kind: "model",
+    projectType: "model",
     name: name.length >= 2 ? name : slug,
     summary: summaryFrom(description, `${name} by ${provider}, available through API providers.`),
     readme,
     tags: tagsFrom([provider, ...(specs.inputModalities ?? []).map((x) => `${x}-input`), m.supported_parameters?.includes("tools") ? "tool-use" : null, specs.pricing?.free ? "free" : null]),
     license: "unspecified",
     langs: [],
-    specs: { model: specs },
+    specs: { model: specs, imported },
     source: { site: "openrouter", type: "model", ref: m.id, importedAt: new Date().toISOString() },
     files: [],
     facts,
@@ -434,10 +516,16 @@ async function openRouterModel(id: string): Promise<Draft> {
 }
 
 /** Reads one item from its source. Throws an ImportError a member can read when it cannot. */
-export async function readSource(site: ImportSite, type: ImportType, id: string): Promise<Draft> {
+export async function readSource(site: SourceSite, type: SourceType, id: string): Promise<Draft> {
   if (site === "openrouter") {
     if (type !== "model") throw new ImportError(400, "OpenRouter lists models only.")
     return openRouterModel(id)
   }
+  if (site === "github") {
+    if (type !== "repo" && type !== "tool") throw new ImportError(400, "GitHub imports are repositories or tools.")
+    return githubRepo(id, type)
+  }
+  if (site === "arxiv") return arxivPaper(id)
+  if (type !== "model" && type !== "dataset") throw new ImportError(400, "Hugging Face imports are models or datasets.")
   return type === "model" ? hfModel(id) : hfDataset(id)
 }

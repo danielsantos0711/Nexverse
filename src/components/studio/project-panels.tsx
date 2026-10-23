@@ -17,6 +17,7 @@ import { ActivityChart } from "@/components/studio/activity-chart"
 import { CodeLinkPanel } from "@/components/studio/code-link"
 import { DatasetFacts } from "@/components/studio/dataset-panels"
 import { Gallery } from "@/components/studio/gallery"
+import { ImportedDetails, ImportedFactsCard } from "@/components/studio/import-facts"
 import { datasetSnippets, modelSnippets, Snippets, SpecsTable } from "@/components/studio/model-panels"
 import { ProjectEditor } from "@/components/studio/project-editor"
 import { Button } from "@/components/ui/button"
@@ -65,6 +66,7 @@ export function OverviewPanel({ p, files, mine, owner, base }: PanelProps) {
             </p>
           )}
         </section>
+        <ImportedDetails p={p} />
         {o.gallery.length > 0 && <Gallery items={o.gallery} name={p.name} />}
         {type === "dataset" && files.length > 0 && (
           <section aria-labelledby="use-h" className="flex flex-col gap-3">
@@ -79,6 +81,7 @@ export function OverviewPanel({ p, files, mine, owner, base }: PanelProps) {
         {type === "model" && p.specs?.model && <SpecsTable specs={p.specs.model} />}
         {type === "dataset" && <DatasetFacts p={p} files={files} />}
         <Details p={p} />
+        <ImportedFactsCard p={p} />
         <BuiltWith p={p} />
         <Links p={p} />
         <People p={p} owner={owner} />
