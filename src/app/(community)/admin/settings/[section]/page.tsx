@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { Suspense } from "react"
 import { SETTING_SECTIONS, isSettingSection } from "@/components/admin/sections"
 import { SettingsSection } from "@/components/admin/settings-forms"
@@ -25,5 +25,7 @@ export default function AdminSettingsSectionPage({ params }: PageProps<"/admin/s
 async function Section({ params }: { params: PageProps<"/admin/settings/[section]">["params"] }) {
   const { section } = await params
   if (!isSettingSection(section)) notFound()
+  // Theme and experience are one "Look and feel" page now; the old address keeps working.
+  if (section === "experience") redirect("/admin/settings/theme")
   return <SettingsSection section={section} />
 }

@@ -1,11 +1,12 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
-import { ListIcon, OrbitIcon, PlusIcon } from "lucide-react"
+import { ListIcon, MapIcon, OrbitIcon, PlusIcon } from "lucide-react"
 import { CosmosView } from "@/components/cosmos/cosmos-view"
 import { ResourceIndex } from "@/components/hub/resource-index"
 import { RowsSkeleton } from "@/components/live/skeletons"
 import { AreaCrumbs } from "@/components/site/area-crumbs"
+import { ExplorePlaces } from "@/components/site/explore-map"
 import { LinkTabs } from "@/components/site/link-tabs"
 import { PageHead } from "@/components/site/page-head"
 import { Button } from "@/components/ui/button"
@@ -21,7 +22,8 @@ export async function generateMetadata(): Promise<Metadata> {
  * Explore (round 12): one page for everything members published or shared, in two views.
  *   List      the hub's catalogue with search and filters (?q= from search lands here)
  *   Star map  what was /cosmos: the whole hub drawn as stars (?show=map, /cosmos redirects here, ?focus= flies to one)
- * The old map of the site's places is gone from here: the menus are that map now, grouped the same way.
+ *   Places    the map of the site's places (round 12b brings it back): each menu group as a galaxy with its
+ *             orbit drawing, live counts, a filter box, the newest things sliding past and the keyboard shortcuts
  */
 type Params = PageProps<"/explore">["searchParams"]
 
@@ -29,6 +31,7 @@ export default function Page({ searchParams }: PageProps<"/explore">) {
   return (
     <div data-flow="clip" className="sd-flow shell pb-16">
       <PageHead
+        backdrop="phosphor"
         k="explore.header"
         crumbs={<AreaCrumbs />}
         title="Explore"
@@ -50,24 +53,31 @@ export default function Page({ searchParams }: PageProps<"/explore">) {
   )
 }
 
-const isMap = async (searchParams: Params) => (await searchParams).show === "map"
+type View = "list" | "map" | "places"
+const viewOf = async (searchParams: Params): Promise<View> => {
+  const show = (await searchParams).show
+  return show === "map" || show === "places" ? show : "list"
+}
 
 async function Views({ searchParams }: { searchParams: Params }) {
-  const map = await isMap(searchParams)
+  const view = await viewOf(searchParams)
   return (
     <LinkTabs
       label="View"
-      current={map ? "/explore?show=map" : "/explore"}
+      current={view === "list" ? "/explore" : `/explore?show=${view}`}
       tabs={[
         { href: "/explore", label: "List", icon: ListIcon },
         { href: "/explore?show=map", label: "Star map", icon: OrbitIcon },
+        { href: "/explore?show=places", label: "Places", icon: MapIcon },
       ]}
     />
   )
 }
 
 async function Body({ searchParams }: { searchParams: Params }) {
-  if (!(await isMap(searchParams))) return <ResourceIndex />
+  const view = await viewOf(searchParams)
+  if (view === "places") return <ExplorePlaces />
+  if (view === "list") return <ResourceIndex />
   // Rising GitHub repositories are fetched on the server (cached); members' data loads in the browser.
   const feed = await githubTrendingAi(40)
   return <CosmosView github={feed.items} embedded />

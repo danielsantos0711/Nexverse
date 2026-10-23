@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useEffect, useId, useRef, useState } from "react"
 import type { User } from "@supabase/supabase-js"
-import { BellIcon, CheckCircle2Icon, ImageUpIcon, LogOutIcon, PaletteIcon, ShieldCheckIcon, SparklesIcon, Trash2Icon, UserIcon, type LucideIcon } from "lucide-react"
+import { BellIcon, CheckCircle2Icon, ImageUpIcon, LogOutIcon, KeyboardIcon, ShieldCheckIcon, SparklesIcon, Trash2Icon, UserIcon, type LucideIcon } from "lucide-react"
 import { GlassKeys } from "@/components/glass/glass-keys"
-import { ACCENTS, FEEL_KEYS, resetUiPrefs, saveUiPrefs, useOwnUiPrefs, useSiteFeel, useUiPrefs, type UiAccent, type UiMotion, type UiPrefs } from "@/components/settings/ui-prefs"
+import { saveShortcuts, useUiPrefs } from "@/components/settings/ui-prefs"
 import { GO_KEYS } from "@/components/site/shortcuts"
 import { toast } from "@/components/site/toaster"
 import { InterestPicker } from "@/components/settings/interest-picker"
@@ -47,7 +47,7 @@ const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "profile", label: "Profile", icon: UserIcon },
   { id: "interests", label: "Interests", icon: SparklesIcon },
   { id: "notifications", label: "Notifications", icon: BellIcon },
-  { id: "experience", label: "Your experience", icon: PaletteIcon },
+  { id: "keyboard", label: "Keyboard", icon: KeyboardIcon },
   { id: "security", label: "Security", icon: ShieldCheckIcon },
   { id: "account", label: "Account", icon: LogOutIcon },
 ]
@@ -103,7 +103,7 @@ function Settings({ profile, user }: { profile: Profile; user: User | null }) {
           <ProfileSection profile={profile} />
           <InterestsSection profile={profile} />
           <NotificationsSection profile={profile} />
-          <ExperienceSection userId={profile.local ? null : (user?.id ?? null)} />
+          <KeyboardSection userId={profile.local ? null : (user?.id ?? null)} />
           {user && !profile.local && (
             <Section id="security" title="Security" lead="How you sign in, and the devices that are signed in.">
               <SecuritySection user={user} name={profile.name} />
@@ -492,185 +492,31 @@ function NotificationsSection({ profile }: { profile: Profile }) {
   )
 }
 
-// ─── Your experience ────────────────────────────────────────────────────────────────────────────────────────
+// ─── Keyboard ───────────────────────────────────────────────────────────────────────────────────────────────
 
-const MOTION: { id: UiMotion; label: string; hint: string }[] = [
-  { id: "site", label: "Site default", hint: "The motion the site is set to" },
-  { id: "calm", label: "Calm", hint: "No movement, changes happen at once" },
-  { id: "full", label: "Full", hint: "Every animation, even on slower devices" },
-]
-
-/** Round 11: how scrolling feels, how much moves on scroll, the sky behind the pages and the header on scroll. */
-type Choice<K extends keyof UiPrefs> = { key: K; label: string; lead: string; options: { id: UiPrefs[K]; label: string; hint: string }[] }
-const FEEL: [Choice<"scroll">, Choice<"scrollFx">, Choice<"backdrop">, Choice<"density">, Choice<"header">] = [
-  {
-    key: "scroll",
-    label: "Scrolling",
-    lead: "How the page moves under a mouse wheel or trackpad. Touch screens always keep their own scrolling.",
-    options: [
-      { id: "smooth", label: "Smooth", hint: "Each wheel step eases into place" },
-      { id: "silk", label: "Silk", hint: "A longer, softer glide" },
-      { id: "native", label: "Native", hint: "Your browser's own scrolling" },
-    ],
-  },
-  {
-    key: "scrollFx",
-    label: "Motion while scrolling",
-    lead: "How far things travel as they arrive: parallax, tilting cards, wipes and rolling numbers.",
-    options: [
-      { id: "subtle", label: "Subtle", hint: "Small, quiet movements" },
-      { id: "lively", label: "Lively", hint: "The site as designed" },
-      { id: "cinematic", label: "Cinematic", hint: "Deeper parallax, bigger entrances" },
-    ],
-  },
-  {
-    key: "backdrop",
-    label: "Background",
-    lead: "The sky behind every page.",
-    options: [
-      { id: "nebula", label: "Graphite sky", hint: "Dark graphite with faint light and stars" },
-      { id: "starfield", label: "Starfield", hint: "Mostly stars, fainter clouds" },
-      { id: "deep", label: "Deep space", hint: "Darker and calmer, a few stars" },
-    ],
-  },
-  {
-    key: "density",
-    label: "Stars",
-    lead: "How many stars the sky holds.",
-    options: [
-      { id: "sparse", label: "Few", hint: "A quiet sky" },
-      { id: "normal", label: "Some", hint: "The default" },
-      { id: "dense", label: "Many", hint: "A crowded galaxy" },
-    ],
-  },
-  {
-    key: "header",
-    label: "Header",
-    lead: "On phones the header and the bottom bar take turns, so only one is on screen.",
-    options: [
-      { id: "auto", label: "Steps aside", hint: "Hides while you read down, back when you scroll up" },
-      { id: "pinned", label: "Always there", hint: "Stays at the top (phones keep the header, not the bottom bar)" },
-    ],
-  },
-]
-
-/** One choice of the experience section: a row of radio cards with a highlight that glides to the chosen one. */
-function FeelChoice<K extends keyof UiPrefs>({ c, value, onPick, locked }: { c: Choice<K>; value: UiPrefs[K]; onPick: (v: UiPrefs[K]) => void; locked?: boolean }) {
-  const reduce = useReducedMotion()
-  const id = `ux-${c.key}`
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-col">
-        <span id={id} className="text-sm font-medium">{c.label}</span>
-        <span className="text-xs text-muted-foreground">{locked ? "Set by Nexverse for everyone." : c.lead}</span>
-      </div>
-      <div role="radiogroup" aria-labelledby={id} className={cn("grid gap-2", c.options.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
-        {c.options.map((o) => {
-          const on = value === o.id
-          return (
-            <button
-              key={String(o.id)}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              disabled={locked}
-              onClick={() => onPick(o.id)}
-              className={cn("nx-lift relative flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left disabled:cursor-not-allowed disabled:opacity-60", on ? "border-ion/50" : "border-border bg-card/60")}
-            >
-              {on && <motion.span layoutId={`${id}-on`} aria-hidden transition={reduce ? { duration: 0 } : { type: "spring", duration: 0.35, bounce: 0.15 }} className="absolute inset-0 rounded-xl bg-ion/[0.07]" />}
-              <span className="relative text-sm font-medium">{o.label}</span>
-              <span className="relative text-xs text-muted-foreground">{o.hint}</span>
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-/** The member's own motion, accent and shortcuts: applied at once, saved to their account. */
-function ExperienceSection({ userId }: { userId: string | null }) {
+/*
+ * Round 12b: how Nexverse looks and moves (scrolling, motion, background, stars, header, accent colour) is set by
+ * the admins for everyone, so members have no look settings here. The one personal choice left is single-key
+ * shortcuts. A device's own reduced-motion setting is always respected.
+ */
+function KeyboardSection({ userId }: { userId: string | null }) {
   const p = useUiPrefs()
-  const mine = useOwnUiPrefs()
-  const { locked } = useSiteFeel()
-  const custom = FEEL_KEYS.some((k) => k in mine)
-  const reduce = useReducedMotion()
-  async function backToSite() {
+  async function toggle() {
     try {
-      await resetUiPrefs([...FEEL_KEYS], userId)
-      toast("You now follow the site's own feel.")
-    } catch (e) {
-      toast((e as Error).message, { tone: "error" })
-    }
-  }
-  async function save(patch: Parameters<typeof saveUiPrefs>[0]) {
-    try {
-      await saveUiPrefs(patch, userId)
+      await saveShortcuts(!p.shortcuts, userId)
       toast(userId ? "Saved to your account." : "Saved in this browser.")
     } catch (e) {
       toast((e as Error).message, { tone: "error" })
     }
   }
-  const accents: { id: UiAccent; label: string; color?: string }[] = [{ id: "site", label: "Site colour" }, ...Object.entries(ACCENTS).map(([id, a]) => ({ id: id as UiAccent, label: a.label, color: a.color }))]
   return (
-    <Section id="experience" title="Your experience" lead="How Nexverse looks and moves for you. Changes apply at once and follow you to other devices.">
-      <div className="flex flex-col gap-2">
-        <span id="ux-motion" className="text-sm font-medium">Motion</span>
-        <div role="radiogroup" aria-labelledby="ux-motion" className="grid gap-2 sm:grid-cols-3">
-          {MOTION.map((m) => {
-            const on = p.motion === m.id
-            return (
-              <button
-                key={m.id}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => void save({ motion: m.id })}
-                className={cn("nx-lift relative flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left", on ? "border-ion/50" : "border-border bg-card/60")}
-              >
-                {on && <motion.span layoutId="ux-motion-on" aria-hidden transition={reduce ? { duration: 0 } : { type: "spring", duration: 0.35, bounce: 0.15 }} className="absolute inset-0 rounded-xl bg-ion/[0.07]" />}
-                <span className="relative text-sm font-medium">{m.label}</span>
-                <span className="relative text-xs text-muted-foreground">{m.hint}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-      {FEEL.map((c) => (
-        <FeelChoice key={c.key} c={c as Choice<keyof UiPrefs>} value={p[c.key]} locked={(locked as string[]).includes(c.key)} onPick={(v) => void save({ [c.key]: v })} />
-      ))}
-      {custom && (
-        <button type="button" onClick={() => void backToSite()} className="pressable self-start text-sm text-ion hover:underline">
-          Use the site&apos;s scrolling, sky and header again
-        </button>
-      )}
-      <div className="flex flex-col gap-2">
-        <span id="ux-accent" className="text-sm font-medium">Accent colour</span>
-        <div role="radiogroup" aria-labelledby="ux-accent" className="flex flex-wrap gap-2">
-          {accents.map((a) => {
-            const on = p.accent === a.id
-            return (
-              <button
-                key={a.id}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => void save({ accent: a.id })}
-                className={cn("pressable inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-sm transition-colors", on ? "border-ion/60 bg-ion/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground")}
-              >
-                <span aria-hidden className="size-3.5 rounded-full ring-1 ring-white/20" style={{ background: a.color ?? "conic-gradient(var(--ion), var(--gold), var(--ion))" }} />
-                {a.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+    <Section id="keyboard" title="Keyboard" lead="The look of Nexverse is the same for everyone. If your device asks for reduced motion, Nexverse moves less for you.">
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 flex-col">
           <span id="ux-keys" className="text-sm font-medium">Keyboard shortcuts</span>
           <span id="ux-keys-hint" className="text-sm text-muted-foreground">Single keys anywhere: / search, C create, J and K move through lists, G then a letter to jump.</span>
         </div>
-        <Switch on={p.shortcuts} onClick={() => void save({ shortcuts: !p.shortcuts })} labelledBy="ux-keys" describedBy="ux-keys-hint" />
+        <Switch on={p.shortcuts} onClick={() => void toggle()} labelledBy="ux-keys" describedBy="ux-keys-hint" />
       </div>
       {p.shortcuts && (
         <ul className="nx-fade grid grid-cols-2 gap-2 sm:grid-cols-4">

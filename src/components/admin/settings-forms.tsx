@@ -15,7 +15,6 @@ import {
   accentColors,
   ACCENTS,
   ANNOUNCEMENT_TONES,
-  BACKDROPS,
   contrast,
   FONT_SCALES,
   GLASS_LEVELS,
@@ -81,7 +80,8 @@ function SaveNotice({ state }: { state: { ok: boolean; reason?: string } | null 
 
 /** One settings section with its form. The frame shows its title, one line about it and the sibling tabs. */
 export function SettingsSection({ section }: { section: SettingKey }) {
-  const body = <SectionForm section={section} />
+  // Theme and experience are one page for the admin: everything about how the site looks and moves.
+  const body = section === "theme" || section === "experience" ? <LookForm /> : <SectionForm section={section} />
   return live ? (
     <Gate role="admin" action="change the site settings">
       {body}
@@ -236,8 +236,6 @@ function SectionForm({ section }: { section: SettingKey }) {
       <div className="rounded-xl bg-card p-4 md:p-6">
         {section === "brand" && <BrandFields {...(fields as FieldsProps<"brand">)} />}
         {section === "announcement" && <AnnouncementFields {...(fields as FieldsProps<"announcement">)} />}
-        {section === "theme" && <ThemeFields {...(fields as FieldsProps<"theme">)} />}
-        {section === "experience" && <ExperienceFields {...(fields as FieldsProps<"experience">)} />}
         {section === "hero" && <HeroFields {...(fields as FieldsProps<"hero">)} />}
         {section === "home" && <HomeFields {...(fields as FieldsProps<"home">)} />}
         {section === "nav" && <NavFields {...(fields as FieldsProps<"nav">)} features={settings.features} />}
@@ -352,111 +350,216 @@ function AnnouncementFields({ value, change, errors }: FieldsProps<"announcement
   )
 }
 
-function ThemeFields({ value, change, errors }: FieldsProps<"theme">) {
-  const accent = accentColors(value)
-  const secondary = HEX.test(value.secondary) ? value.secondary : "#d8c59e"
-  const accentContrast = contrast(accent.color, "#05060a")
-  const options = [...ACCENTS, { id: "custom" as const, label: "Your colour", blurb: "Any colour you pick", color: HEX.test(value.customAccent) ? value.customAccent : "#8fb4ff", foreground: "" }]
+// ─── Look and feel: the "theme" and "experience" rows edited together ───────────────────────────────────────
+
+type Theme = SiteSettings["theme"]
+type Feel = SiteSettings["experience"]
+
+const BACKGROUNDS: { id: Feel["backdrop"]; label: string; blurb: string }[] = [
+  { id: "nebula", label: "Graphite sky", blurb: "Dark graphite with faint light and stars" },
+  { id: "starfield", label: "Starfield", blurb: "Mostly stars, fainter clouds" },
+  { id: "deep", label: "Deep space", blurb: "Near black, the quietest" },
+]
+const STARS: { id: Feel["density"]; label: string; blurb: string }[] = [
+  { id: "sparse", label: "Few", blurb: "A quiet sky" },
+  { id: "normal", label: "Some", blurb: "Balanced" },
+  { id: "dense", label: "Many", blurb: "A crowded galaxy" },
+]
+const SCROLL_FX: { id: Feel["scrollFx"]; label: string; blurb: string }[] = [
+  { id: "subtle", label: "Subtle", blurb: "Small, quiet movements" },
+  { id: "lively", label: "Lively", blurb: "Clear entrances and parallax" },
+  { id: "cinematic", label: "Cinematic", blurb: "Deep parallax, big entrances" },
+]
+const SCROLLING: { id: Feel["scroll"]; label: string; blurb: string }[] = [
+  { id: "smooth", label: "Smooth", blurb: "Each wheel step eases into place" },
+  { id: "silk", label: "Silk", blurb: "A longer, softer glide" },
+  { id: "native", label: "Native", blurb: "The browser's own scrolling" },
+]
+const HEADERS: { id: Feel["header"]; label: string; blurb: string }[] = [
+  { id: "auto", label: "Steps aside", blurb: "Hides while reading down, back on scroll up" },
+  { id: "pinned", label: "Always there", blurb: "Stays at the top" },
+]
+
+function Group({ title, lead, children }: { title: string; lead?: string; children: React.ReactNode }) {
   return (
-    <FieldGroup>
-      <ChoiceCards name="accent" label="Accent colour" columns={3} value={value.accent} options={options} swatch={(id) => options.find((a) => a.id === id)!.color} onChange={(a) => change({ ...value, accent: a })} />
-      {value.accent === "custom" && (
-        <ColorField
-          id="customAccent"
-          label="Your accent"
-          value={value.customAccent}
-          error={errors.customAccent}
-          onChange={(customAccent) => change({ ...value, customAccent })}
-          help={HEX.test(value.customAccent) ? (accentContrast < 4.5 ? `Contrast on the dark ground is ${accentContrast.toFixed(1)}:1. Pick a lighter colour so links stay readable (4.5:1 or more).` : `Contrast on the dark ground: ${accentContrast.toFixed(1)}:1.`) : "A colour as #rrggbb."}
-        />
-      )}
-      <ColorField
-        id="secondary"
-        label="Second colour (optional)"
-        value={value.secondary}
-        error={errors.secondary}
-        allowEmpty
-        base="#d8c59e"
-        onChange={(s) => change({ ...value, secondary: s })}
-        help="The warm colour of highlights and badges. Leave empty for the built-in champagne."
-      />
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-background/50 px-4 py-3 text-sm" style={{ ["--preview" as string]: accent.color, ["--preview-2" as string]: secondary }}>
-        <span className="text-muted-foreground">Preview:</span>
-        <span className="font-medium text-(--preview)">A link in the accent</span>
-        <span className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium" style={{ background: "var(--preview)", color: accent.foreground }}>
-          Live
-        </span>
-        <span className="inline-flex h-7 items-center rounded-full border border-(--preview) px-3 text-xs">Focus ring</span>
-        <span className="inline-flex h-7 items-center rounded-full px-3 text-xs font-medium text-(--preview-2) ring-1 ring-(--preview-2)/40">Highlight</span>
+    <section className="flex flex-col gap-5 rounded-xl bg-card p-4 md:p-6">
+      <div className="flex flex-col gap-0.5">
+        <h2 className="text-base font-semibold">{title}</h2>
+        {lead && <p className="text-sm text-muted-foreground">{lead}</p>}
       </div>
-      <ChoiceCards name="glass" label="Glass" columns={2} value={value.glass} options={GLASS_LEVELS} onChange={(glass) => change({ ...value, glass })} />
-      <p className="-mt-3 text-xs text-muted-foreground">Slower computers automatically get lighter glass, whatever is chosen here.</p>
-      <ChoiceCards name="background" label="Background" columns={2} value={value.background} options={BACKDROPS} onChange={(background) => change({ ...value, background })} />
-      <ChoiceCards name="motion" label="Motion" value={value.motion} options={MOTION_LEVELS} onChange={(motion) => change({ ...value, motion })} />
-      <p className="-mt-3 text-xs text-muted-foreground">Visitors who ask their device for reduced motion always get less, whatever is chosen here.</p>
-      <ChoiceCards name="hero" label="Home page backdrop" value={value.heroEffect} options={HERO_EFFECTS} onChange={(heroEffect) => change({ ...value, heroEffect })} />
-      <ChoiceCards name="fontScale" label="Text size" columns={2} value={value.fontScale} options={FONT_SCALES} onChange={(fontScale) => change({ ...value, fontScale })} />
-      <ChoiceCards name="radius" label="Corners" value={value.radius} options={RADII} onChange={(radius) => change({ ...value, radius })} />
-    </FieldGroup>
+      {children}
+    </section>
   )
 }
 
-type Feel = SiteSettings["experience"]
-type FeelKey = Feel["locked"][number]
-const FEEL_FIELDS: { key: FeelKey; label: string; options: { id: string; label: string; blurb: string }[] }[] = [
-  { key: "scroll", label: "Scrolling", options: [
-    { id: "smooth", label: "Smooth", blurb: "Each wheel step eases into place" },
-    { id: "silk", label: "Silk", blurb: "A longer, softer glide" },
-    { id: "native", label: "Native", blurb: "The browser's own scrolling" },
-  ] },
-  { key: "scrollFx", label: "Motion while scrolling", options: [
-    { id: "subtle", label: "Subtle", blurb: "Small, quiet movements" },
-    { id: "lively", label: "Lively", blurb: "Clear entrances and parallax" },
-    { id: "cinematic", label: "Cinematic", blurb: "Deep parallax, big entrances" },
-  ] },
-  { key: "backdrop", label: "Background", options: [
-    { id: "nebula", label: "Graphite sky", blurb: "Dark graphite with faint light and stars" },
-    { id: "starfield", label: "Starfield", blurb: "Mostly stars" },
-    { id: "deep", label: "Deep space", blurb: "Darker and calmer" },
-  ] },
-  { key: "density", label: "Stars", options: [
-    { id: "sparse", label: "Few", blurb: "A quiet sky" },
-    { id: "normal", label: "Some", blurb: "Balanced" },
-    { id: "dense", label: "Many", blurb: "A crowded galaxy" },
-  ] },
-  { key: "header", label: "Header on scroll", options: [
-    { id: "auto", label: "Steps aside", blurb: "Hides while reading down, back on scroll up" },
-    { id: "pinned", label: "Always there", blurb: "Stays at the top" },
-  ] },
-]
-
-function ExperienceFields({ value, change }: FieldsProps<"experience">) {
-  const locked = new Set(value.locked ?? [])
+/** A small picture of the choices: the sky, its stars, a card with the corners and glass, and the accent. */
+function LookPreview({ theme, feel }: { theme: Theme; feel: Feel }) {
+  const accent = accentColors(theme)
+  const secondary = HEX.test(theme.secondary) ? theme.secondary : "#d8c59e"
+  const rem = RADII.find((r) => r.id === theme.radius)?.rem ?? 0.75
+  const stars = { sparse: 14, normal: 28, dense: 52 }[feel.density] * (feel.backdrop === "starfield" ? 1.4 : feel.backdrop === "deep" ? 0.6 : 1)
+  const glass = { clear: "rgb(14 17 24 / 0.38)", standard: "rgb(18 20 27 / 0.6)", frosted: "rgb(14 17 24 / 0.72)", solid: "#14161c" }[theme.glass]
+  const blur = theme.glass === "solid" ? "none" : theme.glass === "clear" ? "blur(6px)" : theme.glass === "frosted" ? "blur(16px)" : "blur(10px)"
+  const size = FONT_SCALES.find((f) => f.id === theme.fontScale)?.percent ?? 100
   return (
-    <FieldGroup>
-      <p className="text-sm text-muted-foreground">
-        What every visitor gets. Members can change each one in Settings › Your experience, unless you lock it. Visitors who ask their device for reduced motion always get less.
-      </p>
-      {FEEL_FIELDS.map((f) => (
-        <div key={f.key} className="flex flex-col gap-2">
-          <ChoiceCards
-            name={f.key}
-            label={f.label}
-            columns={f.options.length === 2 ? 2 : 3}
-            value={value[f.key] as string}
-            options={f.options}
-            onChange={(v) => change({ ...value, [f.key]: v } as Feel)}
-          />
-          <label className="-mt-1 inline-flex items-center gap-2 self-start text-sm text-muted-foreground">
-            <Switch
-              checked={locked.has(f.key)}
-              onCheckedChange={(on) => change({ ...value, locked: on ? [...locked, f.key] : [...locked].filter((k) => k !== f.key) })}
-            />
-            Lock it: members cannot change this
-          </label>
-        </div>
+    <div aria-label="Preview" role="img" className="relative h-44 overflow-hidden rounded-xl border border-border" style={{ background: feel.backdrop === "deep" ? "#07080b" : "linear-gradient(180deg, #0d0e12, #0a0b0e)" }}>
+      {feel.backdrop === "nebula" && <span aria-hidden className="absolute inset-0" style={{ background: "radial-gradient(60% 50% at 70% 10%, rgb(255 255 255 / 0.05), transparent 70%)" }} />}
+      {Array.from({ length: Math.round(stars) }, (_, i) => (
+        <span key={i} aria-hidden className="absolute rounded-full bg-white" style={{ left: `${(i * 37.7) % 100}%`, top: `${(i * 61.3) % 100}%`, width: i % 7 === 0 ? 2 : 1, height: i % 7 === 0 ? 2 : 1, opacity: 0.35 + ((i * 13) % 50) / 100 }} />
       ))}
-    </FieldGroup>
+      <div className="absolute inset-x-0 top-0 flex h-8 items-center gap-2 border-b border-white/5 px-3 text-[11px] text-white/60" style={{ background: "rgb(10 11 14 / 0.6)", backdropFilter: "blur(10px)" }}>
+        <span className="font-semibold text-white/85">Nexverse</span>
+        <span className="ml-auto">{feel.header === "pinned" ? "Header always there" : "Header steps aside"}</span>
+      </div>
+      <div className="absolute bottom-4 left-4 flex w-56 max-w-[calc(100%-2rem)] flex-col gap-2 border border-white/10 p-3" style={{ background: glass, backdropFilter: blur, borderRadius: `${rem}rem`, fontSize: `${(13 * size) / 100}px` }}>
+        <span className="font-medium text-white/90">A card on the sky</span>
+        <span style={{ color: accent.color }}>A link in the accent</span>
+        <span className="flex gap-1.5">
+          <span className="px-2 py-0.5 text-[11px] font-medium" style={{ background: accent.color, color: accent.foreground, borderRadius: `${rem}rem` }}>
+            Live
+          </span>
+          <span className="px-2 py-0.5 text-[11px]" style={{ color: secondary, boxShadow: `inset 0 0 0 1px ${secondary}66`, borderRadius: `${rem}rem` }}>
+            Highlight
+          </span>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/** Everything about how the whole site looks and moves. Saved for every visitor; members cannot change it. */
+function LookForm() {
+  const { settings, ready } = useSiteSettings()
+  const canSave = useCanSave()
+  const [draft, setDraft] = useState<{ theme: Theme; experience: Feel } | null>(null)
+  const [errors, setErrors] = useState<Errors>({})
+  const [status, setStatus] = useState<Status>(null)
+  const [busy, setBusy] = useState(false)
+  const saved = { theme: settings.theme, experience: settings.experience }
+  const value = draft ?? saved
+  const themeDirty = draft !== null && !same(draft.theme, saved.theme)
+  const feelDirty = draft !== null && !same(draft.experience, saved.experience)
+  const dirty = themeDirty || feelDirty
+  const isDefault = same(value.theme, DEFAULTS.theme) && same(value.experience, DEFAULTS.experience)
+
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener("beforeunload", warn)
+    return () => window.removeEventListener("beforeunload", warn)
+  }, [dirty])
+
+  const t = value.theme
+  const f = value.experience
+  function change(next: { theme?: Partial<Theme>; experience?: Partial<Feel> }) {
+    const merged = { theme: { ...t, ...next.theme }, experience: { ...f, ...next.experience } }
+    setDraft(merged)
+    setStatus(null)
+    if (Object.keys(errors).length) {
+      const now = VALIDATE.theme(merged.theme)
+      setErrors(Object.fromEntries(Object.entries(errors).filter(([k]) => now[k])))
+    }
+  }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    if (busy || !dirty) return
+    const found = VALIDATE.theme(t)
+    setErrors(found)
+    const first = Object.keys(found)[0]
+    if (first) {
+      document.getElementById(`f-${first}`)?.focus()
+      setStatus({ ok: false, text: "A colour needs a fix before saving." })
+      return
+    }
+    setBusy(true)
+    setStatus(null)
+    try {
+      if (themeDirty) await saveSiteSetting("theme", t)
+      // Members no longer choose any of this, so nothing is "locked" any more: everything is the site's.
+      if (feelDirty) await saveSiteSetting("experience", { ...f, locked: [] })
+      setDraft(null)
+      setStatus({ ok: true, text: "Saved for everyone. Every open page picks it up within a few seconds." })
+    } catch (err) {
+      const msg = (err as Error).message
+      setStatus({ ok: false, text: /schema cache|does not exist/i.test(msg) ? "The settings table is not on this database yet. Apply the roles migration first." : /row-level security|permission/i.test(msg) ? "Only admins can save site settings." : msg })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!ready) return <Skeleton className="h-96 w-full rounded-2xl" />
+
+  const accent = accentColors(t)
+  const accentContrast = contrast(accent.color, "#05060a")
+  const accents = [...ACCENTS, { id: "custom" as const, label: "Your colour", blurb: "Any colour you pick", color: HEX.test(t.customAccent) ? t.customAccent : "#8fb4ff", foreground: "" }]
+
+  return (
+    <form onSubmit={save} noValidate className="flex flex-col gap-4">
+      <SaveNotice state={canSave} />
+      <Notice title="One look for everyone">
+        What you set here is what every visitor and member sees. Members cannot change it. Visitors who ask their device for reduced motion still get less movement.
+      </Notice>
+      <div className="flex flex-col gap-2 rounded-xl bg-card p-4 md:p-6">
+        <p className="text-sm font-medium">Preview</p>
+        <LookPreview theme={t} feel={f} />
+      </div>
+
+      <Group title="Colours">
+        <ChoiceCards name="accent" label="Accent colour" columns={3} value={t.accent} options={accents} swatch={(id) => accents.find((a) => a.id === id)!.color} onChange={(a) => change({ theme: { accent: a } })} />
+        {t.accent === "custom" && (
+          <ColorField
+            id="customAccent"
+            label="Your accent"
+            value={t.customAccent}
+            error={errors.customAccent}
+            onChange={(customAccent) => change({ theme: { customAccent } })}
+            help={HEX.test(t.customAccent) ? (accentContrast < 4.5 ? `Contrast on the dark ground is ${accentContrast.toFixed(1)}:1. Pick a lighter colour so links stay readable (4.5:1 or more).` : `Contrast on the dark ground: ${accentContrast.toFixed(1)}:1.`) : "A colour as #rrggbb."}
+          />
+        )}
+        <ColorField id="secondary" label="Second colour (optional)" value={t.secondary} error={errors.secondary} allowEmpty base="#d8c59e" onChange={(secondary) => change({ theme: { secondary } })} help="The warm colour of highlights and badges. Leave empty for the built-in champagne." />
+      </Group>
+
+      <Group title="Background" lead="The sky behind every page.">
+        <ChoiceCards name="backdrop" label="Background" value={f.backdrop} options={BACKGROUNDS} onChange={(backdrop) => change({ experience: { backdrop } })} />
+        <ChoiceCards name="density" label="Stars" value={f.density} options={STARS} onChange={(density) => change({ experience: { density } })} />
+        <ChoiceCards name="hero" label="Home page backdrop" value={t.heroEffect} options={HERO_EFFECTS} onChange={(heroEffect) => change({ theme: { heroEffect } })} />
+      </Group>
+
+      <Group title="Motion" lead="Visitors who ask their device for reduced motion always get less, whatever is chosen here.">
+        <ChoiceCards name="motion" label="Animation" value={t.motion} options={MOTION_LEVELS} onChange={(motion) => change({ theme: { motion } })} />
+        <ChoiceCards name="scrollFx" label="Motion while scrolling" value={f.scrollFx} options={SCROLL_FX} onChange={(scrollFx) => change({ experience: { scrollFx } })} />
+        <ChoiceCards name="scroll" label="Scrolling" value={f.scroll} options={SCROLLING} onChange={(scroll) => change({ experience: { scroll } })} />
+        <p className="-mt-3 text-xs text-muted-foreground">Touch screens always keep their own scrolling.</p>
+      </Group>
+
+      <Group title="Header" lead="On phones the header and the bottom bar take turns, so only one is on screen.">
+        <ChoiceCards name="header" label="Header on scroll" columns={2} value={f.header} options={HEADERS} onChange={(header) => change({ experience: { header } })} />
+      </Group>
+
+      <Group title="Surfaces and text">
+        <ChoiceCards name="glass" label="Glass and blur" columns={2} value={t.glass} options={GLASS_LEVELS} onChange={(glass) => change({ theme: { glass } })} />
+        <p className="-mt-3 text-xs text-muted-foreground">Slower computers automatically get lighter glass, whatever is chosen here.</p>
+        <ChoiceCards name="radius" label="Corners" value={t.radius} options={RADII} onChange={(radius) => change({ theme: { radius } })} />
+        <ChoiceCards name="fontScale" label="Text size" columns={2} value={t.fontScale} options={FONT_SCALES} onChange={(fontScale) => change({ theme: { fontScale } })} />
+      </Group>
+
+      <SaveBar
+        dirty={dirty}
+        busy={busy}
+        status={status}
+        disabled={!canSave?.ok}
+        onDiscard={() => {
+          setDraft(null)
+          setErrors({})
+          setStatus(null)
+        }}
+      >
+        <Button type="button" variant="ghost" size="sm" disabled={isDefault} onClick={() => change({ theme: structuredClone(DEFAULTS.theme), experience: structuredClone(DEFAULTS.experience) })} title="Fills the form with the defaults. Save to apply them.">
+          Reset to defaults
+        </Button>
+      </SaveBar>
+    </form>
   )
 }
 

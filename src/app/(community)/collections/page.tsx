@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default function CollectionsPage() {
   return (
     <div data-flow="fan" className="sd-flow shell pb-16">
-      <PageTitle k="collections.header" title="Collections" lead="Lists members curate, with a note on why each thing matters." />
+      <PageTitle backdrop="warp" k="collections.header" title="Collections" lead="Lists members curate, with a note on why each thing matters." />
       {/* The tab and the view live in the query string (?view=mine, ?show=map), which is read in the browser. */}
       <Suspense fallback={<ListSkeleton />}>
         <CollectionsView />

@@ -7,7 +7,7 @@ import { FolderPlusIcon, LayersIcon, ListIcon, SparklesIcon } from "lucide-react
 import { CollectionCard } from "@/components/collections/collection-card"
 import { CollectionForm } from "@/components/collections/collection-form"
 import { ConstellationsGallery } from "@/components/collections/constellations-gallery"
-import { OrbitCards } from "@/components/collections/orbit-cards"
+import { OrbitCards, type OrbitItem } from "@/components/collections/orbit-cards"
 import { LinkTabs } from "@/components/site/link-tabs"
 import { primaryButton, rise, riseDelay } from "@/components/forum/forum-ui"
 import { GlassTabs } from "@/components/glass/glass-tabs"
@@ -25,6 +25,23 @@ const VIEWS: { value: View; label: string }[] = [
   { value: "mine", label: "Yours" },
   { value: "following", label: "Following" },
 ]
+/*
+ * Parts of the site to collect from, for the orbit while there are still few public collections: real pages,
+ * each a world in the galaxy, never invented collections (restored in round 12b with the merged addresses).
+ */
+const WORLDS: OrbitItem[] = [
+  { id: "w-models", title: "Models", href: "/models", meta: "Planet of weights", kind: "model" },
+  { id: "w-datasets", title: "Datasets", href: "/datasets", meta: "Planet of data", kind: "dataset" },
+  { id: "w-tools", title: "Tools", href: "/tools", meta: "Planet of tools", kind: "tool" },
+  { id: "w-code", title: "Code", href: "/code", meta: "Open-source moons", kind: "repo" },
+  { id: "w-forum", title: "Forum threads", href: "/forum", meta: "Signals from members", kind: "thread" },
+  { id: "w-news", title: "News", href: "/news", meta: "Today's transmissions", kind: "news" },
+  { id: "w-bench", title: "Benchmarks", href: "/benchmarks", meta: "Star charts", kind: "model" },
+  { id: "w-trending", title: "Trending", href: "/trending", meta: "Bright right now", kind: "thread" },
+  { id: "w-launch", title: "Launchpad", href: "/launchpad", meta: "New launches", kind: "tool" },
+  { id: "w-map", title: "Star map", href: "/collections?show=map", meta: "Collections as star maps", kind: "repo" },
+]
+
 const isView = (v: string | null): v is View => v === "discover" || v === "mine" || v === "following"
 
 type Lists = Record<View, Collection[] | null>
@@ -122,15 +139,19 @@ export function CollectionsView() {
       {/* The star map view (what /constellations was): every public collection drawn as a constellation. */}
       {map && <ConstellationsGallery />}
 
-      {/* the orbit only once there are enough real collections to fill it (no filler worlds) */}
-      {!map && view === "discover" && lists.discover && lists.discover.length >= 6 && (
+      {/* the orbit: real collections once there are enough of them, until then the real parts of the site to collect from */}
+      {!map && view === "discover" && lists.discover && (
         <section aria-labelledby="collections-orbit" className="liquid-glass-flat relative overflow-hidden rounded-3xl px-4 pt-4">
           <h2 id="collections-orbit" className="text-xs font-medium text-muted-foreground">
-            <Copy k="collections.orbit.title">In orbit now</Copy>
+            {lists.discover.length >= 6 ? <Copy k="collections.orbit.title">In orbit now</Copy> : <Copy k="collections.orbit.worlds">Worlds to collect from</Copy>}
           </h2>
           <OrbitCards
-            label="Public collections"
-            items={lists.discover.slice(0, 14).map((c) => ({ id: c.id, title: c.title, href: `/collections/${c.id}` as const, meta: `${c.items.length} ${c.items.length === 1 ? "star" : "stars"}` }))}
+            label={lists.discover.length >= 6 ? "Public collections" : "Parts of Nexverse to collect from"}
+            items={
+              lists.discover.length >= 6
+                ? lists.discover.slice(0, 14).map((c) => ({ id: c.id, title: c.title, href: `/collections/${c.id}` as const, meta: `${c.items.length} ${c.items.length === 1 ? "star" : "stars"}` }))
+                : WORLDS
+            }
           />
         </section>
       )}

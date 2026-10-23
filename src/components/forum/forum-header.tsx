@@ -25,7 +25,7 @@ export function ForumHeader({
   below?: React.ReactNode
 }) {
   return (
-    <PageHead k={k} title={title} lead={lead} crumbs={crumbs ? <Breadcrumbs items={crumbs} /> : <AreaCrumbs />} actions={children}>
+    <PageHead backdrop="stars" k={k} title={title} lead={lead} crumbs={crumbs ? <Breadcrumbs items={crumbs} /> : <AreaCrumbs />} actions={children}>
       {below}
     </PageHead>
   )

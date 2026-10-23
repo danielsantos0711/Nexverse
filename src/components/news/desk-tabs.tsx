@@ -80,6 +80,16 @@ export function DeskTabs({ tabs, label }: { tabs: DeskTab[]; label: string }) {
       </div>
 
       <div className="relative">
+        {/* a soft silver light that blooms behind the desk as its tab changes (round 12b: neutral, no tab colour) */}
+        <motion.div
+          aria-hidden
+          key={`${tab.id}-glow`}
+          initial={reduce ? false : { opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8 }}
+          className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-64 w-[min(60rem,100%)] -translate-x-1/2 rounded-full blur-3xl"
+          style={{ background: "radial-gradient(closest-side, rgb(220 222 228 / 0.07), transparent)" }}
+        />
         <AnimatePresence mode="wait" initial={false} custom={dir}>
           <motion.div
             key={tab.id}
