@@ -1,5 +1,7 @@
+import Link from "next/link"
 import { WifiOffIcon } from "lucide-react"
 import type { Feed, LiveSource } from "@/lib/live"
+import { internalHref } from "@/lib/live/ids"
 import { cn } from "@/lib/utils"
 import { LiveBadge } from "./live-badge"
 
@@ -7,8 +9,19 @@ export const SOURCES: Record<LiveSource, { name: string; url: string }> = {
   github: { name: "GitHub", url: "https://github.com" },
 }
 
-/** Every link that leaves Nexverse: new tab, no referrer, no endorsement. */
+/**
+ * Every link that would leave Nexverse: a GitHub repo or file opens in its Nexverse view instead; anything else opens
+ * in a new tab, with no referrer and no endorsement.
+ */
 export function ExternalLink({ href, className, children, ...rest }: Omit<React.ComponentProps<"a">, "target" | "rel">) {
+  const inside = href ? internalHref(href) : null
+  if (inside) {
+    return (
+      <Link href={inside as `/gh/${string}`} className={className}>
+        {children}
+      </Link>
+    )
+  }
   return (
     <a href={href} target="_blank" rel="noopener noreferrer nofollow" className={className} {...rest}>
       {children}

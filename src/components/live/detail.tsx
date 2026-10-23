@@ -3,7 +3,6 @@ import { CircleAlertIcon, MessagesSquareIcon, SearchXIcon, TimerIcon } from "luc
 import { Skeleton } from "@/components/ui/skeleton"
 import type { FailReason } from "@/lib/live/http"
 import { cn } from "@/lib/utils"
-import { ExternalLink } from "./bits"
 import { Copy } from "@/components/content/copy"
 
 /** Shared frame for the in-site pages of external items: banner, details panel, error and loading states. */
@@ -83,14 +82,19 @@ export function DiscussButton({ href, className }: { href: string; className?: s
   )
 }
 
-/** The one, discreet link to the original, at the bottom of a page. */
+/**
+ * A small credit line at the bottom of a page: where the data comes from, as plain text. Members stay on Nexverse, so
+ * it names the source without linking out (`label` is kept for callers and used as the tooltip).
+ */
 export function SourceLink({ href, label, className }: { href: string; label: string; className?: string }) {
+  let source = "public APIs"
+  try {
+    const host = new URL(href).hostname.replace(/^www\./, "")
+    source = host === "github.com" ? "GitHub’s public API" : host
+  } catch {}
   return (
-    <p className={cn("text-xs text-muted-foreground/80", className)}>
-      Data from public APIs, refreshed every few hours.{" "}
-      <ExternalLink href={href} className="underline decoration-border underline-offset-2 hover:text-foreground">
-        {label}
-      </ExternalLink>
+    <p className={cn("text-xs text-muted-foreground/80", className)} title={label}>
+      Data from {source}, refreshed every few hours.
     </p>
   )
 }

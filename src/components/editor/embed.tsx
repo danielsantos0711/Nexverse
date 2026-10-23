@@ -43,7 +43,7 @@ function Video({ embed, className }: { embed: Extract<Embed, { type: "youtube" |
               // eslint-disable-next-line @next/next/no-img-element -- provider still, no optimisation and no referrer
               <img src={youtubeThumb(embed.id)} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover opacity-80 transition-opacity group-hover:opacity-100" />
             ) : (
-              <span aria-hidden className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,color-mix(in_oklab,var(--color-ion)_35%,transparent),transparent_60%),radial-gradient(ellipse_at_80%_90%,rgba(180,140,255,0.3),transparent_55%)]" />
+              <span aria-hidden className="absolute inset-0 bg-white/[0.03]" />
             )}
             <span className="liquid-glass-pill relative inline-flex items-center gap-2 rounded-full bg-black/55 px-4 py-2 text-sm font-medium text-white ring-1 ring-white/20 backdrop-blur-md transition-transform group-hover:scale-[1.03] group-active:scale-[0.98]">
               <PlayIcon aria-hidden className="size-4 fill-current" /> Play {label.toLowerCase()}

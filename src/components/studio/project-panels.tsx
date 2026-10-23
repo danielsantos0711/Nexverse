@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { formatDate, KINDS, LANGUAGES } from "@/lib/data"
 import type { HostedFile } from "@/lib/publish/files"
 import { findLicense } from "@/lib/publish/licenses"
+import { internalHref } from "@/lib/live/ids"
 import { getProjectsById, licenseLabel, listUsing, projectHref, projectThreadId, pub, typeLabel, typeOf, type Project } from "@/lib/projects"
 
 /*
@@ -185,6 +186,17 @@ function External({ href, icon: Icon, label }: { href: string; icon: typeof File
   try {
     host = new URL(href).hostname.replace(/^www\./, "")
   } catch {}
+  // A GitHub repo opens in its Nexverse view.
+  const inside = internalHref(href)
+  if (inside) {
+    return (
+      <Link href={inside as `/gh/${string}`} className="flex items-center gap-2 hover:text-ion">
+        <Icon aria-hidden className="size-4 shrink-0" />
+        <span>{label}</span>
+        <span className="truncate text-xs text-muted-foreground">{host}</span>
+      </Link>
+    )
+  }
   return (
     <a href={href} target="_blank" rel="noopener noreferrer nofollow ugc" className="flex items-center gap-2 hover:text-ion">
       <Icon aria-hidden className="size-4 shrink-0" />
