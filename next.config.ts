@@ -15,6 +15,13 @@ const nextConfig: NextConfig = {
       // Papers were replaced by the Nexverse newsroom (round 8).
       { source: "/papers", destination: "/news", permanent: true },
       { source: "/papers/:path*", destination: "/news", permanent: true },
+      // Round 12: pages that did the same thing were merged (the menus remap saved links the same way, see
+      // MOVED in src/lib/menus.ts). Query strings carry over (/cosmos?focus=… keeps its focus).
+      { source: "/repos", destination: "/code?from=members", permanent: false },
+      { source: "/gh/topics", destination: "/code?from=github", permanent: false },
+      { source: "/cosmos", destination: "/explore?show=map", permanent: false },
+      { source: "/constellations", destination: "/collections?show=map", permanent: false },
+      { source: "/studio", destination: "/you", permanent: false },
     ];
   },
   turbopack: {

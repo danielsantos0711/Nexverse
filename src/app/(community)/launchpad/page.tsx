@@ -16,7 +16,7 @@ export default function LaunchpadPage() {
     <div data-flow="zoom" className="sd-flow shell max-w-6xl pb-16">
       <ForumHeader k="launchpad.header"
         title="Launchpad"
-        lead="Schedule a launch for your project. A countdown builds up to it, then for 24 hours members boost it once each. The most boosted launch of each day becomes Launch of the day."
+        lead="Launch your project with a countdown; members boost it on the day."
         icon={
           <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl border border-ion/20 bg-ion/10 text-ion">
             <RocketIcon aria-hidden className="size-5 -rotate-45" />

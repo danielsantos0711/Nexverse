@@ -40,7 +40,7 @@ export function RepoSummaryCard({ repo, description, readme, files }: { repo: st
     }
   }
   return (
-    <section className="relative overflow-hidden rounded-xl border border-ion/20 bg-gradient-to-b from-ion/[0.07] to-transparent p-4">
+    <section className="relative overflow-hidden rounded-xl bg-card p-4">
       <h2 className="flex items-center gap-2 text-sm font-medium">
         <SparklesIcon aria-hidden className="size-4 text-ion" /> <Copy k="code-repo.ai.ai-summary">AI summary</Copy>
       </h2>
@@ -115,7 +115,7 @@ export function useExplain(repo: string, path: string, text: string | null) {
   }
   const panel =
     result || error ? (
-      <section className="relative border-b border-ion/20 bg-gradient-to-b from-ion/[0.08] to-transparent p-4 text-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1" aria-live="polite">
+      <section className="relative border-b border-border bg-card p-4 text-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1" aria-live="polite">
         <button
           onClick={() => {
             setResult(null)

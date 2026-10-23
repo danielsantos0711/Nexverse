@@ -270,7 +270,7 @@ Only use the inputs and outputs given; when something depends on hardware, provi
 
 /** Project pages: explain a model, dataset or other project in plain words. */
 export function explainItemRequest(input: { kind: string; item: string; related: string }): TextOptions {
-  const what = input.kind === "dataset" ? "dataset" : input.kind === "model" ? "model" : "project"
+  const what = input.kind === "dataset" ? "dataset" : input.kind === "model" ? "model" : input.kind === "repo" ? "repository" : "project"
   return {
     job: "explain",
     maxTokens: 1200,
@@ -279,7 +279,7 @@ export function explainItemRequest(input: { kind: string; item: string; related:
 Write:
 - An opening of two or three sentences: what it is, who made it, and what it is for.
 - "### Good for": two to four concrete uses.
-- "### How to use it": the practical first steps the page supports (loading it, the expected input and output, hardware or format notes).
+- "### How to use it": the practical first steps the page supports (${what === "repository" ? "installing it, the main command or import, what it needs to run" : "loading it, the expected input and output, hardware or format notes"}). Quote commands exactly as the page gives them.
 - "### Limits": licence, size, gaps or risks the page shows or clearly lacks.
 ${input.related ? `- "### On Nexverse": one or two sentences relating it to the related Nexverse items, with citations.\n${CITE_RULE}` : ""}`
     ),
@@ -327,4 +327,65 @@ export function draftRequest(input: { mode: DraftMode; kind: string; title: stri
     prompt: `${input.title ? `${fence("title", input.title)}\n\n` : ""}${fence("draft", input.text || "(empty so far)")}${input.selection ? `\n\n${fence("selection", input.selection)}` : ""}`,
     cache: false,
   }
+}
+
+// Nexverse Code: explain a file, summarise a repository (JSON, job "code")
+
+export type CodeFileExplain = { summary: string; parts: { name: string; what: string }[]; notes: string[] }
+export type CodeRepoSummary = { summary: string; highlights: string[]; audience: string; stack: string[] }
+
+/** One source file, explained to a developer who is new to the repository. */
+export function codeFileRequest(input: { repo: string; path: string; text: string }): AskOptions {
+  return {
+    job: "code",
+    maxTokens: 1400,
+    system: systemJson(
+      `You explain one source file from a repository on Nexverse to a developer who has just opened it. Use only what the file shows; when behaviour depends on code that is not in the file, say so instead of guessing.
+Return:
+- "summary": two to four sentences: what the file is for, how it does it, and where it fits (judge from its path and imports).
+- "parts": its main functions, classes, components or sections, in file order, each { "name": exactly as written in the code, "what": one line on what it does and what it takes or returns }. At most 12.
+- "notes": up to four short notes a reviewer would flag: side effects, error handling gaps, security-sensitive spots, performance traps, surprising behaviour or TODOs. Empty when there is nothing real to say.`
+    ),
+    prompt: `${fence("repository", input.repo)}\n\n${fence("path", input.path)}\n\n${fence("file", input.text)}`,
+    schema: obj({ summary: S, parts: { type: "array", items: obj({ name: S, what: S }) }, notes: LIST }),
+  }
+}
+
+export function readCodeFile(v: unknown): CodeFileExplain {
+  if (!isObject(v)) invalid()
+  const parts = Array.isArray(v.parts)
+    ? v.parts
+        .filter(isObject)
+        .map((p) => ({ name: str(p.name, 120), what: str(p.what, 300) }))
+        .filter((p) => p.name && p.what)
+        .slice(0, 12)
+    : []
+  const summary = str(v.summary, 1200)
+  if (!summary) invalid()
+  return { summary, parts, notes: strList(v.notes, 4, 300) }
+}
+
+/** A repository, summarised for someone deciding whether to use it. */
+export function codeRepoRequest(input: { repo: string; description: string; readme: string; files: string[] }): AskOptions {
+  return {
+    job: "code",
+    maxTokens: 1000,
+    system: systemJson(
+      `You summarise a code repository on Nexverse for a developer deciding whether to use it, from its README, description and file list only. Never invent features, benchmarks or install steps they do not show.
+Return:
+- "summary": two to four sentences: what it is, what problem it solves, and how you would start with it (the install or run command if the README gives one, quoted exactly).
+- "highlights": up to five concrete things it offers, most useful first.
+- "audience": one sentence on who it is for.
+- "stack": the main languages, frameworks and tools visible in the files or README (short names, at most ten).`
+    ),
+    prompt: `${fence("repository", input.repo)}\n\n${fence("description", input.description || "(none)")}\n\n${fence("files", input.files.join("\n") || "(no files listed)")}\n\n${fence("readme", input.readme || "(no README)")}`,
+    schema: obj({ summary: S, highlights: LIST, audience: S, stack: LIST }),
+  }
+}
+
+export function readCodeRepo(v: unknown): CodeRepoSummary {
+  if (!isObject(v)) invalid()
+  const summary = str(v.summary, 1200)
+  if (!summary) invalid()
+  return { summary, highlights: strList(v.highlights, 5, 240), audience: str(v.audience, 300), stack: strList(v.stack, 10, 40) }
 }

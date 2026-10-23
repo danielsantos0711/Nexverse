@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { CopyIcon, DatabaseIcon, KeyRoundIcon, PlusIcon, SaveIcon } from "lucide-react"
+import { CopyIcon, KeyRoundIcon, PlusIcon, SaveIcon } from "lucide-react"
 import { AdminHeading, Notice, StatusLine, SwitchRow } from "@/components/admin/controls"
 import { engineCall, usd } from "@/components/admin/newsroom-control-api"
 import { Badge } from "@/components/ui/badge"
@@ -15,7 +15,7 @@ import { ANTHROPIC_MODELS, callCost, EVIDENCE_LEVELS, PREMIUM_PROVIDERS, readEng
 import { cn } from "@/lib/utils"
 
 /*
- * The engine's settings: the scheduler and its one-time setup, the mass import (Backfill), frequency and
+ * The engine's settings: the scheduler and its one-time setup, frequency and
  * limits, the editorial rules, the model of every stage (the best free model by default, an optional paid
  * model per stage with its estimated cost), the scouts, the desks and their research methods.
  */
@@ -63,7 +63,6 @@ export function EngineSettingsPanel({ state, onSaved }: { state: EngineState; on
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const origin = typeof window === "undefined" ? "https://<your-domain>" : window.location.origin
-  const [bf, setBf] = useState({ desks: [] as string[], days: state.settings.backfill.days, perDesk: state.settings.backfill.perDesk })
 
   const save = async () => {
     setBusy(true)
@@ -76,20 +75,6 @@ export function EngineSettingsPanel({ state, onSaved }: { state: EngineState; on
       onSaved()
     } catch (err) {
       setStatus({ ok: false, text: err instanceof Error ? err.message : "Could not save." })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const backfill = async () => {
-    setBusy(true)
-    setStatus(null)
-    try {
-      await engineCall({ action: "backfill", desks: bf.desks, days: bf.days, perDesk: bf.perDesk })
-      setStatus({ ok: true, text: `Backfill started: the last ${bf.days} days, up to ${bf.perDesk} stories per desk. Follow it in Live.` })
-      onSaved()
-    } catch (err) {
-      setStatus({ ok: false, text: err instanceof Error ? err.message : "Could not start the backfill." })
     } finally {
       setBusy(false)
     }
@@ -156,39 +141,8 @@ export function EngineSettingsPanel({ state, onSaved }: { state: EngineState; on
         )}
       </Section>
 
-      <Section id="backfill-h" title="Backfill: mass import" lead="Imports real news from a past window at once: every chosen desk scouts the period, triage keeps what is worth it, and up to the set number of stories per desk is researched and written from the original sources. Nothing is invented: a desk with nothing worth reporting gets nothing.">
-        <fieldset className="flex flex-wrap gap-2">
-          <legend className="mb-2 text-sm font-medium">Desks (none chosen: all)</legend>
-          {state.desks
-            .filter((d) => d.enabled && !d.leakTrack)
-            .map((d) => {
-              const on = bf.desks.includes(d.id)
-              return (
-                <button
-                  key={d.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => setBf({ ...bf, desks: on ? bf.desks.filter((x) => x !== d.id) : [...bf.desks, d.id] })}
-                  className={cn("rounded-full border px-3 py-1 text-sm transition-colors", on ? "border-ion/60 bg-ion/15" : "border-border text-muted-foreground hover:text-foreground")}
-                >
-                  {d.label}
-                </button>
-              )
-            })}
-        </fieldset>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Num id="bf-days" label="Days back" value={bf.days} min={1} max={30} onChange={(n) => setBf({ ...bf, days: n })} />
-          <Num id="bf-per" label="Stories per desk" value={bf.perDesk} min={1} max={6} onChange={(n) => setBf({ ...bf, perDesk: n })} />
-          <div className="flex items-end">
-            <Button disabled={busy || !state.ready} onClick={() => void backfill()} className="w-full">
-              <DatabaseIcon aria-hidden /> Start backfill
-            </Button>
-          </div>
-        </div>
-      </Section>
-
       <Section id="freq-h" title="Frequency and limits" lead="How often a cycle starts and how much one tick may spend. Ticks stop starting work when any limit is reached; what is left waits for the next tick.">
-        <SwitchRow id="eng-paused" label="Pause the engine" description="Scheduled ticks do nothing while paused. Run now and Backfill still work." checked={s.paused} onChange={(v) => set("paused", v)} disabled={!canEdit} />
+        <SwitchRow id="eng-paused" label="Pause the engine" description="Scheduled ticks do nothing while paused. Scan, Run now and Write stories still work." checked={s.paused} onChange={(v) => set("paused", v)} disabled={!canEdit} />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Num id="cyc" label="Cycle every (minutes)" value={s.cycleMinutes} min={15} max={1440} onChange={(n) => set("cycleMinutes", n)} hint="60 is hourly" disabled={!canEdit} />
           <Num id="rpc" label="Stories researched per cycle" value={s.limits.researchPerCycle} min={0} max={12} onChange={(n) => set("limits", { ...s.limits, researchPerCycle: n })} hint="shared by desk activity and priority" disabled={!canEdit} />

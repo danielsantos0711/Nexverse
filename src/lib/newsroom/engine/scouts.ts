@@ -38,6 +38,12 @@ export type ScoutResult = { found: Found[]; errors: string[]; note?: string }
 
 const DAY = 864e5
 const iso = (t: number) => new Date(t).toISOString().slice(0, 10)
+/** A GitHub search time: whole seconds, UTC ("2026-10-22T08:00:00Z"). */
+const ghTime = (t: number) => `${new Date(t).toISOString().slice(0, 19)}Z`
+/** arXiv's submittedDate form: YYYYMMDDHHMM, UTC. */
+const arxivTime = (t: number) => new Date(t).toISOString().slice(0, 16).replace(/[-T:]/g, "")
+/** The fewest stars a new repository needs to count as rising, by how long the window is. */
+export const minStarsFor = (days: number) => (days <= 1 ? 15 : days <= 3 ? 30 : days <= 7 ? 60 : days <= 30 ? 150 : 400)
 const str = (v: unknown, max = 300) => (typeof v === "string" ? plain(v, max) : "")
 const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0)
 const rec = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {})
@@ -49,12 +55,12 @@ export async function githubRising(desk: Desk, { budget, days = 10, queries }: {
   const m = desk.methods.github ?? {}
   const asks = (queries?.length ? queries : [...(m.topics ?? []).map((t) => `topic:${t}`), ...(m.queries ?? [])]).slice(0, 4)
   if (!asks.length) return { found: [], errors: [] }
-  const since = iso(Date.now() - days * DAY)
+  const since = ghTime(Date.now() - days * DAY)
   const found: Found[] = []
   const errors: string[] = []
   const seen = new Set<string>()
   for (const q of asks) {
-    const query = `${q.replace(/[^\w\s:./"-]/g, " ").trim()} created:>${since} stars:>40 archived:false`
+    const query = `${q.replace(/[^\w\s:./"-]/g, " ").trim()} created:>=${since} stars:>=${minStarsFor(days)} archived:false`
     const got = await fetchJson(`https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=12`, { budget })
     if (!got.ok) {
       errors.push(`GitHub search "${q}": ${got.error}`)
@@ -89,7 +95,7 @@ export async function githubRising(desk: Desk, { budget, days = 10, queries }: {
 
 /** New releases of the repositories a desk watches. */
 export async function githubReleases(desk: Desk, { budget, days = 10 }: { budget: Budget; days?: number }): Promise<ScoutResult> {
-  const repos = (desk.methods.github?.watchRepos ?? []).slice(0, 10)
+  const repos = (desk.methods.github?.watchRepos ?? []).slice(0, 20)
   const found: Found[] = []
   const errors: string[] = []
   const cutoff = Date.now() - days * DAY
@@ -99,9 +105,16 @@ export async function githubReleases(desk: Desk, { budget, days = 10 }: { budget
       errors.push(`${repo} releases: ${got.error}`)
       continue
     }
-    for (const it of parseFeed(got.text, `https://github.com/${repo}/releases`, 4)) {
+    let kept = 0
+    for (const it of parseFeed(got.text, `https://github.com/${repo}/releases`, 8)) {
       if (it.publishedAt && Date.parse(it.publishedAt) < cutoff) continue
-      if (/\b(rc\d*|alpha|beta|nightly|dev|preview)\b/i.test(it.title)) continue
+      if (/\b(rc\d*|alpha|beta|nightly|dev|preview|viable|strict|ciflow|trunk)\b/i.test(it.title)) continue
+      // Repositories that tag every build (llama.cpp b1234) give one finding a window, the newest.
+      const tag = decodeURIComponent(it.url.split("/releases/tag/")[1] ?? "")
+      if (tag && !/^[\w.-]*\d/.test(tag)) continue
+      if (/^b\d{3,}$/i.test(tag) && kept >= 1) continue
+      if (kept >= (days <= 3 ? 2 : 4)) break
+      kept++
       found.push({ url: it.url, title: it.title.includes(repo.split("/")[1]) ? it.title : `${repo.split("/")[1]} ${it.title}`, excerpt: it.excerpt, publisher: `GitHub (${repo})`.slice(0, 80), publishedAt: it.publishedAt, scout: "github_releases", desk: desk.id })
     }
   }
@@ -205,22 +218,24 @@ export async function huggingFace(desk: Desk, kind: "models" | "datasets", { bud
 
 // ─── arXiv ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-export async function arxivSearch(desk: Desk, { budget, queries }: { budget: Budget; queries?: string[] }): Promise<ScoutResult> {
+export async function arxivSearch(desk: Desk, { budget, queries, days, max = 25 }: { budget: Budget; queries?: string[]; days?: number; max?: number }): Promise<ScoutResult> {
   const m = desk.methods.arxiv ?? {}
   const cats = (m.categories ?? []).slice(0, 4)
   const qs = (queries?.length ? queries : (m.queries ?? [])).slice(0, 3)
   if (!cats.length && !qs.length) return { found: [], errors: [] }
   const catPart = cats.length ? `(${cats.map((c) => `cat:${c}`).join(" OR ")})` : ""
-  const asks = qs.length ? qs.map((q) => [catPart, `all:"${q.replace(/["\\]/g, "").slice(0, 100)}"`].filter(Boolean).join(" AND ")) : [catPart]
+  // The window, by submission time, so a scan of the last 24 hours gets exactly that.
+  const datePart = days ? `submittedDate:[${arxivTime(Date.now() - days * DAY)} TO ${arxivTime(Date.now() + 36e5)}]` : ""
+  const asks = (qs.length ? qs.map((q) => [catPart, `all:"${q.replace(/["\\]/g, "").slice(0, 100)}"`].filter(Boolean).join(" AND ")) : [catPart]).map((a) => [a, datePart].filter(Boolean).join(" AND "))
   const found: Found[] = []
   const errors: string[] = []
   for (const a of asks) {
-    const got = await fetchAllowed(`https://export.arxiv.org/api/query?search_query=${encodeURIComponent(a)}&sortBy=submittedDate&sortOrder=descending&max_results=25`, { budget, accept: "application/atom+xml", timeoutMs: 20_000 })
+    const got = await fetchAllowed(`https://export.arxiv.org/api/query?search_query=${encodeURIComponent(a)}&sortBy=submittedDate&sortOrder=descending&max_results=${Math.min(100, Math.max(5, max))}`, { budget, accept: "application/atom+xml", timeoutMs: 20_000 })
     if (!got.ok) {
       errors.push(`arXiv "${a.slice(0, 60)}": ${got.error}`)
       continue
     }
-    for (const it of parseFeed(got.text, "https://arxiv.org/", 25)) {
+    for (const it of parseFeed(got.text, "https://arxiv.org/", Math.min(100, Math.max(5, max)))) {
       const id = it.url.match(/arxiv\.org\/abs\/(\d{4}\.\d{4,5})/)?.[1]
       if (!id) continue
       found.push({ url: `https://arxiv.org/abs/${id}`, title: it.title, excerpt: it.excerpt, publisher: "arXiv", publishedAt: it.publishedAt, scout: "arxiv_search", desk: desk.id, internalOnly: true })
@@ -241,9 +256,15 @@ export function matchesDesk(text: string, desk: Desk): boolean {
   return AI_WORDS.test(text)
 }
 
-export async function frontPage(desk: Desk, { budget }: { budget: Budget }): Promise<ScoutResult> {
+export async function frontPage(desk: Desk, { budget, days }: { budget: Budget; days?: number }): Promise<ScoutResult> {
   const min = desk.methods.hn?.minPoints ?? 150
-  const got = await fetchJson(`https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=60`, { budget })
+  // With a window: every story posted in it with enough points (search by date); without: today's front page.
+  const got = await fetchJson(
+    days
+      ? `https://hn.algolia.com/api/v1/search_by_date?tags=story&numericFilters=${encodeURIComponent(`created_at_i>${Math.floor((Date.now() - days * DAY) / 1000)},points>=${min}`)}&hitsPerPage=300`
+      : `https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=60`,
+    { budget }
+  )
   if (!got.ok) return { found: [], errors: [`front page: ${got.error}`] }
   const found: Found[] = []
   for (const raw of (rec(got.json).hits as unknown[]) ?? []) {
@@ -313,7 +334,9 @@ export async function federalRegister(desk: Desk, { budget, days = 10, terms }: 
 /** Articles about a query in the last days. GDELT asks for one request every five seconds. */
 export async function gdelt(query: string, { budget, days = 2, max = 25 }: { budget: Budget; days?: number; max?: number }): Promise<{ items: { url: string; title: string; domain: string; seen: string | null }[]; error: string | null }> {
   const q = `${query.replace(/[^\w\s"'.-]/g, " ").trim().slice(0, 120)} sourcelang:english`
-  const got = await fetchJson(`https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&format=json&maxrecords=${max}&timespan=${days}d&sort=hybridrel`, { budget, timeoutMs: 15_000 })
+  // GDELT reads a timespan in hours or days; it keeps about three months.
+  const span = days < 2 ? `${Math.max(1, Math.round(days * 24))}h` : `${Math.min(90, Math.round(days))}d`
+  const got = await fetchJson(`https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&mode=artlist&format=json&maxrecords=${max}&timespan=${span}&sort=hybridrel`, { budget, timeoutMs: 15_000 })
   if (!got.ok) return { items: [], error: got.error }
   const items: { url: string; title: string; domain: string; seen: string | null }[] = []
   for (const raw of (rec(got.json).articles as unknown[]) ?? []) {
@@ -327,13 +350,13 @@ export async function gdelt(query: string, { budget, days = 2, max = 25 }: { bud
   return { items, error: null }
 }
 
-export async function gdeltScout(desk: Desk, { budget, queries }: { budget: Budget; queries?: string[] }): Promise<ScoutResult> {
+export async function gdeltScout(desk: Desk, { budget, queries, days = 2 }: { budget: Budget; queries?: string[]; days?: number }): Promise<ScoutResult> {
   const list = (queries?.length ? queries : (desk.methods.gdelt?.queries ?? [])).slice(0, 2)
   const found: Found[] = []
   const errors: string[] = []
   for (let i = 0; i < list.length; i++) {
     if (i) await pause(5_500)
-    const r = await gdelt(list[i], { budget })
+    const r = await gdelt(list[i], { budget, days })
     if (r.error) errors.push(`news index "${list[i]}": ${r.error}`)
     for (const it of r.items) found.push({ url: it.url, title: it.title, excerpt: "", publisher: it.domain || new URL(it.url).hostname, publishedAt: it.seen, scout: "gdelt", desk: desk.id })
   }

@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useEffect, useMemo, useState } from "react"
-import { LinkIcon, PlusIcon, RocketIcon, SearchIcon, XIcon } from "lucide-react"
+import { LinkIcon, PlusIcon, RocketIcon, SearchIcon, SlidersHorizontalIcon, XIcon } from "lucide-react"
 import { KIND_ICONS } from "@/components/hub/bits"
 import { HubCard } from "@/components/hub/cards"
 import { Button } from "@/components/ui/button"
@@ -51,6 +51,7 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
   const { ready, user } = useSession()
   const [data, setData] = useState<HubList | null>(null)
   const [failed, setFailed] = useState("")
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [q, setQ] = useState(params.get("q") ?? "")
   const [kinds, setKinds] = useState<ResourceKind[]>([])
   const [source, setSource] = useState<Source | null>(null)
@@ -164,7 +165,18 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
   return (
     <div className={cn("grid grid-cols-1 gap-8", showFacets && "lg:grid-cols-[15rem_1fr]")}>
       {showFacets && (
-        <aside aria-label="Filters" className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:gap-6 lg:self-start lg:overflow-y-auto lg:pr-2">
+        <button
+          type="button"
+          aria-expanded={filtersOpen}
+          onClick={() => setFiltersOpen((o) => !o)}
+          className="liquid-glass-pill flex h-10 items-center justify-center gap-2 px-4 text-sm lg:hidden"
+        >
+          <SlidersHorizontalIcon aria-hidden className="size-4" /> {filtersOpen ? "Hide filters" : "Filters"}
+          {active.length > 0 && <span className="rounded-full bg-ion/15 px-1.5 text-xs text-ion tabular">{active.length}</span>}
+        </button>
+      )}
+      {showFacets && (
+        <aside aria-label="Filters" className={cn("min-w-0 flex-col gap-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:gap-6 lg:self-start lg:overflow-y-auto lg:pr-2", filtersOpen ? "flex" : "hidden lg:flex")}>
           {!kind && (
             <Facet title="Kind">
               {(Object.keys(KINDS) as ResourceKind[])
@@ -265,14 +277,7 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
               <XIcon aria-hidden className="size-3" /> Clear
             </button>
           )}
-          <span className="ml-auto flex gap-2">
-            <Link href={kind ? `/new/project?kind=${kind}` : "/new/project"} className="inline-flex items-center gap-1 text-xs text-ion hover:underline">
-              <PlusIcon aria-hidden className="size-3.5" /> Publish
-            </Link>
-            <Link href={kind ? `/share?kind=${kind}` : "/share"} className="inline-flex items-center gap-1 text-xs text-ion hover:underline">
-              <LinkIcon aria-hidden className="size-3.5" /> Share a link
-            </Link>
-          </span>
+          {/* publishing and sharing are the page header's actions; not repeated here */}
         </div>
         {data.errors.length > 0 && <p className="text-xs text-muted-foreground">Part of the hub could not be loaded just now, so this list may be incomplete.</p>}
 

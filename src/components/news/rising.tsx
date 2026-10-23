@@ -14,7 +14,7 @@ export async function RisingNews({ names }: { names: CategoryNames }) {
   const rising = await risingStories(5)
   if (rising.length < 2) return null
   return (
-    <section aria-labelledby="rising-h" className="relative isolate overflow-hidden rounded-[2rem] border border-border bg-[radial-gradient(120%_120%_at_0%_0%,rgba(255,170,90,0.08),transparent_55%),radial-gradient(90%_90%_at_100%_100%,rgba(122,162,255,0.08),transparent_60%)] p-5 md:p-8">
+    <section aria-labelledby="rising-h" className="relative isolate overflow-hidden rounded-[2rem] border border-border bg-card p-5 md:p-8">
       <h2 id="rising-h" className="flex items-center gap-2 text-xl font-semibold md:text-2xl">
         <FlameIcon aria-hidden className="size-5 text-gold" />
         <Copy k="news.rising.title">Rising in Nexverse news</Copy>

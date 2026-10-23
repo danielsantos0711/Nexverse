@@ -9,6 +9,7 @@ import { readPage } from "../page"
 import { signalHash, urlKey } from "../parse"
 import { officialSites, saveStory } from "../pipeline"
 import { research } from "../research"
+import { clampHours, scan, type ScanKind } from "../scan"
 import { DbError, insert, isMissing, rpc, select, update, type Db } from "../rest"
 import { chartFromFacts, judgeLeak, mediaFor, plan, seoFor, sensitiveHits, triage, writeUpdate, type Verdict } from "./agents"
 import { Budget } from "./fetch"
@@ -37,7 +38,9 @@ import { checkWatcher, meaningful, toWatcher, WATCH_COLUMNS, weighLeak, type Wat
  *                desks their research slots by activity and priority, and spots duplicates and updates
  *   research     reads the original sources, writes, checks, illustrates, and publishes or sends to review
  *   update       writes the timeline entry when a published story develops
- *   backfill     the editors' mass import: a wider window and a fixed number of stories per chosen desk
+ *   backfill     the editors' mass import: the scan over a chosen window (24 hours to 90 days), then a triage
+ *                that keeps a fixed number of stories per chosen desk, written only from what the scan found
+ *   scout+sweep  the scan (../scan.ts) over the last day or so, every source with the window applied
  */
 
 const DAY = 864e5
@@ -139,7 +142,9 @@ async function onCycle(ctx: EngineContext, job: Job): Promise<Outcome> {
     const id = await enqueue(ctx.db, { kind, runId: ctx.runId, ...o })
     if (id) queued.push(`${kind}${o.desk ? `:${o.desk}` : ""}`)
   }
-  if (s.scouts.rss) await q("collect", { priority: 15, dedupe: "collect" })
+  // The sweep: every source asked for what is new since a little before the last cycle (official feeds included).
+  const sweepHours = Math.min(168, Math.max(24, Math.ceil(s.cycleMinutes / 60) * 2))
+  await q("scout", { priority: 14, dedupe: "sweep", payload: { sweep: true, hours: sweepHours } })
   if (s.scouts.watch) await q("watch", { priority: 16, dedupe: "watch" })
   const active = ctx.desks.filter((d) => d.enabled)
   for (const d of active) await q("scout", { desk: d.id, priority: 20 + (5 - d.priority), dedupe: `scout:${d.id}` })
@@ -205,29 +210,59 @@ async function onCollect(ctx: EngineContext): Promise<Outcome> {
   return { result: { sources: rows.length, fresh, errors: errors.slice(0, 20) } }
 }
 
+/** Which scan sources the engine's scout switches allow. */
+function sweepKinds(ctx: EngineContext): ScanKind[] {
+  const s = ctx.settings.scouts
+  const kinds: ScanKind[] = []
+  if (s.rss) kinds.push("official")
+  if (s.github) kinds.push("releases", "github")
+  if (s.arxiv) kinds.push("arxiv")
+  if (s.federal) kinds.push("policy")
+  if (s.hn) kinds.push("frontpage")
+  if (s.gdelt) kinds.push("coverage")
+  if (s.hf) kinds.push("models")
+  return kinds
+}
+
+async function runSweep(ctx: EngineContext, hours: number, label: string): Promise<Outcome> {
+  const kinds = sweepKinds(ctx)
+  if (!kinds.length) return { result: { skipped: "every scout is switched off" } }
+  const r = await scan({ db: ctx.db, hours, kinds, desks: new Set(ctx.desks.filter((d) => d.enabled).map((d) => d.id)), budget: ctx.budget, deadline: Math.min(ctx.deadline - 20_000, Date.now() + 120_000) })
+  const failed = r.sources.filter((x) => !x.ok)
+  ctx.log.add({
+    agent: "scout",
+    action: label,
+    outcome: `${r.stored} new`,
+    reason: `Last ${r.hours} h: ${r.findings.length} findings (${r.sources.map((x) => `${x.label.replace(/ \(.*\)$/, "")} ${x.count}`).join(", ")}); ${r.stored} not seen before.${failed.length ? ` Did not answer: ${failed.map((x) => x.label).join(", ")}.` : ""}`,
+    detail: failed.length ? { errors: failed.map((x) => `${x.label}: ${x.error ?? "no answer"}`).slice(0, 12) } : undefined,
+  })
+  return { result: { hours: r.hours, found: r.findings.length, fresh: r.stored, failed: failed.length } }
+}
+
 async function onScout(ctx: EngineContext, job: Job): Promise<Outcome> {
+  if (job.payload.sweep === true) return runSweep(ctx, clampHours(job.payload.hours, 48), "sweep")
   const desk = job.desk ? ctx.deskMap.get(job.desk) : undefined
   if (!desk || !desk.enabled) return { result: { skipped: "desk off" } }
   const s = ctx.settings.scouts
-  const days = typeof job.payload.days === "number" ? Math.min(30, Math.max(1, job.payload.days)) : 10
+  const days = typeof job.payload.hours === "number" ? clampHours(job.payload.hours) / 24 : typeof job.payload.days === "number" ? Math.min(90, Math.max(1, job.payload.days)) : 2
   const tool = typeof job.payload.tool === "string" ? job.payload.tool : null
   const query = typeof job.payload.query === "string" ? job.payload.query : ""
   const runs: { name: string; p: Promise<ScoutResult> }[] = []
   const m = desk.methods
   if (tool) {
     if (tool === "github") runs.push({ name: "github", p: githubRising(desk, { budget: ctx.budget, days, queries: [query] }) })
-    if (tool === "arxiv") runs.push({ name: "arxiv", p: arxivSearch(desk, { budget: ctx.budget, queries: [query] }) })
+    if (tool === "arxiv") runs.push({ name: "arxiv", p: arxivSearch(desk, { budget: ctx.budget, queries: [query], days }) })
     if (tool === "federal") runs.push({ name: "federal", p: federalRegister(desk, { budget: ctx.budget, days, terms: [query] }) })
-    if (tool === "gdelt") runs.push({ name: "gdelt", p: gdeltScout(desk, { budget: ctx.budget, queries: [query] }) })
+    if (tool === "gdelt") runs.push({ name: "gdelt", p: gdeltScout(desk, { budget: ctx.budget, queries: [query], days }) })
   } else {
     if (s.github && m.github && (m.github.rising || m.github.topics?.length || m.github.queries?.length)) runs.push({ name: "github", p: githubRising(desk, { budget: ctx.budget, days }) })
     if (s.github && m.github?.watchRepos?.length) runs.push({ name: "releases", p: githubReleases(desk, { budget: ctx.budget, days }) })
     if (s.hf && m.hf?.models) runs.push({ name: "hf models", p: huggingFace(desk, "models", { budget: ctx.budget, days }) })
     if (s.hf && m.hf?.datasets) runs.push({ name: "hf datasets", p: huggingFace(desk, "datasets", { budget: ctx.budget, days }) })
-    if (s.arxiv && m.arxiv) runs.push({ name: "arxiv", p: arxivSearch(desk, { budget: ctx.budget }) })
-    if (s.hn && m.hn?.enabled) runs.push({ name: "front page", p: frontPage(desk, { budget: ctx.budget }) })
+    if (s.arxiv && m.arxiv) runs.push({ name: "arxiv", p: arxivSearch(desk, { budget: ctx.budget, days }) })
+    if (s.hn && m.hn?.enabled) runs.push({ name: "front page", p: frontPage(desk, { budget: ctx.budget, days }) })
     if (s.federal && m.federal?.terms?.length) runs.push({ name: "federal", p: federalRegister(desk, { budget: ctx.budget, days }) })
-    if (s.gdelt && m.gdelt?.queries?.length) runs.push({ name: "gdelt", p: gdeltScout(desk, { budget: ctx.budget }) })
+    if (s.gdelt && m.gdelt?.queries?.length) runs.push({ name: "gdelt", p: gdeltScout(desk, { budget: ctx.budget, days }) })
   }
   const results = await Promise.all(runs.map(async (r) => ({ name: r.name, res: await r.p.catch((err: unknown) => ({ found: [], errors: [err instanceof Error ? err.message : "failed"] }) as ScoutResult) })))
   const all = results.flatMap((r) => r.res.found)
@@ -389,14 +424,16 @@ async function publishedStories(db: Db): Promise<Published[]> {
 }
 
 async function onTriage(ctx: EngineContext, job: Job): Promise<Outcome> {
-  const days = typeof job.payload.days === "number" ? Math.min(30, Math.max(1, job.payload.days)) : 4
+  const hours = typeof job.payload.hours === "number" ? clampHours(job.payload.hours) : typeof job.payload.days === "number" ? Math.min(90, Math.max(1, job.payload.days)) * 24 : 96
   const backfill = job.payload.backfill === true
   const onlyDesks = Array.isArray(job.payload.desks) ? new Set((job.payload.desks as unknown[]).filter((x): x is string => typeof x === "string")) : null
-  const since = new Date(Date.now() - days * DAY).toISOString()
+  const since = new Date(Date.now() - hours * 36e5).toISOString()
+  // The window is about when things happened (the source's date), or when they were found for undated ones.
+  const windowed = backfill ? `or=${encodeURIComponent(`(published_at.gte.${since},and(published_at.is.null,created_at.gte.${since}))`)}` : `created_at=gte.${since}`
   const cands = await select<CandidateRow>(
     ctx.db,
     "news_signals",
-    `used=is.false&created_at=gte.${since}&order=created_at.desc&limit=400&select=id,hash,url,title,excerpt,publisher,published_at,internal_only,created_at,desk,scout,metrics,via,source:news_sources(kind,category_hint,desk)`
+    `used=is.false&${windowed}&order=created_at.desc&limit=400&select=id,hash,url,title,excerpt,publisher,published_at,internal_only,created_at,desk,scout,metrics,via,source:news_sources(kind,category_hint,desk)`
   )
   const signals: EngineSignal[] = cands.map((c) => ({
     id: c.id,
@@ -743,13 +780,13 @@ async function onUpdate(ctx: EngineContext, job: Job): Promise<Outcome> {
 
 async function onBackfill(ctx: EngineContext, job: Job): Promise<Outcome> {
   const wanted = Array.isArray(job.payload.desks) ? (job.payload.desks as string[]).filter((d) => ctx.deskMap.get(d)?.enabled) : ctx.desks.filter((d) => d.enabled && !d.leakTrack).map((d) => d.id)
-  const days = Math.min(30, Math.max(1, Number(job.payload.days) || ctx.settings.backfill.days))
+  const hours = typeof job.payload.hours === "number" ? clampHours(job.payload.hours) : Math.min(90, Math.max(1, Number(job.payload.days) || ctx.settings.backfill.days)) * 24
   const perDesk = Math.min(6, Math.max(1, Number(job.payload.perDesk) || ctx.settings.backfill.perDesk))
-  if (ctx.settings.scouts.rss) await enqueue(ctx.db, { kind: "collect", priority: 12, dedupe: "collect", runId: ctx.runId })
-  for (const d of wanted) await enqueue(ctx.db, { kind: "scout", desk: d, payload: { days }, priority: 18, dedupe: `scout:${d}:backfill`, runId: ctx.runId })
-  await enqueue(ctx.db, { kind: "triage", payload: { days, backfill: true, perDesk, desks: wanted }, priority: 38, delaySeconds: 20, dedupe: "triage:backfill", runId: ctx.runId })
-  ctx.log.add({ agent: "planner", action: "backfill", outcome: "planned", reason: `Backfill of ${wanted.length} desks over the last ${days} days, up to ${perDesk} stories each.` })
-  return { result: { desks: wanted, days, perDesk } }
+  // The scan over the whole window first, then the triage reads only what it found in that window.
+  const swept = await runSweep(ctx, hours, "backfill scan")
+  await enqueue(ctx.db, { kind: "triage", payload: { hours, backfill: true, perDesk, desks: wanted }, priority: 38, dedupe: "triage:backfill", runId: ctx.runId })
+  ctx.log.add({ agent: "planner", action: "backfill", outcome: "planned", reason: `Backfill of ${wanted.length} desks over the last ${hours >= 48 ? `${Math.round(hours / 24)} days` : `${hours} hours`}, up to ${perDesk} stories each, from ${Number(swept.result?.found ?? 0)} findings.` })
+  return { result: { desks: wanted, hours, perDesk, found: swept.result?.found ?? 0 } }
 }
 
 const stageCtx = (ctx: EngineContext, job: Job): StageContext => ({ db: ctx.db, settings: ctx.settings, meter: ctx.meter, runId: ctx.runId, jobId: job.id })
@@ -767,7 +804,7 @@ const HANDLERS: Record<Job["kind"], (ctx: EngineContext, job: Job) => Promise<Ou
 }
 
 /** Seconds a job may need: research reads and writes for minutes, the rest is quick. */
-const NEEDS: Partial<Record<Job["kind"], number>> = { research: 170, update: 60, triage: 60, scout: 40, collect: 60, watch: 40, corroborate: 40 }
+const NEEDS: Partial<Record<Job["kind"], number>> = { research: 170, update: 60, triage: 60, scout: 90, collect: 60, watch: 40, corroborate: 40, backfill: 150 }
 
 // ─── The tick ───────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -778,7 +815,7 @@ export type TickOptions = {
   /** Stop starting jobs after this time (ms since epoch). */
   deadline?: number
   /** Queue a backfill before working. */
-  backfill?: { desks?: string[]; days?: number; perDesk?: number }
+  backfill?: { desks?: string[]; hours?: number; perDesk?: number }
   /** Start a research cycle now, even if one ran recently ("Run now"). */
   forceCycle?: boolean
 }
@@ -827,7 +864,7 @@ export async function tick(o: TickOptions): Promise<TickSummary> {
   }
 
   try {
-    if (o.backfill) await enqueue(db, { kind: "backfill", payload: { desks: o.backfill.desks ?? null, days: o.backfill.days ?? settings.backfill.days, perDesk: o.backfill.perDesk ?? settings.backfill.perDesk }, priority: 4, dedupe: "backfill", runId })
+    if (o.backfill) await enqueue(db, { kind: "backfill", payload: { desks: o.backfill.desks ?? null, hours: o.backfill.hours ?? settings.backfill.days * 24, perDesk: o.backfill.perDesk ?? settings.backfill.perDesk }, priority: 4, dedupe: "backfill", runId })
     // A cycle when one is due.
     const last = await select<{ created_at: string }>(db, "news_jobs", "kind=eq.cycle&order=created_at.desc&limit=1&select=created_at").catch(() => [])
     const due = !settings.paused && (o.forceCycle || !last[0] || Date.now() - Date.parse(last[0].created_at) >= settings.cycleMinutes * 60_000 - 60_000)

@@ -5,7 +5,7 @@ import type { Route } from "next"
 import { usePathname, useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
-import { ArrowRightIcon, ChevronDownIcon, CompassIcon, HomeIcon, MailIcon, MenuIcon, PlusIcon, SearchIcon, ShieldIcon } from "lucide-react"
+import { ChevronDownIcon, HomeIcon, MailIcon, MenuIcon, PlusIcon, SearchIcon, ShieldIcon } from "lucide-react"
 import { AccountButton } from "@/components/account/account-button"
 import { NotificationBell } from "@/components/social/notification-bell"
 import { OnlineNow } from "@/components/presence/online-now"
@@ -28,11 +28,23 @@ import { useMenus as useMenuData, type MenuLink } from "@/lib/menus"
 import { FEATURES, useSiteSettings, type SiteSettings } from "@/lib/site-settings"
 import { cn } from "@/lib/utils"
 
-type NavLink = { href: string; label: string; blurb: string; icon: string; tint: string }
+type NavLink = { href: string; label: string; blurb: string; icon: string; tint: string; section?: string }
 type NavMenu = { id: string; label: string; blurb?: string; links: NavLink[] }
 
 const TINT: Record<string, string> = { ion: "text-ion", gold: "text-gold", model: "text-model", dataset: "text-dataset", tool: "text-tool", repo: "text-repo" }
-const toNav = (l: MenuLink): NavLink => ({ href: l.href, label: l.label, blurb: l.description, icon: l.icon, tint: TINT[l.accent] ?? "text-ion" })
+const toNav = (l: MenuLink): NavLink => ({ href: l.href, label: l.label, blurb: l.description, icon: l.icon, tint: TINT[l.accent] ?? "text-ion", section: l.section })
+
+/** A group's links under their sub-headings, in the order the sub-headings first appear. */
+function sectionsOf(links: NavLink[]): { title: string; links: NavLink[] }[] {
+  const out: { title: string; links: NavLink[] }[] = []
+  for (const l of links) {
+    const title = l.section ?? ""
+    const s = out.find((x) => x.title === title)
+    if (s) s.links.push(l)
+    else out.push({ title, links: [l] })
+  }
+  return out
+}
 
 // Admin is built by the admin panel; typed routes learn it once that page exists.
 const ADMIN = "/admin" as Route
@@ -231,6 +243,14 @@ function useHeaderAway() {
 function MobileMenu({ pathname, menus, direct, isStaff, name }: { pathname: string; menus: NavMenu[]; direct: NavLink[]; isStaff: boolean; name: string }) {
   const openSearch = useOpenCommandMenu()
   const groups: NavMenu[] = [{ id: "top", label: "", links: [{ href: "/", label: "Home", blurb: "", icon: "house", tint: "text-ion" }, ...direct] }, ...menus]
+  const here = menus.find((m) => m.links.some((l) => isOnPath(pathname, l.href.split(/[?#]/)[0])))?.id ?? menus[0]?.id ?? null
+  const [openGroup, setOpenGroup] = useState<string | null>(here)
+  // a new page opens the group it belongs to
+  const [openedFor, setOpenedFor] = useState(pathname)
+  if (openedFor !== pathname) {
+    setOpenedFor(pathname)
+    setOpenGroup(here)
+  }
   let row = 0
   return (
     <Sheet>
@@ -256,41 +276,59 @@ function MobileMenu({ pathname, menus, direct, isStaff, name }: { pathname: stri
             <SearchIcon aria-hidden className="size-4" /> Search
           </SheetClose>
         </div>
-        <nav aria-label="Menu" className="flex flex-col gap-5 overflow-y-auto px-3 pt-4 pb-8">
-          {groups.map((m) => (
-            <div key={m.id} className="flex flex-col gap-0.5">
-              {m.label && (
-                <div className="px-3 pb-1.5">
-                  <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{m.label}</p>
-                  {m.blurb && <p className="text-xs text-muted-foreground/70">{m.blurb}</p>}
-                </div>
-              )}
-              {m.links.map((n, i) => {
-                const Icon = iconFor(n.icon, HomeIcon)
-                const on = isOnPath(pathname, n.href)
-                return (
-                  <SheetClose
-                    key={`${n.href}-${i}`}
-                    render={<Link href={n.href as Route} aria-current={on ? "page" : undefined} />}
-                    nativeButton={false}
-                    style={{ "--i": row++ } as React.CSSProperties}
-                    className={cn(
-                      "nx-enter group relative flex items-center gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-ring active:bg-white/[0.07]",
-                      on && "bg-white/[0.06] before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-ion"
-                    )}
+        <nav aria-label="Menu" className="flex flex-col gap-2 overflow-y-auto px-3 pt-4 pb-8">
+          {groups.map((m) => {
+            // one group open at a time (the one you are in, at first), so the sheet stays short
+            const expanded = !m.label || openGroup === m.id
+            return (
+              <div key={m.id} className="flex flex-col gap-0.5">
+                {m.label && (
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    onClick={() => setOpenGroup(expanded ? null : m.id)}
+                    className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-white/[0.04] focus-visible:outline-2 focus-visible:outline-ring"
                   >
-                    <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg bg-white/[0.05] ring-1 ring-white/10 transition-transform duration-(--dur-base) group-active:scale-95", n.tint)}>
-                      <Icon aria-hidden className="size-4" />
+                    <span className="flex flex-col">
+                      <span className="text-[15px] font-semibold">{m.label}</span>
+                      {m.blurb && <span className="text-xs text-muted-foreground">{m.blurb}</span>}
                     </span>
-                    <span className="flex min-w-0 flex-col">
-                      <span className="text-[15px] font-medium">{n.label}</span>
-                      {n.blurb && <span className="truncate text-xs text-muted-foreground">{n.blurb}</span>}
-                    </span>
-                  </SheetClose>
-                )
-              })}
-            </div>
-          ))}
+                    <ChevronDownIcon aria-hidden className={cn("size-4 text-muted-foreground transition-transform duration-200", expanded && "rotate-180")} />
+                  </button>
+                )}
+                {expanded &&
+                  sectionsOf(m.links).map((s) => (
+                    <div key={s.title || "links"} className="flex flex-col gap-0.5">
+                      {s.title && <p className="px-3 pt-2 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase">{s.title}</p>}
+                      {s.links.map((n, i) => {
+                        const Icon = iconFor(n.icon, HomeIcon)
+                        const on = isOnPath(pathname, n.href)
+                        return (
+                          <SheetClose
+                            key={`${n.href}-${i}`}
+                            render={<Link href={n.href as Route} aria-current={on ? "page" : undefined} />}
+                            nativeButton={false}
+                            style={{ "--i": row++ } as React.CSSProperties}
+                            className={cn(
+                              "nx-enter group relative flex items-center gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-ring active:bg-white/[0.07]",
+                              on && "bg-white/[0.06] before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-ion"
+                            )}
+                          >
+                            <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg bg-white/[0.05] ring-1 ring-white/10 transition-transform duration-(--dur-base) group-active:scale-95", n.tint)}>
+                              <Icon aria-hidden className="size-4" />
+                            </span>
+                            <span className="flex min-w-0 flex-col">
+                              <span className="text-[15px] font-medium">{n.label}</span>
+                              {n.blurb && <span className="truncate text-xs text-muted-foreground">{n.blurb}</span>}
+                            </span>
+                          </SheetClose>
+                        )
+                      })}
+                    </div>
+                  ))}
+              </div>
+            )
+          })}
           {isStaff && (
             <SheetClose
               render={<Link href={ADMIN} />}
@@ -391,7 +429,8 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
   function onPanelKey(e: React.KeyboardEvent) {
     const links = [...(panel.current?.querySelectorAll<HTMLAnchorElement>("ul a") ?? [])]
     const i = links.indexOf(document.activeElement as HTMLAnchorElement)
-    const step = e.key === "ArrowDown" ? 2 : e.key === "ArrowUp" ? -2 : e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0
+    // links run down each sub-heading, then on to the next one: Down/Right go forward, Up/Left back
+    const step = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 0
     if (!step || i < 0) return
     e.preventDefault()
     links[Math.min(links.length - 1, Math.max(0, i + step))]?.focus()
@@ -474,7 +513,7 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
             transition={{ type: "spring", duration: 0.35, bounce: 0.1 }}
             style={{ transformOrigin: "top center" }}
             // Liquid Glass with a dense fill: readable over anything, and at the low quality tiers it turns solid
-            className="liquid-glass-strong absolute top-[calc(100%+12px)] left-1/2 w-[44rem] -translate-x-1/2 overflow-hidden rounded-3xl"
+            className="liquid-glass-strong absolute top-[calc(100%+12px)] left-1/2 w-[38rem] -translate-x-1/2 overflow-hidden rounded-3xl"
           >
             <AnimatePresence mode="popLayout" initial={false} custom={dir}>
               <motion.div
@@ -484,61 +523,52 @@ function MainNav({ pathname, menus, direct }: { pathname: string; menus: NavMenu
                 animate={{ opacity: 1, transform: "translateX(0px)" }}
                 exit={reduce ? { opacity: 0 } : { opacity: 0, transform: `translateX(${dir * -32}px)` }}
                 transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-                className="grid grid-cols-[11rem_1fr]"
+                className="grid grid-cols-2 gap-x-2 gap-y-3 p-3"
               >
-                {/* what this group is, in one line, and the way to the whole map */}
-                <div className="flex flex-col justify-between gap-6 border-r border-white/[0.06] bg-white/[0.02] p-5">
-                  <div className="flex flex-col gap-1.5">
-                    <p className="font-display text-base font-semibold">{menu.label}</p>
-                    {menu.blurb && <p className="text-xs leading-relaxed text-muted-foreground">{menu.blurb}</p>}
-                  </div>
-                  <Link
-                    href="/explore"
-                    onClick={() => setOpen(null)}
-                    className="group inline-flex items-center gap-1.5 text-xs font-medium text-ion focus-visible:outline-2 focus-visible:outline-ring"
-                  >
-                    <CompassIcon aria-hidden className="size-3.5" />
-                    The whole map
-                    <ArrowRightIcon aria-hidden className="size-3 transition-transform duration-(--dur-base) group-hover:translate-x-0.5" />
-                  </Link>
-                </div>
-                <ul aria-label={menu.label} className="grid grid-cols-2 gap-1 p-2">
-                  {menu.links.map((l, i) => {
-                    const Icon = iconFor(l.icon)
-                    return (
-                      <li key={`${l.href}-${i}`} className="nx-enter" style={{ "--i": i } as React.CSSProperties}>
-                        <Link
-                          href={l.href as Route}
-                          prefetch={false}
-                          onPointerEnter={() => l.href.startsWith("/") && router.prefetch(l.href)}
-                          onFocus={() => l.href.startsWith("/") && router.prefetch(l.href)}
-                          aria-current={isOn(l.href) ? "page" : undefined}
-                          onClick={() => setOpen(null)}
-                          className="group flex items-start gap-3 rounded-xl p-2.5 transition-colors duration-(--dur-fast) hover:bg-white/[0.05] focus-visible:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-ring active:scale-[0.98] aria-[current=page]:bg-white/[0.06]"
-                        >
-                          <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg bg-white/[0.05] ring-1 ring-white/10 transition-transform duration-(--dur-base) ease-(--ease-out) group-hover:scale-110 group-hover:-rotate-6", l.tint)}>
-                            <Icon aria-hidden className="size-4" />
-                          </span>
-                          <span className="flex flex-col gap-0.5">
-                            <span className="text-sm font-medium">{l.label}</span>
-                            <span className="text-xs leading-snug text-muted-foreground">{l.blurb}</span>
-                          </span>
-                        </Link>
-                      </li>
-                    )
-                  })}
-                </ul>
+                {/* Round 12: short sub-headings with two to four links each, two columns, one line per link. */}
+                {(() => {
+                  let n = 0
+                  return sectionsOf(menu.links).map((s) => (
+                    <div key={s.title || "links"} className="flex min-w-0 flex-col">
+                      {s.title && <p className="px-2.5 pt-1 pb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase">{s.title}</p>}
+                      <ul aria-label={s.title || menu.label} className="flex flex-col">
+                        {s.links.map((l, i) => {
+                          const Icon = iconFor(l.icon)
+                          return (
+                            <li key={`${l.href}-${i}`} className="nx-enter" style={{ "--i": n++ } as React.CSSProperties}>
+                              <Link
+                                href={l.href as Route}
+                                prefetch={false}
+                                onPointerEnter={() => l.href.startsWith("/") && router.prefetch(l.href)}
+                                onFocus={() => l.href.startsWith("/") && router.prefetch(l.href)}
+                                aria-current={isOn(l.href) ? "page" : undefined}
+                                onClick={() => setOpen(null)}
+                                className="group flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors duration-(--dur-fast) hover:bg-white/[0.05] focus-visible:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-ring active:scale-[0.98] aria-[current=page]:bg-white/[0.06]"
+                              >
+                                <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg bg-white/[0.05] ring-1 ring-white/10 transition-transform duration-(--dur-base) ease-(--ease-out) group-hover:scale-110 group-hover:-rotate-6", l.tint)}>
+                                  <Icon aria-hidden className="size-4" />
+                                </span>
+                                <span className="flex min-w-0 flex-col">
+                                  <span className="text-sm font-medium">{l.label}</span>
+                                  {l.blurb && <span className="truncate text-xs text-muted-foreground">{l.blurb}</span>}
+                                </span>
+                              </Link>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  ))
+                })()}
               </motion.div>
             </AnimatePresence>
             <div aria-hidden className="flex items-center gap-4 border-t border-white/[0.06] px-5 py-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5">
+              {menu.blurb && <span className="truncate">{menu.blurb}</span>}
+              <span className="ml-auto inline-flex shrink-0 items-center gap-1.5">
                 <GlassKeys keys={["/"]} live={false} /> search
               </span>
-              <span className="inline-flex items-center gap-1.5">
+              <span className="inline-flex shrink-0 items-center gap-1.5">
                 <GlassKeys keys={["C"]} live={false} /> create
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <GlassKeys keys={["G"]} live={false} /> then a letter to jump
               </span>
             </div>
           </motion.div>

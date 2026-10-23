@@ -25,8 +25,6 @@ export async function moderationReady(): Promise<{ ok: boolean; reason?: string 
 
 // Overview
 
-export type OverviewCounts = Record<"members" | "newMembers" | "openReports" | "threads" | "submissions" | "projects" | "events" | "rooms", number | null>
-
 async function count(table: string, where: { eq?: [string, string]; gte?: [string, string] } = {}) {
   const c = db()
   if (!c) return null
@@ -37,20 +35,70 @@ async function count(table: string, where: { eq?: [string, string]; gte?: [strin
   return error ? null : (n ?? 0)
 }
 
-/** Real totals, each one on its own: a table that is missing shows as unknown instead of breaking the page. */
-export async function loadOverview(): Promise<OverviewCounts> {
+/**
+ * The admin dashboard's numbers. Each one is read on its own and shows as unknown (null) when the table is
+ * missing or this account may not read it, so one gap never blanks the page.
+ */
+export type Dashboard = {
+  members: number | null
+  newMembers: number | null
+  openReports: number | null
+  posts: number | null
+  newPosts: number | null
+  imported: number | null
+  hidden: number | null
+  news: { lastRun: { at: string; status: string; stale: boolean } | null; published24h: number | null; drafts: number | null; tips: number | null } | null
+}
+
+export async function loadDashboard({ newsroom }: { newsroom: boolean }): Promise<Dashboard> {
   const since = new Date(Date.now() - WEEK).toISOString()
-  const [members, newMembers, openReports, threads, submissions, projects, events, rooms] = await Promise.all([
+  const day = new Date(Date.now() - 864e5).toISOString()
+  const sum = (xs: (number | null)[]) => (xs.every((x) => x === null) ? null : xs.reduce<number>((a, x) => a + (x ?? 0), 0))
+  const [members, newMembers, openReports, threads, links, projects, newThreads, newLinks, newProjects, imported, hiddenThreads, hiddenLinks] = await Promise.all([
     count("profiles"),
     count("profiles", { gte: ["created_at", since] }),
     count("reports", { eq: ["status", "open"] }),
     count("questions"),
     count("submissions"),
-    count("projects", { eq: ["status", "published"] }),
-    count("events"),
-    count("rooms"),
+    countWhere("projects", (q) => q.eq("status", "published").is("source", null)),
+    count("questions", { gte: ["created_at", since] }),
+    count("submissions", { gte: ["created_at", since] }),
+    countWhere("projects", (q) => q.eq("status", "published").is("source", null).gte("created_at", since)),
+    countWhere("projects", (q) => q.not("source", "is", null)),
+    countWhere("questions", (q) => q.not("hidden_at", "is", null)),
+    countWhere("submissions", (q) => q.not("hidden_at", "is", null)),
   ])
-  return { members, newMembers, openReports, threads, submissions, projects, events, rooms }
+  let news: Dashboard["news"] = null
+  if (newsroom) {
+    const c = db()
+    const [run, published24h, drafts, tips] = await Promise.all([
+      c ? c.from("news_runs").select("started_at, status").order("started_at", { ascending: false }).limit(1) : null,
+      countWhere("news_stories", (q) => q.eq("status", "published").gte("published_at", day)),
+      count("news_stories", { eq: ["status", "draft"] }),
+      count("news_tips", { eq: ["status", "new"] }),
+    ])
+    const row = run && !run.error ? (run.data as { started_at: string; status: string }[])[0] : undefined
+    news = { lastRun: row ? { at: row.started_at, status: row.status, stale: Date.now() - Date.parse(row.started_at) > 864e5 } : null, published24h, drafts, tips }
+  }
+  return {
+    members,
+    newMembers,
+    openReports,
+    posts: sum([threads, links, projects]),
+    newPosts: sum([newThreads, newLinks, newProjects]),
+    imported,
+    hidden: sum([hiddenThreads, hiddenLinks]),
+    news,
+  }
+}
+
+// A count with a filter the simple helper does not cover.
+async function countWhere(table: string, where: (q: ReturnType<ReturnType<NonNullable<ReturnType<typeof db>>["from"]>["select"]>) => unknown) {
+  const c = db()
+  if (!c) return null
+  const q = where(c.from(table).select("*", { count: "exact", head: true })) as PromiseLike<{ count: number | null; error: unknown }>
+  const { count: n, error } = await q
+  return error ? null : (n ?? 0)
 }
 
 // Members
@@ -315,12 +363,8 @@ export const NAV_LINKS: { href: string; label: string; group: string }[] = [
   { href: "/models", label: "Models", group: "Hub" },
   { href: "/datasets", label: "Datasets", group: "Hub" },
   { href: "/tools", label: "Tools", group: "Hub" },
-  { href: "/repos", label: "Repos", group: "Hub" },
   { href: "/trending", label: "Trending now", group: "Hub" },
   { href: "/code", label: "Code", group: "Hub" },
-  { href: "/gh/topics", label: "GitHub topics", group: "Hub" },
-  { href: "/cosmos", label: "Cosmos", group: "Hub" },
-  { href: "/constellations", label: "Constellations", group: "Hub" },
   { href: "/forum", label: "Forum", group: "Community" },
   { href: "/crews", label: "Crews", group: "Community" },
   { href: "/messages", label: "Messages", group: "Community" },
@@ -335,7 +379,7 @@ export const NAV_LINKS: { href: string; label: string; group: string }[] = [
   { href: "/leaderboard", label: "Leaderboard", group: "Community" },
   { href: "/for-you", label: "For you", group: "Community" },
   { href: "/new/project", label: "Publish a project", group: "Create" },
-  { href: "/studio", label: "Your studio", group: "Create" },
+  { href: "/compare", label: "Compare", group: "Create" },
   { href: "/lab", label: "Lab", group: "Create" },
   { href: "/collections", label: "Collections", group: "Create" },
   { href: "/forum/new", label: "Start a thread", group: "Create" },

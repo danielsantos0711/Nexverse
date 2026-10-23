@@ -1,8 +1,6 @@
-import type { Metadata } from "next"
-import { SettingsIndex } from "@/components/admin/settings-forms"
+import { redirect } from "next/navigation"
 
-export const metadata: Metadata = { title: "Site settings" }
-
+// Site settings are tabs of Appearance, Menus and Access now; the old index opens the first one.
 export default function AdminSettingsPage() {
-  return <SettingsIndex />
+  redirect("/admin/settings/brand")
 }

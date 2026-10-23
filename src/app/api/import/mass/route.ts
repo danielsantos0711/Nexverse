@@ -1,12 +1,13 @@
 import { errorJson, member, NO_STORE } from "@/lib/code/server"
 import { ImportError } from "@/lib/import/fetch"
-import { importCandidate, isMassSource, listCandidates, logRun, requireAdmin, RUN_MAX } from "@/lib/import/mass"
+import { importCandidate, inspectCandidate, isMassSource, listCandidates, logRun, requireAdmin, RUN_MAX } from "@/lib/import/mass"
 
 /**
  * POST /api/import/mass, admins only, with the admin's access token as `Authorization: Bearer`:
  * - `{ action: "preview", source, limit }` → `{ data: { candidates } }`: what a run would import (dry run, writes nothing);
  * - `{ action: "start", source, runId, count }` / `{ action: "finish", source, runId, note }`: moderation log lines;
- * - `{ action: "item", source, runId, ref }` → `{ data: { status, href?, note? } }`: imports one candidate.
+ * - `{ action: "item", source, runId, ref }` → `{ data: { status, href?, note? } }`: imports one candidate;
+ * - `{ action: "inspect", source, ref }` → `{ data: Inspection }`: everything one candidate's page would get (dry run).
  * `source` is hf-models | hf-datasets | or-models | gh-repos | gh-tools | papers. Errors: `{ error: { message } }`.
  */
 export async function POST(request: Request): Promise<Response> {
@@ -26,6 +27,11 @@ export async function POST(request: Request): Promise<Response> {
     if (b.action === "preview") {
       const limit = typeof b.limit === "number" ? Math.min(RUN_MAX, Math.max(1, b.limit)) : 10
       return Response.json({ data: { candidates: await listCandidates(m, b.source, limit) } }, { headers: NO_STORE })
+    }
+    if (b.action === "inspect") {
+      const ref = typeof b.ref === "string" ? b.ref.trim() : ""
+      if (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{1,199}$/.test(ref) || ref.includes("..")) throw new ImportError(400, "That id is not valid.")
+      return Response.json({ data: await inspectCandidate(b.source, ref) }, { headers: NO_STORE })
     }
     if (!runId) throw new ImportError(400, "Missing the run id.")
     if (b.action === "start" || b.action === "finish") {

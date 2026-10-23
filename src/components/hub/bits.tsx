@@ -2,8 +2,8 @@ import Link from "next/link"
 import { AppWindowIcon, BoxIcon, DatabaseIcon, FileTextIcon, FolderGit2Icon, WrenchIcon, type LucideIcon } from "lucide-react"
 import { compact, KINDS, LANGUAGES, type LanguageCode, type ResourceKind } from "@/lib/data"
 import { cn } from "@/lib/utils"
-import { Copy } from "@/components/content/copy"
-import { PageBackdrop, type Backdrop } from "@/components/glass/page-backdrop"
+import { AreaCrumbs } from "@/components/site/area-crumbs"
+import { PageHead } from "@/components/site/page-head"
 
 export const KIND_ICONS: Record<ResourceKind, LucideIcon> = {
   model: BoxIcon,
@@ -206,34 +206,29 @@ export function SectionHead({
   )
 }
 
+/**
+ * A list page's header. Round 12: compact and the same on every page (see PageHead). The old eyebrow lines and the
+ * shader behind the title are gone; where the page sits in the menus is said once, above the title.
+ */
 export function PageTitle({
-  eyebrow,
   title,
   lead,
   children,
   k,
-  backdrop = "phosphor",
+  crumbs,
 }: {
+  /** Ignored since round 12 (kept so older callers still compile). */
   eyebrow?: React.ReactNode
   title: string
   lead?: string
+  /** The page's actions, on the right of the title. */
   children?: React.ReactNode
   /** Content key ("models.header"): the admins can then edit the title and lead from the site editor. */
   k?: string
-  /** The shader behind the title (see PageBackdrop); "none" for a plain header. */
-  backdrop?: Backdrop
+  /** Ignored since round 12: no shader behind titles. */
+  backdrop?: string
+  /** The trail above the title; by default the menu group this page sits in. */
+  crumbs?: React.ReactNode
 }) {
-  return (
-    <header className="relative isolate flex flex-col gap-3 pt-10 pb-8 md:pt-14">
-      <PageBackdrop variant={backdrop} />
-      <div aria-hidden className="starfield left-1/2 -z-10 w-screen -translate-x-1/2 [mask-image:linear-gradient(to_bottom,black,transparent)]">
-        <i />
-        <i />
-      </div>
-      {eyebrow && <div className="text-sm text-muted-foreground">{eyebrow}</div>}
-      <h1 className="text-3xl font-semibold tracking-[-0.03em] md:text-[2.75rem] md:leading-[1.05]">{k ? <Copy k={`${k}.title`}>{title}</Copy> : title}</h1>
-      {lead && <p className="max-w-[62ch] text-base text-muted-foreground">{k ? <Copy k={`${k}.lead`} multiline>{lead}</Copy> : lead}</p>}
-      {children}
-    </header>
-  )
+  return <PageHead k={k} title={title} lead={lead} crumbs={crumbs ?? <AreaCrumbs />} actions={children} />
 }

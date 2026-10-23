@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
-import { ArchiveIcon, CircleDotIcon, EyeIcon, FolderGit2Icon, GitBranchIcon, GitCommitHorizontalIcon, GitForkIcon, ScaleIcon, StarIcon, TagIcon } from "lucide-react"
+import { ArchiveIcon, CircleDotIcon, DownloadIcon, EyeIcon, FolderGit2Icon, GitBranchIcon, GitCommitHorizontalIcon, GitForkIcon, ScaleIcon, StarIcon, TagIcon } from "lucide-react"
 import { Chip, Cover } from "@/components/hub/bits"
 import { CopyButton } from "@/components/hub/copy-button"
 import { LikeButton } from "@/components/hub/like-button"
@@ -15,10 +15,12 @@ import { ExternalLink } from "./bits"
 import { CodeView } from "./code-block"
 import { bytes, DetailBanner, DiscussButton, Empty, ErrorPanel, InfoRow, Panel, SourceLink } from "./detail"
 import { FileList, type FileRow } from "./file-list"
+import { GhDownloadLink } from "./gh-download"
 import { LanguageBar } from "./language-bar"
 import { Markdown } from "./markdown"
 import { TimeAgo } from "./time"
 import { Copy } from "@/components/content/copy"
+import { ExplainItem } from "@/components/ai/inline-ai"
 
 /* The in-site page of a GitHub repository, and its file and folder views. */
 
@@ -38,7 +40,7 @@ function Avatar({ repo: d, size = "lg" }: { repo: Pick<GhRepoDetail, "ownerAvata
 
 const crumbs = (owner: string) => [
   {
-    href: "/gh/topics",
+    href: "/code?from=github",
     label: (
       <>
         <FolderGit2Icon aria-hidden className="size-4" /> GitHub
@@ -152,7 +154,8 @@ function Releases({ releases, owner, repo, branch }: { releases: GhRelease[]; ow
               {r.prerelease && <Chip className="text-gold">Pre-release</Chip>}
               <TimeAgo date={r.publishedAt} className="ml-auto text-xs text-muted-foreground" />
             </summary>
-            <div className="border-t border-border px-4 py-3">
+            <div className="flex flex-col gap-3 border-t border-border px-4 py-3">
+              <ReleaseFiles release={r} owner={owner} repo={repo} />
               {r.body.trim() ? <Markdown source={r.body} ctx={{ source: "github", owner, repo, branch, dir: "" }} className="text-sm" /> : <p className="text-sm text-muted-foreground"><Copy k="gh-repo.gh-repo.no-release-notes">No release notes.</Copy></p>}
             </div>
           </details>
@@ -162,14 +165,46 @@ function Releases({ releases, owner, repo, branch }: { releases: GhRelease[]; ow
   )
 }
 
+/** A release's files and its source code, each downloaded through Nexverse. */
+function ReleaseFiles({ release: r, owner, repo }: { release: GhRelease; owner: string; repo: string }) {
+  const assets = r.assets ?? []
+  return (
+    <ul aria-label={`Files in ${r.name}`} className="flex flex-col divide-y divide-border overflow-hidden rounded-lg bg-secondary/40 text-sm">
+      {assets.map((a) => (
+        <li key={a.name} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+          <GhDownloadLink req={{ kind: "asset", owner, repo, tag: r.tag, name: a.name }} variant="text" className="min-w-0 flex-1 break-all">
+            <DownloadIcon aria-hidden className="size-3.5 shrink-0" />
+            {a.name}
+          </GhDownloadLink>
+          <span className="text-xs text-muted-foreground tabular">{bytes(a.size)}</span>
+        </li>
+      ))}
+      <li className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+        <span className="min-w-0 flex-1 text-muted-foreground">Source code</span>
+        <GhDownloadLink req={{ kind: "zip", owner, repo, ref: r.tag }} variant="text">.zip</GhDownloadLink>
+        <GhDownloadLink req={{ kind: "tar", owner, repo, ref: r.tag }} variant="text">.tar.gz</GhDownloadLink>
+      </li>
+    </ul>
+  )
+}
+
 function Section<T>({ result, what, children }: { result: { ok: true; data: T } | { ok: false; reason: FailReason }; what: string; children: (data: T) => React.ReactNode }) {
   return result.ok ? <>{children(result.data)}</> : <ErrorPanel reason={result.reason} what={what} />
 }
 
-function Clone({ fullName }: { fullName: string }) {
+function Clone({ fullName, branch }: { fullName: string; branch: string }) {
   const cmd = `git clone https://github.com/${fullName}.git`
+  const [owner, repo] = fullName.split("/")
   return (
     <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <GhDownloadLink req={{ kind: "zip", owner, repo, ref: branch }} variant="primary" className="flex-1">
+          Download ZIP
+        </GhDownloadLink>
+        <GhDownloadLink req={{ kind: "tar", owner, repo, ref: branch }} variant="quiet">
+          .tar.gz
+        </GhDownloadLink>
+      </div>
       <span className="text-xs text-muted-foreground"><Copy k="gh-repo.gh-repo.clone">Clone</Copy></span>
       <div className="flex items-center gap-2 rounded-lg border border-border bg-[#07080d] py-1 pr-1 pl-3">
         <code className="min-w-0 flex-1 truncate font-mono text-xs text-[#cfd8ea]" title={cmd}>
@@ -228,29 +263,40 @@ export async function RepoView({ owner, repo }: { owner: string; repo: string })
     <>
       <RepoHeader d={d} />
       <div className="shell grid grid-cols-1 gap-10 pt-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <MotionTabs
-          className="min-w-0"
-          tabs={[
-            { id: "readme", label: "README", content: readmeTab },
-            {
-              id: "files",
-              label: "Files",
-              count: contents.ok ? contents.data.length : undefined,
-              content: <Section result={contents} what="files">{(entries) => (entries.length ? <FileList rows={entryRows(o, n, branch, entries)} /> : <Empty>This repository is empty.</Empty>)}</Section>,
-            },
-            {
-              id: "commits",
-              label: "Commits",
-              content: <Section result={commits} what="commits">{(list) => <Commits commits={list} />}</Section>,
-            },
-            {
-              id: "releases",
-              label: "Releases",
-              count: releases.ok ? releases.data.length : undefined,
-              content: <Section result={releases} what="releases">{(list) => <Releases releases={list} owner={o} repo={n} branch={branch} />}</Section>,
-            },
-          ]}
-        />
+        <div className="flex min-w-0 flex-col gap-4">
+          <ExplainItem
+            kind="repo"
+            name={d.fullName}
+            summary={d.description ?? undefined}
+            readme={readme.ok ? readme.data.text.slice(0, 24_000) : undefined}
+            details={[d.license && `Licence: ${d.license}`, langs.ok && langs.data.length ? `Languages: ${langs.data.map((l) => l.name).join(", ")}` : null, d.topics.length ? `Topics: ${d.topics.join(", ")}` : null, `Stars: ${d.stars}`, `Default branch: ${d.defaultBranch}`].filter(Boolean).join("\n")}
+            url={ghHref(o, n)}
+            className="items-start"
+          />
+          <MotionTabs
+            className="min-w-0"
+            tabs={[
+              { id: "readme", label: "README", content: readmeTab },
+              {
+                id: "files",
+                label: "Files",
+                count: contents.ok ? contents.data.length : undefined,
+                content: <Section result={contents} what="files">{(entries) => (entries.length ? <FileList rows={entryRows(o, n, branch, entries)} /> : <Empty>This repository is empty.</Empty>)}</Section>,
+              },
+              {
+                id: "commits",
+                label: "Commits",
+                content: <Section result={commits} what="commits">{(list) => <Commits commits={list} />}</Section>,
+              },
+              {
+                id: "releases",
+                label: "Releases",
+                count: releases.ok ? releases.data.length : undefined,
+                content: <Section result={releases} what="releases">{(list) => <Releases releases={list} owner={o} repo={n} branch={branch} />}</Section>,
+              },
+            ]}
+          />
+        </div>
 
         <aside className="flex flex-col gap-6">
           <Panel label="Details">
@@ -303,7 +349,7 @@ export async function RepoView({ owner, repo }: { owner: string; repo: string })
               </InfoRow>
             )}
             <div className="border-t border-border pt-3">
-              <Clone fullName={d.fullName} />
+              <Clone fullName={d.fullName} branch={d.defaultBranch} />
             </div>
           </Panel>
 
@@ -376,7 +422,20 @@ export async function RepoPathView({ owner, repo, mode, branch, path }: { owner:
           </div>
         )
       } else if (f.kind === "text") {
-        body = <CodeView text={f.text} name={name} actions={<span className="tabular">{bytes(f.bytes)}</span>} />
+        body = (
+          <CodeView
+            text={f.text}
+            name={name}
+            actions={
+              <span className="inline-flex items-center gap-3">
+                <span className="tabular">{bytes(f.bytes)}</span>
+                <GhDownloadLink req={{ kind: "file", owner: o, repo: n, ref: branch, path }} variant="text">
+                  <DownloadIcon aria-hidden className="size-3.5" /> Download
+                </GhDownloadLink>
+              </span>
+            }
+          />
+        )
       } else if (f.kind === "image") {
         body = (
           <div className="flex justify-center rounded-xl border border-border bg-[repeating-conic-gradient(#0d0f16_0%_25%,#0a0b11_0%_50%)] bg-[length:20px_20px] p-6">
@@ -386,9 +445,12 @@ export async function RepoPathView({ owner, repo, mode, branch, path }: { owner:
         )
       } else {
         body = (
-          <Empty>
-            {f.kind === "toolarge" ? "This file is larger than 200 KB, too big to show here." : "This is a binary file, so there is nothing to read here."} Clone the repository to get it.
-          </Empty>
+          <div className="flex flex-col items-center gap-4 rounded-xl border border-border p-8 text-center">
+            <p className="text-sm text-muted-foreground">{f.kind === "toolarge" ? "This file is larger than 200 KB, too big to show here." : "This is a binary file, so there is nothing to read here."}</p>
+            <GhDownloadLink req={{ kind: "file", owner: o, repo: n, ref: branch, path }} variant="primary">
+              Download {name}
+            </GhDownloadLink>
+          </div>
         )
       }
     }
@@ -415,9 +477,19 @@ export async function RepoPathView({ owner, repo, mode, branch, path }: { owner:
       <div className="shell flex flex-col gap-4 pt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <PathCrumbs owner={o} repo={n} branch={branch} path={path} />
-          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/60 px-2.5 py-0.5 font-mono text-xs text-muted-foreground">
-            <GitBranchIcon aria-hidden className="size-3" />
-            {branch}
+          <span className="flex flex-wrap items-center gap-2">
+            {mode === "blob" && (
+              <GhDownloadLink req={{ kind: "file", owner: o, repo: n, ref: branch, path }} variant="quiet">
+                Download file
+              </GhDownloadLink>
+            )}
+            <GhDownloadLink req={{ kind: "zip", owner: o, repo: n, ref: branch }} variant="quiet">
+              Download ZIP
+            </GhDownloadLink>
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/60 px-2.5 py-0.5 font-mono text-xs text-muted-foreground">
+              <GitBranchIcon aria-hidden className="size-3" />
+              {branch}
+            </span>
           </span>
         </div>
         {body}

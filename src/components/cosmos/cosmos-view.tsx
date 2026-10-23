@@ -48,7 +48,7 @@ type Loaded = { entries: HubEntry[]; stats: Record<string, ProjectStats>; member
  * The Cosmos page: the star map, its controls and the list fallback. The canvas work lives in CosmosEngine; this
  * component owns the state (filters, selection, search, "Where am I") and the overlays that follow the camera.
  */
-export function CosmosView({ github = [] }: { github?: GhRepo[] }) {
+export function CosmosView({ github = [], embedded = false }: { github?: GhRepo[]; /** Inside Explore (round 12): Explore's header names the page and its List tab is the list. */ embedded?: boolean }) {
   const router = useRouter()
   const params = useSearchParams()
   const [initialFocus] = useState(() => {
@@ -184,7 +184,7 @@ export function CosmosView({ github = [] }: { github?: GhRepo[] }) {
 
   /** Remembers the picked star in the address bar, so the view can be shared. */
   const remember = useCallback((id: string | null) => {
-    const url = id ? `/cosmos?focus=${id}` : "/cosmos"
+    const url = id ? `/explore?show=map&focus=${id}` : "/explore?show=map"
     window.history.replaceState(null, "", url)
   }, [])
 
@@ -489,7 +489,7 @@ export function CosmosView({ github = [] }: { github?: GhRepo[] }) {
         <LocateFixedIcon aria-hidden className="size-4" />
         <span className={cn(compact && "max-sm:sr-only")}><Copy k="cosmos.cosmos-view.where-am-i">Where am I</Copy></span>
       </button>
-      <button
+      {!embedded && <button
         type="button"
         aria-pressed={view === "list"}
         onClick={() => setView((v) => (v === "map" ? "list" : "map"))}
@@ -497,7 +497,7 @@ export function CosmosView({ github = [] }: { github?: GhRepo[] }) {
       >
         {view === "map" ? <ListIcon aria-hidden className="size-4" /> : <MapIcon aria-hidden className="size-4" />}
         <span className={cn(compact && "max-sm:sr-only")}>{view === "map" ? "List view" : "Map view"}</span>
-      </button>
+      </button>}
     </div>
   )
 
@@ -524,12 +524,16 @@ export function CosmosView({ github = [] }: { github?: GhRepo[] }) {
       {/* The map stays mounted behind the list so switching back is instant; it simply stops drawing. */}
       <section
         aria-label="Cosmos star map"
-        className={cn("relative isolate h-[calc(100dvh-4rem)] min-h-[560px] w-full overflow-hidden bg-background select-none", view === "list" && "hidden")}
+        className={cn(
+          "relative isolate w-full overflow-hidden bg-background select-none",
+          embedded ? "h-[min(76dvh,820px)] min-h-[480px] rounded-2xl ring-1 ring-white/[0.06]" : "h-[calc(100dvh-4rem)] min-h-[560px]",
+          view === "list" && "hidden"
+        )}
       >
         {/* Top: title, search, the two view switches, then the filter chips. */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-2 p-3 sm:p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="glass pointer-events-auto order-1 flex h-10 items-center gap-2 rounded-full bg-[#0b0e16]/60 pr-4 pl-1.5">
+            <div className={cn("glass pointer-events-auto order-1 flex h-10 items-center gap-2 rounded-full bg-[#0b0e16]/60 pr-4 pl-1.5", embedded && "hidden")}>
               <span className="grid size-7 shrink-0 place-items-center rounded-full border border-ion/25 bg-ion/10 text-ion">
                 <OrbitIcon aria-hidden className="size-3.5" />
               </span>

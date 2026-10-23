@@ -9,7 +9,7 @@ import { ReportButton } from "@/components/moderation"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCaps } from "@/lib/caps"
-import { addPullComment, deleteComment, getPull, getRepoById, listPullComments, listPulls, listRefs, mergePull, ownerKey, repoPath, StaleHead, updatePull, type Comment, type Pull, type Repo } from "@/lib/code/api"
+import { addPullComment, deleteComment, getPull, getRepoById, listPullComments, listPulls, listRefs, mergePull, ownerKey, ownerLabel, repoPath, StaleHead, updatePull, type Comment, type Pull, type Repo } from "@/lib/code/api"
 import { compare, type Comparison } from "@/lib/code/compare"
 import { shortSha } from "@/lib/code/hash"
 import { cn } from "@/lib/utils"
@@ -35,7 +35,7 @@ export function PullsPage() {
           <span className="min-w-0 flex-1">
             This is a fork of{" "}
             <Link href={href(repoPath(parent.data))} className="font-medium hover:text-ion hover:underline">
-              {ownerKey(parent.data.owner)}/{parent.data.slug}
+              {ownerLabel(parent.data.owner)}/{parent.data.slug}
             </Link>
             . Send your changes back with a pull request there.
           </span>
@@ -265,7 +265,7 @@ export function PullPage({ number, tab }: { number: number; tab: "conversation" 
             <section className="flex flex-col gap-1.5 border-b border-border pb-4">
               <h3 className="font-medium"><Copy k="code-repo.pulls.into">Into</Copy></h3>
               <span className="font-mono text-xs">
-                {ownerKey(repo.owner)}/{repo.slug}:{pull.toBranch}
+                {ownerLabel(repo.owner)}/{repo.slug}:{pull.toBranch}
               </span>
             </section>
             <section className="flex flex-col gap-1.5 border-b border-border pb-4">

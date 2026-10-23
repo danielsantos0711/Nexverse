@@ -1,7 +1,10 @@
 "use client"
 
 import { Switch as SwitchPrimitive } from "@base-ui/react/switch"
+import { createContext, use } from "react"
+import { createPortal } from "react-dom"
 import { CircleAlertIcon, CircleCheckIcon, InfoIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 /*
@@ -142,12 +145,60 @@ export function when(iso: string, now = Date.now()) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
 }
 
-/** A section heading inside an admin page. */
+/**
+ * What the admin frame already shows for the open page: its titles (so a page's own top heading is folded
+ * away instead of repeating them) and the slot in the title row where that heading's buttons go.
+ */
+export const AdminFrameContext = createContext<{ covers: ReadonlySet<string>; actions: HTMLElement | null } | null>(null)
+
+/** The bar under a form that stays in reach while it scrolls: what changed, Discard and Save. */
+export function SaveBar({
+  dirty,
+  busy,
+  status,
+  disabled,
+  onDiscard,
+  children,
+}: {
+  dirty: boolean
+  busy: boolean
+  status: { ok: boolean; text: string } | null
+  /** Saving cannot work here (no database, no permission). */
+  disabled?: boolean
+  onDiscard: () => void
+  /** Extra buttons before Discard, such as "Reset to defaults". */
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-border bg-popover/95 py-2 pr-2 pl-4 backdrop-blur-sm">
+      <div className="min-w-0 flex-1">{status ? <StatusLine status={status} /> : <p className="text-sm text-muted-foreground">{dirty ? "Unsaved changes" : "No changes"}</p>}</div>
+      <div className="ml-auto flex flex-wrap justify-end gap-1.5">
+        {children}
+        <Button type="button" variant="ghost" size="sm" disabled={!dirty || busy} onClick={onDiscard}>
+          Discard
+        </Button>
+        <Button type="submit" size="sm" disabled={!dirty || busy || disabled}>
+          {busy ? "Saving…" : "Save changes"}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * A section heading inside an admin page. When the frame's title row already names the page, the heading
+ * is not repeated: its buttons move up into the title row and its long explanation is left out.
+ */
 export function AdminHeading({ title, lead, children }: { title: string; lead?: string; children?: React.ReactNode }) {
+  const frame = use(AdminFrameContext)
+  if (frame?.covers.has(title.toLowerCase())) {
+    if (!children || !frame.actions) return null
+    return createPortal(<div className="flex flex-wrap items-center gap-2">{children}</div>, frame.actions)
+  }
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div className="flex min-w-0 flex-col gap-1">
-        <h2 className="text-xl font-semibold tracking-[-0.02em]">{title}</h2>
+        <h2 className="text-lg font-semibold tracking-[-0.02em]">{title}</h2>
         {lead && <p className="max-w-[68ch] text-sm text-muted-foreground">{lead}</p>}
       </div>
       {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}

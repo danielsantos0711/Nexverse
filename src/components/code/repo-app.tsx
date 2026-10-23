@@ -23,7 +23,7 @@ import { ReportButton } from "@/components/moderation"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { canAdmin, canWrite, forkRepo, getMarks, getRepo, getRepoById, listRefs, myId, myRole, ownerKey, repoPath, setMark, type Ref, type Repo, type Role } from "@/lib/code/api"
+import { canAdmin, canWrite, forkRepo, getMarks, getRepo, getRepoById, listRefs, myId, myRole, ownerKey, ownerLabel, repoPath, setMark, type Ref, type Repo, type Role } from "@/lib/code/api"
 import { useCaps } from "@/lib/caps"
 import { projectForRepo, projectHref } from "@/lib/projects"
 import { parseView, type RepoView } from "@/lib/code/route"
@@ -224,12 +224,12 @@ function EmbedBar({ parent, view }: { parent: Repo | null; view: RepoView }) {
       <div className="flex min-w-0 items-center gap-2 text-sm">
         <FolderGit2Icon aria-hidden className="size-4 shrink-0 text-repo" />
         <span className="truncate font-mono text-muted-foreground">
-          {ownerKey(repo.owner)}/<span className="text-foreground">{repo.slug}</span>
+          {ownerLabel(repo.owner)}/<span className="text-foreground">{repo.slug}</span>
         </span>
         <VisibilityBadge visibility={repo.visibility} />
         {parent && (
           <span className="hidden text-xs text-muted-foreground sm:inline">
-            forked from {ownerKey(parent.owner)}/{parent.slug}
+            forked from {ownerLabel(parent.owner)}/{parent.slug}
           </span>
         )}
       </div>
@@ -327,10 +327,6 @@ function RepoHeader({ parent, view }: { parent: Repo | null; view: RepoView }) {
   const counts: Record<string, number | undefined> = { issues: repo.openIssues, pulls: repo.openPulls }
   return (
     <header className="relative isolate flex flex-col gap-4 pt-6">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-16 left-1/2 -z-10 h-48 w-screen -translate-x-1/2 bg-[radial-gradient(40%_70%_at_15%_0%,rgb(143_180_255/0.12),transparent_70%),radial-gradient(30%_60%_at_85%_0%,rgb(211_180_255/0.08),transparent_70%)]"
-      />
       <Breadcrumbs items={[{ label: "Code", href: "/code" }, { label: ownerName, href: `/code/${ownerName}` }, { label: repo.slug }]} className="sr-only sm:not-sr-only" />
       <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -356,7 +352,7 @@ function RepoHeader({ parent, view }: { parent: Repo | null; view: RepoView }) {
             <p className="text-xs text-muted-foreground">
               Forked from{" "}
               <Link href={href(repoPath(parent))} className="text-ion hover:underline">
-                {ownerKey(parent.owner)}/{parent.slug}
+                {ownerLabel(parent.owner)}/{parent.slug}
               </Link>
             </p>
           )}

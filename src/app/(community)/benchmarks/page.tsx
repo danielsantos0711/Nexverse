@@ -16,7 +16,7 @@ export default function BenchmarksPage() {
     <div data-flow="clip" className="sd-flow shell max-w-5xl pb-16">
       <ForumHeader k="benchmarks.header"
         title="Benchmarks"
-        lead="Evaluation results from members, with the settings and logs to run them again. A result is verified once other members reproduce it."
+        lead="Eval results with the settings to run them again, verified when others reproduce them."
         icon={
           <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl border border-ion/20 bg-ion/10 text-ion">
             <GaugeIcon aria-hidden className="size-5" />

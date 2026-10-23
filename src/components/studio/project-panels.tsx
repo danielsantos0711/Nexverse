@@ -17,12 +17,14 @@ import { ActivityChart } from "@/components/studio/activity-chart"
 import { CodeLinkPanel } from "@/components/studio/code-link"
 import { DatasetFacts } from "@/components/studio/dataset-panels"
 import { Gallery } from "@/components/studio/gallery"
+import { ImportedDetails, ImportedFactsCard } from "@/components/studio/import-facts"
 import { datasetSnippets, modelSnippets, Snippets, SpecsTable } from "@/components/studio/model-panels"
 import { ProjectEditor } from "@/components/studio/project-editor"
 import { Button } from "@/components/ui/button"
 import { formatDate, KINDS, LANGUAGES } from "@/lib/data"
 import type { HostedFile } from "@/lib/publish/files"
 import { findLicense } from "@/lib/publish/licenses"
+import { internalHref } from "@/lib/live/ids"
 import { getProjectsById, licenseLabel, listUsing, projectHref, projectThreadId, pub, typeLabel, typeOf, type Project } from "@/lib/projects"
 
 /*
@@ -65,6 +67,7 @@ export function OverviewPanel({ p, files, mine, owner, base }: PanelProps) {
             </p>
           )}
         </section>
+        <ImportedDetails p={p} />
         {o.gallery.length > 0 && <Gallery items={o.gallery} name={p.name} />}
         {type === "dataset" && files.length > 0 && (
           <section aria-labelledby="use-h" className="flex flex-col gap-3">
@@ -79,6 +82,7 @@ export function OverviewPanel({ p, files, mine, owner, base }: PanelProps) {
         {type === "model" && p.specs?.model && <SpecsTable specs={p.specs.model} />}
         {type === "dataset" && <DatasetFacts p={p} files={files} />}
         <Details p={p} />
+        <ImportedFactsCard p={p} />
         <BuiltWith p={p} />
         <Links p={p} />
         <People p={p} owner={owner} />
@@ -185,6 +189,17 @@ function External({ href, icon: Icon, label }: { href: string; icon: typeof File
   try {
     host = new URL(href).hostname.replace(/^www\./, "")
   } catch {}
+  // A GitHub repo opens in its Nexverse view.
+  const inside = internalHref(href)
+  if (inside) {
+    return (
+      <Link href={inside as `/gh/${string}`} className="flex items-center gap-2 hover:text-ion">
+        <Icon aria-hidden className="size-4 shrink-0" />
+        <span>{label}</span>
+        <span className="truncate text-xs text-muted-foreground">{host}</span>
+      </Link>
+    )
+  }
   return (
     <a href={href} target="_blank" rel="noopener noreferrer nofollow ugc" className="flex items-center gap-2 hover:text-ion">
       <Icon aria-hidden className="size-4 shrink-0" />
