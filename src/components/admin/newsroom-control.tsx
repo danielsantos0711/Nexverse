@@ -20,6 +20,7 @@ import {
   RefreshCwIcon,
   RotateCcwIcon,
   SearchCheckIcon,
+  SearchIcon,
   ServerCogIcon,
   SlidersHorizontalIcon,
   TriangleAlertIcon,
@@ -28,6 +29,7 @@ import {
 import { AdminHeading, Notice, StatusLine, when } from "@/components/admin/controls"
 import { compact, engineCall, loadEngineState, usd } from "@/components/admin/newsroom-control-api"
 import { EngineSettingsPanel } from "@/components/admin/newsroom-control-settings"
+import { ScanPanel } from "@/components/admin/newsroom-scan"
 import { Gate } from "@/components/moderation/gate"
 import { EvidenceBadge } from "@/components/news/evidence"
 import { Badge } from "@/components/ui/badge"
@@ -48,14 +50,19 @@ import { cn } from "@/lib/utils"
  */
 
 const TABS = [
-  { id: "live", label: "Live", icon: ActivityIcon },
-  { id: "leads", label: "Discoveries", icon: RadarIcon },
+  { id: "scan", label: "Scan", icon: SearchIcon },
   { id: "review", label: "Review", icon: InboxIcon },
-  { id: "log", label: "Decisions", icon: BotIcon },
-  { id: "usage", label: "Models and cost", icon: CircleDollarSignIcon },
-  { id: "runs", label: "Runs and failures", icon: HistoryIcon },
-  { id: "sources", label: "Sources and watchers", icon: DatabaseZapIcon },
+  { id: "leads", label: "Leads", icon: RadarIcon },
+  { id: "activity", label: "Activity", icon: ActivityIcon },
+  { id: "sources", label: "Sources", icon: DatabaseZapIcon },
   { id: "settings", label: "Settings", icon: SlidersHorizontalIcon },
+] as const
+
+const ACTIVITY = [
+  { id: "live", label: "Now", icon: ActivityIcon },
+  { id: "log", label: "Decisions", icon: BotIcon },
+  { id: "runs", label: "Runs and failures", icon: HistoryIcon },
+  { id: "usage", label: "Models and cost", icon: CircleDollarSignIcon },
 ] as const
 type Tab = (typeof TABS)[number]["id"]
 
@@ -70,7 +77,8 @@ export function NewsroomControl() {
 function Control() {
   const [state, setState] = useState<EngineState | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<Tab>("live")
+  const [tab, setTab] = useState<Tab>("scan")
+  const [activity, setActivity] = useState<(typeof ACTIVITY)[number]["id"]>("live")
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const reduce = useReducedMotion()
@@ -117,7 +125,7 @@ function Control() {
     <div className="flex flex-col gap-6">
       <AdminHeading
         title="Newsroom control"
-        lead="The research engine runs around the clock: desks of AI researchers scout official sources, repositories, papers and public records, judge what they find, research and write, and publish or send to review by your rules."
+        lead="Scan the sources for a window of time, pick what is worth a story, and review what the researchers write."
       >
         <Button variant="outline" size="sm" onClick={() => void refresh()} aria-label="Refresh">
           <RefreshCwIcon aria-hidden /> Refresh
@@ -143,7 +151,7 @@ function Control() {
           <div role="tablist" aria-label="Newsroom control sections" className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
             {TABS.map((t) => {
               const on = t.id === tab
-              const badge = t.id === "review" ? state.review.length + state.leads.filter((l) => l.decision === "review" && !l.storyId).length : t.id === "runs" ? state.jobs.filter((j) => j.status === "dead").length : 0
+              const badge = t.id === "review" ? state.review.length + state.leads.filter((l) => l.decision === "review" && !l.storyId).length : t.id === "activity" ? state.jobs.filter((j) => j.status === "dead").length : 0
               return (
                 <button
                   key={t.id}
@@ -165,12 +173,24 @@ function Control() {
           </div>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={tab} role="tabpanel" initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
-              {tab === "live" && <LivePanel state={state} act={act} busy={busy} />}
+              {tab === "scan" && <ScanPanel state={state} onChanged={() => window.setTimeout(() => void refresh(), 1500)} />}
               {tab === "leads" && <LeadsPanel state={state} act={act} busy={busy} />}
               {tab === "review" && <ReviewPanel state={state} act={act} busy={busy} />}
-              {tab === "log" && <DecisionLogPanel decisions={state.decisions} />}
-              {tab === "usage" && <UsagePanel state={state} />}
-              {tab === "runs" && <RunsPanel state={state} act={act} busy={busy} />}
+              {tab === "activity" && (
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-wrap gap-1.5" role="group" aria-label="Activity views">
+                    {ACTIVITY.map((a) => (
+                      <Button key={a.id} size="xs" variant={activity === a.id ? "default" : "outline"} onClick={() => setActivity(a.id)}>
+                        <a.icon aria-hidden /> {a.label}
+                      </Button>
+                    ))}
+                  </div>
+                  {activity === "live" && <LivePanel state={state} act={act} busy={busy} />}
+                  {activity === "log" && <DecisionLogPanel decisions={state.decisions} />}
+                  {activity === "runs" && <RunsPanel state={state} act={act} busy={busy} />}
+                  {activity === "usage" && <UsagePanel state={state} />}
+                </div>
+              )}
               {tab === "sources" && <SourcesPanel state={state} act={act} busy={busy} />}
               {tab === "settings" && <EngineSettingsPanel state={state} onSaved={() => void refresh()} />}
             </motion.div>
@@ -315,7 +335,7 @@ function LivePanel({ state, act, busy }: { state: EngineState; act: Act; busy: b
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-sm text-muted-foreground">Nothing queued. The next cycle starts on the hour, or press Run now.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Nothing queued. The next cycle starts on schedule, or press Run now.</p>
         )}
       </section>
       <section aria-labelledby="jobs-done-h">
