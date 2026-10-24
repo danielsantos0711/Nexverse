@@ -250,7 +250,7 @@ export function Snippets({ snippets, lead }: { snippets: Snippet[]; lead?: React
             {copied ? "Copied" : "Copy"}
           </button>
         </div>
-        <pre className="overflow-x-auto p-4 font-mono text-[13px] leading-relaxed">
+        <pre tabIndex={0} className="overflow-x-auto p-4 font-mono text-[13px] leading-relaxed focus-visible:outline-2 focus-visible:outline-ring">
           <code>
             {lines.map((l, i) => (
               <div key={i}>

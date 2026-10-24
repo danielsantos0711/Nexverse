@@ -10,7 +10,7 @@ export function CodeBlock({ code, lang, className }: { code: string; lang?: stri
         <span className="font-mono">{lang || "text"}</span>
         <CopyButton text={text} />
       </div>
-      <pre className="overflow-x-auto p-4 font-mono text-[13px] leading-relaxed text-[#cfd8ea]">
+      <pre tabIndex={0} className="overflow-x-auto p-4 font-mono text-[13px] leading-relaxed text-[#cfd8ea] focus-visible:outline-2 focus-visible:outline-ring">
         <code>{text}</code>
       </pre>
     </div>

@@ -50,7 +50,7 @@ export function ForumSearch({ topics, className, placeholder = "Search threads" 
         onFocus={() => setOpen(true)}
         placeholder={placeholder}
         autoComplete="off"
-        aria-controls={`${id}-results`}
+        aria-controls={active ? `${id}-results` : undefined}
         className="h-9 w-full rounded-full border border-input bg-background/60 pr-9 pl-9 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ion/50 focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-search-cancel-button]:hidden"
       />
       {query && (
