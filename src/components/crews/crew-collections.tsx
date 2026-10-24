@@ -71,8 +71,8 @@ export function CrewCollections({ crew, role }: { crew: Crew; role: CrewRole | n
           <Skeleton className="h-40 rounded-xl" />
         </div>
       ) : list.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 px-6 py-10 text-center text-sm text-muted-foreground">
-          <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
+        <div className="nx-empty nx-empty-panel flex flex-col items-center gap-3 px-6 py-10 text-center text-sm text-muted-foreground">
+          <span className="nx-empty-icon nx-medallion mb-1">
             <LayersIcon aria-hidden className="size-5" />
           </span>
           <p>No shared collections yet. {role ? "Share one of yours, or a public one you rely on." : ""}</p>

@@ -7,9 +7,9 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // primary: a lens of light, a bright top edge and a faint ion glow (Liquid Glass's specular highlight)
+        // primary: a lens of light, a bright top edge and a faint silver glow (Liquid Glass's specular highlight)
         default:
-          "bg-[linear-gradient(180deg,#ffffff,#dfe4ee)] text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.9),inset_0_-1px_0_rgb(0_0_0/0.12),0_1px_2px_rgb(0_0_0/0.5),0_0_18px_-6px_rgb(143_180_255/0.55)] hover:bg-[linear-gradient(180deg,#ffffff,#eef1f7)] hover:shadow-[inset_0_1px_0_rgb(255_255_255/0.9),inset_0_-1px_0_rgb(0_0_0/0.12),0_1px_2px_rgb(0_0_0/0.5),0_0_26px_-4px_rgb(143_180_255/0.7)]",
+          "bg-[linear-gradient(180deg,#ffffff,#dfe4ee)] text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.9),inset_0_-1px_0_rgb(0_0_0/0.12),0_1px_2px_rgb(0_0_0/0.5),0_0_18px_-6px_rgb(235_238_245/0.45)] hover:bg-[linear-gradient(180deg,#ffffff,#eef1f7)] hover:shadow-[inset_0_1px_0_rgb(255_255_255/0.9),inset_0_-1px_0_rgb(0_0_0/0.12),0_1px_2px_rgb(0_0_0/0.5),0_0_26px_-4px_rgb(235_238_245/0.6)]",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         // secondary: a pill of glass (rim and top light drawn with shadows, so it stays cheap in long lists)
