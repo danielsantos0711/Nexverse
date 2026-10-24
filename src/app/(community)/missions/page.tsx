@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function MissionsPage() {
   return (
     <div data-flow="clip" className="sd-flow shell max-w-5xl pb-16">
-      <ForumHeader k="missions.header"
+      <ForumHeader backdrop="stream" k="missions.header"
         title="Missions"
         lead="Challenges members post for each other, with points and a badge for the winner."
       >

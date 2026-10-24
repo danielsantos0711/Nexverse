@@ -35,6 +35,7 @@ import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
+import { PageBackdrop } from "@/components/glass/page-backdrop"
 
 /** One launch: countdown before, the live board with boosts on the day, the result after, and comments. */
 export function LaunchDetail({ id }: { id: string }) {
@@ -140,7 +141,8 @@ function LaunchPage({ initial }: { initial: Launch }) {
   const launchAt = new Date(l.launchAt)
 
   return (
-    <div className="shell pt-6 pb-16 lg:pt-8">
+    <div className="nx-detail relative isolate shell pt-6 pb-16 lg:pt-8">
+      <PageBackdrop variant="stream" />
       <Breadcrumbs items={[{ label: "Launchpad", href: "/launchpad" }, { label: l.name }]} />
 
       <header className="relative isolate mt-5 overflow-hidden rounded-2xl border border-white/10">

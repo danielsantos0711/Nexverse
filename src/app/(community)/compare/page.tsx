@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function Page() {
   return (
     <div className="shell">
-      <PageTitle k="compare.header" eyebrow={<Copy k="compare.header.eyebrow">Hub</Copy>} title="Compare" lead="Up to four member projects side by side." />
+      <PageTitle backdrop="pixels" k="compare.header" eyebrow={<Copy k="compare.header.eyebrow">Hub</Copy>} title="Compare" lead="Up to four member projects side by side." />
       <Suspense>
         <CompareView />
       </Suspense>

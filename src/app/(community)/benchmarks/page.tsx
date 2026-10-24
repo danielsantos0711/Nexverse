@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function BenchmarksPage() {
   return (
     <div data-flow="clip" className="sd-flow shell max-w-5xl pb-16">
-      <ForumHeader k="benchmarks.header"
+      <ForumHeader backdrop="pixels" k="benchmarks.header"
         title="Benchmarks"
         lead="Eval results with the settings to run them again, verified when others reproduce them."
         icon={

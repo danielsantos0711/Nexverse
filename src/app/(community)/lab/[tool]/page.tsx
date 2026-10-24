@@ -24,6 +24,7 @@ import { DiscussButton } from "@/components/social/discuss-button"
 import { ExplainTool } from "@/components/lab/explain-tool"
 import { SaveButton } from "@/components/social/save-button"
 import { Copy } from "@/components/content/copy"
+import { PageBackdrop } from "@/components/glass/page-backdrop"
 
 const TOOLS: Record<LabToolSlug, () => React.ReactNode> = {
   vram: () => <VramCalculator />,
@@ -75,7 +76,8 @@ async function Tool({ params }: { params: Promise<{ tool: string }> }) {
   const others = [...tools.filter((x) => x.slug !== t.slug && x.group === t.group), ...tools.filter((x) => x.group !== t.group)]
   const group = shelves.find((c) => c.id === t.group)
   return (
-    <div className="shell pb-16">
+    <div className="nx-detail relative isolate shell pb-16">
+      <PageBackdrop variant="pixels" />
       <header className="relative isolate flex flex-col gap-4 pt-8 pb-6 md:pt-10">
         <div
           aria-hidden

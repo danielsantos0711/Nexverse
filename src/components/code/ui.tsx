@@ -148,8 +148,8 @@ export function StateIcon({ state, kind, className }: { state: "open" | "closed"
 /** A quiet empty state inside a panel: what this is and the first thing to do. */
 export function EmptyState({ icon: Icon, title, children, action }: { icon: typeof CircleDotIcon; title: React.ReactNode; children?: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="relative isolate flex flex-col items-center gap-3 overflow-hidden px-6 py-14 text-center">
-      <span className="grid size-11 place-items-center rounded-2xl border border-ion/20 bg-ion/10 text-ion">
+    <div className="nx-empty relative isolate flex flex-col items-center gap-3 overflow-hidden px-6 py-14 text-center">
+      <span className="nx-empty-icon grid size-11 place-items-center rounded-2xl border border-ion/20 bg-ion/10 text-ion">
         <Icon aria-hidden className="size-5" />
       </span>
       <p className="font-medium">{title}</p>

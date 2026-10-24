@@ -14,6 +14,7 @@ import { SiteHeader } from "@/components/site/header"
 import { ScrollProgress } from "@/components/site/scroll-progress"
 import { AmbientSky } from "@/components/motion/ambient-sky"
 import { SmoothScroll } from "@/components/motion/smooth-scroll"
+import { CardTilt } from "@/components/motion/card-tilt"
 
 export default function CommunityLayout({ children }: LayoutProps<"/">) {
   return (
@@ -26,6 +27,7 @@ export default function CommunityLayout({ children }: LayoutProps<"/">) {
           <AmbientSky />
           <SmoothScroll />
           <RiseObserver />
+          <CardTilt />
           <AnnouncementBar />
           <ViewTransition name="site-header" default="none">
             <SiteHeader />

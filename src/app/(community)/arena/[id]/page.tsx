@@ -18,7 +18,7 @@ export const metadata: Metadata = { title: "Duel · Arena", description: "A blin
 export default function DuelPage({ params }: PageProps<"/arena/[id]">) {
   return (
     <div className="shell max-w-5xl pb-16">
-      <ForumHeader k="duel.header" title="Duel" crumbs={[{ label: "Arena", href: "/arena" }, { label: "Duel" }]} lead="Read both answers, vote for the better one, then see which models wrote them. Keys 1 to 4 vote." />
+      <ForumHeader backdrop="pixels" k="duel.header" title="Duel" crumbs={[{ label: "Arena", href: "/arena" }, { label: "Duel" }]} lead="Read both answers, vote for the better one, then see which models wrote them. Keys 1 to 4 vote." />
       <Suspense fallback={<PageSkeleton />}>
         <Duel params={params} />
       </Suspense>

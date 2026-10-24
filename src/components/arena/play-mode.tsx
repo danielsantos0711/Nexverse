@@ -211,7 +211,7 @@ export function PlayMode() {
               animate={{ opacity: 1, y: 0 }}
               className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card/40 px-6 py-14 text-center"
             >
-              <span className="grid size-11 place-items-center rounded-full bg-gold/10 text-gold">
+              <span className="nx-empty-icon grid size-11 place-items-center rounded-full bg-gold/10 text-gold">
                 {queue.length ? <PartyPopperIcon aria-hidden className="size-5" /> : <SwordsIcon aria-hidden className="size-5" />}
               </span>
               <p className="max-w-md text-sm text-muted-foreground">

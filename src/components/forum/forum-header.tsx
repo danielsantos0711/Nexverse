@@ -1,5 +1,6 @@
 import { Breadcrumbs, type Crumb } from "@/components/forum/forum-ui"
 import { AreaCrumbs } from "@/components/site/area-crumbs"
+import type { Backdrop } from "@/components/glass/page-backdrop"
 import { PageHead } from "@/components/site/page-head"
 
 /**
@@ -15,6 +16,7 @@ export function ForumHeader({
   children,
   k,
   below,
+  backdrop = "topo",
 }: {
   title: string
   lead?: string
@@ -23,9 +25,11 @@ export function ForumHeader({
   children?: React.ReactNode
   k?: string
   below?: React.ReactNode
+  /** The shader behind the title: contour lines by default; each area picks its own (see PageBackdrop). */
+  backdrop?: Backdrop | "stars"
 }) {
   return (
-    <PageHead backdrop="topo" k={k} title={title} lead={lead} crumbs={crumbs ? <Breadcrumbs items={crumbs} /> : <AreaCrumbs />} actions={children}>
+    <PageHead backdrop={backdrop} k={k} title={title} lead={lead} crumbs={crumbs ? <Breadcrumbs items={crumbs} /> : <AreaCrumbs />} actions={children}>
       {below}
     </PageHead>
   )
