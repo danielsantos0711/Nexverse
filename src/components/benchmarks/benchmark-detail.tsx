@@ -76,8 +76,8 @@ export function BenchmarkDetail({ slug }: { slug: string }) {
       ) : !loaded ? (
         <Skeleton className="h-64 w-full rounded-2xl" />
       ) : error ? null : (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ion/30 bg-ion/[0.04] px-6 py-14 text-center">
-          <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
+        <div className="nx-empty nx-empty-panel flex flex-col items-center gap-3 px-6 py-14 text-center">
+          <span className="nx-empty-icon nx-medallion mb-1">
             <GaugeIcon aria-hidden className="size-5" />
           </span>
           <p className="max-w-md text-sm text-muted-foreground">No results for {bench.name} yet. Run it on a model you use and submit the first one, with a link to your logs.</p>

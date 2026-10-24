@@ -174,8 +174,8 @@ export function CollectionsView() {
             ))}
           </ul>
         ) : (
-          <div className="liquid-glass-flat flex flex-col items-center gap-3 rounded-2xl px-6 py-14 text-center">
-            <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
+          <div className="nx-empty nx-empty-panel flex flex-col items-center gap-3 px-6 py-14 text-center">
+            <span className="nx-empty-icon nx-medallion mb-1">
               <LayersIcon aria-hidden className="size-5" />
             </span>
             <p className="max-w-md text-sm text-muted-foreground">

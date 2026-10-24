@@ -98,7 +98,7 @@ export function PeopleDirectory() {
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           Sort
-          <select value={sort} onChange={(e) => setSort(e.target.value as MemberSort)} className="glass h-11 rounded-xl px-3 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+          <select value={sort} onChange={(e) => setSort(e.target.value as MemberSort)} className="nx-select [--nx-select-h:2.75rem]">
             <option value="new" className="bg-popover">
               Newest members
             </option>

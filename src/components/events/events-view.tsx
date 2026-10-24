@@ -24,6 +24,13 @@ const VIEWS: { value: View; label: string }[] = [
   { value: "mine", label: "Your RSVPs" },
 ]
 
+/** How an event runs, shown only while there are none yet (what the page does, never sample events). */
+const HOW_EVENTS_WORK = [
+  { title: "Host", body: "Pick a kind, a time and where: online with a link, or in person with a place." },
+  { title: "RSVP", body: "Members say they are going or interested, and everyone sees who is coming." },
+  { title: "Meet", body: "The time shows in each member's own time zone, and the event says when it is happening now." },
+]
+
 /** Every event: upcoming soonest first, past most recent first, and the ones you RSVP'd to. */
 export function EventsView() {
   const EVENT_KINDS = useEventKinds()
@@ -105,7 +112,7 @@ export function EventsView() {
             id="event-kind"
             value={kind}
             onChange={(e) => setKind(e.target.value as EventKind | "all")}
-            className="h-9 rounded-full border border-input bg-background/60 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="nx-select"
           >
             <option value="all" className="bg-popover">
               All kinds
@@ -149,27 +156,41 @@ export function EventsView() {
             ))}
           </ol>
         ) : error && events.length === 0 ? null : (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ion/30 bg-ion/[0.04] px-6 py-14 text-center">
-            <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
+          <div className="nx-empty nx-empty-panel flex flex-col items-center gap-4 px-5 py-12 text-center sm:px-8">
+            <span className="nx-empty-icon nx-medallion">
               <CalendarDaysIcon aria-hidden className="size-5" />
             </span>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="font-sans text-base font-semibold tracking-normal">
+              {events.length === 0 ? <Copy k="events.events-view.empty-title">No events yet</Copy> : view === "mine" ? <Copy k="events.events-view.empty-title-mine">No RSVPs yet</Copy> : view === "past" ? <Copy k="events.events-view.empty-title-past">No past events yet</Copy> : <Copy k="events.events-view.empty-title-upcoming">Nothing coming up</Copy>}
+            </h2>
+            <p className="-mt-2 max-w-md text-sm text-muted-foreground">
               {events.length === 0
                 ? live
-                  ? <Copy k="events.events-view.no-events-yet-host-the" multiline>No events yet. Host the first one: a paper club, a meetup, office hours or an AMA, online or in person.</Copy>
+                  ? <Copy k="events.events-view.host-the-first-one" multiline>Host the first one: a paper club, a meetup, office hours or an AMA, online or in person.</Copy>
                   : <Copy k="events.events-view.events-you-create-in-this" multiline>Events you create in this browser show up here. This copy of Nexverse is not connected to its database, so nobody else can see them yet.</Copy>
                 : view === "mine"
-                  ? <Copy k="events.events-view.you-have-not-rsvpd-to">You have not RSVP’d to anything yet. Pick an event and say you’re going or interested.</Copy>
+                  ? <Copy k="events.events-view.pick-an-event-and-rsvp">Pick an event and say you’re going or interested.</Copy>
                   : view === "past"
-                    ? <Copy k="events.events-view.no-past-events-yet">No past events yet.</Copy>
+                    ? <Copy k="events.events-view.events-move-here">Events move here once they end.</Copy>
                     : kind === "all"
-                      ? <Copy k="events.events-view.nothing-on-the-calendar-right">Nothing on the calendar right now. Host the next one.</Copy>
+                      ? <Copy k="events.events-view.host-the-next-one">Host the next one.</Copy>
                       : `No upcoming ${EVENT_KINDS[kind].plural.toLowerCase()}. Host one.`}
             </p>
             {(view !== "mine" || events.length === 0) && (
               <Link href="/events/new" className={primaryButton}>
                 <CalendarPlusIcon aria-hidden className="size-4" /> {events.length === 0 ? "Host the first event" : "Create an event"}
               </Link>
+            )}
+            {events.length === 0 && (
+              <ol className="mx-auto grid w-full max-w-3xl gap-3 pt-3 sm:grid-cols-3">
+                {HOW_EVENTS_WORK.map((step, i) => (
+                  <li key={step.title} className="nx-step">
+                    <span aria-hidden className="nx-step-num">{i + 1}</span>
+                    <p className="text-sm font-medium">{step.title}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{step.body}</p>
+                  </li>
+                ))}
+              </ol>
             )}
           </div>
         )}
@@ -182,7 +203,7 @@ function EventRow({ e, attendees, past, live: happening }: { e: CommunityEvent; 
   const going = attendees?.going ?? []
   const interested = attendees?.interested.length ?? 0
   return (
-    <article className={cn("group relative flex gap-4 rounded-xl border border-border bg-card/40 p-4 transition-colors hover:bg-white/[0.03]", past && "opacity-80")}>
+    <article className={cn("nx-row group relative flex gap-4 rounded-xl border border-border bg-card/40 p-4", past && "opacity-80")}>
       <DateTile iso={e.startsAt} past={past} />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex flex-wrap items-center gap-2">

@@ -5,7 +5,7 @@ import type { Poster } from "@/components/forum/topics"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
 
-/** A member's initials on a soft gradient. Members have no handle, so their name is all there is. */
+/** A member's initials on a soft silver gradient. Members have no handle, so their name is all there is. */
 export function MemberAvatar({ name, size = 28, className }: { name?: string; size?: number; className?: string }) {
   const letters = (name ?? "You")
     .split(/\s+/)
@@ -18,7 +18,7 @@ export function MemberAvatar({ name, size = 28, className }: { name?: string; si
       aria-hidden
       style={{ width: size, height: size, fontSize: size * 0.38 }}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#8fb4ff] to-[#2a3550] font-semibold text-white ring-1 ring-white/15 ring-inset",
+        "inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#b9bfca] to-[#23272f] font-semibold text-white ring-1 ring-white/15 ring-inset",
         className
       )}
     >
@@ -102,7 +102,7 @@ export const riseDelay = (i: number) => ({ animationDelay: `${Math.min(i, 12) * 
 
 /** The forum's buttons, so every "Start a thread" looks the same. */
 export const primaryButton =
-  "pressable inline-flex h-9 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground transition-[filter] hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+  "pressable inline-flex h-9 items-center justify-center gap-2 rounded-full bg-primary bg-[linear-gradient(180deg,#ffffff,#dde2ea)] px-4 text-sm font-medium whitespace-nowrap text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.9),inset_0_-1px_0_rgb(0_0_0/0.14),0_1px_2px_rgb(0_0_0/0.5),0_0_18px_-6px_rgb(235_238_245/0.45)] transition-[transform,box-shadow,filter] duration-150 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgb(255_255_255/0.9),inset_0_-1px_0_rgb(0_0_0/0.14),0_1px_2px_rgb(0_0_0/0.5),0_0_26px_-4px_rgb(235_238_245/0.6)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none [&_svg]:shrink-0"
 
 /** "· edited", with the full date on hover and for screen readers. */
 export function EditedMarker({ at, className }: { at: string | null | undefined; className?: string }) {

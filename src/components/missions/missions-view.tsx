@@ -211,7 +211,7 @@ export function MissionsView() {
           type="button"
           aria-expanded={moreOpen}
           onClick={() => setMoreOpen((o) => !o)}
-          className={cn("pressable inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors", moreOpen || moreActive ? "border-ion/40 text-foreground" : "border-border text-muted-foreground hover:text-foreground")}
+          className={cn("pressable inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium shadow-[inset_0_1px_0_rgb(255_255_255/0.08)] transition-[transform,background-color,border-color,color]", moreOpen || moreActive ? "border-white/30 bg-white/[0.1] text-foreground" : "border-white/[0.14] bg-white/[0.04] text-foreground/85 hover:border-white/[0.24] hover:bg-white/[0.08] hover:text-foreground")}
         >
           <SlidersHorizontalIcon aria-hidden className="size-3.5" /> Filters
           {moreActive > 0 && <span className="tabular text-xs text-ion">{moreActive}</span>}
@@ -288,7 +288,7 @@ export function MissionsView() {
             id="mission-sort"
             value={sort}
             onChange={(e) => setSort(e.target.value as Sort)}
-            className="h-9 rounded-full border border-input bg-background/60 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="nx-select"
           >
             {SORTS.map((s) => (
               <option key={s.value} value={s.value} className="bg-popover">
@@ -379,8 +379,8 @@ export function MissionsView() {
         ) : noneAtAll ? (
           <FirstMission />
         ) : (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 px-6 py-14 text-center">
-            <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
+          <div className="nx-empty nx-empty-panel flex flex-col items-center gap-3 px-6 py-14 text-center">
+            <span className="nx-empty-icon nx-medallion mb-1">
               <TargetIcon aria-hidden className="size-5" />
             </span>
             <p className="text-sm text-muted-foreground">{filtered ? <Copy k="missions.missions-view.no-missions-match-these-filters">No missions match these filters.</Copy> : <Copy k="missions.missions-view.no-missions-yet">No missions yet.</Copy>}</p>
@@ -409,9 +409,9 @@ const HOW_IT_WORKS = [
 /** No missions at all yet: say so plainly, invite the first one, and explain how a mission runs. */
 function FirstMission() {
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-dashed border-ion/30 bg-ion/[0.04] px-5 py-10 sm:px-8">
+    <div className="nx-empty nx-empty-panel flex flex-col gap-5 px-5 py-12 sm:px-8">
       <div className="flex flex-col items-center gap-3 text-center">
-        <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
+        <span className="nx-empty-icon nx-medallion mb-1">
           <TargetIcon aria-hidden className="size-5" />
         </span>
         <h2 className="font-sans text-base font-semibold tracking-normal"><Copy k="missions.missions-view.no-missions-yet">No missions yet</Copy></h2>
@@ -426,10 +426,10 @@ function FirstMission() {
       </div>
       <ol className="mx-auto grid w-full max-w-3xl gap-3 pt-2 sm:grid-cols-3">
         {HOW_IT_WORKS.map((step, i) => (
-          <li key={step.title} className="rounded-lg border border-border bg-card/40 p-3">
-            <p className="text-xs text-muted-foreground tabular">Step {i + 1}</p>
+          <li key={step.title} className="nx-step">
+            <span className="nx-step-num"><span className="sr-only">Step </span>{i + 1}</span>
             <p className="text-sm font-medium">{step.title}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{step.body}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{step.body}</p>
           </li>
         ))}
       </ol>
@@ -447,7 +447,7 @@ export function MissionCard({ m, now }: { m: Mission; now: number }) {
   const state = missionState(m, now)
   const finished = state === "completed" || state === "expired"
   return (
-    <article className={cn("group relative flex gap-4 rounded-xl border border-border bg-card/40 p-4 transition-colors hover:bg-white/[0.03]", finished && "opacity-85")}>
+    <article className={cn("nx-row group relative flex gap-4 rounded-xl border border-border bg-card/40 p-4", finished && "opacity-85")}>
       <span aria-hidden className={cn("hidden size-12 shrink-0 place-items-center rounded-full border sm:grid", PATCH_TONE[m.difficulty])}>
         <Insignia difficulty={m.difficulty} className="size-5" />
       </span>

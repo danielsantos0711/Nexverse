@@ -125,8 +125,8 @@ function DuelList() {
           ))}
         </ol>
       ) : (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 px-6 py-14 text-center">
-          <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
+        <div className="nx-empty nx-empty-panel flex flex-col items-center gap-3 px-6 py-14 text-center">
+          <span className="nx-empty-icon nx-medallion mb-1">
             <SwordsIcon aria-hidden className="size-5" />
           </span>
           <p className="text-sm text-muted-foreground">{task === "all" ? "No duels yet. Post the first one." : `No ${DUEL_TASKS[task].label.toLowerCase()} duels yet. Post one.`}</p>
@@ -141,7 +141,7 @@ function DuelList() {
 
 function DuelRow({ d, voted, mine }: { d: Duel; voted: boolean; mine: boolean }) {
   return (
-    <article className="group relative flex flex-col gap-2 rounded-xl border border-border bg-card/40 p-4 transition-colors hover:bg-white/[0.03]">
+    <article className="nx-row group relative flex flex-col gap-2 rounded-xl border border-border bg-card/40 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <TaskBadge task={d.task} />
         <LangList langs={d.langs} />

@@ -100,9 +100,9 @@ export function LaunchpadView() {
       )}
 
       {empty ? (
-        <div className="flex flex-col gap-5 rounded-2xl border border-dashed border-ion/30 bg-ion/[0.04] px-5 py-10 sm:px-8">
+        <div className="nx-empty nx-empty-panel flex flex-col gap-5 px-5 py-12 sm:px-8">
           <div className="flex flex-col items-center gap-3 text-center">
-            <span className="grid size-11 place-items-center rounded-full bg-ion/10 text-ion">
+            <span className="nx-empty-icon nx-medallion mb-1">
               <RocketIcon aria-hidden className="size-5 -rotate-45" />
             </span>
             <h2 className="font-sans text-base font-semibold tracking-normal"><Copy k="launchpad.launchpad-view.nothing-on-the-pad-yet">Nothing on the pad yet</Copy></h2>
@@ -121,10 +121,10 @@ export function LaunchpadView() {
               ["Launch day", "For 24 hours from launch time, members boost it once each. Boosts arrive live."],
               ["Launch of the day", "The launch with the most boosts among those launched on a day (UTC) wins that day."],
             ].map(([title, body], i) => (
-              <li key={title} className="rounded-lg border border-border bg-card/40 p-3">
-                <p className="text-xs text-muted-foreground tabular">Step {i + 1}</p>
+              <li key={title} className="nx-step">
+                <span className="nx-step-num"><span className="sr-only">Step </span>{i + 1}</span>
                 <p className="text-sm font-medium">{title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{body}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{body}</p>
               </li>
             ))}
           </ol>
