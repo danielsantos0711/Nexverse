@@ -33,8 +33,8 @@ async function Benchmark({ params }: { params: PageProps<"/benchmarks/[slug]">["
   const b = (await getBenchmarks()).find((x) => x.slug === slug)
   if (!b) notFound()
   return (
-    <div className="shell max-w-5xl pb-16">
-      <ForumHeader title={b.name} crumbs={[{ label: "Benchmarks", href: "/benchmarks" }, { label: b.name }]} lead={b.description} />
+    <div className="sd-flow shell max-w-5xl pb-16">
+      <ForumHeader backdrop="pixels" title={b.name} crumbs={[{ label: "Benchmarks", href: "/benchmarks" }, { label: b.name }]} lead={b.description} />
       <ul className="-mt-2 mb-6 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <li className="rounded-full border border-border px-2.5 py-1">{b.area}</li>
         <li className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1">

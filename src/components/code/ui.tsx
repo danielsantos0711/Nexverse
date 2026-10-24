@@ -148,8 +148,8 @@ export function StateIcon({ state, kind, className }: { state: "open" | "closed"
 /** A quiet empty state inside a panel: what this is and the first thing to do. */
 export function EmptyState({ icon: Icon, title, children, action }: { icon: typeof CircleDotIcon; title: React.ReactNode; children?: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="relative isolate flex flex-col items-center gap-3 overflow-hidden px-6 py-14 text-center">
-      <span className="grid size-11 place-items-center rounded-2xl border border-ion/20 bg-ion/10 text-ion">
+    <div className="nx-empty relative isolate flex flex-col items-center gap-3 overflow-hidden px-6 py-14 text-center">
+      <span className="nx-empty-icon grid size-11 place-items-center rounded-2xl border border-ion/20 bg-ion/10 text-ion">
         <Icon aria-hidden className="size-5" />
       </span>
       <p className="font-medium">{title}</p>
@@ -160,9 +160,9 @@ export function EmptyState({ icon: Icon, title, children, action }: { icon: type
 }
 
 export const inputCls =
-  "h-9 w-full rounded-lg border border-input bg-background/60 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 aria-invalid:border-destructive"
+  "h-9 w-full rounded-lg border border-input bg-background/60 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 aria-invalid:border-destructive"
 export const textareaCls =
-  "w-full rounded-lg border border-input bg-background/60 p-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
+  "w-full rounded-lg border border-input bg-background/60 p-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
 
 export function plural(n: number, one: string, many = `${one}s`) {
   return `${n.toLocaleString("en")} ${n === 1 ? one : many}`

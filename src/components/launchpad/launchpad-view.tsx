@@ -309,7 +309,7 @@ function Spotlight({
           <PhaseBadge phase={phase} />
         </div>
         <h2 id="spotlight-h" className="text-xl leading-tight font-semibold tracking-[-0.01em] md:text-2xl">
-          <Link href={`/launchpad/${l.id}`} className="rounded-sm hover:text-ion focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+          <Link data-nav-link href={`/launchpad/${l.id}`} className="rounded-sm hover:text-ion focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
             {l.name}
           </Link>
         </h2>

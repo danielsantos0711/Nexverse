@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { ArrowRightIcon, LockIcon, ShieldIcon } from "lucide-react"
 import { NMark } from "@/components/brand"
 import { Copy } from "@/components/content/copy"
+import { PageBackdrop } from "@/components/glass/page-backdrop"
 import { FeatureOff, FeatureOffAdminNote, PageHiddenNote } from "@/components/moderation/feature-gate"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -223,8 +224,9 @@ export function MemberWall({ path, siteClosed = false, compact = false, classNam
   const closedJoin = useCopy("auth.wall.signupClosed", "Joining is closed for now. Members can sign in as usual.")
 
   return (
-    <div className={cn(compact ? "flex w-full flex-1 items-center justify-center p-4 md:p-8" : "shell flex justify-center py-12 md:py-20", className)}>
-      <section aria-labelledby="member-wall-title" className="liquid-glass-strong glass relative flex w-full max-w-lg flex-col items-center gap-6 overflow-hidden rounded-3xl px-6 py-10 text-center md:px-10">
+    <div className={cn(compact ? "flex w-full flex-1 items-center justify-center p-4 md:p-8" : "shell relative isolate flex justify-center py-12 md:py-20", className)}>
+      {!compact && <PageBackdrop variant="stream" className="top-0" />}
+      <section aria-labelledby="member-wall-title" className="nx-wall-in liquid-glass-strong glass relative flex w-full max-w-lg flex-col items-center gap-6 overflow-hidden rounded-3xl px-6 py-10 text-center md:px-10">
         <Orbit still={still} />
         <div className="relative flex flex-col items-center gap-3">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground">
@@ -280,11 +282,16 @@ function Orbit({ still }: { still: boolean }) {
   const spinBack = still ? "" : "motion-safe:animate-[spin_40s_linear_infinite_reverse]"
   return (
     <div aria-hidden className="relative grid size-32 place-items-center">
-      <span className={cn("absolute inset-0 rounded-full border border-ion/20", spin)}>
-        <span className="absolute top-1/2 -left-1 size-2 -translate-y-1/2 rounded-full bg-ion shadow-[0_0_10px_var(--ion)]" />
+      {/* launch pass: silver rings (monochrome), drawn on as the card lands, then turning */}
+      <span className="nx-wall-ring absolute inset-0" style={{ "--i": 0 } as React.CSSProperties}>
+        <span className={cn("absolute inset-0 rounded-full border border-white/15", spin)}>
+          <span className="absolute top-1/2 -left-1 size-2 -translate-y-1/2 rounded-full bg-[#eef0f5] shadow-[0_0_10px_rgb(238_240_245/0.7)]" />
+        </span>
       </span>
-      <span className={cn("absolute inset-5 rounded-full border border-gold/20", spinBack)}>
-        <span className="absolute -top-1 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-gold shadow-[0_0_8px_var(--gold)]" />
+      <span className="nx-wall-ring absolute inset-5" style={{ "--i": 1 } as React.CSSProperties}>
+        <span className={cn("absolute inset-0 rounded-full border border-white/10", spinBack)}>
+          <span className="absolute -top-1 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-[#b9bec8] shadow-[0_0_8px_rgb(185_190_200/0.6)]" />
+        </span>
       </span>
       <NMark material="chrome" small sizes="48px" className="size-12 rounded-xl" />
     </div>

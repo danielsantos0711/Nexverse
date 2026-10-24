@@ -104,15 +104,22 @@ function KindLine({ i }: { i: RisingItem }) {
 function Podium({ i, rank, was }: { i: RisingItem; rank: number; was?: number | null }) {
   return (
     <Spotlight className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card/70 transition-colors hover:bg-card">
-      <Thumb i={i} className="aspect-[16/8] w-full" />
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[calc(50%+2rem)] bg-gradient-to-b from-transparent via-transparent to-card/95" />
-      <span aria-hidden className="absolute top-3 left-3 font-mono text-4xl leading-none font-semibold text-white/90 drop-shadow-[0_2px_12px_rgb(0_0_0/0.6)] tabular">{rank}</span>
+      {/* The scrims belong to the cover itself, so the fade always ends exactly where the picture does, and the
+          rank stays legible on a white logo as much as on a dark render. */}
+      <div className="relative">
+        <Thumb i={i} className="aspect-[16/8] w-full" />
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-black/55 to-transparent" />
+        {/* --card is translucent, so the fade lands on the page ground first and the card's own tint over it:
+            the same two layers the card body below is made of, so there is no seam where the picture ends. */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-[linear-gradient(to_bottom,transparent,color-mix(in_oklab,var(--card)_70%,transparent)),linear-gradient(to_bottom,transparent_10%,var(--background))]" />
+        <span aria-hidden className="absolute top-3 left-3 font-mono text-4xl leading-none font-semibold text-white/90 drop-shadow-[0_2px_12px_rgb(0_0_0/0.6)] tabular">{rank}</span>
+      </div>
       <div className="relative -mt-6 flex flex-1 flex-col gap-1.5 p-4 pt-0">
         <span className="flex items-center gap-2">
           <KindLine i={i} />
           <Delta was={was} now={rank} />
         </span>
-        <Link href={i.href as `/p/${string}`} className="line-clamp-2 text-[15px] leading-snug font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
+        <Link data-nav-link href={i.href as `/p/${string}`} className="line-clamp-2 text-[15px] leading-snug font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
           <span className="sr-only">Number {rank}: </span>
           {i.title}
         </Link>
@@ -143,7 +150,7 @@ function Row({ i, rank, was }: { i: RisingItem; rank: number; was?: number | nul
       </span>
       <Thumb i={i} className="size-11 rounded-lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <Link href={i.href as `/p/${string}`} className="truncate text-sm font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
+        <Link data-nav-link href={i.href as `/p/${string}`} className="truncate text-sm font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
           {i.title}
         </Link>
         <span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5">

@@ -102,7 +102,8 @@ export function SocialButtons({ next, verb = "Continue", disabled, onError, chil
 
   return (
     <>
-      <div className={cn("grid gap-2", compact ? "grid-cols-2" : social.length > 1 && "sm:grid-cols-2")}>
+      {/* An odd last provider takes the full row, so three buttons never leave a hole beside the third. */}
+      <div className={cn("grid gap-2", compact ? "grid-cols-2 [&>*:last-child:nth-child(odd)]:col-span-2" : social.length > 1 && "sm:grid-cols-2 sm:[&>*:last-child:nth-child(odd)]:col-span-2")}>
         {social.map((p) => (
           <Button
             key={p.id}

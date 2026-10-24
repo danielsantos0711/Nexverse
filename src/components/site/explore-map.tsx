@@ -15,6 +15,7 @@ import { useCopy } from "@/lib/content"
 import { useMenus, type MenuGroup } from "@/lib/menus"
 import { db } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { RollingNumber } from "@/components/motion/rolling-number"
 
 /*
  * /explore?show=places: the map of the universe (restored in round 12b as Explore's third view, under the
@@ -233,7 +234,7 @@ function Galaxy({ group, index, counts, loading, hot, setHot }: { group: MenuGro
                 <span className="sr-only">Counting…</span>
               </span>
             ) : (
-              total > 0 && <p className="nx-fade text-xs text-muted-foreground tabular-nums">{total.toLocaleString("en")} {total === 1 ? "thing" : "things"} made here so far</p>
+              total > 0 && <p className="nx-fade text-xs text-muted-foreground tabular-nums"><RollingNumber value={total} /> {total === 1 ? "thing" : "things"} made here so far</p>
             )}
           </div>
         </div>
@@ -266,7 +267,13 @@ function Galaxy({ group, index, counts, loading, hot, setHot }: { group: MenuGro
                     <span className="text-xs leading-snug text-muted-foreground">{l.description}</span>
                     {n !== undefined && noun && (
                       <span className="nx-fade mt-1 text-[11px] text-muted-foreground/80 tabular-nums">
-                        {n === 0 ? `No ${noun[1]} yet: be the first` : `${n.toLocaleString("en")} ${n === 1 ? noun[0] : noun[1]}`}
+                        {n === 0 ? (
+                          `No ${noun[1]} yet: be the first`
+                        ) : (
+                          <>
+                            <RollingNumber value={n} /> {n === 1 ? noun[0] : noun[1]}
+                          </>
+                        )}
                       </span>
                     )}
                   </span>

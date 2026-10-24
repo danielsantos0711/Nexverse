@@ -309,7 +309,7 @@ export function DatasetViewer({ p, files }: { p: Project; files: HostedFile[] })
                         <td className="border-r border-border px-2 py-1.5 text-right align-top text-[11px] text-muted-foreground tabular">{at * PAGE + i + 1}</td>
                         {r.map((c, j) => (
                           <td key={j} className="max-w-[28rem] border-r border-border px-3 py-1.5 align-top last:border-r-0">
-                            <span className={cn("line-clamp-3 break-words", c === null && "text-muted-foreground/60 italic", typeof c === "number" && "tabular")}>{c === null ? "empty" : cellText(c)}</span>
+                            <span className={cn("line-clamp-3 break-words", c === null && "text-muted-foreground/85 italic", typeof c === "number" && "tabular")}>{c === null ? "empty" : cellText(c)}</span>
                           </td>
                         ))}
                       </tr>

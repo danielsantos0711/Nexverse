@@ -42,7 +42,7 @@ function HubCardBody({ e, stats, rank, image, imported, className }: { e: HubEnt
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 items-baseline gap-1.5 text-[15px] leading-tight">
-            <Link href={e.href as `/p/${string}`} className="truncate font-medium text-foreground after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
+            <Link data-nav-link href={e.href as `/p/${string}`} className="truncate font-medium text-foreground after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
               {e.name}
             </Link>
             {e.featured && (
@@ -92,6 +92,7 @@ export function NewsShareCard({ s, big = false, className }: { s: Share; big?: b
           <TimeAgo date={s.createdAt} className="text-muted-foreground" />
         </span>
         <Link
+          data-nav-link
           href={`/news/${s.id}`}
           className={cn("relative leading-snug font-semibold after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-ring", big ? "text-xl" : "line-clamp-2 text-[15px]")}
         >

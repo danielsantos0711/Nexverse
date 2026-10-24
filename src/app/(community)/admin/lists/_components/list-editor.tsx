@@ -550,7 +550,7 @@ function FieldInput({ id, field, value, error, locked, onChange }: { id: string;
       <div className={cn("flex flex-col gap-1", width)}>
         <div className="flex items-baseline justify-between gap-2">
           {label}
-          {field.max && <span className={cn("text-[11px] tabular-nums", text.length > field.max ? "text-destructive" : "text-muted-foreground/70")}>{field.max - text.length}</span>}
+          {field.max && <span className={cn("text-[11px] tabular-nums", text.length > field.max ? "text-destructive" : "text-muted-foreground")}>{field.max - text.length}</span>}
         </div>
         <Textarea id={id} value={text} onChange={(e) => onChange(e.target.value)} rows={field.max && field.max > 300 ? 4 : 2} placeholder={field.placeholder} aria-invalid={Boolean(error) || undefined} aria-describedby={describedBy} className="min-h-0 resize-y" />
         {foot}

@@ -20,7 +20,7 @@ export default async function Page() {
   return (
     <div data-flow="zoom" className="sd-flow shell pb-16">
       <div className="relative isolate">
-        <PageTitle k="lab.header"
+        <PageTitle backdrop="pixels" k="lab.header"
           title="Lab"
           lead="Free tools for building with AI: cost, VRAM, tokens, prompts and more."
         >

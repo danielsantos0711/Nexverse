@@ -43,6 +43,7 @@ import { useSession, type Member } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
+import { PageBackdrop } from "@/components/glass/page-backdrop"
 
 type Tab = "home" | "wall" | "chat" | "collections" | "members" | "settings"
 const created = new Intl.DateTimeFormat("en", { month: "long", year: "numeric", timeZone: "UTC" })
@@ -244,7 +245,8 @@ export function CrewPage({ slug }: { slug: string }) {
   const officer = canManage(standing.role)
 
   return (
-    <div className="shell max-w-6xl pb-16">
+    <div className="nx-detail relative isolate shell max-w-6xl pb-16">
+      <PageBackdrop variant="stream" />
       <header className="relative isolate flex flex-col gap-4 pt-6 pb-6 md:pt-8">
         <Breadcrumbs items={[{ label: "Crews", href: "/crews" }, { label: crew.name }]} />
         <CrewBanner banner={crew.banner} tint={tint} seed={crew.slug} className="h-36 rounded-2xl border border-border sm:h-48 md:h-56" />

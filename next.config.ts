@@ -4,6 +4,31 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  poweredByHeader: false,
+  // Security headers on every response. No full Content-Security-Policy yet (only frame-ancestors): the site
+  // loads Supabase, Google Fonts, README images from any host, embeds and WebGL, so a resource policy needs its
+  // own verified pass before it can be switched on without breaking pages.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()" },
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+        ],
+      },
+      {
+        // The GitHub download proxy sends its own stricter policy (sandboxed, frame-ancestors included); a header
+        // here would replace it.
+        source: "/((?!api/gh/download).*)",
+        headers: [{ key: "Content-Security-Policy", value: "frame-ancestors 'self'" }],
+      },
+    ]
+  },
   // Addresses from the first version keep working.
   async redirects() {
     return [

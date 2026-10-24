@@ -282,7 +282,9 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
         {data.errors.length > 0 && <p className="text-xs text-muted-foreground">Part of the hub could not be loaded just now, so this list may be incomplete.</p>}
 
         {list.length === 0 ? (
-          <Empty className="rounded-2xl border border-dashed border-border py-14">
+          // flex-none: the column stretches to the facet sidebar's height, and a growing box pushed this message
+          // a screen below the search box that emptied the list
+          <Empty className="flex-none rounded-2xl border border-dashed border-border py-14">
             <EmptyHeader>
               <EmptyTitle>Nothing matches</EmptyTitle>
               <EmptyDescription>Loosen a filter, or share the thing you were looking for so the next person finds it.</EmptyDescription>

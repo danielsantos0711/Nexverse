@@ -24,6 +24,7 @@ import { ModMenu, ReportButton } from "@/components/moderation"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
+import { PageBackdrop } from "@/components/glass/page-backdrop"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 
@@ -73,7 +74,8 @@ function EventPage({ event: e }: { event: CommunityEvent }) {
   }
 
   return (
-    <div className="shell pt-6 pb-16 lg:pt-8">
+    <div className="nx-detail relative isolate shell pt-6 pb-16 lg:pt-8">
+      <PageBackdrop variant="stream" />
       <Breadcrumbs items={[{ label: "Events", href: "/events" }, { label: e.title }]} />
 
       <div className="mt-5 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">

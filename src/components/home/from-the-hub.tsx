@@ -23,8 +23,8 @@ export function FromTheHub() {
   if (!items.length) {
     return (
       <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-white/[0.1] px-4 py-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <p className="inline-flex items-center gap-2">
-          <NewspaperIcon aria-hidden className="size-4 text-gold" />
+        <p className="flex items-start gap-2">
+          <NewspaperIcon aria-hidden className="mt-0.5 size-4 shrink-0 text-gold" />
           {live ? "No member has shared news yet. Seen something worth reading? Share it and it leads this line." : "News members share shows here once the database is connected."}
         </p>
         <Link href="/share" className="pressable inline-flex h-9 shrink-0 items-center rounded-full bg-white/[0.06] px-4 text-foreground hover:bg-white/[0.1]">

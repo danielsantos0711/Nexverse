@@ -268,7 +268,7 @@ export function OrbitCards({ items, label, className }: { items: OrbitItem[]; la
           </Link>
         ))}
       </div>
-      <p aria-hidden className="absolute bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-[10px] tracking-[0.22em] text-muted-foreground/70 uppercase">
+      <p aria-hidden className="absolute bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-[10px] tracking-[0.22em] text-muted-foreground uppercase">
         Drag to turn the orbit
       </p>
     </div>

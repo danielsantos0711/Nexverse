@@ -31,6 +31,7 @@ import { accentChip, findCategory, postBlockText, useForumMap } from "@/lib/foru
 import { deleteQuestion, useSession } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
+import { PageBackdrop } from "@/components/glass/page-backdrop"
 
 const replyPoster = (a: ForumReply): Poster => ({ name: a.local ? "You" : (a.author?.name ?? "A member") })
 
@@ -145,7 +146,8 @@ export function MemberThread({ id }: { id: string }) {
   }
 
   return (
-    <div className="shell pt-6 pb-16 lg:pt-8">
+    <div className="nx-detail relative isolate shell pt-6 pb-16 lg:pt-8">
+      <PageBackdrop variant="topo" />
       <Breadcrumbs items={crumbs} />
 
       <div className="mt-5 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">

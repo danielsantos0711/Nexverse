@@ -32,6 +32,7 @@ import {
 import { useSession } from "@/lib/store"
 import { live } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { PageBackdrop } from "@/components/glass/page-backdrop"
 
 const EASE = [0.23, 1, 0.32, 1] as const
 
@@ -137,7 +138,8 @@ function CollectionPage({ initial }: { initial: Collection }) {
   }
 
   return (
-    <div className="shell max-w-4xl pt-6 pb-16 lg:pt-8">
+    <div className="nx-detail relative isolate shell max-w-4xl pt-6 pb-16 lg:pt-8">
+      <PageBackdrop variant="warp" />
       <Breadcrumbs items={[{ label: "Collections", href: "/collections" }, { label: c.title }]} />
 
       <header className="mt-5 flex flex-col gap-3">

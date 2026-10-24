@@ -119,6 +119,16 @@ export function CommandMenu({ children }: { children: React.ReactNode }) {
     const g = placeGroups.find((p) => p.label === x.group) ?? placeGroups[0]
     g?.items.push(x)
   }
+  // cmdk 1.1 sorts items inside a group but never moves the groups themselves (it looks them up by an id they do
+  // not carry), so "forum" selected For you in Discover above Forum in Community. The group holding the best
+  // match by name comes first; cmdk still orders the items within it.
+  const q = query.trim().toLowerCase()
+  const rank = (p: Place) => {
+    const label = p.label.toLowerCase()
+    return !q ? 0 : label === q ? 4 : label.startsWith(q) ? 3 : label.includes(q) ? 2 : `${label} ${p.blurb ?? ""}`.toLowerCase().includes(q) ? 1 : 0
+  }
+  const groupRank = (g: { items: Place[] }) => Math.max(0, ...g.items.map(rank))
+  placeGroups.sort((a, b) => groupRank(b) - groupRank(a))
   const more: Place[] = [
     { label: "Home", href: "/", icon: "house" },
     ...menuPages.map((p) => ({ label: p.title, href: p.href, icon: "file-text" })),

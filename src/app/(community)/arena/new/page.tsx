@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function NewDuelPage() {
   return (
     <div className="shell max-w-5xl pb-16">
-      <ForumHeader k="arena-new.header"
+      <ForumHeader backdrop="pixels" k="arena-new.header"
         title="Post a duel"
         crumbs={[{ label: "Arena", href: "/arena" }, { label: "Post a duel" }]}
         lead="Give two models the same prompt and paste both answers. The community votes without seeing the names."

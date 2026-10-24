@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { cacheLife, cacheTag } from "next/cache"
 import { conform, seoFor, visibilityFor, type Seo, type Visibility } from "@/lib/content-shape"
 import { publicDb, select } from "@/lib/newsroom/rest"
+import { SITE_URL } from "@/lib/site-url"
 
 /*
  * Server only. The admins' content overrides for server components and generateMetadata: the same rows the
@@ -86,7 +87,7 @@ export async function seoMetadata(path: string, fallback: Metadata): Promise<Met
   const description = typeof out.description === "string" ? out.description : undefined
   if (seo.image || seo.title || seo.description) {
     out.openGraph = { ...(fallback.openGraph ?? {}), ...(title ? { title } : {}), ...(description ? { description } : {}), ...(seo.image ? { images: [{ url: seo.image }] } : {}) }
-    out.twitter = { card: seo.image ? "summary_large_image" : "summary", ...(title ? { title } : {}), ...(description ? { description } : {}), ...(seo.image ? { images: [seo.image] } : {}) }
+    out.twitter = { card: "summary_large_image", ...(title ? { title } : {}), ...(description ? { description } : {}), ...(seo.image ? { images: [seo.image] } : {}) }
   }
   if (visibility !== "everyone") out.robots = { index: false, follow: false }
   return out
@@ -98,10 +99,13 @@ export async function rootMetadata(fallback: { title: string; description: strin
   const title = seo.title || fallback.title
   const description = seo.description || brand.description || fallback.description
   return {
+    metadataBase: new URL(SITE_URL),
     title: { default: title, template: `%s · ${brand.name}` },
     description,
     applicationName: brand.name,
-    openGraph: { type: "website", siteName: brand.name, title, description, ...(seo.image ? { images: [{ url: seo.image }] } : {}) },
-    twitter: { card: seo.image ? "summary_large_image" : "summary", title, description, ...(seo.image ? { images: [seo.image] } : {}) },
+    // No title or description here: Next fills them from each page's own, so a shared /forum link is not
+    // titled like the home page. The image is the admins' one, or app/opengraph-image.tsx.
+    openGraph: { type: "website", siteName: brand.name, ...(seo.image ? { images: [{ url: seo.image }] } : {}) },
+    twitter: { card: "summary_large_image", ...(seo.image ? { images: [seo.image] } : {}) },
   }
 }
