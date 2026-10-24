@@ -197,7 +197,7 @@ export async function ghDownload(r: GhDownloadRequest, opts: { signal?: AbortSig
     "content-type": src.type,
     "content-disposition": contentDisposition(src.filename),
     "x-content-type-options": "nosniff",
-    "content-security-policy": "default-src 'none'; sandbox",
+    "content-security-policy": "default-src 'none'; sandbox; frame-ancestors 'none'",
     // Branch archives change with every push; tags and commits rarely do. Browsers only, never shared caches.
     "cache-control": "private, max-age=300",
   })
