@@ -3,6 +3,7 @@
 import Link from "next/link"
 import type { Route } from "next"
 import { usePathname } from "next/navigation"
+import { useSyncExternalStore } from "react"
 import { motion, useReducedMotion } from "motion/react"
 import { CompassIcon, HomeIcon, MessageSquareIcon, PlusIcon, UserIcon, type LucideIcon } from "lucide-react"
 import { openCreate } from "@/components/site/create-sheet"
@@ -21,10 +22,14 @@ import { cn } from "@/lib/utils"
  * reading down and at the end of a page (usePhoneBar). Transform only. Phones and tablets; the desktop has the header.
  */
 
+const noop = () => () => {}
 const isOn = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/"))
 
 export function MobileTabBar() {
+  // The lit tab is chosen in the browser only: the home page's prerendered shell on Vercel does not carry "/" as its
+  // path, so lighting it on the server made hydration fail there and React rebuilt the whole page.
   const pathname = usePathname()
+  const hydrated = useSyncExternalStore(noop, () => true, () => false)
   const { settings } = useSiteSettings()
   const { user } = useSession()
   const reduce = useReducedMotion()
@@ -46,7 +51,7 @@ export function MobileTabBar() {
   const [first, second, third, fourth] = links
 
   const item = (l: (typeof links)[number]) => {
-    const on = isOn(pathname, l.href)
+    const on = hydrated && isOn(pathname, l.href)
     return (
       <Link
         key={l.href}
