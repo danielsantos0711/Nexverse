@@ -77,7 +77,7 @@ export function RatingsView() {
             id="rating-lang"
             value={lang ?? ""}
             onChange={(e) => setLang((e.target.value || null) as LanguageCode | null)}
-            className="h-9 rounded-full border border-input bg-background/60 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="nx-select"
           >
             <option value="" className="bg-popover">
               All languages
@@ -187,8 +187,8 @@ export function RatingsView() {
             </table>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 px-6 py-14 text-center">
-            <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
+          <div className="nx-empty nx-empty-panel flex flex-col items-center gap-3 px-6 py-14 text-center">
+            <span className="nx-empty-icon nx-medallion mb-1">
               <SwordsIcon aria-hidden className="size-5" />
             </span>
             <p className="max-w-md text-sm text-muted-foreground">

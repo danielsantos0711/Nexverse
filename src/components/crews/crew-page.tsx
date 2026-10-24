@@ -246,7 +246,7 @@ export function CrewPage({ slug }: { slug: string }) {
 
   return (
     <div className="nx-detail relative isolate shell max-w-6xl pb-16">
-      <PageBackdrop variant="stream" />
+      <PageBackdrop variant="constellation" />
       <header className="relative isolate flex flex-col gap-4 pt-6 pb-6 md:pt-8">
         <Breadcrumbs items={[{ label: "Crews", href: "/crews" }, { label: crew.name }]} />
         <CrewBanner banner={crew.banner} tint={tint} seed={crew.slug} className="h-36 rounded-2xl border border-border sm:h-48 md:h-56" />

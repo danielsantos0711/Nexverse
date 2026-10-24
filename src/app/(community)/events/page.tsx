@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function EventsPage() {
   return (
     <div data-flow="tilt" className="sd-flow shell max-w-5xl pb-16">
-      <ForumHeader backdrop="stream" k="events.header"
+      <ForumHeader backdrop="orbits" k="events.header"
         title="Events"
         lead="Paper clubs, meetups, office hours and AMAs, shown in your time zone."
         icon={

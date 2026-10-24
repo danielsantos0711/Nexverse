@@ -100,7 +100,7 @@ export function ForumIndex() {
                 ))}
               </ol>
             ) : (
-              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-sm text-muted-foreground"><Copy k="forum.forum-index.no-threads-yet-new-threads">No threads yet. New threads and replies show up here as they happen.</Copy></p>
+              <p className="nx-empty-panel rounded-xl px-4 py-4 text-sm text-muted-foreground"><Copy k="forum.forum-index.no-threads-yet-new-threads">No threads yet. New threads and replies show up here as they happen.</Copy></p>
             )}
           </section>
 

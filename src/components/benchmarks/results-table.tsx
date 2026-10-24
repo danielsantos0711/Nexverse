@@ -111,7 +111,7 @@ export function ResultsTable({
             setSort(e.target.value as SortKey)
             setFlip(false)
           }}
-          className="h-9 rounded-full border border-input bg-background/60 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="nx-select"
         >
           {SORTS.map((s) => (
             <option key={s.key} value={s.key} className="bg-popover">

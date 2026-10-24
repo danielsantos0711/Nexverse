@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function NewRepoPage() {
   return (
     <div className="shell max-w-3xl pb-16">
-      <ForumHeader k="code-new.header"
+      <ForumHeader backdrop="circuit" k="code-new.header"
         title="Create a repository"
         lead="A repository holds your project's files and their full history. Start with a README, a licence and a .gitignore, then upload or edit files in the browser."
         crumbs={[{ label: "Code", href: "/code" }, { label: "New repository" }]}

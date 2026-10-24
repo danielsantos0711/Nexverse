@@ -34,7 +34,7 @@ export default function CodePage({ searchParams }: PageProps<"/code">) {
   return (
     <div data-flow="clip" className="sd-flow shell pb-16">
       <PageHead
-        backdrop="topo"
+        backdrop="circuit"
         k="code.header"
         crumbs={<AreaCrumbs />}
         title="Code"

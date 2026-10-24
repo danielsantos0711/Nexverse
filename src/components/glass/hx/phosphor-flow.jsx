@@ -40,13 +40,14 @@ void main() {
   float light = dot(mapped, vec3(0.2126, 0.7152, 0.0722));
   vec3 colour = mix(background, midtone, smoothstep(0.0, 0.55, light));
   colour = mix(colour, highlight, smoothstep(0.35, 1.0, light));
-  gl_FragColor = vec4(colour, 1.0);
+  vec3 lit = max(colour - background, 0.0);
+  gl_FragColor = vec4(lit, max(lit.r, max(lit.g, lit.b)));
 }
 `;
 const rgb = (hex) => [1, 3, 5].map((o) => parseInt(hex.slice(o, o + 2), 16) / 255);
 
 function mount(canvas, opts) {
-  const gl = canvas.getContext('webgl', { alpha: false, antialias: false, powerPreference: 'low-power' });
+  const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: 'low-power' });
   if (!gl) return null;
   const compile = (type, src) => {
     const s = gl.createShader(type);

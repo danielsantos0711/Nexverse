@@ -12,7 +12,7 @@ export function CrewCard({ crew, standing, className }: { crew: Crew; standing?:
   const tint = crewTint(crew)
   return (
     <BorderGlow tint={tint} className={cn("h-full", className)}>
-      <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:transform-none">
+      <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-white/[0.16] hover:shadow-[0_14px_30px_-18px_rgb(0_0_0/0.9)] motion-reduce:transform-none">
         <CrewBanner banner={crew.banner} tint={tint} seed={crew.slug} className="h-24" />
         <div className="relative flex flex-1 flex-col gap-3 px-4 pb-4">
           <div className="-mt-7 flex items-end gap-3">

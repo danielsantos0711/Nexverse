@@ -163,7 +163,7 @@ export function CrewsIndex() {
         <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
           <ArrowDownWideNarrowIcon aria-hidden className="size-3.5" />
           <span className="sr-only">Sort crews</span>
-          <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-8 rounded-full border border-input bg-background/60 px-2.5 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="nx-select [--nx-select-h:2rem] text-xs">
             {SORTS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -243,8 +243,8 @@ export function CrewsIndex() {
             ))}
           </ul>
         ) : (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card/40 px-6 py-14 text-center">
-            <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
+          <div className="nx-empty nx-empty-panel flex flex-col items-center gap-3 px-6 py-14 text-center">
+            <span className="nx-empty-icon nx-medallion mb-1">
               <UsersIcon aria-hidden className="size-5" />
             </span>
             <p className="max-w-sm text-sm text-muted-foreground">

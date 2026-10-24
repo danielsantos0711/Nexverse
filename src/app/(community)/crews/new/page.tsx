@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function NewCrewPage() {
   return (
     <div className="shell max-w-3xl pb-16">
-      <ForumHeader backdrop="stream" k="crews-new.header"
+      <ForumHeader backdrop="constellation" k="crews-new.header"
         title="Start a crew"
         lead="A crew gets a wall, its own chat room, shared collections and a members list. You can change everything but the address later."
         crumbs={[{ label: "Crews", href: "/crews" }, { label: "New" }]}

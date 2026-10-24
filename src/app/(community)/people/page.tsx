@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function PeoplePage() {
   return (
     <div data-flow="fan" className="sd-flow shell pb-16">
-      <PageTitle backdrop="topo" k="people.header" eyebrow={<Copy k="people.header.eyebrow">Members</Copy>} title="People" lead="Everyone building on Nexverse. Follow the people whose work you use." />
+      <PageTitle backdrop="stream" k="people.header" eyebrow={<Copy k="people.header.eyebrow">Members</Copy>} title="People" lead="Everyone building on Nexverse. Follow the people whose work you use." />
       <Suspense fallback={<Skeleton className="h-64 rounded-2xl" />}>
         <PeopleDirectory />
       </Suspense>

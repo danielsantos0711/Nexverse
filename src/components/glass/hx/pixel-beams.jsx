@@ -33,7 +33,7 @@ void main() {
   float coverage = clamp((field - threshold) * contrast * density * 1.25, 0.0, 0.5);
   float rank = bayer8(cell);
   float ink = smoothstep(rank - 0.004, rank + 0.004, coverage);
-  gl_FragColor = vec4(mix(background, foreground, ink), 1.0);
+  gl_FragColor = vec4(foreground * ink, ink);
 }
 `;
 
@@ -44,7 +44,7 @@ function mount(canvas, s) {
   let gl, program, buffer, shaders = [], uniforms = {};
   let frame = 0, last = null, time = s.phase, visible = true, destroyed = false;
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  gl = canvas.getContext('webgl', { alpha: false, antialias: false, powerPreference: 'low-power' });
+  gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: 'low-power' });
   if (!gl) return () => {};
   const compile = (type, src) => { const sh = gl.createShader(type); shaders.push(sh); gl.shaderSource(sh, src); gl.compileShader(sh); return sh; };
   program = gl.createProgram();

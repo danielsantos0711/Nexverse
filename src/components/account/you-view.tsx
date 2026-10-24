@@ -42,7 +42,7 @@ export function YouView() {
   if (!user || !member) {
     return (
       <>
-        <PageHead backdrop="phosphor" title="Your page" lead="Your projects, threads, shares and progress, in one place." />
+        <PageHead backdrop="halo" title="Your page" lead="Your projects, threads, shares and progress, in one place." />
         <Empty className="glass max-w-2xl rounded-2xl py-14">
           <EmptyHeader>
             <EmptyTitle><Copy k="you.you-view.sign-in-to-see-your">Sign in to see your page</Copy></EmptyTitle>
@@ -132,7 +132,7 @@ function Mine({ lead, author, title, userId }: { lead: string; author?: string; 
   return (
     <>
       <PageHead
-        backdrop="phosphor"
+        backdrop="halo"
         title={title}
         lead={lead}
         actions={

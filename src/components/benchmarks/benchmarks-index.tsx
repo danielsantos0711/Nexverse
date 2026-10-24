@@ -80,7 +80,7 @@ export function BenchmarksIndex() {
             const s = stats[b.slug]
             return (
               <li key={b.slug} className={rise} style={riseDelay(i)}>
-                <article className="group relative flex h-full flex-col gap-2 rounded-xl border border-border bg-card/40 p-4 transition-colors hover:bg-white/[0.03]">
+                <article className="nx-row group relative flex h-full flex-col gap-2 rounded-xl border border-border bg-card/40 p-4">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-muted-foreground">{b.area}</span>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -130,8 +130,8 @@ export function BenchmarksIndex() {
         {!loaded ? (
           <Skeleton className="h-40 w-full rounded-xl" />
         ) : recent.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ion/30 bg-ion/[0.04] px-6 py-10 text-center">
-            <span className="grid size-10 place-items-center rounded-full bg-ion/10 text-ion">
+          <div className="nx-empty nx-empty-panel flex flex-col items-center gap-3 px-6 py-10 text-center">
+            <span className="nx-empty-icon nx-medallion mb-1">
               <GaugeIcon aria-hidden className="size-5" />
             </span>
             <p className="max-w-md text-sm text-muted-foreground">

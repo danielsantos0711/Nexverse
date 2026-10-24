@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 export default function NewsPage() {
   return (
     <div data-flow="clip" className="sd-flow shell pb-20">
-      <PageTitle backdrop="stream"
+      <PageTitle backdrop="signal"
         k="news.header"
         eyebrow={<span className="flex flex-wrap items-center gap-x-2.5 gap-y-1"><AreaCrumbs /><span aria-hidden className="opacity-40">·</span><Copy k="news.header.eyebrow">The Nexverse newsroom</Copy></span>}
         title="News"

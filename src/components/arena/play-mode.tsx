@@ -209,15 +209,16 @@ export function PlayMode() {
               key="done"
               initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card/40 px-6 py-14 text-center"
+              className="nx-empty-panel flex flex-col items-center gap-3 px-6 py-14 text-center"
             >
-              <span className="nx-empty-icon grid size-11 place-items-center rounded-full bg-gold/10 text-gold">
+              <span className="nx-empty-icon nx-medallion mb-1">
                 {queue.length ? <PartyPopperIcon aria-hidden className="size-5" /> : <SwordsIcon aria-hidden className="size-5" />}
               </span>
+              <h2 className="font-sans text-base font-semibold tracking-normal">{queue.length ? "You have voted on every duel" : "No duels yet"}</h2>
               <p className="max-w-md text-sm text-muted-foreground">
                 {queue.length
-                  ? "You have voted on every duel there is. Post one of your own, or see how the models rank now."
-                  : "No duels yet. Give two models the same prompt, paste both answers, and let the community vote blind."}
+                  ? "Post one of your own, or see how the models rank now."
+                  : "Give two models the same prompt, paste both answers, and let the community vote blind."}
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 <Link href="/arena/new" className={primaryButton}>
@@ -225,7 +226,7 @@ export function PlayMode() {
                 </Link>
                 <Link
                   href="/arena/ratings"
-                  className="pressable inline-flex h-9 items-center rounded-full border border-border px-4 text-sm hover:bg-white/[0.05] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  className="pressable inline-flex h-9 items-center rounded-full border border-white/[0.14] bg-white/[0.04] px-4 text-sm font-medium shadow-[inset_0_1px_0_rgb(255_255_255/0.08)] transition-[transform,background-color,border-color] hover:border-white/[0.24] hover:bg-white/[0.08] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
                   <Copy k="arena.play-mode.see-ratings">See ratings</Copy>
                 </Link>

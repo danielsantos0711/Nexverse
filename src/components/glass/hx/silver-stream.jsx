@@ -105,7 +105,8 @@ void main() {
   float head = 1.0-smoothstep(0.35,1.25,length(local-vec2(extent,0.0)));
   float alpha=light*(shape*tail*0.85 + head*0.85)*(0.75+0.25*core);
   alpha *= 0.58+0.42*hash(floor(gl_FragCoord.xy));
-  gl_FragColor=vec4(foreground,alpha);
+  alpha = clamp(alpha, 0.0, 1.0);
+  gl_FragColor=vec4(foreground*alpha,alpha);
 }
 `;
 
@@ -116,7 +117,7 @@ function mount(canvas, s) {
   let gl, program, buffer, shaders = [], uniforms = {}, count = 0;
   let frame = 0, last = null, time = 0, visible = true, destroyed = false;
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  gl = canvas.getContext('webgl', { alpha: false, antialias: false, powerPreference: 'low-power' });
+  gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: 'low-power' });
   if (!gl) return () => {};
   const compile = (type, src) => { const sh = gl.createShader(type); shaders.push(sh); gl.shaderSource(sh, src); gl.compileShader(sh); return sh; };
   program = gl.createProgram();
@@ -130,7 +131,7 @@ function mount(canvas, s) {
   gl.enableVertexAttribArray(particle); gl.vertexAttribPointer(particle, 3, gl.FLOAT, false, 20, 0);
   const corner = gl.getAttribLocation(program, 'corner');
   gl.enableVertexAttribArray(corner); gl.vertexAttribPointer(corner, 2, gl.FLOAT, false, 20, 12);
-  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   for (const k of ['resolution', 'time', 'foreground', ...KEYS]) uniforms[k] = gl.getUniformLocation(program, k);
 
   // the particle grid (built once: density does not change while mounted)
@@ -148,7 +149,7 @@ function mount(canvas, s) {
   }
   count = values.length / 5;
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(values), gl.STATIC_DRAW);
-  const bg = rgb(s.background), fg = rgb(s.foreground);
+  const fg = rgb(s.foreground);
 
   function draw() {
     if (destroyed) return;
@@ -157,7 +158,7 @@ function mount(canvas, s) {
     const w = Math.max(1, Math.round(box.width * dpr)), h = Math.max(1, Math.round(box.height * dpr));
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
     gl.viewport(0, 0, w, h);
-    gl.clearColor(bg[0], bg[1], bg[2], 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.uniform2f(uniforms.resolution, w, h);
     gl.uniform1f(uniforms.time, time);
     gl.uniform3fv(uniforms.foreground, fg);

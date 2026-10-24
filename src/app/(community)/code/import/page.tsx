@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function ImportPage() {
   return (
     <div className="shell max-w-3xl pb-16">
-      <ForumHeader k="code-import.header"
+      <ForumHeader backdrop="circuit" k="code-import.header"
         title="Import a repository from GitHub"
         lead="Bring a public GitHub repository to Nexverse. We copy the files of one branch as your first commit, so you can keep working on it here with branches, issues and pull requests."
         crumbs={[{ label: "Code", href: "/code" }, { label: "Import" }]}

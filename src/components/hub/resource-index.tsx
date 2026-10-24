@@ -254,7 +254,7 @@ export function ResourceIndex({ kind }: { kind?: ResourceKind }) {
           </label>
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             Sort
-            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="liquid-glass-pill h-11 px-3.5 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="nx-select [--nx-select-h:2.75rem]">
               {SORTS.map(([v, label]) => (
                 <option key={v} value={v} className="bg-popover">
                   {label}
