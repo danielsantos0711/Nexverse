@@ -136,7 +136,7 @@ export function GithubRising({ repos, topics, fetchedAt }: { repos: GhRepo[]; to
                             )}
                             <span className="truncate">{r.owner}</span>
                           </span>
-                          <Link href={ghHref(r.owner, r.name)} className="truncate leading-tight font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
+                          <Link data-nav-link href={ghHref(r.owner, r.name)} className="truncate leading-tight font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
                             {r.name}
                           </Link>
                         </div>

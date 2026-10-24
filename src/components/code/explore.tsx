@@ -130,7 +130,7 @@ export function CodeExplore() {
             ))}
           </div>
         ) : list.data && list.data.length ? (
-          <ul className={cn("grid gap-3 md:grid-cols-2 transition-opacity", list.loading && "opacity-60")}>
+          <ul className={cn("grid grid-cols-1 gap-3 md:grid-cols-2 transition-opacity", list.loading && "opacity-60")}>
             {list.data.map((r, i) => (
               <RepoCard key={r.id} repo={r} style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }} />
             ))}

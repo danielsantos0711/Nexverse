@@ -853,14 +853,15 @@ export async function createProject(input: ProjectInput): Promise<Project> {
     try {
       await syncVersions(id, p.versions, [])
     } catch (e) {
-      throw new Error(`The project was saved, but its changelog was not: ${(e as Error).message}`)
+      // The row exists: the caller opens it instead of letting a second click publish it twice.
+      throw Object.assign(new Error(`The project was saved, but its changelog was not: ${(e as Error).message}`), { saved: { id, kind: p.kind } })
     }
   }
   if (p.coauthors.length) {
     try {
       await syncCoauthors(id, p.coauthors, [])
     } catch (e) {
-      throw new Error(`The project was saved, but its co-authors were not: ${(e as Error).message}`)
+      throw Object.assign(new Error(`The project was saved, but its co-authors were not: ${(e as Error).message}`), { saved: { id, kind: p.kind } })
     }
   }
   return (await getProject(id))!

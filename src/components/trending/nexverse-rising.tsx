@@ -112,7 +112,7 @@ function Podium({ i, rank, was }: { i: RisingItem; rank: number; was?: number | 
           <KindLine i={i} />
           <Delta was={was} now={rank} />
         </span>
-        <Link href={i.href as `/p/${string}`} className="line-clamp-2 text-[15px] leading-snug font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
+        <Link data-nav-link href={i.href as `/p/${string}`} className="line-clamp-2 text-[15px] leading-snug font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
           <span className="sr-only">Number {rank}: </span>
           {i.title}
         </Link>
@@ -143,7 +143,7 @@ function Row({ i, rank, was }: { i: RisingItem; rank: number; was?: number | nul
       </span>
       <Thumb i={i} className="size-11 rounded-lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <Link href={i.href as `/p/${string}`} className="truncate text-sm font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
+        <Link data-nav-link href={i.href as `/p/${string}`} className="truncate text-sm font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
           {i.title}
         </Link>
         <span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5">
