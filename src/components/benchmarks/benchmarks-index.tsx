@@ -67,9 +67,11 @@ export function BenchmarksIndex() {
       )}
 
       <section aria-labelledby="bench-list" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <h2 id="bench-list" className="sr-only">
-            <Copy k="benchmarks.benchmarks-index.benchmarks">Benchmarks</Copy>
+        {/* A visible heading anchors the action, so "Submit a result" no longer floats alone on its own row. */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="bench-list" className="text-base font-semibold">
+            <Copy k="benchmarks.benchmarks-index.all">All benchmarks</Copy>
+            <span className="ml-2 text-sm font-normal text-muted-foreground tabular">{BENCHMARKS.length}</span>
           </h2>
           <SubmitResult onSubmitted={(r) => setResults((list) => [r, ...list])} />
         </div>

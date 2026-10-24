@@ -205,7 +205,7 @@ function FileDiff({ change, oldRepo, newRepo, mode, viewHref, review }: { change
 }
 
 const ROW: Record<DiffLine["kind"], string> = { ctx: "", del: "bg-[#ff7a70]/[0.09]", add: "bg-[#7fe0b0]/[0.09]" }
-const NUM: Record<DiffLine["kind"], string> = { ctx: "text-muted-foreground/50", del: "text-[#ff9a92]/70 bg-[#ff7a70]/[0.08]", add: "text-[#9fe8c4]/70 bg-[#7fe0b0]/[0.08]" }
+const NUM: Record<DiffLine["kind"], string> = { ctx: "text-muted-foreground/70", del: "text-[#ff9a92]/70 bg-[#ff7a70]/[0.08]", add: "text-[#9fe8c4]/70 bg-[#7fe0b0]/[0.08]" }
 const SIGN = { ctx: " ", del: "−", add: "+" }
 
 type TextData = Extract<Loaded, { kind: "text" }>

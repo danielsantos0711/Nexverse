@@ -463,7 +463,7 @@ export function CosmosView({ github = [], embedded = false }: { github?: GhRepo[
             onClick={() => (allOn ? setKinds(new Set([k])) : toggleKind(k))}
             className={cn(
               "pressable inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-              on ? "border-white/15 bg-[#121622]/80 text-foreground" : "border-white/8 bg-[#0b0e16]/50 text-muted-foreground/70 hover:text-foreground"
+              on ? "border-white/15 bg-[#121622]/80 text-foreground" : "border-white/8 bg-[#0b0e16]/50 text-muted-foreground hover:text-foreground"
             )}
           >
             <span aria-hidden className="size-1.5 rounded-full transition-opacity" style={{ background: color, boxShadow: on ? `0 0 8px ${color}` : "none", opacity: on ? 1 : 0.35 }} />

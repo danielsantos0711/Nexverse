@@ -160,9 +160,9 @@ export function EmptyState({ icon: Icon, title, children, action }: { icon: type
 }
 
 export const inputCls =
-  "h-9 w-full rounded-lg border border-input bg-background/60 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 aria-invalid:border-destructive"
+  "h-9 w-full rounded-lg border border-input bg-background/60 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 aria-invalid:border-destructive"
 export const textareaCls =
-  "w-full rounded-lg border border-input bg-background/60 p-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
+  "w-full rounded-lg border border-input bg-background/60 p-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
 
 export function plural(n: number, one: string, many = `${one}s`) {
   return `${n.toLocaleString("en")} ${n === 1 ? one : many}`

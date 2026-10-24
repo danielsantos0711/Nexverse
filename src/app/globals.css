@@ -115,6 +115,14 @@
   h3 {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
+    /* Launch polish: no orphaned last words in titles. */
+    text-wrap: balance;
+  }
+  /* Short and medium copy avoids a lone word on its last line; long prose and code are left to the browser. */
+  p,
+  li,
+  figcaption {
+    text-wrap: pretty;
   }
   ::selection {
     background: var(--ion);
@@ -691,11 +699,8 @@ html[data-fx="off"] .sky-twinkle {
   z-index: -1;
   inset: 0;
   border-radius: inherit;
-  background:
-    radial-gradient(circle at 20% 30%, rgb(5 6 10 / 0.5) 1px, transparent 1.6px),
-    radial-gradient(circle at 78% 68%, rgb(5 6 10 / 0.5) 1px, transparent 1.6px),
-    radial-gradient(circle at 42% 82%, rgb(5 6 10 / 0.4) 0.6px, transparent 1px),
-    var(--primary);
+  /* Launch polish: at rest the face is clean (the specks read as dust on a white pill); the stars come out on hover. */
+  background: var(--primary);
 }
 @media (hover: hover) and (pointer: fine) {
   .halo-btn:hover {
@@ -706,9 +711,17 @@ html[data-fx="off"] .sky-twinkle {
     opacity: 1;
     animation-duration: 3s;
   }
+  .halo-btn:hover::after {
+    background:
+      radial-gradient(circle at 20% 30%, rgb(5 6 10 / 0.5) 1px, transparent 1.6px),
+      radial-gradient(circle at 78% 68%, rgb(5 6 10 / 0.5) 1px, transparent 1.6px),
+      radial-gradient(circle at 42% 82%, rgb(5 6 10 / 0.4) 0.6px, transparent 1px),
+      var(--primary);
+  }
 }
 .halo-btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
+  transition-duration: 120ms;
 }
 .halo-btn:focus-visible {
   outline: 2px solid var(--ring);
