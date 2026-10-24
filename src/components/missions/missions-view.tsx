@@ -529,7 +529,7 @@ export function MissionTile({ m, now, big = false }: { m: Mission; now: number; 
           <DifficultyBadge difficulty={m.difficulty} />
         </div>
         <h2 className={cn("font-sans leading-snug font-semibold tracking-normal", big ? "text-lg" : "text-base")}>
-          <Link href={`/missions/${m.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring group-hover:text-[rgb(var(--accent-rgb))]">
+          <Link data-nav-link href={`/missions/${m.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring group-hover:text-[rgb(var(--accent-rgb))]">
             {m.title}
           </Link>
         </h2>

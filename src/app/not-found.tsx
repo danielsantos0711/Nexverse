@@ -1,6 +1,9 @@
+import type { Metadata } from "next"
 import { CommandMenu } from "@/components/site/command-menu"
 import { SiteHeader } from "@/components/site/header"
 import { LostInSpace } from "@/components/site/lost-in-space"
+
+export const metadata: Metadata = { title: "Page not found", robots: { index: false } }
 
 export default function NotFound() {
   return (

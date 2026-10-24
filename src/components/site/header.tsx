@@ -124,7 +124,9 @@ function useSiteShortcuts(openSearch: () => void) {
       }
       // J and K walk the page's main list (any element marked data-nav-item); Enter opens the focused one.
       if (k === "j" || k === "k") {
-        const items = [...document.querySelectorAll<HTMLElement>("[data-nav-item]")].filter((el) => el.offsetParent !== null)
+        // data-nav-link marks list items J and K walk without the .sd-flow scroll entrance data-nav-item also drives
+        // (cards whose own list already animates them)
+        const items = [...document.querySelectorAll<HTMLElement>("[data-nav-item], [data-nav-link]")].filter((el) => el.offsetParent !== null)
         if (!items.length) return
         e.preventDefault()
         const at = items.indexOf(document.activeElement as HTMLElement)

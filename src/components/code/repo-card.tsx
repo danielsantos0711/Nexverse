@@ -20,7 +20,7 @@ export function RepoCard({ repo, className, style }: { repo: Repo; className?: s
     >
       <div className="flex min-w-0 items-center gap-2">
         <Avatar person={repo.owner} size={20} />
-        <Link href={href(repoPath(repo))} className="min-w-0 truncate font-medium text-foreground after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none group-focus-within:underline">
+        <Link data-nav-link href={href(repoPath(repo))} className="min-w-0 truncate font-medium text-foreground after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none group-focus-within:underline">
           <span className="text-muted-foreground">{ownerLabel(repo.owner)}/</span>
           {repo.slug}
         </Link>
@@ -49,13 +49,13 @@ export function RepoCard({ repo, className, style }: { repo: Repo; className?: s
         </span>
         {repo.openIssues > 0 && (
           <span className="inline-flex items-center gap-1" title="Open issues">
-            <CircleDotIcon aria-hidden className="size-3.5" /> {repo.openIssues}
+            <CircleDotIcon aria-hidden className="size-3.5" /> {repo.openIssues.toLocaleString("en")}
             <span className="sr-only"><Copy k="code.repo-card.open-issues">open issues</Copy></span>
           </span>
         )}
         {repo.openPulls > 0 && (
           <span className="inline-flex items-center gap-1" title="Open pull requests">
-            <GitPullRequestIcon aria-hidden className="size-3.5" /> {repo.openPulls}
+            <GitPullRequestIcon aria-hidden className="size-3.5" /> {repo.openPulls.toLocaleString("en")}
             <span className="sr-only"><Copy k="code.repo-card.open-pull-requests">open pull requests</Copy></span>
           </span>
         )}

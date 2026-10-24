@@ -6,7 +6,7 @@ import { shortcutsOn } from "@/components/settings/ui-prefs"
 /*
  * Single-key shortcuts that work anywhere on the site, except while typing in a field or with a modifier held:
  *   /  search (the command menu)     C  create something     G then a letter  go to a place (see GO_KEYS)
- *   J / K  next and previous item in the page's list (elements marked data-nav-item), Enter opens it
+ *   J / K  next and previous item in the page's list (elements marked data-nav-item or data-nav-link), Enter opens it
  * Pages add their own with useShortcut (J/K to move through a list, L to like, and so on).
  */
 

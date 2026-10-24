@@ -33,7 +33,7 @@ export function GitHubRepoCard({ repo: r, rank, date = "pushed", className }: { 
             {rank !== undefined && <span className="mr-1.5 font-mono text-repo">#{rank}</span>}
             {r.owner}
           </span>
-          <Link href={ghHref(r.owner, r.name)} className="truncate leading-tight font-medium after:absolute after:inset-0">
+          <Link data-nav-link href={ghHref(r.owner, r.name)} className="truncate leading-tight font-medium after:absolute after:inset-0">
             {r.name}
           </Link>
         </div>

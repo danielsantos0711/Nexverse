@@ -2,6 +2,8 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { RepoApp, RepoSkeleton } from "@/components/code/repo-app"
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /*
  * Every page of a repository: /code/<owner>/<repo>, /tree/<ref>/<path>, /blob/…, /commits/…, /commit/<sha>,
  * /compare, /branches, /tags, /releases, /issues, /pulls, /settings and the rest. One route keeps the repository
@@ -15,7 +17,9 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps<"/code/[owner]/[repo]/[[...rest]]">): Promise<Metadata> {
   const { owner, repo } = await params
-  return { title: `${decodeURIComponent(owner)}/${decodeURIComponent(repo)} · Code` }
+  const who = decodeURIComponent(owner)
+  // an owner without a handle is addressed by id; the title never shows the raw id
+  return { title: `${UUID.test(who) ? "" : `${who}/`}${decodeURIComponent(repo)} · Code` }
 }
 
 export default function RepoPage({ params }: PageProps<"/code/[owner]/[repo]/[[...rest]]">) {

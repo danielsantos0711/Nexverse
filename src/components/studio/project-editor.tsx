@@ -129,7 +129,9 @@ export function ProjectEditor({ id, embedded = false, onSaved }: { id?: string; 
     if (!p) return <Problem title="This project is not here" detail="It may have been deleted, or the address is wrong." />
     if (!canEditProject(p, user?.id)) return <Problem title="You can only edit your own projects" detail="This project belongs to someone else." href={projectHref(p)} action="View the project" />
     return <Editor key={p.id} project={p} embedded={embedded} onSaved={onSaved} initialNotice={
-          params.get("code")
+          params.get("partial")
+            ? `${params.get("partial")} Add it again below and save.`
+            : params.get("code")
             ? `Saved, but the code repository was not created: ${params.get("code")} You can add one below.`
             : params.get("saved") === "draft"
               ? "Draft saved. Only you can see it."
@@ -306,6 +308,14 @@ function Editor({
       }
     } catch (e) {
       const message = (e as Error).message
+      // createProject saved the row but not its changelog or co-authors: open the saved project with the reason,
+      // so publishing again does not hit "address taken" on the project just made.
+      const partly = (e as { saved?: { id: string; kind: ResourceKind } }).saved
+      if (!current && partly) {
+        setSaved({ form, project: null })
+        router.push(`${projectHref(partly, "settings")}?partial=${encodeURIComponent(message.slice(0, 300))}` as "/")
+        return
+      }
       if (/address/i.test(message)) {
         setErrors((x) => ({ ...x, slug: message }))
         focusFirst({ slug: message })

@@ -164,7 +164,7 @@ function MemberCard({ m, you }: { m: PublicMember; you: boolean }) {
       <div className="flex items-center gap-3">
         <PersonAvatar handle={m.handle ?? m.id} name={m.name} src={m.avatarUrl} size={40} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <Link href={memberHref(m) as `/people/${string}`} className="truncate font-medium after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
+          <Link data-nav-link href={memberHref(m) as `/people/${string}`} className="truncate font-medium after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
             {m.name}
             {you && <span className="ml-1.5 rounded-full bg-ion/15 px-1.5 text-[11px] text-ion"><Copy k="people.people-directory.you">You</Copy></span>}
           </Link>

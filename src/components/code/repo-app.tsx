@@ -323,17 +323,19 @@ const TABS = [
 function RepoHeader({ parent, view }: { parent: Repo | null; view: RepoView }) {
   const { repo, base, admin } = useRepo()
   const ownerName = ownerKey(repo.owner)
+  // the address may carry the member id (no handle yet); people read their name
+  const ownerText = ownerLabel(repo.owner)
   const tabs = TABS.filter((t) => t.id !== "settings" || admin)
   const counts: Record<string, number | undefined> = { issues: repo.openIssues, pulls: repo.openPulls }
   return (
     <header className="relative isolate flex flex-col gap-4 pt-6">
-      <Breadcrumbs items={[{ label: "Code", href: "/code" }, { label: ownerName, href: `/code/${ownerName}` }, { label: repo.slug }]} className="sr-only sm:not-sr-only" />
+      <Breadcrumbs items={[{ label: "Code", href: "/code" }, { label: ownerText, href: `/code/${ownerName}` }, { label: repo.slug }]} className="sr-only sm:not-sr-only" />
       <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <h1 className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xl font-semibold tracking-[-0.02em] md:text-2xl">
             <FolderGit2Icon aria-hidden className="size-5 shrink-0 text-repo" />
             <Link href={href(`/code/${ownerName}`)} className="font-normal text-muted-foreground hover:text-foreground hover:underline">
-              {ownerName}
+              {ownerText}
             </Link>
             <span aria-hidden className="text-muted-foreground/60">
               /
