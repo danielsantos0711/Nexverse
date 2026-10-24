@@ -1,3 +1,4 @@
+import { PageBackdrop } from "@/components/glass/page-backdrop"
 import Link from "next/link"
 import { CircleAlertIcon, MessagesSquareIcon, SearchXIcon, TimerIcon } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -25,6 +26,9 @@ export function DetailBanner({
   return (
     <div className="relative isolate overflow-hidden border-b border-border">
       {/* Sober graphite (round 12): no drawn nebula or ring of light behind the title, only a page's own art. */}
+      {/* Without its own art, a detail page gets the same slow monochrome light as the list pages (round 12c:
+          "ha paginas que nao têm animaçoes"). */}
+      {!art && <PageBackdrop variant="phosphor" className="top-0" />}
       {art && (
         <>
           <div className="absolute inset-0 -z-10 opacity-60">{art}</div>

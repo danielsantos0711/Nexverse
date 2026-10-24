@@ -141,8 +141,28 @@ function Heading({ depth, id, className, children }: { depth: number; id: string
 const TABLE_WRAP = "my-4 overflow-x-auto rounded-lg border border-border"
 const TABLE = "w-full border-collapse text-sm [&_td]:border-t [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:align-top [&_th]:bg-secondary/50 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-medium"
 
+/** Table parts only hold elements: whitespace between tags is not valid there (it breaks hydration), and a <tr>
+ * straight under <table> gets the <tbody> the browser would insert anyway. */
+const TABLE_PARTS = new Set(["table", "thead", "tbody", "tfoot", "tr"])
+function tidyTable(el: El): Node[] {
+  const kids = el.children.filter((n) => !(n.t === "text" && !n.v.trim()))
+  if (el.tag !== "table" || !kids.some((n) => n.t === "el" && n.tag === "tr")) return kids
+  const out: Node[] = []
+  let body: El | null = null
+  for (const n of kids) {
+    if (n.t === "el" && n.tag === "tr") {
+      if (!body) out.push((body = { t: "el", tag: "tbody", attrs: {}, children: [] }))
+      body.children.push(n)
+    } else {
+      body = null
+      out.push(n)
+    }
+  }
+  return out
+}
+
 function renderEl(el: El, r: R, key: number): React.ReactNode {
-  const kids = renderNodes(el.children, r)
+  const kids = renderNodes(TABLE_PARTS.has(el.tag) ? tidyTable(el) : el.children, r)
   const a = el.attrs
   switch (el.tag) {
     case "a":
@@ -448,7 +468,7 @@ function renderToken(tok: Token, r: R, key: number): React.ReactNode {
       )
     }
     case "checkbox":
-      return <input key={key} type="checkbox" checked={(tok as Tokens.Checkbox).checked} readOnly disabled className="mr-2 align-middle accent-[var(--color-ion)]" />
+      return <input key={key} type="checkbox" checked={(tok as Tokens.Checkbox).checked} readOnly disabled aria-label={(tok as Tokens.Checkbox).checked ? "Done" : "Not done"} className="mr-2 align-middle accent-[var(--color-ion)]" />
     case "table": {
       const t = tok as Tokens.Table
       const cls = (al: string | null) => (al === "center" ? "text-center" : al === "right" ? "text-right" : undefined)
