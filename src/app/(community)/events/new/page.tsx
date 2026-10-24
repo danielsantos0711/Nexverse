@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function NewEventPage() {
   return (
     <div className="shell max-w-4xl pb-16">
-      <ForumHeader backdrop="stream" k="events-new.header"
+      <ForumHeader backdrop="orbits" k="events-new.header"
         title="Create an event"
         crumbs={[{ label: "Events", href: "/events" }, { label: "Create an event" }]}
         lead="Host a paper club, a meetup, office hours or an AMA. Pick the time in your own time zone; everyone else sees it in theirs."

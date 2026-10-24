@@ -142,7 +142,7 @@ function LaunchPage({ initial }: { initial: Launch }) {
 
   return (
     <div className="nx-detail relative isolate shell pt-6 pb-16 lg:pt-8">
-      <PageBackdrop variant="stream" />
+      <PageBackdrop variant="ascent" />
       <Breadcrumbs items={[{ label: "Launchpad", href: "/launchpad" }, { label: l.name }]} />
 
       <header className="relative isolate mt-5 overflow-hidden rounded-2xl border border-white/10">

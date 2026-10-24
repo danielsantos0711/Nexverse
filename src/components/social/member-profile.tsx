@@ -108,7 +108,7 @@ function Profile({ m }: { m: PublicMember }) {
 
   return (
     <div className="nx-detail relative isolate shell grid grid-cols-1 gap-10 pt-10 pb-16 lg:grid-cols-[18rem_1fr]">
-      <PageBackdrop variant="phosphor" />
+      <PageBackdrop variant="halo" />
       <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
         {/* The member as a planet: it grows with reputation, rings for what they wrote, moons for what they made. */}
         <div className="relative -mx-2 -mt-4 flex flex-col items-center gap-1 lg:items-start">

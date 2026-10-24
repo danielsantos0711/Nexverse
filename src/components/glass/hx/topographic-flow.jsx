@@ -60,7 +60,8 @@ void main() {
   color += u_colors[1] * (0.035 * light * light + 0.08 * rim) * u_shape.z;
   color += u_colors[1] * line * focusLight * (0.6 + 0.4 * light);
   float vignette = 1.0 - 0.28 * smoothstep(0.25, 0.75, length(uv - 0.5));
-  gl_FragColor = vec4(clamp(color * vignette * u_shape.w, 0.0, 1.0), 1.0);
+  vec3 lit = max(clamp(color * vignette * u_shape.w, 0.0, 1.0) - u_colors[0], 0.0);
+  gl_FragColor = vec4(lit, max(lit.r, max(lit.g, lit.b)));
 }
 `;
 
@@ -70,7 +71,7 @@ function mount(canvas, s) {
   let gl, program, buffer, shaders = [], uniforms = {};
   let frame = 0, last = null, time = 0, visible = true, destroyed = false;
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  gl = canvas.getContext('webgl', { alpha: false, antialias: false, powerPreference: 'low-power' });
+  gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: 'low-power' });
   if (!gl) return () => {};
   const compile = (type, src) => { const sh = gl.createShader(type); shaders.push(sh); gl.shaderSource(sh, src); gl.compileShader(sh); return sh; };
   program = gl.createProgram();

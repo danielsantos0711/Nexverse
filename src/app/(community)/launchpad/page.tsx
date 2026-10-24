@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function LaunchpadPage() {
   return (
     <div data-flow="zoom" className="sd-flow shell max-w-6xl pb-16">
-      <ForumHeader backdrop="stream" k="launchpad.header"
+      <ForumHeader backdrop="ascent" k="launchpad.header"
         title="Launchpad"
         lead="Launch your project with a countdown; members boost it on the day."
         icon={

@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function CrewsPage() {
   return (
     <div data-flow="fan" className="sd-flow shell max-w-6xl pb-16">
-      <ForumHeader backdrop="stream" k="crews.header"
+      <ForumHeader backdrop="constellation" k="crews.header"
         title="Crews"
         lead="Labs, study groups and teams, each with a wall and a chat room."
         icon={

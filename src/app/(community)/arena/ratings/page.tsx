@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function RatingsPage() {
   return (
     <div className="sd-flow shell max-w-5xl pb-16">
-      <ForumHeader backdrop="pixels" k="arena-ratings.header"
+      <ForumHeader backdrop="duel" k="arena-ratings.header"
         title="Arena ratings"
         crumbs={[{ label: "Arena", href: "/arena" }, { label: "Ratings" }]}
         lead="An Elo rating per model from every blind vote. Filter by task or language; the more votes behind a rating, the more it means."

@@ -75,7 +75,7 @@ function EventPage({ event: e }: { event: CommunityEvent }) {
 
   return (
     <div className="nx-detail relative isolate shell pt-6 pb-16 lg:pt-8">
-      <PageBackdrop variant="stream" />
+      <PageBackdrop variant="orbits" />
       <Breadcrumbs items={[{ label: "Events", href: "/events" }, { label: e.title }]} />
 
       <div className="mt-5 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">

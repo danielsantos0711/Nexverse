@@ -31,7 +31,7 @@ export default function Page({ searchParams }: PageProps<"/explore">) {
   return (
     <div data-flow="clip" className="sd-flow shell pb-16">
       <PageHead
-        backdrop="phosphor"
+        backdrop="galaxy"
         k="explore.header"
         crumbs={<AreaCrumbs />}
         title="Explore"

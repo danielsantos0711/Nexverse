@@ -16,7 +16,7 @@ export function ForumHeader({
   children,
   k,
   below,
-  backdrop = "topo",
+  backdrop = "threads",
 }: {
   title: string
   lead?: string
@@ -25,7 +25,7 @@ export function ForumHeader({
   children?: React.ReactNode
   k?: string
   below?: React.ReactNode
-  /** The shader behind the title: contour lines by default; each area picks its own (see PageBackdrop). */
+  /** The shader behind the title: braided threads by default (the forum); each area picks its own (see PageBackdrop). */
   backdrop?: Backdrop | "stars"
 }) {
   return (
