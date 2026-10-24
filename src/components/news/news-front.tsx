@@ -118,10 +118,10 @@ export async function NewsFront() {
 
 function EmptyNewsroom({ unavailable }: { unavailable: boolean }) {
   return (
-    <section aria-labelledby="empty-h" className="relative isolate overflow-hidden rounded-3xl border border-border bg-card/60 px-6 py-12 md:px-12 md:py-16">
+    <section aria-labelledby="empty-h" className="nx-empty relative isolate overflow-hidden rounded-3xl border border-border bg-card/60 px-6 py-12 md:px-12 md:py-16">
       <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 -z-10 size-[26rem] rounded-full border border-dashed border-gold/20 motion-safe:animate-[spin_120s_linear_infinite]" />
       <div aria-hidden className="pointer-events-none absolute -top-8 -right-8 -z-10 size-[16rem] rounded-full border border-ion/15" />
-      <span className="grid size-12 place-items-center rounded-2xl border border-gold/30 bg-gold/10 text-gold">
+      <span className="nx-empty-icon grid size-12 place-items-center rounded-2xl border border-gold/30 bg-gold/10 text-gold">
         <NewspaperIcon aria-hidden className="size-5" />
       </span>
       <h2 id="empty-h" className="mt-5 max-w-[30ch] text-2xl font-semibold tracking-[-0.02em] text-balance">

@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import type { FailReason } from "@/lib/live/http"
 import { cn } from "@/lib/utils"
 import { Copy } from "@/components/content/copy"
+import { PageBackdrop } from "@/components/glass/page-backdrop"
 
 /** Shared frame for the in-site pages of external items: banner, details panel, error and loading states. */
 
@@ -23,8 +24,10 @@ export function DetailBanner({
   children: React.ReactNode
 }) {
   return (
-    <div className="relative isolate overflow-hidden border-b border-border">
-      {/* Sober graphite (round 12): no drawn nebula or ring of light behind the title, only a page's own art. */}
+    <div className="nx-detail relative isolate overflow-hidden border-b border-border">
+      {/* Sober graphite (round 12): no drawn nebula or ring of light behind the title, only a page's own art.
+          Launch pass: without art, the silver contour lines move behind the title like the list pages' headers. */}
+      {!art && <PageBackdrop variant="topo" className="top-0" />}
       {art && (
         <>
           <div className="absolute inset-0 -z-10 opacity-60">{art}</div>

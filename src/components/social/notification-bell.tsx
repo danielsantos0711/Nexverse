@@ -57,9 +57,9 @@ export function NotificationBell({ className }: { className?: string }) {
           {unread > 0 && (
             <motion.span
               aria-hidden
-              initial={reduce ? { opacity: 0 } : { scale: 0, opacity: 0 }}
+              initial={reduce ? { opacity: 0 } : { scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={reduce ? { opacity: 0 } : { scale: 0, opacity: 0 }}
+              exit={reduce ? { opacity: 0 } : { scale: 0.5, opacity: 0 }}
               transition={{ type: "spring", stiffness: 500, damping: 22 }}
               className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-ion px-1 text-[11px] leading-none font-semibold text-ion-foreground tabular shadow-[0_0_12px_rgb(143_180_255/0.6)]"
             >
