@@ -160,7 +160,7 @@ export function RagChunker() {
             ) : (
               segs.map((s, k) => {
                 const t = deferred.slice(s.start, s.end)
-                if (!s.ids.length) return <span key={k} className="text-muted-foreground/60">{t}</span>
+                if (!s.ids.length) return <span key={k} className="text-muted-foreground/85">{t}</span>
                 const a = HUES[s.ids[0] % HUES.length]
                 const b = HUES[s.ids[s.ids.length - 1] % HUES.length]
                 const dim = active != null && !s.ids.includes(active)

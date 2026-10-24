@@ -69,7 +69,7 @@ export function CodeLines({ text, path }: { text: string; path: string }) {
                       e.preventDefault()
                       pick(n, e.shiftKey)
                     }}
-                    className={cn("block pr-3 pl-4 tabular text-muted-foreground/55 hover:text-foreground focus-visible:outline-none focus-visible:text-ion", on && "text-ion")}
+                    className={cn("block pr-3 pl-4 tabular text-muted-foreground/70 hover:text-foreground focus-visible:outline-none focus-visible:text-ion", on && "text-ion")}
                     aria-label={`Line ${n}`}
                   >
                     {n}

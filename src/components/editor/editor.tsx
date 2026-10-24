@@ -791,7 +791,7 @@ export function NexverseEditor({
               setTimeout(() => setTrigger(null), 150)
             }}
             className={cn(
-              "block w-full bg-transparent px-3.5 py-3 text-[15px] leading-relaxed outline-none placeholder:text-muted-foreground/70",
+              "block w-full bg-transparent px-3.5 py-3 text-[15px] leading-relaxed outline-none placeholder:text-muted-foreground",
               full && "font-mono text-[13.5px] leading-[1.7]",
               mode === "split" ? cn(splitHeight, "resize-none") : cn("resize-y", heightWrite, focusMode && "resize-none"),
               !full && !focusMode && "min-h-28",

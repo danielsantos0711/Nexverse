@@ -71,23 +71,26 @@ export function SiteFooter() {
           ))}
         </div>
       </div>
-      <div className="shell flex flex-col gap-3 border-t border-border py-6 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between">
-        <p>
-          © {name}
-          {settings.footer.note ? ` · ${settings.footer.note}` : ""}
-        </p>
-        {extra.length > 0 && (
-          <nav aria-label="More" className="flex flex-wrap gap-x-4 gap-y-1">
-            {extra.map((l) => (
-              <Link key={l.href + l.label} href={l.href as Route} className="hover:text-foreground">
-                {l.label}
-              </Link>
-            ))}
-          </nav>
-        )}
-        <p>
-          <Copy k="footer.credit">Space imagery: NASA, ESA, CSA, STScI and NASA/JPL-Caltech (public domain), graded for this site.</Copy>
-        </p>
+      {/* The closing rule sits inside the gutter, aligned with the columns above it rather than the shell's padding. */}
+      <div className="shell">
+        <div className="flex flex-col gap-3 border-t border-border py-6 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between">
+          <p>
+            © {name}
+            {settings.footer.note ? ` · ${settings.footer.note}` : ""}
+          </p>
+          {extra.length > 0 && (
+            <nav aria-label="More" className="flex flex-wrap gap-x-4 gap-y-1">
+              {extra.map((l) => (
+                <Link key={l.href + l.label} href={l.href as Route} className="hover:text-foreground">
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+          )}
+          <p>
+            <Copy k="footer.credit">Space imagery: NASA, ESA, CSA, STScI and NASA/JPL-Caltech (public domain), graded for this site.</Copy>
+          </p>
+        </div>
       </div>
       <MobileTabBar />
     </footer>

@@ -158,7 +158,8 @@ export function HotInForum({ online }: { online?: React.ReactNode }) {
           />
         )}
       </div>
-      <aside aria-label="In the community now" className="flex flex-col gap-8 lg:pt-[4.4rem]">
+      {/* the side column starts level with the first thread (the Head above is 78px tall plus its 32px margin) */}
+      <aside aria-label="In the community now" className="flex flex-col gap-8 lg:pt-[6.875rem]">
         <Slot name="Online now" className="min-h-40">
           {online}
         </Slot>

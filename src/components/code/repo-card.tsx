@@ -26,7 +26,7 @@ export function RepoCard({ repo, className, style }: { repo: Repo; className?: s
         </Link>
         <VisibilityBadge visibility={repo.visibility} className="ml-auto shrink-0" />
       </div>
-      {repo.description ? <p className="line-clamp-2 text-sm text-muted-foreground">{repo.description}</p> : <p className="text-sm text-muted-foreground/60 italic"><Copy k="code.repo-card.no-description-yet">No description yet.</Copy></p>}
+      {repo.description ? <p className="line-clamp-2 text-sm text-muted-foreground">{repo.description}</p> : <p className="text-sm text-muted-foreground/85 italic"><Copy k="code.repo-card.no-description-yet">No description yet.</Copy></p>}
       {repo.topics.length > 0 && (
         <ul className="relative z-10 flex flex-wrap gap-1.5" aria-label="Topics">
           {repo.topics.slice(0, 5).map((t) => (

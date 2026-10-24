@@ -157,7 +157,7 @@ export function PlayMode() {
       )}
 
       {live && ready && !user && (
-        <p className="rounded-lg border border-border bg-card/40 px-3 py-2 text-sm text-muted-foreground">
+        <p className="rounded-xl border border-border bg-card/40 px-4 py-2.5 text-sm text-muted-foreground">
           Anyone can read the duels.{" "}
           <Link href={`/sign-in?next=${encodeURIComponent("/arena")}`} className="text-ion underline-offset-4 hover:underline">
             Sign in

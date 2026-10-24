@@ -147,8 +147,9 @@ function HubTotals() {
   if (!shown.length) return null
   return (
     <div className="relative border-t border-white/[0.06] bg-[#070a14]/60">
-      <div className="shell flex flex-wrap items-center justify-center gap-x-10 gap-y-3 py-4 sm:justify-start">
-        <p className="text-xs text-muted-foreground">
+      <div className="shell flex flex-wrap items-center justify-center gap-x-7 gap-y-3 py-4 sm:justify-start sm:gap-x-10">
+        {/* On a phone the label takes its own line and each total stacks its number over its word, so they share one even row. */}
+        <p className="w-full text-center text-xs text-muted-foreground sm:w-auto sm:text-left">
           <span className="pulse-dot mr-2 align-middle" aria-hidden />
           {live}
         </p>
@@ -157,7 +158,7 @@ function HubTotals() {
             const n = counts![t.key]
             return (
               <li key={t.key}>
-                <Link href={t.href} className="group flex items-baseline gap-2 rounded-sm">
+                <Link href={t.href} className="group flex flex-col items-center rounded-sm sm:flex-row sm:items-baseline sm:gap-2">
                   <RollingNumber value={n} className="font-display text-xl font-semibold tracking-tight transition-colors group-hover:text-ion" />
                   <span className="text-sm text-muted-foreground">{n === 1 ? t.one : t.many}</span>
                 </Link>
